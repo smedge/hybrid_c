@@ -14,12 +14,11 @@ void game_initialize(Game *game)
 	}
 
 	game->window = SDL_CreateWindow(
-        "hybrid",                  // window title
-        SDL_WINDOWPOS_UNDEFINED,           // initial x position
-        SDL_WINDOWPOS_UNDEFINED,           // initial y position
-        640,                               // width, in pixels
-        480,                               // height, in pixels
-        SDL_WINDOW_OPENGL                  // flags - see below
+        "> - - - #",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        640, 480,
+        SDL_WINDOW_OPENGL
     );
 }
 
