@@ -5,15 +5,19 @@
 
 #include <SDL2/SDL.h>
 
+#define SDL_WINDOW_NAME "> - - - #"
+
 typedef struct Game 
 {
+	bool initialized;
 	bool running;
 	SDL_Window *window;
 } Game;
 
-void game_initialize(Game *game); 
-void game_cleanup(Game *game);
-
+Game *game_create();
+void game_delete(Game *game);
+static void game_initialize(Game *game); 
+static void game_cleanup(Game *game);
 void game_loop(Game *game);
 
 #endif
