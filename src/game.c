@@ -12,7 +12,7 @@ void game_delete(Game *game) {
 	free(game);
 }
 
-static void game_initialize(Game *game) 
+void game_initialize(Game *game) 
 {
 	puts("initializing app.");
 
@@ -24,23 +24,20 @@ static void game_initialize(Game *game)
 		exit(-1);
 	}
 
-	game->window = SDL_CreateWindow(
-        SDL_WINDOW_NAME,
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
-        640, 480,
-        SDL_WINDOW_OPENGL
-    );
+	graphics_initialize(&game->graphics);
 
     game->initialized = true;
 }
 
-static void game_cleanup(Game *game)
+void game_cleanup(Game *game)
 {
 	puts("cleaning up app.");
-	SDL_DestroyWindow(game->window);
-	SDL_Quit();
+
 	game->initialized = false;
+
+	graphics_cleanup(&game->graphics);
+
+	SDL_Quit();
 }
 
 void game_loop(Game *game)
