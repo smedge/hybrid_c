@@ -1,17 +1,5 @@
 #include "game.h"
 
-Game *game_create() {
-	Game *game = (Game *)calloc(1, sizeof(Game));
-	game_initialize(game);
-	return game;
-}
-
-void game_delete(Game *game) {
-	if (game->initialized)
-		game_cleanup(game);
-	free(game);
-}
-
 void game_initialize(Game *game) 
 {
 	puts("initializing app.");
@@ -25,15 +13,11 @@ void game_initialize(Game *game)
 	}
 
 	graphics_initialize(&game->graphics);
-
-    game->initialized = true;
 }
 
 void game_cleanup(Game *game)
 {
 	puts("cleaning up app.");
-
-	game->initialized = false;
 
 	graphics_cleanup(&game->graphics);
 
@@ -46,3 +30,14 @@ void game_loop(Game *game)
 	SDL_Delay(5000); // do shit here
 	puts("exiting main loop.");	
 }
+
+/*Game *game_create() {
+	Game *game = (Game *)calloc(1, sizeof(Game));
+	game_initialize(game);
+	return game;
+}
+
+void game_delete(Game *game) {
+	game_cleanup(game);
+	free(game);
+}*/

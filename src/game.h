@@ -8,7 +8,6 @@
 #include "graphics.h"
 
 typedef struct {
-	bool initialized;
 	bool running;
 	Graphics graphics;
 } Game;
