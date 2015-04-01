@@ -8,12 +8,11 @@
 #include "graphics.h"
 
 typedef struct {
-	bool running;
+	bool iconified;
+	bool quit;
 	Graphics graphics;
 } Game;
 
-Game *game_create();
-void game_delete(Game *game);
 void game_initialize(Game *game); 
 void game_cleanup(Game *game);
 void game_loop(Game *game);

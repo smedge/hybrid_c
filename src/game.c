@@ -4,7 +4,8 @@ void game_initialize(Game *game)
 {
 	puts("initializing app.");
 
-	game->running = true;
+	game->iconified = false;
+	game->quit = false;
 
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0) 
 	{
@@ -27,17 +28,17 @@ void game_cleanup(Game *game)
 void game_loop(Game *game)
 {
 	puts("entering main loop.");
-	SDL_Delay(5000); // do shit here
+	
+	while(game->quit == false) {
+		handle_sdl_events(game);
+
+		// update
+
+		// render
+
+		SDL_Delay(100); // do shit here
+	}
+
+
 	puts("exiting main loop.");	
 }
-
-/*Game *game_create() {
-	Game *game = (Game *)calloc(1, sizeof(Game));
-	game_initialize(game);
-	return game;
-}
-
-void game_delete(Game *game) {
-	game_cleanup(game);
-	free(game);
-}*/
