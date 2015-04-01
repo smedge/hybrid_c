@@ -1,40 +1,41 @@
 #include "graphics.h"
 
-void graphics_initialize(Graphics *graphics) 
+static Graphics graphics;
+
+void graphics_initialize() 
 {
-	graphics->fullScreen = false;
-	graphics_create_window(graphics);
+	graphics.fullScreen = false;
+	graphics_create_window();
 }
 
-void graphics_cleanup(Graphics *graphics) 
+void graphics_cleanup() 
 {
-	graphics_destroy_window(graphics);
+	graphics_destroy_window();
 }
 
-static void graphics_create_window(Graphics *graphics) 
+static void graphics_create_window() 
 {
-	if (graphics->fullScreen)
-		graphics_create_fullscreen_window(graphics);
+	if (graphics.fullScreen)
+		graphics_create_fullscreen_window();
 	else
-		graphics_create_windowed_window(graphics);
+		graphics_create_windowed_window();
 }
 
-static void graphics_create_fullscreen_window(Graphics *graphics) 
+static void graphics_create_fullscreen_window() 
 {
-	graphics->window = SDL_CreateWindow(
+	graphics.window = SDL_CreateWindow(
 		SDL_WINDOW_NAME, 
 		SDL_WINDOWPOS_UNDEFINED, 
 		SDL_WINDOWPOS_UNDEFINED, 
 		SDL_WINDOW_FULLSCREEN_WIDTH, 
 		SDL_WINDOW_FULLSCREEN_HEIGHT, 
-		SDL_WINDOW_OPENGL | 
-			SDL_WINDOW_FULLSCREEN
+		SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN
 	);
 }
 
-static void graphics_create_windowed_window(Graphics *graphics) 
+static void graphics_create_windowed_window() 
 {
-	graphics->window = SDL_CreateWindow(
+	graphics.window = SDL_CreateWindow(
         SDL_WINDOW_NAME,
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
@@ -44,7 +45,7 @@ static void graphics_create_windowed_window(Graphics *graphics)
     );
 }
 
-static void graphics_destroy_window(Graphics *graphics) 
+static void graphics_destroy_window() 
 {
-	SDL_DestroyWindow(graphics->window);
+	SDL_DestroyWindow(graphics.window);
 }

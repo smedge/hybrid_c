@@ -1,11 +1,13 @@
 #include "game.h"
 
-void game_initialize(Game *game) 
+static Game game;
+
+void game_initialize() 
 {
 	puts("initializing app.");
 
-	game->iconified = false;
-	game->quit = false;
+	game.iconified = false;
+	game.quit = false;
 
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0) 
 	{
@@ -13,30 +15,30 @@ void game_initialize(Game *game)
 		exit(-1);
 	}
 
-	graphics_initialize(&game->graphics);
+	graphics_initialize();
 }
 
-void game_cleanup(Game *game)
+void game_cleanup()
 {
 	puts("cleaning up app.");
 
-	graphics_cleanup(&game->graphics);
+	graphics_cleanup();
 
 	SDL_Quit();
 }
 
-void game_loop(Game *game)
+void game_loop()
 {
 	puts("entering main loop.");
 	
-	while(game->quit == false) {
-		handle_sdl_events(game);
+	while(game.quit == false) {
+		handle_sdl_events(&game);
 
-		// update
+		// TODO update
 
-		// render
+		// TODO render
 
-		SDL_Delay(100); // do shit here
+		SDL_Delay(50); // do shit here
 	}
 
 

@@ -16,12 +16,12 @@ typedef struct {
 	bool fullScreen;
 } Graphics;
 
-void graphics_initialize(Graphics *graphics);
-void graphics_cleanup(Graphics *graphics);
+void graphics_initialize();
+void graphics_cleanup();
 
-static void graphics_create_window(Graphics *graphics);
-static void graphics_destroy_window(Graphics *graphics);
-static void graphics_create_fullscreen_window(Graphics *graphics);
-static void graphics_create_windowed_window(Graphics *graphics);
+static void graphics_create_window();
+static void graphics_destroy_window();
+static void graphics_create_fullscreen_window();
+static void graphics_create_windowed_window();
 
 #endif

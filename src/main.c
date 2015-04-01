@@ -6,8 +6,7 @@
 
 void main() 
 {
-	Game game;
-	game_initialize(&game);
-	game_loop(&game);
-	game_cleanup(&game);
+	game_initialize();
+	game_loop();
+	game_cleanup();
 }

@@ -2,7 +2,7 @@
 
 static SDL_Event event;
 
-void handle_sdl_events(Game *game) 
+void handle_sdl_events(Game *game)
 {
 	while (SDL_PollEvent(&event) != 0) 
 	{

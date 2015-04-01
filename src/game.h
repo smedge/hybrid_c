@@ -10,11 +10,10 @@
 typedef struct {
 	bool iconified;
 	bool quit;
-	Graphics graphics;
 } Game;
 
-void game_initialize(Game *game); 
-void game_cleanup(Game *game);
-void game_loop(Game *game);
+void game_initialize(); 
+void game_cleanup();
+void game_loop();
 
 #endif
