@@ -31,12 +31,13 @@ void game_loop()
 {
 	puts("entering main loop.");
 	
-	while(game.quit == false) {
+	while(!game.quit) {
 		handle_sdl_events(&game);
 
-		// TODO update
+		//update_entities();
 
-		// TODO render
+		if (!game.iconified)
+			//render_entities();
 
 		SDL_Delay(50); // do shit here
 	}

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
 
 #define SDL_WINDOW_NAME "> - - - #"
 #define SDL_WINDOW_WINDOWED_WIDTH 640
@@ -14,14 +15,16 @@
 typedef struct {
 	SDL_Window *window;
 	bool fullScreen;
+	SDL_GLContext glcontext;
 } Graphics;
 
 void graphics_initialize();
 void graphics_cleanup();
 
 static void graphics_create_window();
-static void graphics_destroy_window();
 static void graphics_create_fullscreen_window();
 static void graphics_create_windowed_window();
+static void graphics_initialize_gl();
+static void graphics_destroy_window();
 
 #endif
