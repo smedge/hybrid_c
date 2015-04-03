@@ -2,7 +2,7 @@
 
 static SDL_Event event;
 
-void handle_sdl_events(Game *game)
+void handle_sdl_events(Game *game, Input *input)
 {
 	while (SDL_PollEvent(&event) != 0) 
 	{
@@ -30,21 +30,16 @@ void handle_sdl_events(Game *game)
 				break;
 			case SDL_WINDOWEVENT_ENTER:
 				SDL_ShowCursor(false);
-				//userInput.showMouse = true;
+				input->showMouse = true;
 				break;
 			case SDL_WINDOWEVENT_LEAVE:
 				SDL_ShowCursor(true);
-				//userInput.showMouse = false;
+				input->showMouse = false;
 				break;
-			/*case SDL_WINDOWEVENT_RESIZED:
-            	std::cout << "SDL_WINDOWEVENT_RESIZED: " << 
-            		event.window.data1 << "," << 
-            		event.window.data2 << 
-            		std::endl;
-            	
-            	graphicsManager.resizeWindow(event.window.data1,
+			case SDL_WINDOWEVENT_RESIZED:
+            	graphics_resize_window(event.window.data1,
  					event.window.data2);
-            	break;*/
+            	break;
 			}
 			break;
 		}

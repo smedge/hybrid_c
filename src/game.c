@@ -30,9 +30,11 @@ void game_cleanup()
 void game_loop()
 {
 	puts("entering main loop.");
+
+	Input input;
 	
 	while(!game.quit) {
-		handle_sdl_events(&game);
+		handle_sdl_events(&game, &input);
 
 		update();
 

@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 
 #include "graphics.h"
+#include "input.h"
 
 typedef struct {
 	bool iconified;

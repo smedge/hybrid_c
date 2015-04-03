@@ -13,6 +13,14 @@ void graphics_cleanup()
 	graphics_destroy_window();
 }
 
+void graphics_resize_window(const unsigned int width,
+		const unsigned int height) 
+{
+	graphics.screen.width = width;
+	graphics.screen.height = height;
+	glViewport(0, 0, width, height);
+}
+
 static void graphics_create_window() 
 {
 	if (graphics.fullScreen)
@@ -33,6 +41,9 @@ static void graphics_create_fullscreen_window()
 		SDL_WINDOW_FULLSCREEN_HEIGHT, 
 		SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN
 	);
+
+	graphics.screen.width = SDL_WINDOW_FULLSCREEN_WIDTH;
+	graphics.screen.width = SDL_WINDOW_FULLSCREEN_HEIGHT;
 }
 
 static void graphics_create_windowed_window() 
@@ -45,6 +56,9 @@ static void graphics_create_windowed_window()
         SDL_WINDOW_WINDOWED_HEIGHT,
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
     );
+
+    graphics.screen.width = SDL_WINDOW_WINDOWED_WIDTH;
+	graphics.screen.width = SDL_WINDOW_WINDOWED_HEIGHT;
 }
 
 static void graphics_initialize_gl()

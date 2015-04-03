@@ -4,7 +4,8 @@
 #include <SDL2/SDL.h>
 
 #include "game.h"
+#include "input.h"
 
-void handle_sdl_events(Game *game);
+void handle_sdl_events(Game *game, Input *input);
 
 #endif
