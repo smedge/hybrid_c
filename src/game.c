@@ -34,14 +34,24 @@ void game_loop()
 	while(!game.quit) {
 		handle_sdl_events(&game);
 
-		//update_entities();
+		update();
 
 		if (!game.iconified)
-			//render_entities();
+			render();
 
-		SDL_Delay(50); // do shit here
+		SDL_Delay(50);
 	}
 
 
 	puts("exiting main loop.");	
+}
+
+void update() 
+{
+
+}
+
+void render()
+{
+
 }

@@ -51,11 +51,8 @@ static void graphics_initialize_gl()
 {
 	graphics.glcontext = SDL_GL_CreateContext(graphics.window);
 
-	//initializeMultisampling();
-
 	glEnable (GL_BLEND);
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	
 	glClearColor(0,0,0,1);
 }
 
