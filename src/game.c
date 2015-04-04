@@ -31,7 +31,7 @@ void game_loop()
 {
 	puts("entering main loop.");
 
-	Input input;
+	Input input; // TODO initialize input
 	
 	while(!game.quit) {
 		handle_sdl_events(&game, &input);
@@ -41,10 +41,18 @@ void game_loop()
 		if (!game.iconified)
 			render();
 
+		reset_input(&input);
+
 		SDL_Delay(50);
 	}
 
 	puts("exiting main loop.");	
+}
+
+void reset_input(Input *input) 
+{
+	input->mouseWheelUp=false;
+	input->mouseWheelDown=false;
 }
 
 void update() 

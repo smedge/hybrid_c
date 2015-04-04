@@ -18,6 +18,7 @@ void game_initialize();
 void game_cleanup();
 void game_loop();
 
+static void reset_input(Input *input); 
 static void update();
 static void render();
 
