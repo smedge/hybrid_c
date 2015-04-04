@@ -44,7 +44,6 @@ void game_loop()
 		SDL_Delay(50);
 	}
 
-
 	puts("exiting main loop.");	
 }
 

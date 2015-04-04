@@ -42,6 +42,11 @@ void handle_sdl_events(Game *game, Input *input)
             	break;
 			}
 			break;
+
+		case SDL_MOUSEMOTION:
+			input->mouseX = event.motion.x;
+			input->mouseY = event.motion.y;
+			break;
 		}
 	}
 }
