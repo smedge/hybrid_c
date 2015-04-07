@@ -2,10 +2,15 @@
 
 static Game game;
 
+static void reset_input(Input *input); 
+static void update();
+static void render();
+
+extern void handle_sdl_events(Game *game, Input *input);
+
 void game_initialize() 
 {
 	puts("initializing app.");
-
 	game.iconified = false;
 	game.quit = false;
 
@@ -21,9 +26,7 @@ void game_initialize()
 void game_cleanup()
 {
 	puts("cleaning up app.");
-
 	graphics_cleanup();
-
 	SDL_Quit();
 }
 
@@ -31,19 +34,15 @@ void game_loop()
 {
 	puts("entering main loop.");
 
-	Input input; // TODO initialize input
+	Input input;
 	
 	while(!game.quit) {
 		handle_sdl_events(&game, &input);
-
-		update();
-
+		update(&input);
 		if (!game.iconified)
 			render();
-
 		reset_input(&input);
-
-		SDL_Delay(50);
+		SDL_Delay(1000/60);
 	}
 
 	puts("exiting main loop.");	
@@ -51,16 +50,19 @@ void game_loop()
 
 void reset_input(Input *input) 
 {
-	input->mouseWheelUp=false;
-	input->mouseWheelDown=false;
+	input->mouseWheelUp = false;
+	input->mouseWheelDown = false;
 }
 
-void update() 
+void update(Input *input) 
 {
-
+	cursor_update(input);
 }
 
 void render()
 {
-
+	graphics_clear();
+	graphics_set_ui_projection();
+	cursor_render();
+	graphics_flip();
 }

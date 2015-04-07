@@ -7,8 +7,9 @@
 
 #include "graphics.h"
 #include "input.h"
+#include "cursor.h"
 
-typedef struct {
+typedef struct Game {
 	bool iconified;
 	bool hasFocus;
 	bool quit;
@@ -17,9 +18,5 @@ typedef struct {
 void game_initialize(); 
 void game_cleanup();
 void game_loop();
-
-static void reset_input(Input *input); 
-static void update();
-static void render();
 
 #endif

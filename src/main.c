@@ -4,9 +4,10 @@
 
 #include "game.h"
 
-void main() 
+int main() 
 {
 	game_initialize();
 	game_loop();
 	game_cleanup();
+	return 0;
 }

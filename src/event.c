@@ -177,11 +177,11 @@ void handle_sdl_events(Game *game, Input *input)
 				break;
 			
 			case SDLK_F10:
-				//graphicsManager.toggleMultisampling();
+				// graphics_toggle_multisampling();
 				break;
 			
 			case SDLK_F11:
-				//graphicsManager.toggleFullscreen();
+				graphics_toggle_fullscreen();
 				break;
 			
 			case SDLK_F12:
