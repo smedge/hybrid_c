@@ -6,8 +6,6 @@ static void reset_input(Input *input);
 static void update();
 static void render();
 
-extern void handle_sdl_events(Game *game, Input *input);
-
 void game_initialize() 
 {
 	puts("initializing app.");
@@ -35,10 +33,12 @@ void game_loop()
 	puts("entering main loop.");
 
 	Input input;
+	unsigned int ticks = 0;
 	
 	while(!game.quit) {
 		handle_sdl_events(&game, &input);
-		update(&input);
+		ticks = timer_tick();
+		update(&input, ticks);
 		if (!game.iconified)
 			render();
 		reset_input(&input);
@@ -54,12 +54,12 @@ void reset_input(Input *input)
 	input->mouseWheelDown = false;
 }
 
-void update(Input *input) 
+static void update(Input *input, unsigned int ticks) 
 {
 	cursor_update(input);
 }
 
-void render()
+static void render()
 {
 	graphics_clear();
 	graphics_set_ui_projection();

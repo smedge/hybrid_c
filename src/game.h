@@ -5,9 +5,11 @@
 
 #include <SDL2/SDL.h>
 
+#include "cursor.h"
+#include "event.h"
 #include "graphics.h"
 #include "input.h"
-#include "cursor.h"
+#include "timer.h"
 
 typedef struct Game {
 	bool iconified;
