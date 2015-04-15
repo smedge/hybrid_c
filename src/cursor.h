@@ -1,5 +1,5 @@
-#ifndef EVENT_H
-#define EVENT_H
+#ifndef CURSOR_H
+#define CURSOR_H
 
 #include <SDL2/SDL_opengl.h>
 #include "input.h"

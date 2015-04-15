@@ -6,7 +6,6 @@
 #include <SDL2/SDL.h>
 
 #include "cursor.h"
-#include "event.h"
 #include "graphics.h"
 #include "input.h"
 #include "timer.h"
@@ -20,5 +19,7 @@ typedef struct Game {
 void game_initialize(); 
 void game_cleanup();
 void game_loop();
+
+extern void handle_sdl_events(Game *game, Input *input);
 
 #endif

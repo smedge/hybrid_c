@@ -11,9 +11,9 @@ void game_initialize()
 	puts("initializing app.");
 	game.iconified = false;
 	game.quit = false;
+	game.hasFocus = true;
 
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0) 
-	{
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)  {
 		puts("error: sdl initialization failed");
 		exit(-1);
 	}
@@ -62,7 +62,10 @@ static void update(Input *input, unsigned int ticks)
 static void render()
 {
 	graphics_clear();
+	graphics_set_world_projection();
+	
 	graphics_set_ui_projection();
 	cursor_render();
+
 	graphics_flip();
 }
