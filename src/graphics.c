@@ -43,6 +43,24 @@ void graphics_flip() {
 	SDL_GL_SwapWindow(graphics.window);
 }
 
+void graphics_set_ui_projection() 
+{
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, graphics.screen.width, graphics.screen.height, 0, -1, 1);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
+
+void graphics_set_world_projection()
+{
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, graphics.screen.width, 0, graphics.screen.height, -1, 1);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
+
 static void graphics_create_window() 
 {
 	if (graphics.fullScreen)
@@ -89,24 +107,6 @@ static void graphics_initialize_gl()
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glClearColor(0,0,0,1);
 	glViewport(0, 0, graphics.screen.width, graphics.screen.height);
-}
-
-void graphics_set_ui_projection() 
-{
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, graphics.screen.width, graphics.screen.height, 0, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-}
-
-void graphics_set_world_projection()
-{
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, graphics.screen.width, 0, graphics.screen.height, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
 }
 
 static void graphics_destroy_window() 
