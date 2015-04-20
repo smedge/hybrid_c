@@ -10,7 +10,7 @@
 #include "timer.h"
 #include "cursor.h"
 
-typedef struct SdlApp {
+typedef struct {
 	bool iconified;
 	bool hasFocus;
 	bool quit;
