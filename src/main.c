@@ -2,12 +2,12 @@
 
 #include <SDL2/SDL.h>
 
-#include "game.h"
+#include "sdlapp.h"
 
 int main() 
 {
-	game_initialize();
-	game_loop();
-	game_cleanup();
+	sdlapp_initialize();
+	sdlapp_loop();
+	sdlapp_cleanup();
 	return 0;
 }
