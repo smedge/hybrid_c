@@ -2,6 +2,7 @@
 #define GRAPHICS_H
 
 #include <stdbool.h>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
@@ -27,7 +28,6 @@ void graphics_resize_window(const unsigned int width,
 void graphics_toggle_fullscreen();
 void graphics_clear();
 void graphics_flip();
-
 void graphics_set_ui_projection();
 void graphics_set_world_projection();
 
