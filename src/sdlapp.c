@@ -34,6 +34,7 @@ void sdlapp_loop()
 	puts("entering main loop.");
 
 	Input input;
+	input.showMouse = true;
 	unsigned int ticks = 0;
 	
 	while(!sdlApp.quit) {

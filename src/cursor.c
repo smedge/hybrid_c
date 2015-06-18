@@ -2,7 +2,7 @@
 
 static int x = 0;
 static int y = 0;
-bool visible = false;
+static bool visible = false;
 
 void cursor_update(const Input *input) {
 	visible = input->showMouse;
