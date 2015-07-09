@@ -5,12 +5,13 @@ static SdlApp sdlApp;
 static void update();
 static void render();
 static void reset_input(Input *input); 
+
 static void handle_sdl_events(Input *input);
-static void handle_sdl_window_events(Input *input, SDL_Event *event);
-static void handle_sdl_mousebuttondown_events(Input *input, SDL_Event *event);
-static void handle_sdl_mousebuttonup_events(Input *input, SDL_Event *event);
-static void handle_sdl_keydown_events(Input *input, SDL_Event *event);
-static void handle_sdl_keyup_events(Input *input, SDL_Event *event);
+static void handle_sdl_window_events(Input *input, const SDL_Event *event);
+static void handle_sdl_mousebuttondown_events(Input *input, const SDL_Event *event);
+static void handle_sdl_mousebuttonup_events(Input *input, const SDL_Event *event);
+static void handle_sdl_keydown_events(Input *input, const SDL_Event *event);
+static void handle_sdl_keyup_events(Input *input, const SDL_Event *event);
 
 void sdlapp_initialize() 
 {
@@ -126,7 +127,7 @@ static void handle_sdl_events(Input *input)
 	}
 }
 
-static void handle_sdl_window_events(Input *input, SDL_Event *event)
+static void handle_sdl_window_events(Input *input, const SDL_Event *event)
 {
 	switch(event->window.event) {
 			
@@ -167,7 +168,7 @@ static void handle_sdl_window_events(Input *input, SDL_Event *event)
 	}
 }
 
-static void handle_sdl_mousebuttondown_events(Input *input, SDL_Event *event)
+static void handle_sdl_mousebuttondown_events(Input *input, const SDL_Event *event)
 {
 	switch(event->button.button) {
 			
@@ -197,7 +198,7 @@ static void handle_sdl_mousebuttondown_events(Input *input, SDL_Event *event)
 	}
 }
 
-static void handle_sdl_mousebuttonup_events(Input *input, SDL_Event *event)
+static void handle_sdl_mousebuttonup_events(Input *input, const SDL_Event *event)
 {
 	switch(event->button.button) {
 			
@@ -227,7 +228,7 @@ static void handle_sdl_mousebuttonup_events(Input *input, SDL_Event *event)
 	}
 }
 
-static void handle_sdl_keydown_events(Input *input, SDL_Event *event)
+static void handle_sdl_keydown_events(Input *input, const SDL_Event *event)
 {
 	switch (event->key.keysym.sym) {
 			
@@ -261,7 +262,7 @@ static void handle_sdl_keydown_events(Input *input, SDL_Event *event)
 	}
 }
 
-static void handle_sdl_keyup_events(Input *input, SDL_Event *event)
+static void handle_sdl_keyup_events(Input *input, const SDL_Event *event)
 {
 	switch (event->key.keysym.sym) {
 			
