@@ -9,6 +9,8 @@ static void handle_sdl_events(Input *input);
 static void handle_sdl_window_events(Input *input, SDL_Event *event);
 static void handle_sdl_mousebuttondown_events(Input *input, SDL_Event *event);
 static void handle_sdl_mousebuttonup_events(Input *input, SDL_Event *event);
+static void handle_sdl_keydown_events(Input *input, SDL_Event *event);
+static void handle_sdl_keyup_events(Input *input, SDL_Event *event);
 
 void sdlapp_initialize() 
 {
@@ -114,72 +116,11 @@ static void handle_sdl_events(Input *input)
 			break;
 
 		case SDL_KEYDOWN:
-			switch (event.key.keysym.sym) {
-			
-			case SDLK_a:
-				input->keyA = true;
-				break;
-			
-			case SDLK_d:
-				input->keyD = true;
-				break;
-			
-			case SDLK_w:
-				input->keyW = true;
-				break;
-			
-			case SDLK_s:
-				input->keyS = true;
-				break;
-			
-			case SDLK_F10:
-				break;
-			
-			case SDLK_F11:
-				break;
-			
-			case SDLK_F12:
-				break;
-			
-			default:
-				break;
-			}
+			handle_sdl_keydown_events(input, &event);
 			break;
 		
 		case SDL_KEYUP:
-			switch (event.key.keysym.sym) {
-			
-			case SDLK_a:
-				input->keyA = false;
-				break;
-			
-			case SDLK_d:
-				input->keyD = false;
-				break;
-			
-			case SDLK_w:
-				input->keyW = false;
-				break;
-			
-			case SDLK_s:
-				input->keyS = false;
-				break;
-			
-			case SDLK_F10:
-				// graphics_toggle_multisampling();
-				break;
-			
-			case SDLK_F11:
-				graphics_toggle_fullscreen();
-				break;
-			
-			case SDLK_F12:
-				sdlApp.quit = true;
-				break;
-			
-			default:
-				break;
-			}
+			handle_sdl_keyup_events(input, &event);
 			break;
 		}
 	}
@@ -282,6 +223,77 @@ static void handle_sdl_mousebuttonup_events(Input *input, SDL_Event *event)
 		break;
 			
 	case 9:
+		break;
+	}
+}
+
+static void handle_sdl_keydown_events(Input *input, SDL_Event *event)
+{
+	switch (event->key.keysym.sym) {
+			
+	case SDLK_a:
+		input->keyA = true;
+		break;
+			
+	case SDLK_d:
+		input->keyD = true;
+		break;
+			
+	case SDLK_w:
+		input->keyW = true;
+		break;
+			
+	case SDLK_s:
+		input->keyS = true;
+		break;
+			
+	case SDLK_F10:
+		break;
+			
+	case SDLK_F11:
+		break;
+			
+	case SDLK_F12:
+		break;
+			
+	default:
+		break;
+	}
+}
+
+static void handle_sdl_keyup_events(Input *input, SDL_Event *event)
+{
+	switch (event->key.keysym.sym) {
+			
+	case SDLK_a:
+		input->keyA = false;
+		break;
+			
+	case SDLK_d:
+		input->keyD = false;
+		break;
+			
+	case SDLK_w:
+		input->keyW = false;
+		break;
+			
+	case SDLK_s:
+		input->keyS = false;
+		break;
+			
+	case SDLK_F10:
+		// graphics_toggle_multisampling();
+		break;
+			
+	case SDLK_F11:
+		graphics_toggle_fullscreen();
+		break;
+			
+	case SDLK_F12:
+		sdlApp.quit = true;
+		break;
+			
+	default:
 		break;
 	}
 }
