@@ -7,11 +7,12 @@ static void render();
 static void reset_input(Input *input); 
 
 static void handle_sdl_events(Input *input);
-static void handle_sdl_window_events(Input *input, const SDL_Event *event);
-static void handle_sdl_mousebuttondown_events(Input *input, const SDL_Event *event);
-static void handle_sdl_mousebuttonup_events(Input *input, const SDL_Event *event);
-static void handle_sdl_keydown_events(Input *input, const SDL_Event *event);
-static void handle_sdl_keyup_events(Input *input, const SDL_Event *event);
+static void handle_sdl_event(Input *input, const SDL_Event *event);
+static void handle_sdl_window_event(Input *input, const SDL_Event *event);
+static void handle_sdl_mousebuttondown_event(Input *input, const SDL_Event *event);
+static void handle_sdl_mousebuttonup_event(Input *input, const SDL_Event *event);
+static void handle_sdl_keydown_event(Input *input, const SDL_Event *event);
+static void handle_sdl_keyup_event(Input *input, const SDL_Event *event);
 
 void sdlapp_initialize() 
 {
@@ -84,50 +85,55 @@ static void handle_sdl_events(Input *input)
 
 	while (SDL_PollEvent(&event) != 0) 
 	{
-		switch (event.type) {
-		
-		case SDL_QUIT:
-			sdlApp.quit = true;
-			break;
-		
-		case SDL_WINDOWEVENT:
-			handle_sdl_window_events(input, &event);
-			break;
-
-		case SDL_MOUSEWHEEL:
-			if (event.wheel.y > 0) {
-				input->mouseWheelUp = true;
-			}
-			else if (event.wheel.y < 0) {
-				input->mouseWheelDown = true;
-			}
-			break;
-		
-		case SDL_MOUSEMOTION:
-			input->mouseX = event.motion.x;
-			input->mouseY = event.motion.y;
-			break;
-
-		case SDL_MOUSEBUTTONDOWN:
-			handle_sdl_mousebuttondown_events(input, &event);
-			break;
-
-		case SDL_MOUSEBUTTONUP:
-			handle_sdl_mousebuttonup_events(input, &event);
-			break;
-
-		case SDL_KEYDOWN:
-			handle_sdl_keydown_events(input, &event);
-			break;
-		
-		case SDL_KEYUP:
-			handle_sdl_keyup_events(input, &event);
-			break;
-		}
+		handle_sdl_event(input, &event);
 	}
 }
 
-static void handle_sdl_window_events(Input *input, const SDL_Event *event)
+static void handle_sdl_event(Input *input, const SDL_Event *event) 
+{
+	switch (event->type) {
+		
+	case SDL_QUIT:
+		sdlApp.quit = true;
+		break;
+	
+	case SDL_WINDOWEVENT:
+		handle_sdl_window_event(input, event);
+		break;
+
+	case SDL_MOUSEWHEEL:
+		if (event->wheel.y > 0) {
+			input->mouseWheelUp = true;
+		}
+		else if (event->wheel.y < 0) {
+			input->mouseWheelDown = true;
+		}
+		break;
+	
+	case SDL_MOUSEMOTION:
+		input->mouseX = event->motion.x;
+		input->mouseY = event->motion.y;
+		break;
+
+	case SDL_MOUSEBUTTONDOWN:
+		handle_sdl_mousebuttondown_event(input, event);
+		break;
+
+	case SDL_MOUSEBUTTONUP:
+		handle_sdl_mousebuttonup_event(input, event);
+		break;
+
+	case SDL_KEYDOWN:
+		handle_sdl_keydown_event(input, event);
+		break;
+	
+	case SDL_KEYUP:
+		handle_sdl_keyup_event(input, event);
+		break;
+	}
+}
+
+static void handle_sdl_window_event(Input *input, const SDL_Event *event)
 {
 	switch(event->window.event) {
 			
@@ -168,7 +174,7 @@ static void handle_sdl_window_events(Input *input, const SDL_Event *event)
 	}
 }
 
-static void handle_sdl_mousebuttondown_events(Input *input, const SDL_Event *event)
+static void handle_sdl_mousebuttondown_event(Input *input, const SDL_Event *event)
 {
 	switch(event->button.button) {
 			
@@ -198,7 +204,7 @@ static void handle_sdl_mousebuttondown_events(Input *input, const SDL_Event *eve
 	}
 }
 
-static void handle_sdl_mousebuttonup_events(Input *input, const SDL_Event *event)
+static void handle_sdl_mousebuttonup_event(Input *input, const SDL_Event *event)
 {
 	switch(event->button.button) {
 			
@@ -228,7 +234,7 @@ static void handle_sdl_mousebuttonup_events(Input *input, const SDL_Event *event
 	}
 }
 
-static void handle_sdl_keydown_events(Input *input, const SDL_Event *event)
+static void handle_sdl_keydown_event(Input *input, const SDL_Event *event)
 {
 	switch (event->key.keysym.sym) {
 			
@@ -262,7 +268,7 @@ static void handle_sdl_keydown_events(Input *input, const SDL_Event *event)
 	}
 }
 
-static void handle_sdl_keyup_events(Input *input, const SDL_Event *event)
+static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 {
 	switch (event->key.keysym.sym) {
 			
