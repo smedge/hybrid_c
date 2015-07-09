@@ -5,6 +5,9 @@ static SdlApp sdlApp;
 static void update();
 static void render();
 static void handle_sdl_events(Input *input);
+static void handle_sdl_window_events(Input *input, SDL_Event *event);
+static void handle_sdl_mousebuttondown_events(Input *input, SDL_Event *event);
+static void handle_sdl_mousebuttonup_events(Input *input, SDL_Event *event);
 static void reset_input(Input *input); 
 
 void sdlapp_initialize() 
@@ -85,43 +88,7 @@ static void handle_sdl_events(Input *input)
 			break;
 		
 		case SDL_WINDOWEVENT:
-			switch(event.window.event) {
-			
-			case SDL_WINDOWEVENT_MINIMIZED:
-				sdlApp.iconified = true;
-				break;
-			
-			case SDL_WINDOWEVENT_MAXIMIZED:
-				sdlApp.iconified = false;
-				break;
-			
-			case SDL_WINDOWEVENT_RESTORED:
-				sdlApp.iconified = false;
-				break;
-			
-			case SDL_WINDOWEVENT_FOCUS_GAINED:
-				sdlApp.hasFocus = true;
-				break;
-			
-			case SDL_WINDOWEVENT_FOCUS_LOST:
-				sdlApp.hasFocus = false;
-				break;
-			
-			case SDL_WINDOWEVENT_ENTER:
-				SDL_ShowCursor(false);
-				input->showMouse = true;
-				break;
-			
-			case SDL_WINDOWEVENT_LEAVE:
-				SDL_ShowCursor(true);
-				input->showMouse = false;
-				break;
-			
-			case SDL_WINDOWEVENT_RESIZED:
-            	graphics_resize_window(event.window.data1,
- 					event.window.data2);
-            	break;
-			}
+			handle_sdl_window_events(input, &event);
 			break;
 
 		case SDL_MOUSEWHEEL:
@@ -139,61 +106,11 @@ static void handle_sdl_events(Input *input)
 			break;
 
 		case SDL_MOUSEBUTTONDOWN:
-			switch(event.button.button) {
-			
-			case SDL_BUTTON_LEFT:
-				input->mouseLeft = true;
-				break;
-			
-			case SDL_BUTTON_MIDDLE:
-				input->mouseMiddle = true;
-				break;
-			
-			case SDL_BUTTON_RIGHT:
-				input->mouseRight = true;
-				break;
-			
-			case 6:
-				break;
-			
-			case 7:
-				break;
-			
-			case 8:
-				break;
-			
-			case 9:
-				break;
-			}
+			handle_sdl_mousebuttondown_events(input, &event);
 			break;
 
 		case SDL_MOUSEBUTTONUP:
-			switch(event.button.button) {
-			
-			case SDL_BUTTON_LEFT:
-				input->mouseLeft = false;
-				break;
-			
-			case SDL_BUTTON_MIDDLE:
-				input->mouseMiddle = false;
-				break;
-			
-			case SDL_BUTTON_RIGHT:
-				input->mouseRight = false;
-				break;
-			
-			case 6:
-				break;
-			
-			case 7:
-				break;
-			
-			case 8:
-				break;
-			
-			case 9:
-				break;
-			}
+			handle_sdl_mousebuttonup_events(input, &event);
 			break;
 
 		case SDL_KEYDOWN:
@@ -265,5 +182,106 @@ static void handle_sdl_events(Input *input)
 			}
 			break;
 		}
+	}
+}
+
+static void handle_sdl_window_events(Input *input, SDL_Event *event)
+{
+	switch(event->window.event) {
+			
+	case SDL_WINDOWEVENT_MINIMIZED:
+		sdlApp.iconified = true;
+		break;
+			
+	case SDL_WINDOWEVENT_MAXIMIZED:
+		sdlApp.iconified = false;
+		break;
+			
+	case SDL_WINDOWEVENT_RESTORED:
+		sdlApp.iconified = false;
+		break;
+			
+	case SDL_WINDOWEVENT_FOCUS_GAINED:
+		sdlApp.hasFocus = true;
+		break;
+			
+	case SDL_WINDOWEVENT_FOCUS_LOST:
+		sdlApp.hasFocus = false;
+		break;
+			
+	case SDL_WINDOWEVENT_ENTER:
+		SDL_ShowCursor(false);
+		input->showMouse = true;
+		break;
+			
+	case SDL_WINDOWEVENT_LEAVE:
+		SDL_ShowCursor(true);
+		input->showMouse = false;
+		break;
+			
+	case SDL_WINDOWEVENT_RESIZED:
+        graphics_resize_window(event->window.data1,
+ 		event->window.data2);
+        break;
+	}
+}
+
+static void handle_sdl_mousebuttondown_events(Input *input, SDL_Event *event)
+{
+	switch(event->button.button) {
+			
+	case SDL_BUTTON_LEFT:
+		input->mouseLeft = true;
+		break;
+			
+	case SDL_BUTTON_MIDDLE:
+		input->mouseMiddle = true;
+		break;
+			
+	case SDL_BUTTON_RIGHT:
+		input->mouseRight = true;
+		break;
+			
+	case 6:
+		break;
+			
+	case 7:
+		break;
+			
+	case 8:
+		break;
+			
+	case 9:
+		break;
+	}
+}
+
+static void handle_sdl_mousebuttonup_events(Input *input, SDL_Event *event)
+{
+	switch(event->button.button) {
+			
+	case SDL_BUTTON_LEFT:
+		input->mouseLeft = false;
+		break;
+			
+	case SDL_BUTTON_MIDDLE:
+		input->mouseMiddle = false;
+		break;
+			
+	case SDL_BUTTON_RIGHT:
+		input->mouseRight = false;
+		break;
+			
+	case 6:
+		break;
+			
+	case 7:
+		break;
+			
+	case 8:
+		break;
+			
+	case 9:
+		break;
 	}
 }
