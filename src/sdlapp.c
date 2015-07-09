@@ -4,11 +4,11 @@ static SdlApp sdlApp;
 
 static void update();
 static void render();
+static void reset_input(Input *input); 
 static void handle_sdl_events(Input *input);
 static void handle_sdl_window_events(Input *input, SDL_Event *event);
 static void handle_sdl_mousebuttondown_events(Input *input, SDL_Event *event);
 static void handle_sdl_mousebuttonup_events(Input *input, SDL_Event *event);
-static void reset_input(Input *input); 
 
 void sdlapp_initialize() 
 {
