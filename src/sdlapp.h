@@ -10,11 +10,17 @@
 #include "timer.h"
 
 #include "mode_mainmenu.h"
+#include "mode_gameplay.h"
+
+typedef enum {
+	MAINMENU, GAMEPLAY,
+} Mode;
 
 typedef struct {
 	bool iconified;
 	bool hasFocus;
 	bool quit;
+	Mode mode;
 } SdlApp;
 
 void sdlapp_initialize(); 

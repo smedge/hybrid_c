@@ -20,6 +20,7 @@ void sdlapp_initialize()
 	sdlApp.iconified = false;
 	sdlApp.quit = false;
 	sdlApp.hasFocus = true;
+	sdlApp.mode = MAINMENU;
 
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)  {
 		puts("error: sdl initialization failed");
@@ -65,14 +66,26 @@ static void reset_input(Input *input)
 
 static void update(const Input *input, const unsigned int ticks) 
 {
-	mode_mainmenu_update(input, ticks);
-	//mode_gameplay_update(input, ticks);
+	switch (sdlApp.mode) {
+	case MAINMENU:
+		mode_mainmenu_update(input, ticks);
+		break;
+	case GAMEPLAY:
+		mode_gameplay_update(input, ticks);
+		break;
+	};
 }
 
 static void render()
 {
-	mode_mainmenu_render();
-	//mode_gameplay_render();
+	switch (sdlApp.mode) {
+	case MAINMENU:
+		mode_mainmenu_render();
+		break;
+	case GAMEPLAY:
+		mode_gameplay_render();
+		break;
+	};
 }
 
 static void handle_sdl_events(Input *input)
