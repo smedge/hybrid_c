@@ -8,7 +8,8 @@
 #include "graphics.h"
 #include "input.h"
 #include "timer.h"
-#include "cursor.h"
+
+#include "mode_mainmenu.h"
 
 typedef struct {
 	bool iconified;

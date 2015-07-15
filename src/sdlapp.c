@@ -2,7 +2,7 @@
 
 static SdlApp sdlApp;
 
-static void update();
+static void update(const Input *input, const unsigned int ticks);
 static void render();
 static void reset_input(Input *input); 
 
@@ -63,20 +63,16 @@ static void reset_input(Input *input)
 	input->mouseWheelDown = false;
 }
 
-static void update(Input *input, unsigned int ticks) 
+static void update(const Input *input, const unsigned int ticks) 
 {
-	cursor_update(input);
+	mode_mainmenu_update(input, ticks);
+	//mode_gameplay_update(input, ticks);
 }
 
 static void render()
 {
-	graphics_clear();
-	graphics_set_world_projection();
-	
-	graphics_set_ui_projection();
-	cursor_render();
-
-	graphics_flip();
+	mode_mainmenu_render();
+	//mode_gameplay_render();
 }
 
 static void handle_sdl_events(Input *input)
