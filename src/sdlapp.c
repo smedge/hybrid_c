@@ -68,7 +68,7 @@ static void update(const Input *input, const unsigned int ticks)
 {
 	switch (sdlApp.mode) {
 	case MAINMENU:
-		mode_mainmenu_update(input, ticks);
+		mode_mainmenu_update(input, ticks, &sdlApp.quit);
 		break;
 	case GAMEPLAY:
 		mode_gameplay_update(input, ticks);
