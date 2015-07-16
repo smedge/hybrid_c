@@ -29,17 +29,20 @@ void graphics_resize_window(const unsigned int width,
 	glViewport(0, 0, width, height);
 }
 
-void graphics_toggle_fullscreen() {
+void graphics_toggle_fullscreen() 
+{
 	graphics_cleanup();
 	graphics.fullScreen = !graphics.fullScreen;
 	graphics_initialize();
 }
 
-void graphics_clear() {
+void graphics_clear() 
+{
 	glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void graphics_flip() {
+void graphics_flip() 
+{
 	SDL_GL_SwapWindow(graphics.window);
 }
 

@@ -1,6 +1,8 @@
 #ifndef MODE_MAINMENU_H
 #define MODE_MAINMENU_H
 
+#include <FTGL/ftgl.h>
+
 #include "cursor.h"
 #include "graphics.h"
 #include "input.h"
