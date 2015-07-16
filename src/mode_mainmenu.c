@@ -1,7 +1,17 @@
 #include "mode_mainmenu.h"
 
+static bool newHover = false;
+static bool loadHover = false;
+static bool exitHover = false;
+
 void mode_mainmenu_update(const Input *input, const unsigned int ticks)
 {
+	if (input->mouseX >= 100 && input->mouseX <= 155 &&
+		input->mouseY >= 230 && input->mouseY <= 240) 
+		exitHover = true;
+	else
+		exitHover = false;
+
 	cursor_update(input);
 }
 
@@ -31,6 +41,11 @@ void mode_mainmenu_render()
 
 	glRasterPos2f(100.0f, 220.0f);
 	ftglRenderFont(font, "LOAD", FTGL_RENDER_ALL);
+
+	if (exitHover)
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	else
+		glColor4f(1.0f, 1.0f, 1.0f, 0.50f);
 
 	glRasterPos2f(100.0f, 240.0f);
 	ftglRenderFont(font, "EXIT", FTGL_RENDER_ALL);
