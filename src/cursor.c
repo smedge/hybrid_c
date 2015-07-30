@@ -4,13 +4,15 @@ static int x = 0;
 static int y = 0;
 static bool visible = false;
 
-void cursor_update(const Input *input) {
+void cursor_update(const Input *input) 
+{
 	visible = input->showMouse;
 	x = input->mouseX;
 	y = input->mouseY;
 }
 
-void cursor_render() {
+void cursor_render() 
+{
 	if (visible) {
 		glPushMatrix();
 		glPointSize(2.0);

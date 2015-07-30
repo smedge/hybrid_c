@@ -68,7 +68,7 @@ static void update(const Input *input, const unsigned int ticks)
 {
 	switch (sdlApp.mode) {
 	case MAINMENU:
-		mode_mainmenu_update(input, ticks, &sdlApp.quit);
+		mode_mainmenu_update(input, ticks, &sdlApp.quit, &sdlApp.mode);
 		break;
 	case GAMEPLAY:
 		mode_gameplay_update(input, ticks);
@@ -271,6 +271,9 @@ static void handle_sdl_keydown_event(Input *input, const SDL_Event *event)
 			
 	case SDLK_F12:
 		break;
+
+	case SDLK_ESCAPE:
+		break;
 			
 	default:
 		break;
@@ -307,6 +310,10 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 			
 	case SDLK_F12:
 		sdlApp.quit = true;
+		break;
+
+	case SDLK_ESCAPE:
+		sdlApp.mode = MAINMENU;
 		break;
 			
 	default:

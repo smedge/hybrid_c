@@ -11,10 +11,7 @@
 
 #include "mode_mainmenu.h"
 #include "mode_gameplay.h"
-
-typedef enum {
-	MAINMENU, GAMEPLAY,
-} Mode;
+#include "mode_t.h"
 
 typedef struct {
 	bool iconified;
