@@ -5,6 +5,7 @@ static SdlApp sdlApp;
 static void update(const Input *input, const unsigned int ticks);
 static void render();
 static void reset_input(Input *input); 
+static void initialize_input(Input *input);
 
 static void handle_sdl_events(Input *input);
 static void handle_sdl_event(Input *input, const SDL_Event *event);
@@ -42,6 +43,7 @@ void sdlapp_loop()
 	puts("entering main loop.");
 
 	Input input;
+	initialize_input(&input);
 	input.showMouse = true;
 	unsigned int ticks = 0;
 	
@@ -62,6 +64,13 @@ static void reset_input(Input *input)
 {
 	input->mouseWheelUp = false;
 	input->mouseWheelDown = false;
+}
+
+static void initialize_input(Input *input)
+{
+	input->mouseLeft = false;
+	input->mouseMiddle = false;
+	input->mouseRight = false;
 }
 
 static void quit_callback() 

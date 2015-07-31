@@ -18,10 +18,12 @@ void mode_mainmenu_cleanup()
 }
 
 void mode_mainmenu_update(const Input *input, 
-	const unsigned int ticks, void (*quit)(), void (*mode)())
+						  const unsigned int ticks, 
+						  void (*quit)(), 
+						  void (*mode)())
 {
-	update_button(input, &newButton, mode);
-	update_button(input, &exitButton, quit);
+	imgui_update_button(input, &newButton, mode);
+	imgui_update_button(input, &exitButton, quit);
 	cursor_update(input);
 }
 

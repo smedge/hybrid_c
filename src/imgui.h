@@ -10,6 +10,8 @@ typedef struct {
 	bool active;
 } ButtonState;
 
-void update_button(const Input *input, ButtonState *buttonState, void (*on_click)()); 
+void imgui_update_button(const Input *input, 
+						 ButtonState *buttonState, 
+						 void (*on_click)()); 
 
 #endif
