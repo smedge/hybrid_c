@@ -19,4 +19,6 @@ typedef struct {
 	bool keyD;
 } Input;
 
+void input_initialize(Input *input);
+
 #endif

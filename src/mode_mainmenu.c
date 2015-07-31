@@ -47,11 +47,10 @@ static void render_menu_text()
 {
 	glPushMatrix();
 
-	// TODO
-	// if(!font)
-	//     error;
-
 	mode_mainmenu_initialize();
+
+	if(!font)
+		exit(-1); // TODO better error handling
 
 	ftglSetFontFaceSize(font, 80, 80);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
