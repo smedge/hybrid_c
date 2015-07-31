@@ -1,27 +1,27 @@
 #include "mode_mainmenu.h"
 
-static Rectangle newBounds = {98.0, 190.0, 157.0, 202.0};
-//static Rectangle loadBounds = {98.0, 228.0, 157.0, 242.0};
-static Rectangle exitBounds = {98.0, 228.0, 157.0, 242.0};
+static ButtonState newButton = {{98.0, 190.0, 157.0, 202.0}, false, false};
+static ButtonState exitButton = {{98.0, 228.0, 157.0, 242.0}, false, false};
 
-static bool hoverNew = false;
-static bool activeNew = false;
+static FTGLfont *font = 0;
 
-// static bool hoverLoad = false;
-// static bool activeLoad = false;
-
-static bool hoverExit = false;
-static bool activeExit = false;
-
-static void update_new_button(const Input *input, Mode *mode);
-static void update_exit_button(const Input *input, bool *quit);
 static void render_menu_text();
 
-void mode_mainmenu_update(const Input *input, 
-	const unsigned int ticks, bool *quit, Mode *mode)
+void mode_mainmenu_initialize()
 {
-	update_new_button(input, mode);
-	update_exit_button(input, quit);
+	font = ftglCreatePixmapFont(SQUARE_FONT_PATH);
+}
+
+void mode_mainmenu_cleanup()
+{
+	ftglDestroyFont(font);
+}
+
+void mode_mainmenu_update(const Input *input, 
+	const unsigned int ticks, void (*quit)(), void (*mode)())
+{
+	update_button(input, &newButton, mode);
+	update_button(input, &exitButton, quit);
 	cursor_update(input);
 }
 
@@ -36,59 +36,16 @@ void mode_mainmenu_render()
 	graphics_flip();
 }
 
-static void update_new_button(const Input *input, Mode *mode)
-{
-	if (collision_point_test(input->mouseX, input->mouseY, newBounds)) {
-		hoverNew = true;
-
-		// begin newing on mouse down
-		if (input->mouseLeft) {
-			activeNew = true;
-		}
-
-		// new on mouse up
-		if (activeNew && !input->mouseLeft) {
-			activeNew = false;
-			*mode = GAMEPLAY;
-		}
-	}
-	else {
-		hoverNew = false;
-		activeNew = false;
-	}
-}
-
-static void update_exit_button(const Input *input, bool *quit) 
-{
-	if (collision_point_test(input->mouseX, input->mouseY, exitBounds)) {
-		hoverExit = true;
-
-		// begin quitting on mouse down
-		if (input->mouseLeft) {
-			activeExit = true;
-		}
-
-		// quit on mouse up
-		if (activeExit && !input->mouseLeft) {
-			activeExit = false;
-			*quit = true;
-		}
-	}
-	else {
-		hoverExit = false;
-		activeExit = false;
-	}
-}
-
 static void render_menu_text() 
 {
 	glPushMatrix();
 
-	FTGLfont *font = ftglCreatePixmapFont(SQUARE_FONT_PATH);
-
 	// TODO
 	// if(!font)
-	//     exit();
+	//     error;
+
+	// TODO callback work
+	mode_mainmenu_initialize();
 
 	ftglSetFontFaceSize(font, 80, 80);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -97,9 +54,9 @@ static void render_menu_text()
 
 	ftglSetFontFaceSize(font, 20, 20);;
 	
-	if (activeNew)
+	if (newButton.active)
 		glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
-	else if (hoverNew)
+	else if (newButton.hover)
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	else
 		glColor4f(1.0f, 1.0f, 1.0f, 0.50f);
@@ -110,16 +67,17 @@ static void render_menu_text()
 	glRasterPos2f(100.0f, 220.0f);
 	ftglRenderFont(font, "LOAD", FTGL_RENDER_ALL);
 
-	if (activeExit)
+	if (exitButton.active)
 		glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
-	else if (hoverExit)
+	else if (exitButton.hover)
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	else
 		glColor4f(1.0f, 1.0f, 1.0f, 0.50f);
 	glRasterPos2f(100.0f, 240.0f);
 	ftglRenderFont(font, "EXIT", FTGL_RENDER_ALL);
-	
-	ftglDestroyFont(font);
+
+	//TODO callbacks
+	mode_mainmenu_cleanup();
 
 	glPopMatrix();
 }

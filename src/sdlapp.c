@@ -64,11 +64,21 @@ static void reset_input(Input *input)
 	input->mouseWheelDown = false;
 }
 
+static void quit_callback() 
+{
+	sdlApp.quit = true;
+}
+
+static void gameplay_mode_callback()
+{
+	sdlApp.mode = GAMEPLAY;
+}
+
 static void update(const Input *input, const unsigned int ticks) 
 {
 	switch (sdlApp.mode) {
 	case MAINMENU:
-		mode_mainmenu_update(input, ticks, &sdlApp.quit, &sdlApp.mode);
+		mode_mainmenu_update(input, ticks, &quit_callback, &gameplay_mode_callback);
 		break;
 	case GAMEPLAY:
 		mode_gameplay_update(input, ticks);
