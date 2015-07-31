@@ -44,7 +44,6 @@ void sdlapp_loop()
 
 	Input input;
 	initialize_input(&input);
-	input.showMouse = true;
 	unsigned int ticks = 0;
 	
 	while(!sdlApp.quit) {
@@ -71,6 +70,7 @@ static void initialize_input(Input *input)
 	input->mouseLeft = false;
 	input->mouseMiddle = false;
 	input->mouseRight = false;
+	input->showMouse = true;
 }
 
 static void quit_callback() 
