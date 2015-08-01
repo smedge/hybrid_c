@@ -6,6 +6,10 @@ static void update(const Input *input, const unsigned int ticks);
 static void render();
 static void reset_input(Input *input);
 
+static void change_mode(Mode mode);
+static void initialize_mode();
+static void cleanup_mode();
+
 static void handle_sdl_events(Input *input);
 static void handle_sdl_event(Input *input, const SDL_Event *event);
 static void handle_sdl_window_event(Input *input, const SDL_Event *event);
@@ -20,14 +24,16 @@ void sdlapp_initialize()
 	sdlApp.iconified = false;
 	sdlApp.quit = false;
 	sdlApp.hasFocus = true;
-	sdlApp.mode = MAINMENU;
-
+	
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)  {
 		puts("error: sdl initialization failed");
 		exit(-1);
 	}
 
 	graphics_initialize();
+
+	mode_mainmenu_initialize();
+	sdlApp.mode = MAINMENU;
 }
 
 void sdlapp_cleanup()
@@ -71,12 +77,47 @@ static void quit_callback()
 
 static void gameplay_mode_callback()
 {
-	sdlApp.mode = GAMEPLAY;
+	change_mode(GAMEPLAY);
+}
+
+static void initialize_mode() 
+{
+	switch (sdlApp.mode) {
+	case INTRO:
+		break;
+	case MAINMENU:
+		mode_mainmenu_initialize();
+		break;
+	case GAMEPLAY:
+		break;
+	};
+}
+
+static void cleanup_mode()
+{
+	switch (sdlApp.mode) {
+	case INTRO:
+		break;
+	case MAINMENU:
+		mode_mainmenu_cleanup();
+		break;
+	case GAMEPLAY:
+		break;
+	};
+}
+
+static void change_mode(Mode mode)
+{
+	cleanup_mode();
+	sdlApp.mode = mode;
+	initialize_mode();
 }
 
 static void update(const Input *input, const unsigned int ticks) 
 {
 	switch (sdlApp.mode) {
+	case INTRO:
+		break;
 	case MAINMENU:
 		mode_mainmenu_update(input, ticks, &quit_callback, &gameplay_mode_callback);
 		break;
@@ -89,6 +130,8 @@ static void update(const Input *input, const unsigned int ticks)
 static void render()
 {
 	switch (sdlApp.mode) {
+	case INTRO:
+		break;
 	case MAINMENU:
 		mode_mainmenu_render();
 		break;
@@ -323,7 +366,7 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 		break;
 
 	case SDLK_ESCAPE:
-		sdlApp.mode = MAINMENU;
+		change_mode(MAINMENU);
 		break;
 			
 	default:

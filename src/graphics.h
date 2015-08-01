@@ -24,7 +24,7 @@ typedef struct {
 void graphics_initialize();
 void graphics_cleanup();
 void graphics_resize_window(const unsigned int width,
-		const unsigned int height);
+							const unsigned int height);
 void graphics_toggle_fullscreen();
 void graphics_clear();
 void graphics_flip();

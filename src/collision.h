@@ -10,7 +10,10 @@ typedef struct {
 	double bY;
 } Rectangle;
 
-bool collision_aabb_test(const Rectangle rect1, const Rectangle rect2);
-bool collision_point_test(const double x, const double y, const Rectangle rect);
+bool collision_aabb_test(const Rectangle rect1, 
+						 const Rectangle rect2);
+bool collision_point_test(const double x, 
+						  const double y, 
+						  const Rectangle rect);
 
 #endif

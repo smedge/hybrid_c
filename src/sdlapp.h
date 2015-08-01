@@ -11,7 +11,7 @@
 
 #include "mode_mainmenu.h"
 #include "mode_gameplay.h"
-#include "mode_t.h"
+#include "mode.h"
 
 typedef struct {
 	bool iconified;

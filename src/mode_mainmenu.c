@@ -6,14 +6,19 @@ static ButtonState exitButton = {{98.0, 228.0, 157.0, 242.0}, false, false};
 static FTGLfont *font = 0;
 
 static void render_menu_text();
-static void render_menu_button(const ButtonState *buttonState, 
-							   const double x, 
-							   const double y, 
-							   const char *text);
+
+static void render_menu_button(
+	const ButtonState *buttonState, 
+	const double x, 
+	const double y, 
+	const char *text);
 
 void mode_mainmenu_initialize()
 {
 	font = ftglCreatePixmapFont(SQUARE_FONT_PATH);
+	// TODO better error handlings
+	if(!font)
+		exit(-1);
 }
 
 void mode_mainmenu_cleanup()
@@ -21,10 +26,11 @@ void mode_mainmenu_cleanup()
 	ftglDestroyFont(font);
 }
 
-void mode_mainmenu_update(const Input *input, 
-						  const unsigned int ticks, 
-						  void (*quit)(), 
-						  void (*mode)())
+void mode_mainmenu_update(
+	const Input *input, 
+	const unsigned int ticks,
+	void (*quit)(),
+	void (*mode)())
 {
 	imgui_update_button(input, &newButton, mode);
 	imgui_update_button(input, &exitButton, quit);
@@ -38,6 +44,10 @@ void mode_mainmenu_render()
 	graphics_set_ui_projection();
 
 	render_menu_text();
+	render_menu_button(&newButton, 100.0, 200.0, "NEW");
+	render_menu_button(&loadButton, 100.0, 220.0, "LOAD");
+	render_menu_button(&exitButton, 100.0, 240.0, "EXIT");
+
 	cursor_render();
 
 	graphics_flip();
@@ -45,33 +55,19 @@ void mode_mainmenu_render()
 
 static void render_menu_text() 
 {
-	glPushMatrix();
-
-	mode_mainmenu_initialize();
-
-	if(!font)
-		exit(-1); // TODO better error handling
-
-	ftglSetFontFaceSize(font, 80, 80);
+	ftglSetFontFaceSize(font, 80, 72);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glRasterPos2f(100.0f, 100.0f);
 	ftglRenderFont(font, "HYBRID", FTGL_RENDER_ALL);
-
-	render_menu_button(&newButton, 100.0, 200.0, "NEW");
-	render_menu_button(&loadButton, 100.0, 220.0, "LOAD");
-	render_menu_button(&exitButton, 100.0, 240.0, "EXIT");
-
-	mode_mainmenu_cleanup();
-
-	glPopMatrix();
 }
 
-static void render_menu_button(const ButtonState *buttonState, 
-							   const double x, 
-							   const double y, 
-							   const char *text)
+static void render_menu_button(
+	const ButtonState *buttonState, 
+	const double x, 
+	const double y, 
+	const char *text)
 {
-	ftglSetFontFaceSize(font, 20, 20);
+	ftglSetFontFaceSize(font, 20, 72);
 	
 	if (buttonState->active)
 		glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
@@ -79,6 +75,7 @@ static void render_menu_button(const ButtonState *buttonState,
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	else
 		glColor4f(1.0f, 1.0f, 1.0f, 0.50f);
+	
 	glRasterPos2f(x, y);
 	ftglRenderFont(font, text, FTGL_RENDER_ALL);
 }
