@@ -6,7 +6,7 @@ static void update(const Input *input, const unsigned int ticks);
 static void render();
 static void reset_input(Input *input);
 
-static void change_mode(Mode mode);
+static void change_mode(const Mode mode);
 static void initialize_mode();
 static void cleanup_mode();
 
@@ -50,6 +50,7 @@ void sdlapp_loop()
 	Input input;
 	input_initialize(&input);
 	unsigned int ticks = 0;
+	const unsigned int delay = 1000 / 60;
 	
 	while(!sdlApp.quit) {
 		handle_sdl_events(&input);
@@ -58,7 +59,7 @@ void sdlapp_loop()
 		if (!sdlApp.iconified)
 			render();
 		reset_input(&input);
-		SDL_Delay(1000/60);
+		SDL_Delay(delay);
 	}
 
 	puts("exiting main loop.");	
@@ -106,7 +107,7 @@ static void cleanup_mode()
 	};
 }
 
-static void change_mode(Mode mode)
+static void change_mode(const Mode mode)
 {
 	cleanup_mode();
 	sdlApp.mode = mode;
