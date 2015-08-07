@@ -30,5 +30,6 @@ void graphics_clear();
 void graphics_flip();
 void graphics_set_ui_projection();
 void graphics_set_world_projection();
+const Screen graphics_get_screen();
 
 #endif

@@ -2,8 +2,9 @@
 #define SCREEN_H
 
 typedef struct {
-	int width;
-	int height;
+	unsigned int width;
+	unsigned int height;
+	unsigned int bpp;
 } Screen;
 
 #endif

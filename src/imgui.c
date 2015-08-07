@@ -4,8 +4,12 @@ void imgui_update_button(const Input *input,
 						 ButtonState *buttonState, 
 						 void (*on_click)()) 
 {
-	if (collision_point_test(input->mouseX, input->mouseY, 
-								buttonState->boundingBox)) {
+	Rectangle boundingBox = {buttonState->position.x,
+							 buttonState->position.y - buttonState->height,
+							 buttonState->position.x + buttonState->width,
+							 buttonState->position.y};
+
+	if (collision_point_test(input->mouseX, input->mouseY, boundingBox)) {
 		buttonState->hover = true;
 
 		if (input->mouseLeft) {

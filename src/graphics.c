@@ -64,6 +64,11 @@ void graphics_set_world_projection()
 	glLoadIdentity();
 }
 
+const Screen graphics_get_screen()
+{
+	return graphics.screen;
+}
+
 static void graphics_create_window() 
 {
 	if (graphics.fullScreen)

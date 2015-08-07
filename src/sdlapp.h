@@ -20,8 +20,6 @@ typedef struct {
 	Mode mode;
 } SdlApp;
 
-void sdlapp_initialize(); 
-void sdlapp_cleanup();
-void sdlapp_loop();
+void sdlapp_run();
 
 #endif

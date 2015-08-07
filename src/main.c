@@ -6,8 +6,6 @@
 
 int main() 
 {
-	sdlapp_initialize();
-	sdlapp_loop();
-	sdlapp_cleanup();
+	sdlapp_run();
 	return 0;
 }

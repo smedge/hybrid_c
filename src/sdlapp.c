@@ -2,6 +2,9 @@
 
 static SdlApp sdlApp;
 
+static void sdlapp_initialize(); 
+static void sdlapp_cleanup();
+static void sdlapp_loop();
 static void update(const Input *input, const unsigned int ticks);
 static void render();
 static void reset_input(Input *input);
@@ -18,9 +21,15 @@ static void handle_sdl_mousebuttonup_event(Input *input, const SDL_Event *event)
 static void handle_sdl_keydown_event(Input *input, const SDL_Event *event);
 static void handle_sdl_keyup_event(Input *input, const SDL_Event *event);
 
-void sdlapp_initialize() 
+void sdlapp_run()
 {
-	puts("initializing app.");
+	sdlapp_initialize();
+	sdlapp_loop();
+	sdlapp_cleanup();
+}
+
+static void sdlapp_initialize() 
+{
 	sdlApp.iconified = false;
 	sdlApp.quit = false;
 	sdlApp.hasFocus = true;
@@ -36,33 +45,27 @@ void sdlapp_initialize()
 	sdlApp.mode = MAINMENU;
 }
 
-void sdlapp_cleanup()
+static void sdlapp_cleanup()
 {
-	puts("cleaning up app.");
 	graphics_cleanup();
 	SDL_Quit();
 }
 
-void sdlapp_loop()
+static void sdlapp_loop()
 {
-	puts("entering main loop.");
-
 	Input input;
 	input_initialize(&input);
 	unsigned int ticks = 0;
 	const unsigned int delay = 1000 / 60;
 	
 	while(!sdlApp.quit) {
-		handle_sdl_events(&input);
 		ticks = timer_tick();
-		update(&input, ticks);
-		if (!sdlApp.iconified)
-			render();
 		reset_input(&input);
+		handle_sdl_events(&input);
+		update(&input, ticks);
+		render();
 		SDL_Delay(delay);
 	}
-
-	puts("exiting main loop.");	
 }
 
 static void reset_input(Input *input) 
@@ -130,6 +133,9 @@ static void update(const Input *input, const unsigned int ticks)
 
 static void render()
 {
+	if (sdlApp.iconified)
+			return;
+
 	switch (sdlApp.mode) {
 	case INTRO:
 		break;
@@ -145,7 +151,6 @@ static void render()
 static void handle_sdl_events(Input *input)
 {
 	SDL_Event event;
-
 	while (SDL_PollEvent(&event) != 0) 
 	{
 		handle_sdl_event(input, &event);
