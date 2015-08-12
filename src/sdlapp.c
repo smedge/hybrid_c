@@ -40,6 +40,7 @@ static void sdlapp_initialize()
 	}
 
 	graphics_initialize();
+	audio_initialize();
 
 	mode_mainmenu_initialize();
 	sdlApp.mode = MAINMENU;
@@ -47,6 +48,7 @@ static void sdlapp_initialize()
 
 static void sdlapp_cleanup()
 {
+	audio_cleanup();
 	graphics_cleanup();
 	SDL_Quit();
 }

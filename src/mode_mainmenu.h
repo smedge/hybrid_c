@@ -12,6 +12,7 @@
 #include "imgui.h"
 #include "mode.h"
 #include "graphics.h"
+#include "audio.h"
 
 void mode_mainmenu_initialize();
 void mode_mainmenu_cleanup();

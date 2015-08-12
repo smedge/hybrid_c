@@ -1,12 +1,14 @@
 #include "mode_mainmenu.h"
 
-static ButtonState newButton = {{98.0, 190.0}, 59, 12, {0.0, 0.0, 0.0, 0.0}, false, false, "NEW"};
-static ButtonState loadButton = {{98.0, 208.0}, 59, 12, {0.0, 0.0, 0.0, 0.0}, false, false, "LOAD"};
-static ButtonState exitButton = {{98.0, 228.0}, 59, 12, {0.0, 0.0, 0.0, 0.0}, false, false, "EXIT"};
+static ButtonState newButton = {{98.0, 190.0}, 59, 12, false, false, "NEW"};
+static ButtonState loadButton = {{98.0, 208.0}, 59, 12, false, false, "LOAD"};
+static ButtonState exitButton = {{98.0, 228.0}, 59, 12, false, false, "EXIT"};
 static FTGLfont *font = 0;
 
 static void render_menu_text();
 static void render_menu_button(const ButtonState *buttonState, bool showBounds);
+
+static Mix_Music *music = NULL;
 
 void mode_mainmenu_initialize()
 {
@@ -15,11 +17,15 @@ void mode_mainmenu_initialize()
 		puts("error: failed to load font");
 		exit(-1);
 	}
+
+	music = Mix_LoadMUS("./resources/music/Xilent-Infinity.mp3");
+	Mix_PlayMusic(music, 2);
 }
 
 void mode_mainmenu_cleanup()
 {
 	ftglDestroyFont(font);
+	Mix_FreeMusic(music);
 }
 
 void mode_mainmenu_update(
@@ -28,6 +34,12 @@ void mode_mainmenu_update(
 	void (*quit)(),
 	void (*mode)())
 {
+	Screen screen = graphics_get_screen();
+	int fifthScreenWidth = screen.width / 5;
+	newButton.position.x = fifthScreenWidth;
+	loadButton.position.x = fifthScreenWidth;
+	exitButton.position.x = fifthScreenWidth;
+
 	imgui_update_button(input, &newButton, mode);
 	imgui_update_button(input, &exitButton, quit);
 
@@ -38,10 +50,7 @@ void mode_mainmenu_render()
 {
 	graphics_clear();
 	graphics_set_ui_projection();
-	Screen screen = graphics_get_screen();
-
-	int halfWidth = screen.width / 2;
-
+	
 	render_menu_text();
 	bool showBounds = false;
 	render_menu_button(&newButton, showBounds);
@@ -55,9 +64,11 @@ void mode_mainmenu_render()
 
 static void render_menu_text() 
 {
+	Screen screen = graphics_get_screen();
+	int fifthScreenWidth = screen.width / 5;
 	ftglSetFontFaceSize(font, 80, 72);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glRasterPos2f(100.0f, 100.0f);
+	glRasterPos2f(fifthScreenWidth, 100.0f);
 	ftglRenderFont(font, "HYBRID", FTGL_RENDER_ALL);
 }
 

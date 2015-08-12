@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 
 #include "graphics.h"
+#include "audio.h"
 #include "input.h"
 #include "timer.h"
 
