@@ -1,5 +1,15 @@
 #include "mode_gameplay.h"
 
+void mode_gameplay_initialize()
+{
+	audio_loop_music(GAMEPLAY_MUSIC_PATH);
+}
+
+void mode_gameplay_cleanup()
+{
+	audio_stop_music();
+}
+
 void mode_gameplay_update(const Input *input, const unsigned int ticks)
 {
 	// ecs update

@@ -1,0 +1,5 @@
+Dependencies in this project are managed manually. You will need to install
+the development versions of the following libraries to build this project:
+
+	SDL 2.0
+	FTGL 2.1.3

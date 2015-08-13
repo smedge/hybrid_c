@@ -8,24 +8,21 @@ static FTGLfont *font = 0;
 static void render_menu_text();
 static void render_menu_button(const ButtonState *buttonState, bool showBounds);
 
-static Mix_Music *music = NULL;
-
 void mode_mainmenu_initialize()
 {
-	font = ftglCreatePixmapFont(SQUARE_FONT_PATH);
+	font = ftglCreatePixmapFont(TITLE_FONT_PATH);
 	if(!font) {
 		puts("error: failed to load font");
 		exit(-1);
 	}
 
-	music = Mix_LoadMUS("./resources/music/Xilent-Infinity.mp3");
-	Mix_PlayMusic(music, 2);
+	audio_loop_music(MENU_MUSIC_PATH);
 }
 
 void mode_mainmenu_cleanup()
 {
 	ftglDestroyFont(font);
-	Mix_FreeMusic(music);
+	audio_stop_music();
 }
 
 void mode_mainmenu_update(

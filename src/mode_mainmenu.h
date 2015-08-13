@@ -1,9 +1,10 @@
 #ifndef MODE_MAINMENU_H
 #define MODE_MAINMENU_H
 
-#define SQUARE_FONT_PATH "./resources/fonts/square_sans_serif_7.ttf"
-#include <stdlib.h>
+#define TITLE_FONT_PATH "./resources/fonts/square_sans_serif_7.ttf"
+#define MENU_MUSIC_PATH "./resources/music/Xilent-Infinity.mp3"
 
+#include <stdlib.h>
 #include <FTGL/ftgl.h>
 
 #include "cursor.h"

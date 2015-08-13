@@ -95,6 +95,7 @@ static void initialize_mode()
 		mode_mainmenu_initialize();
 		break;
 	case GAMEPLAY:
+		mode_gameplay_initialize();
 		break;
 	};
 }
@@ -108,12 +109,16 @@ static void cleanup_mode()
 		mode_mainmenu_cleanup();
 		break;
 	case GAMEPLAY:
+		mode_gameplay_cleanup();
 		break;
 	};
 }
 
 static void change_mode(const Mode mode)
 {
+	if (mode == sdlApp.mode)
+		return;
+
 	cleanup_mode();
 	sdlApp.mode = mode;
 	initialize_mode();
