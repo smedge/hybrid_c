@@ -1,11 +1,12 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
-typedef struct {
-	int id;
-} Entity;
+#define ENTITY_COUNT 255
 
-// type
-// pointer
+typedef enum {
+	COMPONENT_NONE = 0,
+	COMPONENT_POSITION = 1 << 1,
+	COMPONENT_RENDERABLE = 1 << 2
+} Component;
 
 #endif

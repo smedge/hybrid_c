@@ -21,6 +21,12 @@ void audio_loop_music(const char *path)
 	Mix_PlayMusic(music, 2);
 }
 
+void audio_play_music_fade(const char *path, int playTime, 
+						   int fadeTime, void (*on_end)())
+{
+
+}
+
 void audio_stop_music()
 {
 	Mix_FreeMusic(music);
