@@ -1,28 +1,32 @@
 #include "imgui.h"
 
-void imgui_update_button(const Input *input,
-						 ButtonState *buttonState, 
-						 void (*on_click)()) 
+ButtonState imgui_update_button(const Input *input,
+						 		ButtonState *state, 
+						 		void (*on_click)()) 
 {
-	Rectangle boundingBox = {buttonState->position.x,
-							 buttonState->position.y - buttonState->height,
-							 buttonState->position.x + buttonState->width,
-							 buttonState->position.y};
+	ButtonState newState;
+	newState = *state;
+	Rectangle boundingBox = {state->position.x,
+							 state->position.y - state->height,
+							 state->position.x + state->width,
+							 state->position.y};
 
 	if (collision_point_test(input->mouseX, input->mouseY, boundingBox)) {
-		buttonState->hover = true;
+		newState.hover = true;
 
 		if (input->mouseLeft) {
-			buttonState->active = true;
+			newState.active = true;
 		}
 
-		if (buttonState->active && !input->mouseLeft) {
-			buttonState->active = false;
+		if (newState.active && !input->mouseLeft) {
+			newState.active = false;
 			on_click();
 		}
 	}
 	else {
-		buttonState->hover = false;
-		buttonState->active = false;
+		newState.hover = false;
+		newState.active = false;
 	}
+
+	return newState;
 }

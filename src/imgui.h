@@ -12,7 +12,7 @@ typedef struct {
 	char* text;
 } ButtonState;
 
-void imgui_update_button(const Input *input, 
+ButtonState imgui_update_button(const Input *input, 
 						 ButtonState *buttonState, 
 						 void (*on_click)()); 
 

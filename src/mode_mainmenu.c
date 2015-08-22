@@ -1,8 +1,8 @@
 #include "mode_mainmenu.h"
 
-static ButtonState newButton = {{98.0, 190.0}, 59, 12, false, false, "NEW"};
-static ButtonState loadButton = {{98.0, 208.0}, 59, 12, false, false, "LOAD"};
-static ButtonState exitButton = {{98.0, 228.0}, 59, 12, false, false, "EXIT"};
+static ButtonState newButton = {{98.0, 190.0}, 59, 12, false, false, NEW_BUTTON_TEXT};
+static ButtonState loadButton = {{98.0, 208.0}, 59, 12, false, false, LOAD_BUTTON_TEXT};
+static ButtonState exitButton = {{98.0, 228.0}, 59, 12, false, false, EXIT_BUTTON_TEXT};
 static FTGLfont *font = 0;
 
 static void render_menu_text();
@@ -37,8 +37,8 @@ void mode_mainmenu_update(
 	loadButton.position.x = fifthScreenWidth;
 	exitButton.position.x = fifthScreenWidth;
 
-	imgui_update_button(input, &newButton, mode);
-	imgui_update_button(input, &exitButton, quit);
+	newButton = imgui_update_button(input, &newButton, mode);
+	exitButton = imgui_update_button(input, &exitButton, quit);
 
 	cursor_update(input);
 }
@@ -66,7 +66,7 @@ static void render_menu_text()
 	ftglSetFontFaceSize(font, 80, 72);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glRasterPos2f(fifthScreenWidth, 100.0f);
-	ftglRenderFont(font, "HYBRID", FTGL_RENDER_ALL);
+	ftglRenderFont(font, TITLE_TEXT, FTGL_RENDER_ALL);
 }
 
 static void render_menu_button(const ButtonState *buttonState, bool showBounds)
