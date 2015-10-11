@@ -9,14 +9,14 @@ static void render_menu_text(void);
 static void render_menu_button(const ButtonState *buttonState, bool showBounds);
 
 static void (*quit_callback)();
-static void (*mode_callback)();
+static void (*gameplay_mode_callback)();
 
 void mode_mainmenu_initialize(
-	void (*on_quit)(),
-	void (*on_mode)())
+	void (*quit)(),
+	void (*gameplay_mode)())
 {
-	quit_callback = on_quit;
-	mode_callback = on_mode;
+	quit_callback = quit;
+	gameplay_mode_callback = gameplay_mode;
 
 	font = ftglCreatePixmapFont(TITLE_FONT_PATH);
 	if(!font) {
@@ -43,7 +43,7 @@ void mode_mainmenu_update(
 	loadButton.position.x = fifthScreenWidth;
 	exitButton.position.x = fifthScreenWidth;
 
-	newButton = imgui_update_button(input, &newButton, mode_callback);
+	newButton = imgui_update_button(input, &newButton, gameplay_mode_callback);
 	exitButton = imgui_update_button(input, &exitButton, quit_callback);
 
 	cursor_update(input);

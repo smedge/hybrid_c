@@ -3,7 +3,7 @@
 bool collision_aabb_test(const Rectangle rect1, 
 						 const Rectangle rect2) 
 {
-	return false;
+	return false; // TODO implement
 }
 
 bool collision_point_test(const double x, 

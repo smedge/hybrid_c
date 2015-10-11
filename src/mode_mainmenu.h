@@ -22,7 +22,7 @@
 
 void mode_mainmenu_initialize(
 	void (*quit)(),
-	void (*mode)());
+	void (*gameplay_mode)());
 void mode_mainmenu_cleanup(void);
 void mode_mainmenu_update(
 	const Input *input, 
