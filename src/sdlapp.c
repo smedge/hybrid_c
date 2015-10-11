@@ -21,6 +21,9 @@ static void handle_sdl_mousebuttonup_event(Input *input, const SDL_Event *event)
 static void handle_sdl_keydown_event(Input *input, const SDL_Event *event);
 static void handle_sdl_keyup_event(Input *input, const SDL_Event *event);
 
+static void quit_callback(void);
+static void gameplay_mode_callback(void);
+
 void sdlapp_run(void)
 {
 	sdlapp_initialize();
@@ -42,7 +45,7 @@ static void sdlapp_initialize(void)
 	graphics_initialize();
 	audio_initialize();
 
-	mode_mainmenu_initialize();
+	mode_mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
 	sdlApp.mode = MAINMENU;
 }
 
@@ -76,7 +79,7 @@ static void reset_input(Input *input)
 	input->mouseWheelDown = false;
 }
 
-static void quit_callback() 
+static void quit_callback(void) 
 {
 	sdlApp.quit = true;
 }
@@ -92,7 +95,7 @@ static void initialize_mode(void)
 	case INTRO:
 		break;
 	case MAINMENU:
-		mode_mainmenu_initialize();
+		mode_mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
 		break;
 	case GAMEPLAY:
 		mode_gameplay_initialize();
@@ -130,7 +133,7 @@ static void update(const Input *input, const unsigned int ticks)
 	case INTRO:
 		break;
 	case MAINMENU:
-		mode_mainmenu_update(input, ticks, &quit_callback, &gameplay_mode_callback);
+		mode_mainmenu_update(input, ticks);
 		break;
 	case GAMEPLAY:
 		mode_gameplay_update(input, ticks);

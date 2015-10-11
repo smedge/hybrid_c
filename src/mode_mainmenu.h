@@ -20,13 +20,13 @@
 #include "graphics.h"
 #include "audio.h"
 
-void mode_mainmenu_initialize(void);
+void mode_mainmenu_initialize(
+	void (*quit)(),
+	void (*mode)());
 void mode_mainmenu_cleanup(void);
 void mode_mainmenu_update(
 	const Input *input, 
-	const unsigned int ticks, 
-	void (*quit)(), 
-	void (*mode)());
+	const unsigned int ticks);
 void mode_mainmenu_render(void);
 
 #endif

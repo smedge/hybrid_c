@@ -8,8 +8,16 @@ static FTGLfont *font = 0;
 static void render_menu_text(void);
 static void render_menu_button(const ButtonState *buttonState, bool showBounds);
 
-void mode_mainmenu_initialize(void)
+static void (*quit_callback)();
+static void (*mode_callback)();
+
+void mode_mainmenu_initialize(
+	void (*on_quit)(),
+	void (*on_mode)())
 {
+	quit_callback = on_quit;
+	mode_callback = on_mode;
+
 	font = ftglCreatePixmapFont(TITLE_FONT_PATH);
 	if(!font) {
 		puts("error: failed to load font");
@@ -19,7 +27,7 @@ void mode_mainmenu_initialize(void)
 	audio_loop_music(MENU_MUSIC_PATH);
 }
 
-void mode_mainmenu_cleanup()
+void mode_mainmenu_cleanup(void)
 {
 	ftglDestroyFont(font);
 	audio_stop_music();
@@ -27,9 +35,7 @@ void mode_mainmenu_cleanup()
 
 void mode_mainmenu_update(
 	const Input *input, 
-	const unsigned int ticks,
-	void (*quit)(),
-	void (*mode)())
+	const unsigned int ticks)
 {
 	Screen screen = graphics_get_screen();
 	int fifthScreenWidth = screen.width / 5;
@@ -37,8 +43,8 @@ void mode_mainmenu_update(
 	loadButton.position.x = fifthScreenWidth;
 	exitButton.position.x = fifthScreenWidth;
 
-	newButton = imgui_update_button(input, &newButton, mode);
-	exitButton = imgui_update_button(input, &exitButton, quit);
+	newButton = imgui_update_button(input, &newButton, mode_callback);
+	exitButton = imgui_update_button(input, &exitButton, quit_callback);
 
 	cursor_update(input);
 }
