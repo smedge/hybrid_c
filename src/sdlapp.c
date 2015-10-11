@@ -2,16 +2,16 @@
 
 static SdlApp sdlApp;
 
-static void sdlapp_initialize(); 
-static void sdlapp_cleanup();
-static void sdlapp_loop();
+static void sdlapp_initialize(void); 
+static void sdlapp_cleanup(void);
+static void sdlapp_loop(void);
 static void update(const Input *input, const unsigned int ticks);
-static void render();
+static void render(void);
 static void reset_input(Input *input);
 
 static void change_mode(const Mode mode);
-static void initialize_mode();
-static void cleanup_mode();
+static void initialize_mode(void);
+static void cleanup_mode(void);
 
 static void handle_sdl_events(Input *input);
 static void handle_sdl_event(Input *input, const SDL_Event *event);
@@ -21,14 +21,14 @@ static void handle_sdl_mousebuttonup_event(Input *input, const SDL_Event *event)
 static void handle_sdl_keydown_event(Input *input, const SDL_Event *event);
 static void handle_sdl_keyup_event(Input *input, const SDL_Event *event);
 
-void sdlapp_run()
+void sdlapp_run(void)
 {
 	sdlapp_initialize();
 	sdlapp_loop();
 	sdlapp_cleanup();
 }
 
-static void sdlapp_initialize() 
+static void sdlapp_initialize(void) 
 {
 	sdlApp.iconified = false;
 	sdlApp.quit = false;
@@ -46,14 +46,14 @@ static void sdlapp_initialize()
 	sdlApp.mode = MAINMENU;
 }
 
-static void sdlapp_cleanup()
+static void sdlapp_cleanup(void)
 {
 	audio_cleanup();
 	graphics_cleanup();
 	SDL_Quit();
 }
 
-static void sdlapp_loop()
+static void sdlapp_loop(void)
 {
 	Input input;
 	input_initialize(&input);
@@ -81,12 +81,12 @@ static void quit_callback()
 	sdlApp.quit = true;
 }
 
-static void gameplay_mode_callback()
+static void gameplay_mode_callback(void)
 {
 	change_mode(GAMEPLAY);
 }
 
-static void initialize_mode() 
+static void initialize_mode(void) 
 {
 	switch (sdlApp.mode) {
 	case INTRO:
@@ -138,7 +138,7 @@ static void update(const Input *input, const unsigned int ticks)
 	};
 }
 
-static void render()
+static void render(void)
 {
 	if (sdlApp.iconified)
 			return;

@@ -21,15 +21,15 @@ typedef struct {
 	Screen screen;
 } Graphics;
 
-void graphics_initialize();
-void graphics_cleanup();
+void graphics_initialize(void);
+void graphics_cleanup(void);
 void graphics_resize_window(const unsigned int width,
 							const unsigned int height);
-void graphics_toggle_fullscreen();
-void graphics_clear();
-void graphics_flip();
-void graphics_set_ui_projection();
-void graphics_set_world_projection();
-const Screen graphics_get_screen();
+void graphics_toggle_fullscreen(void);
+void graphics_clear(void);
+void graphics_flip(void);
+void graphics_set_ui_projection(void);
+void graphics_set_world_projection(void);
+const Screen graphics_get_screen(void);
 
 #endif

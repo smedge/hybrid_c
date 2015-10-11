@@ -5,10 +5,10 @@ static ButtonState loadButton = {{98.0, 208.0}, 59, 12, false, false, LOAD_BUTTO
 static ButtonState exitButton = {{98.0, 228.0}, 59, 12, false, false, EXIT_BUTTON_TEXT};
 static FTGLfont *font = 0;
 
-static void render_menu_text();
+static void render_menu_text(void);
 static void render_menu_button(const ButtonState *buttonState, bool showBounds);
 
-void mode_mainmenu_initialize()
+void mode_mainmenu_initialize(void)
 {
 	font = ftglCreatePixmapFont(TITLE_FONT_PATH);
 	if(!font) {
@@ -43,7 +43,7 @@ void mode_mainmenu_update(
 	cursor_update(input);
 }
 
-void mode_mainmenu_render()
+void mode_mainmenu_render(void)
 {
 	graphics_clear();
 	graphics_set_ui_projection();
@@ -59,7 +59,7 @@ void mode_mainmenu_render()
 	graphics_flip();
 }
 
-static void render_menu_text() 
+static void render_menu_text(void) 
 {
 	Screen screen = graphics_get_screen();
 	int fifthScreenWidth = screen.width / 5;

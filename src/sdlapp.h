@@ -21,6 +21,6 @@ typedef struct {
 	Mode mode;
 } SdlApp;
 
-void sdlapp_run();
+void sdlapp_run(void);
 
 #endif

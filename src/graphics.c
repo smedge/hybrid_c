@@ -2,13 +2,13 @@
 
 static Graphics graphics;
 
-static void graphics_create_window();
-static void graphics_create_fullscreen_window();
-static void graphics_create_windowed_window();
-static void graphics_initialize_gl();
-static void graphics_destroy_window();
+static void graphics_create_window(void);
+static void graphics_create_fullscreen_window(void);
+static void graphics_create_windowed_window(void);
+static void graphics_initialize_gl(void);
+static void graphics_destroy_window(void);
 
-void graphics_initialize() 
+void graphics_initialize(void) 
 {
 	graphics_create_window();
 	graphics_initialize_gl();
@@ -16,7 +16,7 @@ void graphics_initialize()
 	graphics_flip();
 }
 
-void graphics_cleanup() 
+void graphics_cleanup(void) 
 {
 	graphics_destroy_window();
 }
@@ -29,24 +29,24 @@ void graphics_resize_window(const unsigned int width,
 	glViewport(0, 0, width, height);
 }
 
-void graphics_toggle_fullscreen() 
+void graphics_toggle_fullscreen(void) 
 {
 	graphics_cleanup();
 	graphics.fullScreen = !graphics.fullScreen;
 	graphics_initialize();
 }
 
-void graphics_clear() 
+void graphics_clear(void) 
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void graphics_flip() 
+void graphics_flip(void) 
 {
 	SDL_GL_SwapWindow(graphics.window);
 }
 
-void graphics_set_ui_projection() 
+void graphics_set_ui_projection(void) 
 {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -55,7 +55,7 @@ void graphics_set_ui_projection()
 	glLoadIdentity();
 }
 
-void graphics_set_world_projection()
+void graphics_set_world_projection(void)
 {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -64,12 +64,12 @@ void graphics_set_world_projection()
 	glLoadIdentity();
 }
 
-const Screen graphics_get_screen()
+const Screen graphics_get_screen(void)
 {
 	return graphics.screen;
 }
 
-static void graphics_create_window() 
+static void graphics_create_window(void) 
 {
 	if (graphics.fullScreen)
 		graphics_create_fullscreen_window();
@@ -77,7 +77,7 @@ static void graphics_create_window()
 		graphics_create_windowed_window();
 }
 
-static void graphics_create_fullscreen_window() 
+static void graphics_create_fullscreen_window(void) 
 {
 	graphics.window = SDL_CreateWindow(
 		SDL_WINDOW_NAME, 
@@ -93,7 +93,7 @@ static void graphics_create_fullscreen_window()
 	graphics.screen.height = SDL_WINDOW_FULLSCREEN_HEIGHT;
 }
 
-static void graphics_create_windowed_window() 
+static void graphics_create_windowed_window(void) 
 {
 	graphics.window = SDL_CreateWindow(
         SDL_WINDOW_NAME,
@@ -109,7 +109,7 @@ static void graphics_create_windowed_window()
 	graphics.screen.height = SDL_WINDOW_WINDOWED_HEIGHT;
 }
 
-static void graphics_initialize_gl()
+static void graphics_initialize_gl(void)
 {
 	graphics.glcontext = SDL_GL_CreateContext(graphics.window);
 
@@ -119,7 +119,7 @@ static void graphics_initialize_gl()
 	glViewport(0, 0, graphics.screen.width, graphics.screen.height);
 }
 
-static void graphics_destroy_window() 
+static void graphics_destroy_window(void) 
 {
 	SDL_GL_DeleteContext(graphics.glcontext);
 	SDL_DestroyWindow(graphics.window);
