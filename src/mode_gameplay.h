@@ -9,6 +9,7 @@
 #include "hud.h"
 #include "input.h"
 #include "view.h"
+#include "grid.h"
 
 void mode_gameplay_initialize();
 void mode_gameplay_cleanup();
