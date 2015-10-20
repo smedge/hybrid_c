@@ -4,7 +4,7 @@
 
 #include "sdlapp.h"
 
-int main() 
+int main(void) 
 {
 	sdlapp_run();
 	return 0;

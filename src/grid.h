@@ -3,6 +3,6 @@
 
 #include "graphics.h"
 
-void grid_render();
+void grid_render(const Screen *screen);
 
 #endif

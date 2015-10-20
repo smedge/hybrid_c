@@ -1,11 +1,11 @@
 #include "mode_gameplay.h"
 
-void mode_gameplay_initialize()
+void mode_gameplay_initialize(void)
 {
 	audio_loop_music(GAMEPLAY_MUSIC_PATH);
 }
 
-void mode_gameplay_cleanup()
+void mode_gameplay_cleanup(void)
 {
 	audio_stop_music();
 }
@@ -16,7 +16,7 @@ void mode_gameplay_update(const Input *input, const unsigned int ticks)
 	view_update(input, ticks);
 }
 
-void mode_gameplay_render()
+void mode_gameplay_render(void)
 {
 	graphics_clear();
 	Screen screen = graphics_get_screen();

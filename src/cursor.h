@@ -5,6 +5,6 @@
 #include "input.h"
 
 void cursor_update(const Input *input);
-void cursor_render();
+void cursor_render(void);
 
 #endif

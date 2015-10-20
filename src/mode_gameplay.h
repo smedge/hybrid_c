@@ -11,9 +11,9 @@
 #include "view.h"
 #include "grid.h"
 
-void mode_gameplay_initialize();
-void mode_gameplay_cleanup();
-void mode_gameplay_update();
-void mode_gameplay_render();
+void mode_gameplay_initialize(void);
+void mode_gameplay_cleanup(void);
+void mode_gameplay_update(const Input *input, const unsigned int ticks);
+void mode_gameplay_render(void);
 
 #endif

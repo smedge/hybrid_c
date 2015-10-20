@@ -5,6 +5,6 @@
 
 #define MAX_TICKS 500
 
-unsigned int timer_tick();
+unsigned int timer_tick(void);
 
 #endif

@@ -11,7 +11,7 @@ void cursor_update(const Input *input)
 	y = input->mouseY;
 }
 
-void cursor_render() 
+void cursor_render(void) 
 {
 	if (visible) {
 		glPushMatrix();

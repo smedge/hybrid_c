@@ -51,6 +51,7 @@ static void sdlapp_initialize(void)
 
 static void sdlapp_cleanup(void)
 {
+	cleanup_mode();
 	audio_cleanup();
 	graphics_cleanup();
 	SDL_Quit();
@@ -103,7 +104,7 @@ static void initialize_mode(void)
 	};
 }
 
-static void cleanup_mode()
+static void cleanup_mode(void)
 {
 	switch (sdlApp.mode) {
 	case INTRO:

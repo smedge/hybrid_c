@@ -21,8 +21,8 @@
 #include "audio.h"
 
 void mode_mainmenu_initialize(
-	void (*quit)(),
-	void (*gameplay_mode)());
+	void (*quit)(void),
+	void (*gameplay_mode)(void));
 void mode_mainmenu_cleanup(void);
 void mode_mainmenu_update(
 	const Input *input, 
