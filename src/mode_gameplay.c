@@ -13,6 +13,7 @@ void mode_gameplay_cleanup(void)
 void mode_gameplay_update(const Input *input, const unsigned int ticks)
 {
 	cursor_update(input);
+	ship_update(input, ticks);
 	view_update(input, ticks);
 }
 
@@ -22,7 +23,9 @@ void mode_gameplay_render(void)
 	Screen screen = graphics_get_screen();
 
 	graphics_set_world_projection();
+	view_transform();
 	grid_render(&screen);
+	ship_render();
 
 	graphics_set_ui_projection();
 	hud_render(&screen);

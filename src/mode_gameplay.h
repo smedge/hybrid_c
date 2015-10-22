@@ -10,6 +10,7 @@
 #include "input.h"
 #include "view.h"
 #include "grid.h"
+#include "ship.h"
 
 void mode_gameplay_initialize(void);
 void mode_gameplay_cleanup(void);

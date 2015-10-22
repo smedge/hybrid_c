@@ -5,5 +5,6 @@
 #include "position.h"
 
 void view_update(const Input *input, const unsigned int ticks);
+void view_transform(void);
 
 #endif
