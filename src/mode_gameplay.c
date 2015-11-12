@@ -13,8 +13,14 @@ void mode_gameplay_cleanup(void)
 void mode_gameplay_update(const Input *input, const unsigned int ticks)
 {
 	cursor_update(input);
+
 	ship_update(input, ticks);
 	view_update(input, ticks);
+
+	// move
+	// collide
+	// resolve
+
 }
 
 void mode_gameplay_render(void)

@@ -8,7 +8,7 @@
 typedef struct {
 	Position position;
 	int width, height;
-	bool hover, active;
+	bool hover, active, disabled;
 	char* text;
 } ButtonState;
 

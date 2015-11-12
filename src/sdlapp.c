@@ -128,7 +128,7 @@ static void change_mode(const Mode mode)
 	initialize_mode();
 }
 
-static void update(const Input *input, const unsigned int ticks) 
+static void update(const Input* const input, const unsigned int ticks) 
 {
 	switch (sdlApp.mode) {
 	case INTRO:

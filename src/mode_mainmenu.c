@@ -1,8 +1,8 @@
 #include "mode_mainmenu.h"
 
-static ButtonState newButton = {{98.0, 190.0}, 59, 12, false, false, NEW_BUTTON_TEXT};
-static ButtonState loadButton = {{98.0, 208.0}, 59, 12, false, false, LOAD_BUTTON_TEXT};
-static ButtonState exitButton = {{98.0, 228.0}, 59, 12, false, false, EXIT_BUTTON_TEXT};
+static ButtonState newButton = {{98.0, 190.0}, 59, 12, false, false, false, NEW_BUTTON_TEXT};
+static ButtonState loadButton = {{98.0, 208.0}, 59, 12, false, false, true, LOAD_BUTTON_TEXT};
+static ButtonState exitButton = {{98.0, 228.0}, 59, 12, false, false, false, EXIT_BUTTON_TEXT};
 static FTGLfont *font = 0;
 
 static void render_menu_text(void);
@@ -91,7 +91,9 @@ static void render_menu_button(const ButtonState *buttonState, bool showBounds)
 	}
 
 	ftglSetFontFaceSize(font, 20, 72);
-	if (buttonState->active)
+	if (buttonState->disabled)
+		glColor4f(1.0f, 1.0f, 1.0f, 0.33f);
+	else if (buttonState->active)
 		glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
 	else if (buttonState->hover)
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
