@@ -17,7 +17,8 @@ void mode_gameplay_update(const Input *input, const unsigned int ticks)
 	ship_update(input, ticks);
 	view_update(input, ticks);
 
-	// move
+	// update
+	// animate
 	// collide
 	// resolve
 
@@ -27,10 +28,11 @@ void mode_gameplay_render(void)
 {
 	graphics_clear();
 	Screen screen = graphics_get_screen();
+	View view = view_get_view();
 
 	graphics_set_world_projection();
 	view_transform();
-	grid_render(&screen);
+	grid_render(&screen, &view);
 	ship_render();
 
 	graphics_set_ui_projection();

@@ -11,5 +11,5 @@ void ship_update(const Input *input, const unsigned int ticks)
 
 void ship_render(void)
 {
-	
+	render_triangle(&position, heading, 255.0, 0.0, 0.0, 1.0);
 }
