@@ -5,7 +5,7 @@
 
 #include "position.h"
 
-void render_triangle(Position *position, double heading, 
+void Render_triangle(Position *position, double heading, 
 	double colorR, double colorG, double colorB, double colorA);
 
 #endif
