@@ -31,7 +31,7 @@ void mode_gameplay_render(void)
 	View view = view_get_view();
 
 	graphics_set_world_projection();
-	view_transform();
+	view_transform(&screen);
 	grid_render(&screen, &view);
 	ship_render();
 

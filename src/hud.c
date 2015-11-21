@@ -55,7 +55,7 @@ static void render_right_status(const Screen *screen)
 
 static void render_skill_bar(const Screen *screen)
 {
-	glColor4f(1.0, 1.0, 1.0, 0.5);
+	glColor4f(1.0, 1.0, 1.0, 0.2);
 	glPushMatrix();
 	glTranslatef(10.0, screen->height - 60.0, 0.0);
 	render_skill_button();

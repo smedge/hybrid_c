@@ -1,7 +1,10 @@
 #include "render.h"
 
-void Render_triangle(Position *position, double heading, 
-	double colorR, double colorG, double colorB, double colorA) {
+#include <SDL2/SDL_opengl.h>
+
+void Render_triangle(const Position *position, const double heading, 
+	const double colorR, const double colorG, const double colorB, 
+	const double colorA) {
 
 	glPushMatrix();
 	glTranslatef(position->x, position->y, 0.0);

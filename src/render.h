@@ -1,11 +1,12 @@
 #ifndef RENDER_H
 #define RENDER_H
 
-#include <SDL2/SDL_opengl.h>
-
 #include "position.h"
 
-void Render_triangle(Position *position, double heading, 
-	double colorR, double colorG, double colorB, double colorA);
+extern void Render_line();
+
+extern void Render_triangle(const Position *position, const double heading, 
+	const double colorR, const double colorG, const double colorB, 
+	const double colorA);
 
 #endif
