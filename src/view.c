@@ -2,7 +2,7 @@
 
 #include <SDL2/SDL_opengl.h>
 
-static View view = {{100.0, 100.0}, 1.0};
+static View view = {{0.0, 0.0}, 1.0};
 
 void view_update(const Input *input, const unsigned int ticks)
 {
