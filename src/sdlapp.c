@@ -46,6 +46,7 @@ static void initialize(void)
 	audio_initialize();
 
 	mode_mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
+	
 	sdlApp.mode = MAINMENU;
 }
 

@@ -2,10 +2,20 @@
 
 #include <SDL2/SDL_opengl.h>
 
+extern void Render_point()
+{
+
+}
+
+extern void Render_line()
+{
+	
+}
+
 void Render_triangle(const Position *position, const double heading, 
 	const double colorR, const double colorG, const double colorB, 
-	const double colorA) {
-
+	const double colorA) 
+{
 	glPushMatrix();
 	glTranslatef(position->x, position->y, 0.0);
 	glRotatef(heading*-1, 0, 0, 1);

@@ -3,6 +3,8 @@
 
 #include "position.h"
 
+extern void Render_point();
+
 extern void Render_line();
 
 extern void Render_triangle(const Position *position, const double heading, 
