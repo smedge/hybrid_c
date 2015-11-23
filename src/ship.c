@@ -6,7 +6,7 @@ static double velocity = 0.0;
 
 void ship_update(const Input *input, const unsigned int ticks)
 {
-
+	
 }
 
 void ship_render(void)

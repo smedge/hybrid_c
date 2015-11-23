@@ -34,11 +34,12 @@ void mode_gameplay_render(void)
 	View view = view_get_view();
 
 	graphics_set_world_projection();
-	grid_render(&screen, &view);
+
 	glPushMatrix();
 	view_transform(&screen);
+	grid_render(&screen, &view);
 	ship_render();
-	// render other entities
+	// TODO render other entities
 	glPopMatrix();
 
 	graphics_set_ui_projection();
