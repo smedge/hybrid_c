@@ -25,7 +25,7 @@ static void render_left_status(const Screen *screen)
 {
 	glPushMatrix();
 	glLineWidth(1.0);
-	glColor4f(1.0, 1.0, 1.0, 0.2);
+	glColor4f(0.1, 0.1, 0.1, 0.8);
 	glTranslatef(10.0, 10.0, 0.0);
 
 	glBegin(GL_LINE_LOOP);
@@ -41,7 +41,7 @@ static void render_right_status(const Screen *screen)
 {
 	glPushMatrix();
 	glLineWidth(1.0);
-	glColor4f(1.0, 1.0, 1.0, 0.2);
+	glColor4f(0.1, 0.1, 0.1, 0.8);
 	glTranslatef(screen->width - 260.0, 10.0, 0.0);
 
 	glBegin(GL_LINE_LOOP);
@@ -55,7 +55,7 @@ static void render_right_status(const Screen *screen)
 
 static void render_skill_bar(const Screen *screen)
 {
-	glColor4f(1.0, 1.0, 1.0, 0.2);
+	glColor4f(0.1, 0.1, 0.1, 0.8);
 	glPushMatrix();
 	glTranslatef(10.0, screen->height - 60.0, 0.0);
 	render_skill_button();
@@ -93,7 +93,7 @@ static void render_skill_button()
 static void render_radar(const Screen *screen)
 {
 	glPushMatrix();
-	glColor4f(1.0, 1.0, 1.0, 0.2);
+	glColor4f(0.1, 0.1, 0.1, 0.8);
 	glTranslatef(screen->width - 210.0, screen->height - 210.0, 0.0);
 
 	glBegin(GL_QUADS);

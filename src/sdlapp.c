@@ -317,7 +317,15 @@ static void handle_sdl_mousebuttonup_event(Input *input, const SDL_Event *event)
 static void handle_sdl_keydown_event(Input *input, const SDL_Event *event)
 {
 	switch (event->key.keysym.sym) {
-			
+	
+	case SDLK_LCTRL:
+		input->keyLControl = true;
+		break;
+
+	case SDLK_LSHIFT:
+		input->keyLShift = true;
+		break;
+
 	case SDLK_a:
 		input->keyA = true;
 		break;
@@ -354,6 +362,14 @@ static void handle_sdl_keydown_event(Input *input, const SDL_Event *event)
 static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 {
 	switch (event->key.keysym.sym) {
+
+	case SDLK_LCTRL:
+		input->keyLControl = false;
+		break;
+
+	case SDLK_LSHIFT:
+		input->keyLShift = false;
+		break;
 			
 	case SDLK_a:
 		input->keyA = false;

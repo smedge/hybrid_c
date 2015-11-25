@@ -15,4 +15,7 @@ void input_initialize(Input *input)
 	input->keyA = false;
 	input->keyS = false;
 	input->keyD = false;
+
+	input->keyLShift = false;
+	input->keyLControl = false;
 }

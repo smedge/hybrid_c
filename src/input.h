@@ -17,6 +17,9 @@ typedef struct {
 	bool keyA;
 	bool keyS;
 	bool keyD;
+
+	bool keyLShift;
+	bool keyLControl;
 } Input;
 
 void input_initialize(Input *input);

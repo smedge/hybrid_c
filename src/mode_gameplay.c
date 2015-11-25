@@ -5,6 +5,8 @@
 void mode_gameplay_initialize(void)
 {
 	audio_loop_music(GAMEPLAY_MUSIC_PATH);
+	view_initialize();
+	ship_initialize();
 }
 
 void mode_gameplay_cleanup(void)
@@ -24,7 +26,6 @@ void mode_gameplay_update(const Input *input, const unsigned int ticks)
 	// animate
 	// collide
 	// resolve
-
 }
 
 void mode_gameplay_render(void)
