@@ -388,7 +388,7 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 		break;
 			
 	case SDLK_F10:
-		/* graphics_toggle_multisampling(); */
+		// graphics_toggle_multisampling();
 		break;
 			
 	case SDLK_F11:
