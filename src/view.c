@@ -22,6 +22,11 @@ void view_update(const Input *input, const unsigned int ticks)
 		view.scale *= ZOOM_IN_RATE;
 	if (view.scale >= MIN_ZOOM && input->mouseWheelDown)
 		view.scale *= ZOOM_OUT_RATE;
+
+	if (view.scale > MAX_ZOOM)
+		view.scale = MAX_ZOOM;
+	else if (view.scale < MIN_ZOOM)
+		view.scale = MIN_ZOOM;
 }
 
 void view_transform(const Screen *screen)

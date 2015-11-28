@@ -13,9 +13,9 @@
 #include "grid.h"
 #include "ship.h"
 
-void mode_gameplay_initialize(void);
-void mode_gameplay_cleanup(void);
-void mode_gameplay_update(const Input *input, const unsigned int ticks);
-void mode_gameplay_render(void);
+void Mode_Gameplay_initialize(void);
+void Mode_Gameplay_cleanup(void);
+void Mode_Gameplay_update(const Input *input, const unsigned int ticks);
+void Mode_Gameplay_render(void);
 
 #endif

@@ -11,7 +11,7 @@ static void render_menu_button(const ButtonState *buttonState, bool showBounds);
 static void (*quit_callback)();
 static void (*gameplay_mode_callback)();
 
-void mode_mainmenu_initialize(
+void Mode_Mainmenu_initialize(
 	void (*quit)(),
 	void (*gameplay_mode)())
 {
@@ -27,13 +27,13 @@ void mode_mainmenu_initialize(
 	audio_loop_music(MENU_MUSIC_PATH);
 }
 
-void mode_mainmenu_cleanup(void)
+void Mode_Mainmenu_cleanup(void)
 {
 	ftglDestroyFont(font);
 	audio_stop_music();
 }
 
-void mode_mainmenu_update(
+void Mode_Mainmenu_update(
 	const Input *input, 
 	const unsigned int ticks)
 {
@@ -49,7 +49,7 @@ void mode_mainmenu_update(
 	cursor_update(input);
 }
 
-void mode_mainmenu_render(void)
+void Mode_Mainmenu_render(void)
 {
 	graphics_clear();
 	graphics_set_ui_projection();

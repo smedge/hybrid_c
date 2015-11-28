@@ -6,6 +6,6 @@
 
 int main(void) 
 {
-	sdlapp_run();
+	Sdlapp_run();
 	return 0;
 }

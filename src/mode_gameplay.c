@@ -2,19 +2,19 @@
 
 #include <SDL2/SDL_opengl.h>
 
-void mode_gameplay_initialize(void)
+void Mode_Gameplay_initialize(void)
 {
 	audio_loop_music(GAMEPLAY_MUSIC_PATH);
 	view_initialize();
 	ship_initialize();
 }
 
-void mode_gameplay_cleanup(void)
+void Mode_Gameplay_cleanup(void)
 {
 	audio_stop_music();
 }
 
-void mode_gameplay_update(const Input *input, const unsigned int ticks)
+void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
 	cursor_update(input);
 
@@ -28,7 +28,7 @@ void mode_gameplay_update(const Input *input, const unsigned int ticks)
 	// resolve
 }
 
-void mode_gameplay_render(void)
+void Mode_Gameplay_render(void)
 {
 	graphics_clear();
 	Screen screen = graphics_get_screen();

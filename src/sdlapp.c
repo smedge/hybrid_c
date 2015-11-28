@@ -24,7 +24,7 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event);
 static void quit_callback(void);
 static void gameplay_mode_callback(void);
 
-void sdlapp_run(void)
+void Sdlapp_run(void)
 {
 	initialize();
 	loop();
@@ -45,7 +45,7 @@ static void initialize(void)
 	graphics_initialize();
 	audio_initialize();
 
-	mode_mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
+	Mode_Mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
 	
 	sdlApp.mode = MAINMENU;
 }
@@ -97,10 +97,10 @@ static void initialize_mode(void)
 	case INTRO:
 		break;
 	case MAINMENU:
-		mode_mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
+		Mode_Mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
 		break;
 	case GAMEPLAY:
-		mode_gameplay_initialize();
+		Mode_Gameplay_initialize();
 		break;
 	};
 }
@@ -111,10 +111,10 @@ static void cleanup_mode(void)
 	case INTRO:
 		break;
 	case MAINMENU:
-		mode_mainmenu_cleanup();
+		Mode_Mainmenu_cleanup();
 		break;
 	case GAMEPLAY:
-		mode_gameplay_cleanup();
+		Mode_Gameplay_cleanup();
 		break;
 	};
 }
@@ -135,10 +135,10 @@ static void update(const Input* const input, const unsigned int ticks)
 	case INTRO:
 		break;
 	case MAINMENU:
-		mode_mainmenu_update(input, ticks);
+		Mode_Mainmenu_update(input, ticks);
 		break;
 	case GAMEPLAY:
-		mode_gameplay_update(input, ticks);
+		Mode_Gameplay_update(input, ticks);
 		break;
 	};
 }
@@ -152,10 +152,10 @@ static void render(void)
 	case INTRO:
 		break;
 	case MAINMENU:
-		mode_mainmenu_render();
+		Mode_Mainmenu_render();
 		break;
 	case GAMEPLAY:
-		mode_gameplay_render();
+		Mode_Gameplay_render();
 		break;
 	};
 }
