@@ -1,6 +1,7 @@
 #include "mode_gameplay.h"
 
 #include <SDL2/SDL_opengl.h>
+#include "world.h"
 
 void Mode_Gameplay_initialize(void)
 {
@@ -39,8 +40,8 @@ void Mode_Gameplay_render(void)
 	glPushMatrix();
 	view_transform(&screen);
 	grid_render(&screen, &view);
+	World_render(&view);
 	ship_render();
-	// TODO render other entities
 	glPopMatrix();
 
 	graphics_set_ui_projection();

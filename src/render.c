@@ -21,9 +21,9 @@ void Render_triangle(const Position *position, const double heading,
 	glRotatef(heading*-1, 0, 0, 1);
 	glBegin(GL_TRIANGLES);
 	    glColor4f(colorR, colorG, colorB, colorA);
-		glVertex3f(0.0, 20.0, 0.0);
-		glVertex3f(10.0, -10.0, 0.0);
-		glVertex3f(-10.0, -10.0, 0.0);
+		glVertex2f(0.0, 20.0);
+		glVertex2f(10.0, -10.0);
+		glVertex2f(-10.0, -10.0);
 	glEnd();
 	glPopMatrix();
 }
