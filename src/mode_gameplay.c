@@ -5,22 +5,22 @@
 
 void Mode_Gameplay_initialize(void)
 {
-	audio_loop_music(GAMEPLAY_MUSIC_PATH);
-	view_initialize();
-	ship_initialize();
+	Audio_loop_music(GAMEPLAY_MUSIC_PATH);
+	View_initialize();
+	Ship_initialize();
 }
 
 void Mode_Gameplay_cleanup(void)
 {
-	audio_stop_music();
+	Audio_stop_music();
 }
 
 void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
 	cursor_update(input);
 
-	ship_update(input, ticks);
-	view_update(input, ticks);
+	Ship_update(input, ticks);
+	View_update(input, ticks);
 
 	// update
 	//
@@ -31,22 +31,22 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 
 void Mode_Gameplay_render(void)
 {
-	graphics_clear();
-	Screen screen = graphics_get_screen();
-	View view = view_get_view();
+	Graphics_clear();
+	Screen screen = Graphics_get_screen();
+	View view = View_get_view();
 
-	graphics_set_world_projection();
+	Graphics_set_world_projection();
 
 	glPushMatrix();
-	view_transform(&screen);
-	grid_render(&screen, &view);
+	View_transform(&screen);
+	Grid_render(&screen, &view);
 	World_render(&view);
-	ship_render();
+	Ship_render();
 	glPopMatrix();
 
-	graphics_set_ui_projection();
+	Graphics_set_ui_projection();
 	hud_render(&screen);
 	cursor_render();
 
-	graphics_flip();
+	Graphics_flip();
 }

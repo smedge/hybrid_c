@@ -1,27 +1,29 @@
 #include "graphics.h"
 
+#include <SDL2/SDL_opengl.h>
+
 static Graphics graphics;
 
-static void graphics_create_window(void);
-static void graphics_create_fullscreen_window(void);
-static void graphics_create_windowed_window(void);
-static void graphics_initialize_gl(void);
-static void graphics_destroy_window(void);
+static void create_window(void);
+static void create_fullscreen_window(void);
+static void create_windowed_window(void);
+static void initialize_gl(void);
+static void destroy_window(void);
 
-void graphics_initialize(void) 
+void Graphics_initialize(void) 
 {
-	graphics_create_window();
-	graphics_initialize_gl();
-	graphics_clear();
-	graphics_flip();
+	create_window();
+	initialize_gl();
+	Graphics_clear();
+	Graphics_flip();
 }
 
-void graphics_cleanup(void) 
+void Graphics_cleanup(void) 
 {
-	graphics_destroy_window();
+	destroy_window();
 }
 
-void graphics_resize_window(const unsigned int width,
+void Graphics_resize_window(const unsigned int width,
 		const unsigned int height) 
 {
 	graphics.screen.width = width;
@@ -29,24 +31,24 @@ void graphics_resize_window(const unsigned int width,
 	glViewport(0, 0, width, height);
 }
 
-void graphics_toggle_fullscreen(void) 
+void Graphics_toggle_fullscreen(void) 
 {
-	graphics_cleanup();
+	Graphics_cleanup();
 	graphics.fullScreen = !graphics.fullScreen;
-	graphics_initialize();
+	Graphics_initialize();
 }
 
-void graphics_clear(void) 
+void Graphics_clear(void) 
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void graphics_flip(void) 
+void Graphics_flip(void) 
 {
 	SDL_GL_SwapWindow(graphics.window);
 }
 
-void graphics_set_ui_projection(void) 
+void Graphics_set_ui_projection(void) 
 {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -55,7 +57,7 @@ void graphics_set_ui_projection(void)
 	glLoadIdentity();
 }
 
-void graphics_set_world_projection(void)
+void Graphics_set_world_projection(void)
 {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -64,20 +66,20 @@ void graphics_set_world_projection(void)
 	glLoadIdentity();
 }
 
-const Screen graphics_get_screen(void)
+const Screen Graphics_get_screen(void)
 {
 	return graphics.screen;
 }
 
-static void graphics_create_window(void) 
+static void create_window(void) 
 {
 	if (graphics.fullScreen)
-		graphics_create_fullscreen_window();
+		create_fullscreen_window();
 	else
-		graphics_create_windowed_window();
+		create_windowed_window();
 }
 
-static void graphics_create_fullscreen_window(void) 
+static void create_fullscreen_window(void) 
 {
 	graphics.window = SDL_CreateWindow(
 		SDL_WINDOW_NAME, 
@@ -93,7 +95,7 @@ static void graphics_create_fullscreen_window(void)
 	graphics.screen.height = SDL_WINDOW_FULLSCREEN_HEIGHT;
 }
 
-static void graphics_create_windowed_window(void) 
+static void create_windowed_window(void) 
 {
 	graphics.window = SDL_CreateWindow(
         SDL_WINDOW_NAME,
@@ -109,7 +111,7 @@ static void graphics_create_windowed_window(void)
 	graphics.screen.height = SDL_WINDOW_WINDOWED_HEIGHT;
 }
 
-static void graphics_initialize_gl(void)
+static void initialize_gl(void)
 {
 	graphics.glcontext = SDL_GL_CreateContext(graphics.window);
 
@@ -119,7 +121,7 @@ static void graphics_initialize_gl(void)
 	glViewport(0, 0, graphics.screen.width, graphics.screen.height);
 }
 
-static void graphics_destroy_window(void) 
+static void destroy_window(void) 
 {
 	SDL_GL_DeleteContext(graphics.glcontext);
 	SDL_DestroyWindow(graphics.window);

@@ -11,7 +11,7 @@ ButtonState imgui_update_button(const Input *input,
 							 state->position.x + state->width,
 							 state->position.y};
 
-	if (collision_point_test(input->mouseX, input->mouseY, boundingBox)) {
+	if (Collision_point_test(input->mouseX, input->mouseY, boundingBox)) {
 		newState.hover = true;
 
 		if (input->mouseLeft) {

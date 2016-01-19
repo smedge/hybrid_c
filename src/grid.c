@@ -1,12 +1,13 @@
 #include "grid.h"
 
 #include <math.h>
+#include <SDL2/SDL_opengl.h>
 
 const double GRID_SIZE = 100.0;
 const double GRID_MIN_LINE_SIZE = 1.0;
 const double GRID_MIN_BIG_LINE_SIZE = 3.0;
 
-void grid_render(const Screen *screen, const View *view)
+void Grid_render(const Screen *screen, const View *view)
 {
 	const double HALF_SCREEN_WIDTH = (screen->width / 2) / view->scale;
 	const double HALF_SCREEN_HEIGHT = (screen->height / 2) / view->scale;

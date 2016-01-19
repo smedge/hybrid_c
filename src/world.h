@@ -3,7 +3,8 @@
 
 #include "view.h"
 
-void World_update();
+void World_collide();
+void World_resolve();
 void World_render(const View *view);
 
 #endif

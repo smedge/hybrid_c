@@ -1,7 +1,12 @@
 #include "world.h"
 #include <SDL2/SDL_opengl.h>
 
-void World_update()
+void World_collide()
+{
+
+}
+
+void World_resolve()
 {
 
 }

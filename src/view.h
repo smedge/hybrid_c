@@ -10,10 +10,10 @@ typedef struct {
 	double scale;
 } View;
 
-void view_initialize();
-void view_update(const Input *input, const unsigned int ticks);
-void view_transform(const Screen *screen);
-const View view_get_view(void);
-void view_set_position(Position position);
+void View_initialize();
+void View_update(const Input *input, const unsigned int ticks);
+void View_transform(const Screen *screen);
+const View View_get_view(void);
+void View_set_position(Position position);
 
 #endif

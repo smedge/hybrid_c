@@ -2,9 +2,7 @@
 #define GRAPHICS_H
 
 #include <stdbool.h>
-
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
 
 #include "screen.h"
 
@@ -21,15 +19,15 @@ typedef struct {
 	Screen screen;
 } Graphics;
 
-void graphics_initialize(void);
-void graphics_cleanup(void);
-void graphics_resize_window(const unsigned int width,
+void Graphics_initialize(void);
+void Graphics_cleanup(void);
+void Graphics_resize_window(const unsigned int width,
 							const unsigned int height);
-void graphics_toggle_fullscreen(void);
-void graphics_clear(void);
-void graphics_flip(void);
-void graphics_set_ui_projection(void);
-void graphics_set_world_projection(void);
-const Screen graphics_get_screen(void);
+void Graphics_toggle_fullscreen(void);
+void Graphics_clear(void);
+void Graphics_flip(void);
+void Graphics_set_ui_projection(void);
+void Graphics_set_world_projection(void);
+const Screen Graphics_get_screen(void);
 
 #endif

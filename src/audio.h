@@ -3,11 +3,11 @@
 
 #include <SDL2/SDL_mixer.h>
 
-void audio_initialize(void);
-void audio_cleanup(void);
-void audio_loop_music(const char *path);
-void audio_play_music(const char *path, int playTime, 
+void Audio_initialize(void);
+void Audio_cleanup(void);
+void Audio_loop_music(const char *path);
+void Audio_play_music(const char *path, int playTime, 
 					  int fadeTime, void (*on_end)());
-void audio_stop_music(void);
+void Audio_stop_music(void);
 
 #endif

@@ -1,23 +1,33 @@
 #include "ship.h"
-
 #include "view.h"
 
-static const double NORMAL_VELOCITY = 50.0;
-static const double FAST_VELOCITY = 100.0;
-static const double SLOW_VELOCITY = 10.0;
+static const double NORMAL_VELOCITY = 25.0;
+static const double FAST_VELOCITY = 50.0;
+static const double SLOW_VELOCITY = 5.0;
 
 static Position position = {0.0, 0.0};
 static double heading = 0.0;
 
 static double get_heading(bool n, bool s, bool e, bool w);
 
-void ship_initialize() {
+void Ship_initialize() 
+{
 	position.x = 0.0;
 	position.y = 0.0;
 	heading = 0;
 }
 
-void ship_update(const Input *input, const unsigned int ticks)
+void Ship_collide(void) 
+{
+
+}
+
+void Ship_resolve(void)
+{
+
+}
+
+void Ship_update(const Input *input, const unsigned int ticks)
 {
 	double velocity;
 	
@@ -39,10 +49,10 @@ void ship_update(const Input *input, const unsigned int ticks)
 
 	if (input->keyW || input->keyA || input->keyS || input->keyD)
 		heading = get_heading(input->keyW, input->keyS, input->keyD, input->keyA);
-	view_set_position(position);
+	View_set_position(position);
 }
 
-void ship_render(void)
+void Ship_render(void)
 {
 	Render_triangle(&position, heading, 255.0, 0.0, 0.0, 1.0);
 }

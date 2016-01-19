@@ -4,6 +4,6 @@
 #include "graphics.h"
 #include "view.h"
 
-void grid_render(const Screen *screen, const View *view);
+void Grid_render(const Screen *screen, const View *view);
 
 #endif

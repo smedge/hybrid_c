@@ -9,14 +9,14 @@ const double ZOOM_OUT_RATE = 0.95;
 
 static View view = {{0.0, 0.0}, 1.0};
 
-void view_initialize()
+void View_initialize()
 {
 	view.position.x = 0.0;
 	view.position.y = 0.0;
 	view.scale = 1.0;
 }
 
-void view_update(const Input *input, const unsigned int ticks)
+void View_update(const Input *input, const unsigned int ticks)
 {
 	if (view.scale <= MAX_ZOOM && input->mouseWheelUp)
 		view.scale *= ZOOM_IN_RATE;
@@ -29,7 +29,7 @@ void view_update(const Input *input, const unsigned int ticks)
 		view.scale = MIN_ZOOM;
 }
 
-void view_transform(const Screen *screen)
+void View_transform(const Screen *screen)
 {
 	double x = (screen->width / 2.0) - (view.position.x * view.scale);
 	double y = (screen->height / 2.0) - (view.position.y * view.scale);
@@ -37,7 +37,7 @@ void view_transform(const Screen *screen)
 	glScalef(view.scale, view.scale, view.scale);
 }
 
-Position view_get_world_position(const Screen *screen, const Position uiPosition) 
+Position View_get_world_position(const Screen *screen, const Position uiPosition) 
 {
 	double x = (view.position.x + uiPosition.x - (screen->width / 2)) / view.scale;
 	double y = (view.position.y - uiPosition.y + (screen->height / 2)) / view.scale;
@@ -45,12 +45,12 @@ Position view_get_world_position(const Screen *screen, const Position uiPosition
 	return position;
 }
 
-const View view_get_view(void) 
+const View View_get_view(void) 
 {
 	return view;
 }
 
-void view_set_position(Position position) 
+void View_set_position(Position position) 
 {
 	view.position = position;
 }

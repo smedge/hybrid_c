@@ -1,5 +1,12 @@
 #include "sdlapp.h"
 
+#include "graphics.h"
+#include "audio.h"
+#include "input.h"
+#include "timer.h"
+#include "mode_mainmenu.h"
+#include "mode_gameplay.h"
+
 static SdlApp sdlApp;
 
 static void initialize(void); 
@@ -42,8 +49,8 @@ static void initialize(void)
 		exit(-1);
 	}
 
-	graphics_initialize();
-	audio_initialize();
+	Graphics_initialize();
+	Audio_initialize();
 
 	Mode_Mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
 	
@@ -53,8 +60,8 @@ static void initialize(void)
 static void cleanup(void)
 {
 	cleanup_mode();
-	audio_cleanup();
-	graphics_cleanup();
+	Audio_cleanup();
+	Graphics_cleanup();
 	SDL_Quit();
 }
 
@@ -248,7 +255,7 @@ static void handle_sdl_window_event(Input *input, const SDL_Event *event)
 		break;
 			
 	case SDL_WINDOWEVENT_RESIZED:
-        graphics_resize_window(event->window.data1,
+        Graphics_resize_window(event->window.data1,
  		event->window.data2);
         break;
 	}
@@ -392,7 +399,7 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 		break;
 			
 	case SDLK_F11:
-		graphics_toggle_fullscreen();
+		Graphics_toggle_fullscreen();
 		break;
 			
 	case SDLK_F12:

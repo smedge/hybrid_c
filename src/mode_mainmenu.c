@@ -24,20 +24,20 @@ void Mode_Mainmenu_initialize(
 		exit(-1);
 	}
 
-	audio_loop_music(MENU_MUSIC_PATH);
+	Audio_loop_music(MENU_MUSIC_PATH);
 }
 
 void Mode_Mainmenu_cleanup(void)
 {
 	ftglDestroyFont(font);
-	audio_stop_music();
+	Audio_stop_music();
 }
 
 void Mode_Mainmenu_update(
 	const Input *input, 
 	const unsigned int ticks)
 {
-	Screen screen = graphics_get_screen();
+	Screen screen = Graphics_get_screen();
 	int fifthScreenWidth = screen.width / 5;
 	newButton.position.x = fifthScreenWidth;
 	loadButton.position.x = fifthScreenWidth;
@@ -51,8 +51,8 @@ void Mode_Mainmenu_update(
 
 void Mode_Mainmenu_render(void)
 {
-	graphics_clear();
-	graphics_set_ui_projection();
+	Graphics_clear();
+	Graphics_set_ui_projection();
 	
 	render_menu_text();
 	bool showBounds = false;
@@ -62,12 +62,12 @@ void Mode_Mainmenu_render(void)
 
 	cursor_render();
 
-	graphics_flip();
+	Graphics_flip();
 }
 
 static void render_menu_text(void) 
 {
-	Screen screen = graphics_get_screen();
+	Screen screen = Graphics_get_screen();
 	int fifthScreenWidth = screen.width / 5;
 	ftglSetFontFaceSize(font, 80, 72);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);

@@ -5,8 +5,10 @@
 #include "position.h"
 #include "render.h"
 
-void ship_initialize();
-void ship_update(const Input *input, const unsigned int ticks);
-void ship_render(void);
+void Ship_initialize();
+void Ship_collide();
+void Ship_resolve();
+void Ship_update(const Input *input, const unsigned int ticks);
+void Ship_render(void);
 
 #endif
