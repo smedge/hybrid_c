@@ -1,3 +1,20 @@
 http://www.gamedev.net/page/resources/_/technical/game-programming/understanding-component-entity-systems-r3013
 
 http://www.gamedev.net/page/resources/_/technical/game-programming/implementing-component-entity-systems-r3382
+
+
+
+update timer
+get user input -> commands
+generate ai input -> commands
+animate entities
+collide entities
+resolve collisions
+render video
+render sound
+
+
+
+get user input
+apply input
+run animations
