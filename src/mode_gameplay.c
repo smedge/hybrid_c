@@ -20,7 +20,6 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	cursor_update(input);
 
 	Ship_update(input, ticks);
-	//World_update(); N/A
 
 	Ship_collide();
 	World_collide();
