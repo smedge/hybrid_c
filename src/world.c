@@ -1,12 +1,22 @@
 #include "world.h"
 #include <SDL2/SDL_opengl.h>
 
-void World_collide()
+void World_initialize(void)
 {
 
 }
 
-void World_resolve()
+void World_cleanup(void)
+{
+
+}
+
+void World_collide(void)
+{
+
+}
+
+void World_resolve(void)
 {
 
 }

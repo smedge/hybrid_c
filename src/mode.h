@@ -2,7 +2,7 @@
 #define MODE_H
 
 typedef enum {
-	INTRO, MAINMENU, GAMEPLAY
+	INTRO, MAINMENU, GAMEPLAY //, CREDITS
 } Mode;
 
 // typedef struct {

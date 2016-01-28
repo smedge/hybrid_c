@@ -12,6 +12,7 @@ void Mode_Gameplay_initialize(void)
 
 void Mode_Gameplay_cleanup(void)
 {
+	Ship_cleanup();
 	Audio_stop_music();
 }
 
@@ -19,7 +20,9 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
 	cursor_update(input);
 
-	Ship_update(input, ticks);
+	System_update_user_input(input, ticks);
+	
+	//Ship_update(input, ticks);
 
 	Ship_collide();
 	World_collide();
@@ -39,10 +42,15 @@ void Mode_Gameplay_render(void)
 	Graphics_set_world_projection();
 
 	glPushMatrix();
+
 	View_transform(&screen);
 	Grid_render(&screen, &view);
 	World_render(&view);
-	Ship_render();
+	
+	//Ship_render(); // TODO hook to ECS
+	// Render the ECS instead then move grid and world into it.
+	System_render_entities();
+
 	glPopMatrix();
 
 	Graphics_set_ui_projection();

@@ -18,3 +18,12 @@ render sound
 get user input
 apply input
 run animations
+
+
+Systems					Componenets
+---------------			---------------
+player					placable
+ai						physical
+physics					renderable
+collision				collidable
+render

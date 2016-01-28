@@ -13,7 +13,7 @@ void View_initialize()
 {
 	view.position.x = 0.0;
 	view.position.y = 0.0;
-	view.scale = 1.0;
+	view.scale = 0.5;
 }
 
 void View_update(const Input *input, const unsigned int ticks)

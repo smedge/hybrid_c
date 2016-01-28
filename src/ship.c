@@ -1,20 +1,34 @@
 #include "ship.h"
 #include "view.h"
+#include "render.h"
 
 static const double NORMAL_VELOCITY = 25.0;
 static const double FAST_VELOCITY = 50.0;
 static const double SLOW_VELOCITY = 5.0;
 
-static Position position = {0.0, 0.0};
-static double heading = 0.0;
-
 static double get_heading(bool n, bool s, bool e, bool w);
 
 void Ship_initialize() 
 {
-	position.x = 0.0;
-	position.y = 0.0;
-	heading = 0;
+	int id = Entity_create_entity(0);
+
+	PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
+	Entity_add_placeable(id, placeable);
+	
+	RenderableComponent renderable;
+	renderable.render = Ship_render;
+	Entity_add_renderable(id, renderable);
+
+	UserUpdatableComponent updatable;
+	updatable.update = Ship_update;
+	Entity_add_user_updatable(id, updatable);
+	
+	Entity_add_collidable(id);
+}
+
+void Ship_cleanup()
+{
+
 }
 
 void Ship_collide(void) 
@@ -27,7 +41,7 @@ void Ship_resolve(void)
 
 }
 
-void Ship_update(const Input *input, const unsigned int ticks)
+void Ship_update(const Input *input, const unsigned int ticks, PlaceableComponent *placeable)
 {
 	double velocity;
 	
@@ -39,22 +53,22 @@ void Ship_update(const Input *input, const unsigned int ticks)
 		velocity = NORMAL_VELOCITY;
 
 	if (input->keyW)
-		position.y += velocity;
+		placeable->position.y += velocity;
 	if (input->keyS)
-		position.y -= velocity;
+		placeable->position.y -= velocity;
 	if (input->keyD)
-		position.x += velocity;
+		placeable->position.x += velocity;
 	if (input->keyA)
-		position.x -= velocity;
+		placeable->position.x -= velocity;
 
 	if (input->keyW || input->keyA || input->keyS || input->keyD)
-		heading = get_heading(input->keyW, input->keyS, input->keyD, input->keyA);
-	View_set_position(position);
+		placeable->heading = get_heading(input->keyW, input->keyS, input->keyD, input->keyA);
+	View_set_position(placeable->position);
 }
 
-void Ship_render(void)
+void Ship_render(const PlaceableComponent *placeable)
 {
-	Render_triangle(&position, heading, 255.0, 0.0, 0.0, 1.0);
+	Render_triangle(&placeable->position, placeable->heading, 255.0, 0.0, 0.0, 1.0);
 }
 
 static double get_heading(bool n, bool s, bool e, bool w)
