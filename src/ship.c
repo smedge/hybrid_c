@@ -25,7 +25,7 @@ void Ship_initialize()
 	updatable.update = Ship_update;
 	Entity_add_user_updatable(id, updatable);
 	
-	Entity_add_collidable(id);
+	//Entity_add_collidable(id);
 }
 
 void Ship_cleanup()

@@ -4,7 +4,7 @@
 #include "input.h"
 #include "position.h"
 
-#define ENTITY_COUNT 256
+#define ENTITY_COUNT 512
 
 #define USER_UPDATE_SYSTEM_MASK (COMPONENT_PLACEABLE | COMPONENT_PLAYER_UPDATABLE)
 #define RENDER_SYSTEM_MASK (COMPONENT_RENDERABLE | COMPONENT_PLACEABLE)
@@ -42,7 +42,7 @@ void Entity_destroy_entity(int entityId);
 void Entity_add_placeable(int entityId, PlaceableComponent placeable);
 void Entity_add_renderable(int entityId, RenderableComponent renderable);
 void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable);
-void Entity_add_collidable(int entityId);
+void Entity_add_collidable(int entityId, CollidableComponent collidable);
 
 void System_update_user_input(const Input *input, const unsigned int ticks);
 void System_render_entities();

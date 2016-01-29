@@ -3,6 +3,7 @@
 static int entities[ENTITY_COUNT];
 static PlaceableComponent placeables[ENTITY_COUNT];
 static RenderableComponent renderables[ENTITY_COUNT];
+static CollidableComponent collidables[ENTITY_COUNT];
 static UserUpdatableComponent user_updatables[ENTITY_COUNT];
 
 int Entity_create_entity(int componentMask)
@@ -24,7 +25,10 @@ void Entity_add_renderable(int entityId, RenderableComponent renderable)
 	renderables[entityId] = renderable;
 }
 
-void Entity_add_collidable(int entityId) {}
+void Entity_add_collidable(int entityId, CollidableComponent collidable) 
+{
+	collidables[entityId] = collidable;
+}
 
 void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable) {
 	user_updatables[entityId] = updatable;
