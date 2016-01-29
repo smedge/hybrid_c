@@ -8,12 +8,22 @@ static UserUpdatableComponent user_updatables[ENTITY_COUNT];
 
 int Entity_create_entity(int componentMask)
 {
-	int i = 0;
-	entities[i] = componentMask;
-	return i;
+
+	unsigned int entityId;
+	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
+	{
+		if(entities[entityId] == COMPONENT_NONE)
+			break;
+	}
+
+	entities[entityId] = componentMask;
+	return entityId;
 }
 
-void Entity_destroy_entity(int entityId) {}
+void Entity_destroy_entity(int entityId) 
+{
+	entities[entityId] = COMPONENT_NONE;
+}
 
 void Entity_add_placeable(int entityId, PlaceableComponent placeable) 
 {
