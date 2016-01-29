@@ -24,11 +24,12 @@ void Ship_initialize()
 	UserUpdatableComponent updatable;
 	updatable.update = Ship_update;
 	Entity_add_user_updatable(id, updatable);
-	
-	//Entity_add_collidable(id);
 }
 
-void Ship_cleanup() {}
+void Ship_cleanup() 
+{
+
+}
 
 void Ship_collide(void) 
 {

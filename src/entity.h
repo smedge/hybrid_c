@@ -29,7 +29,7 @@ typedef struct {
  } RenderableComponent;
 
  typedef struct { 
- 	// bounding data
+ 	
  } CollidableComponent;
 
  typedef struct {
