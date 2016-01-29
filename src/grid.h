@@ -3,7 +3,9 @@
 
 #include "graphics.h"
 #include "view.h"
+#include "entity.h"
 
-void Grid_render(const Screen *screen, const View *view);
+void Grid_initialize();
+void Grid_render();
 
 #endif

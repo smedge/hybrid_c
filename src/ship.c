@@ -28,10 +28,7 @@ void Ship_initialize()
 	//Entity_add_collidable(id);
 }
 
-void Ship_cleanup()
-{
-
-}
+void Ship_cleanup() {}
 
 void Ship_collide(void) 
 {

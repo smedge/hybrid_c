@@ -1,9 +1,15 @@
 #include "world.h"
+#include "entity.h"
 #include <SDL2/SDL_opengl.h>
 
 void World_initialize(void)
 {
+	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
+									COMPONENT_RENDERABLE);
 
+	RenderableComponent renderable;
+	renderable.render = World_render;
+	Entity_add_renderable(id, renderable);
 }
 
 void World_cleanup(void)
@@ -21,11 +27,13 @@ void World_resolve(void)
 
 }
 
-void World_render(const View *view)
+void World_render()
 {
+	View view = View_get_view();
+
 	glPushMatrix();
 	
-	glLineWidth(8.0 * view->scale);
+	glLineWidth(8.0 * view.scale);
 	
 	glColor4f(0.01, 0.0, 0.01, 1.0);
 	glBegin(GL_QUADS);

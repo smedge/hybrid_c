@@ -46,7 +46,7 @@ void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable) {
 
 void System_update_user_input(const Input *input, const unsigned int ticks)
 {
-	for(int i = 0; i <= 0; i++) 
+	for(int i = 0; i <= ENTITY_COUNT; i++) 
 	{
 		if ((entities[i] & USER_UPDATE_SYSTEM_MASK) != USER_UPDATE_SYSTEM_MASK)
 			continue;
@@ -56,10 +56,11 @@ void System_update_user_input(const Input *input, const unsigned int ticks)
 
 void System_render_entities() 
 {
-	for(int i = 0; i <= 0; i++) 
+	for(int i = 0; i <= ENTITY_COUNT; i++) 
 	{
 		if ((entities[i] & RENDER_SYSTEM_MASK) != RENDER_SYSTEM_MASK)
 			continue;
+		
 		renderables[i].render(&placeables[i]);
 	}
 }
