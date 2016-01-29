@@ -7,7 +7,9 @@ static UserUpdatableComponent user_updatables[ENTITY_COUNT];
 
 int Entity_create_entity(int componentMask)
 {
-	return 0;
+	int i = 0;
+	entities[i] = componentMask;
+	return i;
 }
 
 void Entity_destroy_entity(int entityId) {}
@@ -28,29 +30,22 @@ void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable) {
 	user_updatables[entityId] = updatable;
 }
 
-
-
-
 void System_update_user_input(const Input *input, const unsigned int ticks)
 {
 	for(int i = 0; i <= 0; i++) 
 	{
-		// if (!(USER_UPDATABLE && PLACEABLE)
-		// 	continue;
-
+		if ((entities[i] & USER_UPDATE_SYSTEM_MASK) != USER_UPDATE_SYSTEM_MASK)
+			continue;
 		user_updatables[i].update(input, ticks, &placeables[i]);
 	}
 }
-
-
 
 void System_render_entities() 
 {
 	for(int i = 0; i <= 0; i++) 
 	{
-		// if (!(RENDERABLE && PLACEABLE))
-		// 	continue;
-
+		if ((entities[i] & RENDER_SYSTEM_MASK) != RENDER_SYSTEM_MASK)
+			continue;
 		renderables[i].render(&placeables[i]);
 	}
 }

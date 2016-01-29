@@ -10,7 +10,9 @@ static double get_heading(bool n, bool s, bool e, bool w);
 
 void Ship_initialize() 
 {
-	int id = Entity_create_entity(0);
+	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
+									COMPONENT_RENDERABLE |
+									COMPONENT_PLAYER_UPDATABLE);
 
 	PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 	Entity_add_placeable(id, placeable);

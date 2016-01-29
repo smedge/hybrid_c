@@ -6,14 +6,17 @@
 
 #define ENTITY_COUNT 256
 
+#define USER_UPDATE_SYSTEM_MASK (COMPONENT_PLACEABLE | COMPONENT_PLAYER_UPDATABLE)
+#define RENDER_SYSTEM_MASK (COMPONENT_RENDERABLE | COMPONENT_PLACEABLE)
+
 typedef enum {
-	NONE = 0,
-	PLACEABLE = 1 << 1,
-	RENDERABLE = 1 << 2,
-	COLLIDABLE = 1 << 3,
-	PLAYER_UPDATABLE = 1 << 4,
-	AI_UPDATABLE = 1 << 5,
-	USER_INTERFACE = 1 << 6
+	COMPONENT_NONE = 0,
+	COMPONENT_PLACEABLE = 1 << 1,
+	COMPONENT_RENDERABLE = 1 << 2,
+	COMPONENT_COLLIDABLE = 1 << 3,
+	COMPONENT_PLAYER_UPDATABLE = 1 << 4,
+	COMPONENT_AI_UPDATABLE = 1 << 5,
+	COMPONENT_USER_INTERFACE = 1 << 6
 } Component;
 
 typedef struct {
@@ -30,7 +33,8 @@ typedef struct {
  } CollidableComponent;
 
  typedef struct {
- 	void (*update)(const Input *input, const unsigned int ticks, PlaceableComponent *placeable);
+ 	void (*update)(const Input *input, const unsigned int ticks, 
+ 					PlaceableComponent *placeable);
  } UserUpdatableComponent;
 
 int Entity_create_entity(int componentMask);
