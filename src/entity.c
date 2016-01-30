@@ -8,7 +8,6 @@ static UserUpdatableComponent user_updatables[ENTITY_COUNT];
 
 int Entity_create_entity(int componentMask)
 {
-
 	unsigned int entityId;
 	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
 	{
@@ -20,7 +19,16 @@ int Entity_create_entity(int componentMask)
 	return entityId;
 }
 
-void Entity_destroy_entity(int entityId) 
+void Entity_destroy_all()
+{
+	unsigned int entityId;
+	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
+	{
+		Entity_destroy(entityId);
+	}
+}
+
+void Entity_destroy(int entityId) 
 {
 	entities[entityId] = COMPONENT_NONE;
 }
@@ -40,21 +48,23 @@ void Entity_add_collidable(int entityId, CollidableComponent collidable)
 	collidables[entityId] = collidable;
 }
 
-void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable) {
+void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable) 
+{
 	user_updatables[entityId] = updatable;
 }
 
-void System_update_user_input(const Input *input, const unsigned int ticks)
+void Entity_user_update_system(const Input *input, const unsigned int ticks)
 {
 	for(int i = 0; i <= ENTITY_COUNT; i++) 
 	{
 		if ((entities[i] & USER_UPDATE_SYSTEM_MASK) != USER_UPDATE_SYSTEM_MASK)
 			continue;
+
 		user_updatables[i].update(input, ticks, &placeables[i]);
 	}
 }
 
-void System_render_entities() 
+void Entity_render_system() 
 {
 	for(int i = 0; i <= ENTITY_COUNT; i++) 
 	{

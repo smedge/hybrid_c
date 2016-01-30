@@ -17,6 +17,11 @@ void Grid_initialize()
 	Entity_add_renderable(id, renderable);
 }
 
+void Grid_cleanup()
+{
+	
+}
+
 void Grid_render()
 {
 	const View view = View_get_view();

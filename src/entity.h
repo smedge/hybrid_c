@@ -24,27 +24,28 @@ typedef struct {
 	double heading;
 } PlaceableComponent;
 
- typedef struct {
- 	void (*render)(const PlaceableComponent *placeable);
- } RenderableComponent;
+typedef struct {
+	void (*render)(const PlaceableComponent *placeable);
+} RenderableComponent;
 
- typedef struct { 
- 	
- } CollidableComponent;
+typedef struct { 
+	
+} CollidableComponent;
 
- typedef struct {
- 	void (*update)(const Input *input, const unsigned int ticks, 
- 					PlaceableComponent *placeable);
- } UserUpdatableComponent;
+typedef struct {
+	void (*update)(const Input *input, const unsigned int ticks, 
+					PlaceableComponent *placeable);
+} UserUpdatableComponent;
 
 int Entity_create_entity(int componentMask);
-void Entity_destroy_entity(int entityId);
+void Entity_destroy_all();
+void Entity_destroy(int entityId);
 void Entity_add_placeable(int entityId, PlaceableComponent placeable);
 void Entity_add_renderable(int entityId, RenderableComponent renderable);
 void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable);
 void Entity_add_collidable(int entityId, CollidableComponent collidable);
 
-void System_update_user_input(const Input *input, const unsigned int ticks);
-void System_render_entities();
+void Entity_user_update_system(const Input *input, const unsigned int ticks);
+void Entity_render_system();
 
 #endif

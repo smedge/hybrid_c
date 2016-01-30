@@ -7,5 +7,6 @@
 
 void Grid_initialize();
 void Grid_render();
+void Grid_cleanup();
 
 #endif

@@ -2,7 +2,7 @@
 #include "view.h"
 #include "render.h"
 
-static const double NORMAL_VELOCITY = 25.0;
+static const double NORMAL_VELOCITY = 20.0;
 static const double FAST_VELOCITY = 50.0;
 static const double SLOW_VELOCITY = 5.0;
 

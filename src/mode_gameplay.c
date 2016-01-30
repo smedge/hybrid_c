@@ -14,15 +14,14 @@ void Mode_Gameplay_initialize(void)
 
 void Mode_Gameplay_cleanup(void)
 {
+	Entity_destroy_all();
 	Audio_stop_music();
 }
 
 void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
 	cursor_update(input);
-
-	System_update_user_input(input, ticks);
-
+	Entity_user_update_system(input, ticks);
 	View_update(input, ticks);
 }
 
@@ -36,7 +35,7 @@ void Mode_Gameplay_render(void)
 	glPushMatrix();
 
 	View_transform(&screen);
-	System_render_entities();
+	Entity_render_system();
 
 	glPopMatrix();
 
