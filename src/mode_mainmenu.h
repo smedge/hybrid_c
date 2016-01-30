@@ -2,7 +2,7 @@
 #define MODE_MAINMENU_H
 
 #define TITLE_FONT_PATH "./resources/fonts/square_sans_serif_7.ttf"
-#define MENU_MUSIC_PATH "./resources/music/Xilent-Infinity.mp3"
+#define MENU_MUSIC_PATH "./resources/music/deadmau5_00002.mp3"
 
 #define TITLE_TEXT "Hybrid"
 #define NEW_BUTTON_TEXT "New"

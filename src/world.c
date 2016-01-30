@@ -35,7 +35,7 @@ void World_render()
 	
 	glLineWidth(8.0 * view.scale);
 	
-	glColor4f(0.01, 0.0, 0.01, 1.0);
+	glColor4f(0.02, 0.0, 0.02, 1.0);
 	glBegin(GL_QUADS);
 		glVertex2f(1000.0, 1500.0);
 		glVertex2f(1500.0, 1500.0);
@@ -51,7 +51,7 @@ void World_render()
 		glVertex2f(1000.0, -1500.0);
 	glEnd();
 
-	glColor4f(0.01, 0.0, 0.01, 1.0);
+	glColor4f(0.02, 0.0, 0.02, 1.0);
 	glBegin(GL_QUADS);
 		glVertex2f(-1000.0, 1500.0);
 		glVertex2f(-1500.0, 1500.0);
@@ -65,6 +65,70 @@ void World_render()
 		glVertex2f(-1500.0, 1500.0);
 		glVertex2f(-1500.0, -1500.0);
 		glVertex2f(-1000.0, -1500.0);
+	glEnd();
+
+	glColor4f(0.02, 0.0, 0.02, 1.0);
+	glBegin(GL_QUADS);
+		glVertex2f(200.0, 200.0);
+		glVertex2f(200.0, 300.0);
+		glVertex2f(300.0, 300.0);
+		glVertex2f(300.0, 200.0);
+	glEnd();
+
+	glColor4f(0.5, 0.0, 0.5, 1.0);
+	glBegin(GL_LINE_LOOP);
+		glVertex2f(200.0, 200.0);
+		glVertex2f(200.0, 300.0);
+		glVertex2f(300.0, 300.0);
+		glVertex2f(300.0, 200.0);
+	glEnd();
+
+	glColor4f(0.02, 0.0, 0.02, 1.0);
+	glBegin(GL_QUADS);
+		glVertex2f(-200.0, 200.0);
+		glVertex2f(-200.0, 300.0);
+		glVertex2f(-300.0, 300.0);
+		glVertex2f(-300.0, 200.0);
+	glEnd();
+
+	glColor4f(0.5, 0.0, 0.5, 1.0);
+	glBegin(GL_LINE_LOOP);
+		glVertex2f(-200.0, 200.0);
+		glVertex2f(-200.0, 300.0);
+		glVertex2f(-300.0, 300.0);
+		glVertex2f(-300.0, 200.0);
+	glEnd();
+
+	glColor4f(0.02, 0.0, 0.02, 1.0);
+	glBegin(GL_QUADS);
+		glVertex2f(-200.0, -200.0);
+		glVertex2f(-200.0, -300.0);
+		glVertex2f(-300.0, -300.0);
+		glVertex2f(-300.0, -200.0);
+	glEnd();
+
+	glColor4f(0.5, 0.0, 0.5, 1.0);
+	glBegin(GL_LINE_LOOP);
+		glVertex2f(-200.0, -200.0);
+		glVertex2f(-200.0, -300.0);
+		glVertex2f(-300.0, -300.0);
+		glVertex2f(-300.0, -200.0);
+	glEnd();
+
+	glColor4f(0.02, 0.0, 0.02, 1.0);
+	glBegin(GL_QUADS);
+		glVertex2f(200.0, -200.0);
+		glVertex2f(200.0, -300.0);
+		glVertex2f(300.0, -300.0);
+		glVertex2f(300.0, -200.0);
+	glEnd();
+
+	glColor4f(0.5, 0.0, 0.5, 1.0);
+	glBegin(GL_LINE_LOOP);
+		glVertex2f(200.0, -200.0);
+		glVertex2f(200.0, -300.0);
+		glVertex2f(300.0, -300.0);
+		glVertex2f(300.0, -200.0);
 	glEnd();
 
 	glPopMatrix();
