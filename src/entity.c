@@ -1,6 +1,7 @@
 #include "entity.h"
 
 static int entities[ENTITY_COUNT];
+static unsigned int highestIndex = 0;
 static PlaceableComponent placeables[ENTITY_COUNT];
 static RenderableComponent renderables[ENTITY_COUNT];
 static CollidableComponent collidables[ENTITY_COUNT];
@@ -15,6 +16,9 @@ int Entity_create_entity(int componentMask)
 			break;
 	}
 
+	if (highestIndex < entityId)
+		highestIndex = entityId;
+
 	entities[entityId] = componentMask;
 	return entityId;
 }
@@ -22,7 +26,7 @@ int Entity_create_entity(int componentMask)
 void Entity_destroy_all()
 {
 	unsigned int entityId;
-	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
+	for(entityId = 0; entityId < highestIndex; ++entityId)
 	{
 		Entity_destroy(entityId);
 	}
@@ -55,7 +59,7 @@ void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable)
 
 void Entity_user_update_system(const Input *input, const unsigned int ticks)
 {
-	for(int i = 0; i <= ENTITY_COUNT; i++) 
+	for(int i = 0; i <= highestIndex; i++) 
 	{
 		if ((entities[i] & USER_UPDATE_SYSTEM_MASK) != USER_UPDATE_SYSTEM_MASK)
 			continue;
@@ -66,7 +70,7 @@ void Entity_user_update_system(const Input *input, const unsigned int ticks)
 
 void Entity_render_system() 
 {
-	for(int i = 0; i <= ENTITY_COUNT; i++) 
+	for(int i = 0; i <= highestIndex; i++) 
 	{
 		if ((entities[i] & RENDER_SYSTEM_MASK) != RENDER_SYSTEM_MASK)
 			continue;
