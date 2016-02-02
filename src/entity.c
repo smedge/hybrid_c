@@ -26,7 +26,7 @@ int Entity_create_entity(int componentMask)
 void Entity_destroy_all()
 {
 	unsigned int entityId;
-	for(entityId = 0; entityId < highestIndex; ++entityId)
+	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
 	{
 		Entity_destroy(entityId);
 	}
