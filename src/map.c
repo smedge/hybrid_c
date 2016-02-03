@@ -1,11 +1,22 @@
 #include "map.h"
 
+#include "entity.h"
+
 static MapCell *map[MAP_SIZE][MAP_SIZE];
 
 static MapCell emptyCell = {true, {0,0,0,0}, {0,0,0,0}};
 static MapCell cell001 = {false, {16,0,16,255}, {128,0,128,255}};
 
+static void initialize_map_data(void);
+static void initialize_map_entity(void);
+
 void Map_initialize(void)
+{
+	initialize_map_data();
+	initialize_map_entity();
+}
+
+static void initialize_map_data(void)
 {
 	unsigned int i = 0, j = 0;
 	for(i = 0; i < MAP_SIZE; i++) {
@@ -14,5 +25,20 @@ void Map_initialize(void)
 		}
 	}
 
-	map[127][127] = &cell001;
+	map[64][64] = &cell001;
+}
+
+static void initialize_map_entity(void)
+{
+	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
+									COMPONENT_RENDERABLE);
+
+	RenderableComponent renderable;
+	renderable.render = Map_render;
+	Entity_add_renderable(id, renderable);
+}
+
+void Map_render()
+{
+
 }

@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include "color.h"
 
-#define MAP_SIZE 256
+#define MAP_SIZE 128
 
 typedef struct {
 	bool empty;
@@ -13,5 +13,6 @@ typedef struct {
 } MapCell;
 
 void Map_initialize(void);
+void Map_render();
 
 #endif
