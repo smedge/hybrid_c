@@ -1,14 +1,14 @@
 #include "mode_gameplay.h"
 
 #include <SDL2/SDL_opengl.h>
-#include "world.h"
+#include "map.h"
 
 void Mode_Gameplay_initialize(void)
 {
 	Audio_loop_music(GAMEPLAY_MUSIC_PATH);
 	View_initialize();
 	Grid_initialize();
-	World_initialize();
+	Map_initialize();
 	Ship_initialize();
 }
 
