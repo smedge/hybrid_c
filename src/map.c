@@ -30,9 +30,23 @@ static void initialize_map_data(void)
 	}
 
 	set_map_cell(1, 1, &cell001);
+
 	set_map_cell(1, -1, &cell001);
+
 	set_map_cell(-1, 1, &cell001);
+	
 	set_map_cell(-1, -1, &cell001);
+
+	set_map_cell(9, 9, &cell001);
+	set_map_cell(9, 10, &cell001);
+	set_map_cell(9, 11, &cell001);
+	set_map_cell(10, 9, &cell001);
+	set_map_cell(10, 10, &cell001);
+	set_map_cell(10, 11, &cell001);
+	set_map_cell(11, 9, &cell001);
+	set_map_cell(11, 10, &cell001);
+	set_map_cell(11, 11, &cell001);
+
 }
 
 static void initialize_map_entity(void)
@@ -75,7 +89,11 @@ static void render_cell(const int x, const int y)
 
 	View view = View_get_view();
 
-	glLineWidth(8.0 * view.scale);
+	double lineWidth = MAP_MIN_LINE_SIZE * view.scale * 10.0;
+	if (lineWidth < MAP_MIN_LINE_SIZE)
+		lineWidth = MAP_MIN_LINE_SIZE;
+
+	glLineWidth(lineWidth);
 
 	float ax = (x - HALF_MAP_SIZE) * MAP_CELL_SIZE; // TODO USE
 	float ay = (y - HALF_MAP_SIZE) * MAP_CELL_SIZE; // GL HERE INSTEAD 
@@ -93,10 +111,38 @@ static void render_cell(const int x, const int y)
 
 	ColorFloat outlineColor = Color_rgb_to_float(&mapCell.outlineColor);
 	glColor4f(outlineColor.red, outlineColor.green, outlineColor.blue, outlineColor.alpha);
-	glBegin(GL_LINE_LOOP);
-		glVertex2f(ax, ay);
+	
+	MapCell eastCell = *map[x+1][y];
+	MapCell northCell = *map[x][y+1];
+	MapCell westCell = *map[x-1][y];
+	MapCell southCell = *map[x][y-1];
+
+	if (northCell.empty)
+	{
+		glBegin(GL_LINE_STRIP);
 		glVertex2f(ax, by);
+	 	glVertex2f(bx, by);
+		glEnd();
+	}
+	if (eastCell.empty)
+	{
+		glBegin(GL_LINE_STRIP);
 		glVertex2f(bx, by);
-		glVertex2f(bx, ay);
-	glEnd();
+	 	glVertex2f(bx, ay);
+		glEnd();
+	}
+	if (southCell.empty)
+	{
+		glBegin(GL_LINE_STRIP);
+		glVertex2f(bx, ay);;
+	 	glVertex2f(ax, ay);
+		glEnd();
+	}
+	if (westCell.empty)
+	{
+		glBegin(GL_LINE_STRIP);
+		glVertex2f(ax, ay);
+	 	glVertex2f(ax, by);
+		glEnd();
+	}
 }
