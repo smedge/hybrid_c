@@ -3,7 +3,7 @@
 #include <SDL2/SDL_opengl.h>
 
 const double MAX_ZOOM = 4.0;
-const double MIN_ZOOM = 0.2;
+const double MIN_ZOOM = 0.01;
 const double ZOOM_IN_RATE = 1.05;
 const double ZOOM_OUT_RATE = 0.95;
 

@@ -11,6 +11,7 @@ static MapCell cell001 = {false, {20,0,20,255}, {128,0,128,255}};
 
 static void initialize_map_data(void);
 static void initialize_map_entity(void);
+static void set_map_cell(int x, int y, MapCell *cell);
 static void render_cell(const int x, const int y);
  
 void Map_initialize(void)
@@ -28,8 +29,10 @@ static void initialize_map_data(void)
 		}
 	}
 
-	map[65][65] = &cell001;
-	map[65][66] = &cell001;
+	set_map_cell(1, 1, &cell001);
+	set_map_cell(1, -1, &cell001);
+	set_map_cell(-1, 1, &cell001);
+	set_map_cell(-1, -1, &cell001);
 }
 
 static void initialize_map_entity(void)
@@ -40,6 +43,18 @@ static void initialize_map_entity(void)
 	RenderableComponent renderable;
 	renderable.render = Map_render;
 	Entity_add_renderable(id, renderable);
+}
+
+static void set_map_cell(int x, int y, MapCell *cell) {
+	if (x==0 || y==0)
+		return;
+
+	if (x < 0)
+		x--;
+	if (y < 0)
+		y--;
+
+	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
 void Map_render()
@@ -54,17 +69,16 @@ void Map_render()
 
 static void render_cell(const int x, const int y)
 {
+	MapCell mapCell = *map[x][y];
+	if (mapCell.empty)
+		return;
+
 	View view = View_get_view();
 
 	glLineWidth(8.0 * view.scale);
 
-	MapCell mapCell = *map[x][y];
-
-	if (mapCell.empty)
-		return;
-
-	float ax = (x - 64.0) * MAP_CELL_SIZE; // TODO USE
-	float ay = (y - 64.0) * MAP_CELL_SIZE; // GL HERE INSTEAD 
+	float ax = (x - HALF_MAP_SIZE) * MAP_CELL_SIZE; // TODO USE
+	float ay = (y - HALF_MAP_SIZE) * MAP_CELL_SIZE; // GL HERE INSTEAD 
 	float bx = ax + MAP_CELL_SIZE;
 	float by = ay + MAP_CELL_SIZE;
 	

@@ -5,6 +5,7 @@
 #include "color.h"
 
 #define MAP_SIZE 128
+#define HALF_MAP_SIZE MAP_SIZE / 2
 #define MAP_CELL_SIZE 100.0
 
 typedef struct {
