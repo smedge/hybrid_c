@@ -31,14 +31,11 @@ void Mode_Gameplay_render(void)
 	Screen screen = Graphics_get_screen();
 
 	Graphics_set_world_projection();
-
 	glPushMatrix();
-
 	View_transform(&screen);
 	Entity_render_system();
 
 	glPopMatrix();
-
 	Graphics_set_ui_projection();
 	hud_render(&screen);
 	cursor_render();

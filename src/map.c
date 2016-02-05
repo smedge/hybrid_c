@@ -20,6 +20,16 @@ void Map_initialize(void)
 	initialize_map_entity();
 }
 
+void Map_render()
+{
+	unsigned int x = 0, y = 0;
+	for(x = 0; x < MAP_SIZE; x++) {
+		for(y = 0; y < MAP_SIZE; y++) {
+			render_cell(x,y);
+		}
+	}
+}
+
 static void initialize_map_data(void)
 {
 	unsigned int i = 0, j = 0;
@@ -34,18 +44,97 @@ static void initialize_map_data(void)
 	set_map_cell(1, -1, &cell001);
 
 	set_map_cell(-1, 1, &cell001);
-	
+
 	set_map_cell(-1, -1, &cell001);
 
 	set_map_cell(9, 9, &cell001);
 	set_map_cell(9, 10, &cell001);
 	set_map_cell(9, 11, &cell001);
+	set_map_cell(9, 12, &cell001);
+
 	set_map_cell(10, 9, &cell001);
 	set_map_cell(10, 10, &cell001);
 	set_map_cell(10, 11, &cell001);
+	set_map_cell(10, 12, &cell001);
+
 	set_map_cell(11, 9, &cell001);
 	set_map_cell(11, 10, &cell001);
 	set_map_cell(11, 11, &cell001);
+	set_map_cell(11, 12, &cell001);
+
+	set_map_cell(12, 9, &cell001);
+	set_map_cell(12, 10, &cell001);
+	set_map_cell(12, 11, &cell001);
+	set_map_cell(12, 12, &cell001);
+
+
+
+
+	set_map_cell(9, -9, &cell001);
+	set_map_cell(9, -10, &cell001);
+	set_map_cell(9, -11, &cell001);
+	set_map_cell(9, -12, &cell001);
+
+	set_map_cell(10, -9, &cell001);
+	set_map_cell(10, -10, &cell001);
+	set_map_cell(10, -11, &cell001);
+	set_map_cell(10, -12, &cell001);
+
+	set_map_cell(11, -9, &cell001);
+	set_map_cell(11, -10, &cell001);
+	set_map_cell(11, -11, &cell001);
+	set_map_cell(11, -12, &cell001);
+
+	set_map_cell(12, -9, &cell001);
+	set_map_cell(12, -10, &cell001);
+	set_map_cell(12, -11, &cell001);
+	set_map_cell(12, -12, &cell001);
+
+
+
+
+	set_map_cell(-9, 9, &cell001);
+	set_map_cell(-9, 10, &cell001);
+	set_map_cell(-9, 11, &cell001);
+	set_map_cell(-9, 12, &cell001);
+
+	set_map_cell(-10, 9, &cell001);
+	set_map_cell(-10, 10, &cell001);
+	set_map_cell(-10, 11, &cell001);
+	set_map_cell(-10, 12, &cell001);
+
+	set_map_cell(-11, 9, &cell001);
+	set_map_cell(-11, 10, &cell001);
+	set_map_cell(-11, 11, &cell001);
+	set_map_cell(-11, 12, &cell001);
+
+	set_map_cell(-12, 9, &cell001);
+	set_map_cell(-12, 10, &cell001);
+	set_map_cell(-12, 11, &cell001);
+	set_map_cell(-12, 12, &cell001);
+
+
+
+
+	set_map_cell(-9, -9, &cell001);
+	set_map_cell(-9, -10, &cell001);
+	set_map_cell(-9, -11, &cell001);
+	set_map_cell(-9, -12, &cell001);
+
+	set_map_cell(-10, -9, &cell001);
+	set_map_cell(-10, -10, &cell001);
+	set_map_cell(-10, -11, &cell001);
+	set_map_cell(-10, -12, &cell001);
+
+	set_map_cell(-11, -9, &cell001);
+	set_map_cell(-11, -10, &cell001);
+	set_map_cell(-11, -11, &cell001);
+	set_map_cell(-11, -12, &cell001);
+
+	set_map_cell(-12, -9, &cell001);
+	set_map_cell(-12, -10, &cell001);
+	set_map_cell(-12, -11, &cell001);
+	set_map_cell(-12, -12, &cell001);
 
 }
 
@@ -71,16 +160,6 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
-void Map_render()
-{
-	unsigned int x = 0, y = 0;
-	for(x = 0; x < MAP_SIZE; x++) {
-		for(y = 0; y < MAP_SIZE; y++) {
-			render_cell(x,y);
-		}
-	}
-}
-
 static void render_cell(const int x, const int y)
 {
 	MapCell mapCell = *map[x][y];
@@ -89,6 +168,7 @@ static void render_cell(const int x, const int y)
 
 	View view = View_get_view();
 
+	// render the inside of the cell
 	double lineWidth = MAP_MIN_LINE_SIZE * view.scale * 10.0;
 	if (lineWidth < MAP_MIN_LINE_SIZE)
 		lineWidth = MAP_MIN_LINE_SIZE;
@@ -109,13 +189,14 @@ static void render_cell(const int x, const int y)
 		glVertex2f(bx, ay);
 	glEnd();
 
+	// render the outside of the cell
 	ColorFloat outlineColor = Color_rgb_to_float(&mapCell.outlineColor);
 	glColor4f(outlineColor.red, outlineColor.green, outlineColor.blue, outlineColor.alpha);
 	
-	MapCell eastCell = *map[x+1][y];
 	MapCell northCell = *map[x][y+1];
-	MapCell westCell = *map[x-1][y];
+	MapCell eastCell = *map[x+1][y];
 	MapCell southCell = *map[x][y-1];
+	MapCell westCell = *map[x-1][y];
 
 	if (northCell.empty)
 	{
