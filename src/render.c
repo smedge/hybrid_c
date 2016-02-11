@@ -2,9 +2,17 @@
 
 #include <SDL2/SDL_opengl.h>
 
-extern void Render_point()
+extern void Render_point(const Position *position, const double colorR, 
+	const double colorG, const double colorB, const double colorA)
 {
-
+	glPushMatrix();
+	glPointSize(2.0);
+	glColor4f(colorR, colorG, colorB, colorA);
+	glTranslatef(position->x, position->y, 0.0);
+	glBegin(GL_POINTS);
+		glVertex2f(0.0, 0.0);
+	glEnd();
+	glPopMatrix();
 }
 
 extern void Render_line()

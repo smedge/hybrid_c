@@ -41,34 +41,43 @@ void Ship_resolve(void)
 
 }
 
-void Ship_update(const Input *input, const unsigned int ticks, PlaceableComponent *placeable)
+void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable)
 {
 	double velocity;
 	
-	if (input->keyLShift)
+	if (userInput->keyLShift)
 		velocity = FAST_VELOCITY;
-	else if (input->keyLControl)
+	else if (userInput->keyLControl)
 		velocity = SLOW_VELOCITY;
 	else
 		velocity = NORMAL_VELOCITY;
 
-	if (input->keyW)
+	if (userInput->keyW)
 		placeable->position.y += velocity;
-	if (input->keyS)
+	if (userInput->keyS)
 		placeable->position.y -= velocity;
-	if (input->keyD)
+	if (userInput->keyD)
 		placeable->position.x += velocity;
-	if (input->keyA)
+	if (userInput->keyA)
 		placeable->position.x -= velocity;
 
-	if (input->keyW || input->keyA || input->keyS || input->keyD)
-		placeable->heading = get_heading(input->keyW, input->keyS, input->keyD, input->keyA);
-	View_set_position(placeable->position);
+	if (userInput->keyW || userInput->keyA || 
+		userInput->keyS || userInput->keyD)
+	{
+		placeable->heading = get_heading(userInput->keyW, userInput->keyS, 
+										userInput->keyD, userInput->keyA);
+										View_set_position(placeable->position);
+	}
 }
 
 void Ship_render(const PlaceableComponent *placeable)
 {
-	Render_triangle(&placeable->position, placeable->heading, 255.0, 0.0, 0.0, 1.0);
+	View view =  View_get_view();
+
+	if (view.scale > 0.05)
+		Render_triangle(&placeable->position, placeable->heading, 255.0, 0.0, 0.0, 1.0);
+	else
+		Render_point(&placeable->position, 255.0, 0.0, 0.0, 1.0);
 }
 
 static double get_heading(bool n, bool s, bool e, bool w)
