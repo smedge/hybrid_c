@@ -8,6 +8,7 @@ static MapCell *map[MAP_SIZE][MAP_SIZE];
 
 static MapCell emptyCell = {true, {0,0,0,0}, {0,0,0,0}};
 static MapCell cell001 = {false, {20,0,20,255}, {128,0,128,255}};
+static MapCell cell002 = {false, {10,20,20,255}, {64,128,128,255}};
 
 static void initialize_map_data(void);
 static void initialize_map_entity(void);
@@ -16,18 +17,18 @@ static void render_cell(const int x, const int y);
  
 void Map_initialize(void)
 {
-	initialize_map_data();
 	initialize_map_entity();
+	initialize_map_data();
 }
 
-void Map_render()
+static void initialize_map_entity(void)
 {
-	unsigned int x = 0, y = 0;
-	for(x = 0; x < MAP_SIZE; x++) {
-		for(y = 0; y < MAP_SIZE; y++) {
-			render_cell(x,y);
-		}
-	}
+	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
+									COMPONENT_RENDERABLE);
+
+	RenderableComponent renderable;
+	renderable.render = Map_render;
+	Entity_add_renderable(id, renderable);
 }
 
 static void initialize_map_data(void)
@@ -41,11 +42,13 @@ static void initialize_map_data(void)
 
 	set_map_cell(1, 1, &cell001);
 
-	set_map_cell(1, -1, &cell001);
+	set_map_cell(1, -1, &cell002);
 
 	set_map_cell(-1, 1, &cell001);
 
 	set_map_cell(-1, -1, &cell001);
+
+
 
 	set_map_cell(9, 9, &cell001);
 	set_map_cell(9, 10, &cell001);
@@ -54,7 +57,7 @@ static void initialize_map_data(void)
 
 	set_map_cell(10, 9, &cell001);
 	set_map_cell(10, 10, &cell001);
-	set_map_cell(10, 11, &cell001);
+	set_map_cell(10, 11, &cell002);
 	set_map_cell(10, 12, &cell001);
 
 	set_map_cell(11, 9, &cell001);
@@ -69,10 +72,9 @@ static void initialize_map_data(void)
 
 
 
-
 	set_map_cell(9, -9, &cell001);
 	set_map_cell(9, -10, &cell001);
-	set_map_cell(9, -11, &cell001);
+	set_map_cell(9, -11, &cell002);
 	set_map_cell(9, -12, &cell001);
 
 	set_map_cell(10, -9, &cell001);
@@ -82,7 +84,7 @@ static void initialize_map_data(void)
 
 	set_map_cell(11, -9, &cell001);
 	set_map_cell(11, -10, &cell001);
-	set_map_cell(11, -11, &cell001);
+	set_map_cell(11, -11, &cell002);
 	set_map_cell(11, -12, &cell001);
 
 	set_map_cell(12, -9, &cell001);
@@ -92,13 +94,12 @@ static void initialize_map_data(void)
 
 
 
-
 	set_map_cell(-9, 9, &cell001);
 	set_map_cell(-9, 10, &cell001);
 	set_map_cell(-9, 11, &cell001);
 	set_map_cell(-9, 12, &cell001);
 
-	set_map_cell(-10, 9, &cell001);
+	set_map_cell(-10, 9, &cell002);
 	set_map_cell(-10, 10, &cell001);
 	set_map_cell(-10, 11, &cell001);
 	set_map_cell(-10, 12, &cell001);
@@ -109,14 +110,13 @@ static void initialize_map_data(void)
 	set_map_cell(-11, 12, &cell001);
 
 	set_map_cell(-12, 9, &cell001);
-	set_map_cell(-12, 10, &cell001);
-	set_map_cell(-12, 11, &cell001);
+	set_map_cell(-12, 10, &cell002);
+	set_map_cell(-12, 11, &cell002);
 	set_map_cell(-12, 12, &cell001);
 
 
 
-
-	set_map_cell(-9, -9, &cell001);
+	set_map_cell(-9, -9, &cell002);
 	set_map_cell(-9, -10, &cell001);
 	set_map_cell(-9, -11, &cell001);
 	set_map_cell(-9, -12, &cell001);
@@ -127,7 +127,7 @@ static void initialize_map_data(void)
 	set_map_cell(-10, -12, &cell001);
 
 	set_map_cell(-11, -9, &cell001);
-	set_map_cell(-11, -10, &cell001);
+	set_map_cell(-11, -10, &cell002);
 	set_map_cell(-11, -11, &cell001);
 	set_map_cell(-11, -12, &cell001);
 
@@ -136,16 +136,6 @@ static void initialize_map_data(void)
 	set_map_cell(-12, -11, &cell001);
 	set_map_cell(-12, -12, &cell001);
 
-}
-
-static void initialize_map_entity(void)
-{
-	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
-									COMPONENT_RENDERABLE);
-
-	RenderableComponent renderable;
-	renderable.render = Map_render;
-	Entity_add_renderable(id, renderable);
 }
 
 static void set_map_cell(int x, int y, MapCell *cell) {
@@ -158,6 +148,16 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 		y--;
 
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
+}
+
+void Map_render()
+{
+	unsigned int x = 0, y = 0;
+	for(x = 0; x < MAP_SIZE; x++) {
+		for(y = 0; y < MAP_SIZE; y++) {
+			render_cell(x,y);
+		}
+	}
 }
 
 static void render_cell(const int x, const int y)

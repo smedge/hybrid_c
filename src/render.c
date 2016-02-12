@@ -35,3 +35,20 @@ void Render_triangle(const Position *position, const double heading,
 	glEnd();
 	glPopMatrix();
 }
+
+extern void Render_quad()
+{
+	// ColorFloat primaryColor = Color_rgb_to_float(&mapCell.primaryColor);
+	// glColor4f(primaryColor.red, primaryColor.green, primaryColor.blue, primaryColor.alpha);
+	// glBegin(GL_QUADS);
+	// 	glVertex2f(ax, ay);
+	// 	glVertex2f(ax, by);
+	// 	glVertex2f(bx, by);
+	// 	glVertex2f(bx, ay);
+	// glEnd();
+}
+
+extern void Render_convex_poly()
+{
+	
+}

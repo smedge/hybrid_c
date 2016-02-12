@@ -1,10 +1,13 @@
 #include "ship.h"
 #include "view.h"
 #include "render.h"
+#include "color.h"
 
 static const double NORMAL_VELOCITY = 20.0;
 static const double FAST_VELOCITY = 50.0;
 static const double SLOW_VELOCITY = 5.0;
+
+static ColorRGB color = {255, 0, 0, 255};
 
 static double get_heading(bool n, bool s, bool e, bool w);
 
@@ -32,11 +35,6 @@ void Ship_cleanup()
 }
 
 void Ship_collide(void) 
-{
-
-}
-
-void Ship_resolve(void)
 {
 
 }
@@ -73,11 +71,14 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 void Ship_render(const PlaceableComponent *placeable)
 {
 	View view =  View_get_view();
+	ColorFloat colorFloat = Color_rgb_to_float(&color);
 
-	if (view.scale > 0.05)
-		Render_triangle(&placeable->position, placeable->heading, 255.0, 0.0, 0.0, 1.0);
+	if (view.scale > 0.09)
+		Render_triangle(&placeable->position, placeable->heading, 
+			colorFloat.red, colorFloat.green, colorFloat.blue, colorFloat.alpha);
 	else
-		Render_point(&placeable->position, 255.0, 0.0, 0.0, 1.0);
+		Render_point(&placeable->position, colorFloat.red, colorFloat.green, 
+			colorFloat.blue, colorFloat.alpha);
 }
 
 static double get_heading(bool n, bool s, bool e, bool w)
