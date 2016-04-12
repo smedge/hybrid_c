@@ -10,6 +10,9 @@ static MapCell emptyCell = {true, {0,0,0,0}, {0,0,0,0}};
 static MapCell cell001 = {false, {20,0,20,255}, {128,0,128,255}};
 static MapCell cell002 = {false, {10,20,20,255}, {64,128,128,255}};
 
+static RenderableComponent renderable = {Map_render};
+static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collide};
+
 static void initialize_map_data(void);
 static void initialize_map_entity(void);
 static void set_map_cell(int x, int y, MapCell *cell);
@@ -26,12 +29,8 @@ static void initialize_map_entity(void)
 	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
 									COMPONENT_RENDERABLE);
 
-	RenderableComponent renderable;
-	renderable.render = Map_render;
-	Entity_add_renderable(id, renderable);
-
-	CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collide};
-	Entity_add_collidable(id, collidable);
+	Entity_add_renderable(id, &renderable);
+	Entity_add_collidable(id, &collidable);
 }
 
 static void initialize_map_data(void)

@@ -9,6 +9,11 @@ static const double SLOW_VELOCITY = 100.0;
 
 static ColorRGB color = {255, 0, 0, 255};
 
+static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
+static RenderableComponent renderable = {Ship_render};
+static UserUpdatableComponent updatable = {Ship_update};
+static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, true, Ship_collide};
+
 static double get_heading(bool n, bool s, bool e, bool w);
 
 void Ship_initialize() 
@@ -17,19 +22,10 @@ void Ship_initialize()
 									COMPONENT_RENDERABLE |
 									COMPONENT_PLAYER_UPDATABLE);
 
-	PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
-	Entity_add_placeable(id, placeable);
-	
-	RenderableComponent renderable = {0};
-	renderable.render = Ship_render;
-	Entity_add_renderable(id, renderable);
-
-	UserUpdatableComponent updatable = {0};
-	updatable.update = Ship_update;
-	Entity_add_user_updatable(id, updatable);
-
-	CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, true, Ship_collide};
-	Entity_add_collidable(id, collidable);
+	Entity_add_placeable(id, &placeable);
+	Entity_add_renderable(id, &renderable);
+	Entity_add_user_updatable(id, &updatable);
+	Entity_add_collidable(id, &collidable);
 }
 
 void Ship_cleanup() 

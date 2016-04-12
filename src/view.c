@@ -11,9 +11,9 @@ static View view = {{0.0, 0.0}, 1.0};
 
 void View_initialize()
 {
-	view.position.x = 0.0;
-	view.position.y = 0.0;
-	view.scale = 0.5;
+	// view.position.x = 0.0;
+	// view.position.y = 0.0;
+	// view.scale = 0.5;
 }
 
 void View_update(const Input *input, const unsigned int ticks)

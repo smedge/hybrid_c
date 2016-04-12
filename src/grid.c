@@ -7,13 +7,14 @@ const double GRID_SIZE = 100.0;
 const double GRID_MIN_LINE_SIZE = 1.0;
 const double GRID_MIN_BIG_LINE_SIZE = 3.0;
 
+static RenderableComponent renderable = {Grid_render};
+
 void Grid_initialize()
 {
 	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
 									COMPONENT_RENDERABLE);
 
-	RenderableComponent renderable = {Grid_render};
-	Entity_add_renderable(id, renderable);
+	Entity_add_renderable(id, &renderable);
 }
 
 void Grid_cleanup()
