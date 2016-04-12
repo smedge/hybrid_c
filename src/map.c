@@ -29,6 +29,9 @@ static void initialize_map_entity(void)
 	RenderableComponent renderable;
 	renderable.render = Map_render;
 	Entity_add_renderable(id, renderable);
+
+	CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collide};
+	Entity_add_collidable(id, collidable);
 }
 
 static void initialize_map_data(void)
@@ -148,6 +151,10 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 		y--;
 
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
+}
+
+bool Map_collide() {
+	return false;
 }
 
 void Map_render()

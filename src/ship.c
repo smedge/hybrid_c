@@ -3,9 +3,9 @@
 #include "render.h"
 #include "color.h"
 
-static const double NORMAL_VELOCITY = 20.0;
-static const double FAST_VELOCITY = 50.0;
-static const double SLOW_VELOCITY = 5.0;
+static const double NORMAL_VELOCITY = 500.0;
+static const double FAST_VELOCITY = 1500.0;
+static const double SLOW_VELOCITY = 100.0;
 
 static ColorRGB color = {255, 0, 0, 255};
 
@@ -20,13 +20,16 @@ void Ship_initialize()
 	PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 	Entity_add_placeable(id, placeable);
 	
-	RenderableComponent renderable;
+	RenderableComponent renderable = {0};
 	renderable.render = Ship_render;
 	Entity_add_renderable(id, renderable);
 
-	UserUpdatableComponent updatable;
+	UserUpdatableComponent updatable = {0};
 	updatable.update = Ship_update;
 	Entity_add_user_updatable(id, updatable);
+
+	CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, true, Ship_collide};
+	Entity_add_collidable(id, collidable);
 }
 
 void Ship_cleanup() 
@@ -34,15 +37,16 @@ void Ship_cleanup()
 
 }
 
-void Ship_collide(void) 
+bool Ship_collide(const Rectangle *rectangle) 
 {
-
+	return false;
 }
 
 void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable)
 {
-	double velocity;
+	double ticksNormalized = ticks / 1000.0;
 	
+	double velocity;
 	if (userInput->keyLShift)
 		velocity = FAST_VELOCITY;
 	else if (userInput->keyLControl)
@@ -51,13 +55,13 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		velocity = NORMAL_VELOCITY;
 
 	if (userInput->keyW)
-		placeable->position.y += velocity;
+		placeable->position.y += velocity * ticksNormalized;
 	if (userInput->keyS)
-		placeable->position.y -= velocity;
+		placeable->position.y -= velocity * ticksNormalized;
 	if (userInput->keyD)
-		placeable->position.x += velocity;
+		placeable->position.x += velocity * ticksNormalized;
 	if (userInput->keyA)
-		placeable->position.x -= velocity;
+		placeable->position.x -= velocity * ticksNormalized;
 
 	if (userInput->keyW || userInput->keyA || 
 		userInput->keyS || userInput->keyD)

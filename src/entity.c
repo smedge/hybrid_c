@@ -78,3 +78,35 @@ void Entity_render_system()
 		renderables[i].render(&placeables[i]);
 	}
 }
+
+void Entity_collision_system()
+{
+	for(int i = 0; i <= highestIndex; i++) 
+	{
+		if ((entities[i] & COLLISION_SYSTEM_MASK) != COLLISION_SYSTEM_MASK)
+			continue;
+
+		if (!collidables[i].collidesWithOthers)
+			continue;
+
+		for (int j = 0; j <= highestIndex; j++)
+		{
+			if ((entities[j] & COLLISION_SYSTEM_MASK) != COLLISION_SYSTEM_MASK)
+				continue;
+			
+			if (i == j)
+				continue;
+
+			// TODO handle the placeable
+
+			// TODO not this simple. wont handle map with its multiple cells
+			bool  collisionDetected = Collision_aabb_test(collidables[i].boundary, 
+											collidables[j].boundary);
+			if (collisionDetected)
+			{
+				// onCollide
+				// affect the dynamics simulation
+			}
+		}
+	}
+}

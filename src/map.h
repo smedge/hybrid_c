@@ -16,7 +16,7 @@ typedef struct {
 } MapCell;
 
 void Map_initialize(void);
-void Map_collide();
+bool Map_collide();
 void Map_render();
 
 #endif

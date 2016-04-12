@@ -3,11 +3,13 @@
 
 #include "input.h"
 #include "position.h"
+#include "collision.h"
 
-#define ENTITY_COUNT 512
+#define ENTITY_COUNT 1024
 
 #define USER_UPDATE_SYSTEM_MASK (COMPONENT_PLACEABLE | COMPONENT_PLAYER_UPDATABLE)
 #define RENDER_SYSTEM_MASK (COMPONENT_RENDERABLE | COMPONENT_PLACEABLE)
+#define COLLISION_SYSTEM_MASK (COMPONENT_COLLIDABLE | COMPONENT_PLACEABLE)
 
 typedef enum {
 	COMPONENT_NONE = 0,
@@ -28,9 +30,15 @@ typedef struct {
 	void (*render)(const PlaceableComponent *placeable);
 } RenderableComponent;
 
-typedef struct { 
-	
+typedef struct {
+	Rectangle boundary;
+	bool collidesWithOthers;
+	bool (*collide)(const Rectangle *rectangle);
 } CollidableComponent;
+
+typedef struct {
+	double mass;
+} DynamicsComponent;
 
 typedef struct {
 	void (*update)(const Input *input, const unsigned int ticks, 
@@ -47,5 +55,6 @@ void Entity_add_collidable(int entityId, CollidableComponent collidable);
 
 void Entity_user_update_system(const Input *input, const unsigned int ticks);
 void Entity_render_system();
+void Entity_collision_system();
 
 #endif

@@ -8,7 +8,7 @@
 void Ship_initialize();
 void Ship_cleanup();
 
-void Ship_collide();
+bool Ship_collide(const Rectangle *rectangle);
 void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);
 void Ship_render(const PlaceableComponent *placeable);
 
