@@ -97,15 +97,12 @@ void Entity_collision_system()
 			if (i == j)
 				continue;
 
-			// TODO handle the placeable
-
-			// TODO not this simple. wont handle map with its multiple cells
-			bool  collisionDetected = Collision_aabb_test(collidables[i].boundary, 
-											collidables[j].boundary);
+			Position *otherPosition = &placeables[i].position;
+			Rectangle *otherBoundingBox = &collidables[i].boundingBox;
+			bool  collisionDetected = collidables[j].collide(otherBoundingBox);
 			if (collisionDetected)
 			{
-				// onCollide
-				// affect the dynamics simulation
+				collidables[i].resolve();
 			}
 		}
 	}

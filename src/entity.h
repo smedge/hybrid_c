@@ -31,9 +31,10 @@ typedef struct {
 } RenderableComponent;
 
 typedef struct {
-	Rectangle boundary;
+	Rectangle boundingBox;
 	bool collidesWithOthers;
 	bool (*collide)(const Rectangle *rectangle);
+	void (*resolve)();
 } CollidableComponent;
 
 typedef struct {

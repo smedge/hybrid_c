@@ -12,8 +12,7 @@ void Grid_initialize()
 	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
 									COMPONENT_RENDERABLE);
 
-	RenderableComponent renderable;
-	renderable.render = Grid_render;
+	RenderableComponent renderable = {Grid_render};
 	Entity_add_renderable(id, renderable);
 }
 
