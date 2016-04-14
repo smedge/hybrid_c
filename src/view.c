@@ -7,14 +7,9 @@ const double MIN_ZOOM = 0.01;
 const double ZOOM_IN_RATE = 1.05;
 const double ZOOM_OUT_RATE = 0.95;
 
-static View view = {{0.0, 0.0}, 1.0};
+static View view = {{0.0, 0.0}, .5};
 
-void View_initialize()
-{
-	view.position.x = 0.0;
-	view.position.y = 0.0;
-	view.scale = 0.5;
-}
+void View_initialize() {}
 
 void View_update(const Input *input, const unsigned int ticks)
 {

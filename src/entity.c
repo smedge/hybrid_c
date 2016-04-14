@@ -1,11 +1,15 @@
 #include "entity.h"
 
+
+#include "stdio.h" // DEV
+
+
 static int entities[ENTITY_COUNT];
 static unsigned int highestIndex = 0;
-static PlaceableComponent placeables[ENTITY_COUNT];
-static RenderableComponent renderables[ENTITY_COUNT];
-static CollidableComponent collidables[ENTITY_COUNT];
-static UserUpdatableComponent user_updatables[ENTITY_COUNT];
+static PlaceableComponent *placeables[ENTITY_COUNT];
+static RenderableComponent *renderables[ENTITY_COUNT];
+static CollidableComponent *collidables[ENTITY_COUNT];
+static UserUpdatableComponent *user_updatables[ENTITY_COUNT];
 
 int Entity_create_entity(int componentMask)
 {
@@ -37,22 +41,22 @@ void Entity_destroy(int entityId)
 	entities[entityId] = COMPONENT_NONE;
 }
 
-void Entity_add_placeable(int entityId, PlaceableComponent placeable) 
+void Entity_add_placeable(int entityId, PlaceableComponent *placeable) 
 {
 	placeables[entityId] = placeable;
 }
 
-void Entity_add_renderable(int entityId, RenderableComponent renderable)
+void Entity_add_renderable(int entityId, RenderableComponent *renderable)
 {
 	renderables[entityId] = renderable;
 }
 
-void Entity_add_collidable(int entityId, CollidableComponent collidable) 
+void Entity_add_collidable(int entityId, CollidableComponent *collidable) 
 {
 	collidables[entityId] = collidable;
 }
 
-void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable) 
+void Entity_add_user_updatable(int entityId, UserUpdatableComponent *updatable) 
 {
 	user_updatables[entityId] = updatable;
 }
@@ -64,7 +68,7 @@ void Entity_user_update_system(const Input *input, const unsigned int ticks)
 		if ((entities[i] & USER_UPDATE_SYSTEM_MASK) != USER_UPDATE_SYSTEM_MASK)
 			continue;
 
-		user_updatables[i].update(input, ticks, &placeables[i]);
+		user_updatables[i]->update(input, ticks, placeables[i]);
 	}
 }
 
@@ -75,7 +79,7 @@ void Entity_render_system()
 		if ((entities[i] & RENDER_SYSTEM_MASK) != RENDER_SYSTEM_MASK)
 			continue;
 		
-		renderables[i].render(&placeables[i]);
+		renderables[i]->render(placeables[i]);
 	}
 }
 
@@ -86,26 +90,33 @@ void Entity_collision_system()
 		if ((entities[i] & COLLISION_SYSTEM_MASK) != COLLISION_SYSTEM_MASK)
 			continue;
 
-		if (!collidables[i].collidesWithOthers)
+		if (!collidables[i]->collidesWithOthers)
 			continue;
 
 		for (int j = 0; j <= highestIndex; j++)
 		{
 			if ((entities[j] & COLLISION_SYSTEM_MASK) != COLLISION_SYSTEM_MASK)
 				continue;
-			
+
 			if (i == j)
 				continue;
 
-			// TODO handle the placeable
+			// create a cransformed bounding box for i
+			Position position = placeables[i]->position;
+			Rectangle boundingBox = collidables[i]->boundingBox;
+			Rectangle transformedBoundingBox = {
+				boundingBox.aX + position.x,
+				boundingBox.aY + position.y,
+				boundingBox.bX + position.x,
+				boundingBox.bY + position.y,
+			};
 
-			// TODO not this simple. wont handle map with its multiple cells
-			bool  collisionDetected = Collision_aabb_test(collidables[i].boundary, 
-											collidables[j].boundary);
+			// call j's collide with i's transformed bounding box
+			bool collisionDetected = collidables[j]->collide(transformedBoundingBox);
 			if (collisionDetected)
 			{
-				// onCollide
-				// affect the dynamics simulation
+				printf("resolve\n");
+				collidables[i]->resolve();
 			}
 		}
 	}

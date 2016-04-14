@@ -31,9 +31,10 @@ typedef struct {
 } RenderableComponent;
 
 typedef struct {
-	Rectangle boundary;
+	Rectangle boundingBox;
 	bool collidesWithOthers;
-	bool (*collide)(const Rectangle *rectangle);
+	bool (*collide)(const Rectangle rectangle);
+	void (*resolve)();
 } CollidableComponent;
 
 typedef struct {
@@ -48,10 +49,10 @@ typedef struct {
 int Entity_create_entity(int componentMask);
 void Entity_destroy_all();
 void Entity_destroy(int entityId);
-void Entity_add_placeable(int entityId, PlaceableComponent placeable);
-void Entity_add_renderable(int entityId, RenderableComponent renderable);
-void Entity_add_user_updatable(int entityId, UserUpdatableComponent updatable);
-void Entity_add_collidable(int entityId, CollidableComponent collidable);
+void Entity_add_placeable(int entityId, PlaceableComponent *placeable);
+void Entity_add_renderable(int entityId, RenderableComponent *renderable);
+void Entity_add_user_updatable(int entityId, UserUpdatableComponent *updatable);
+void Entity_add_collidable(int entityId, CollidableComponent *collidable);
 
 void Entity_user_update_system(const Input *input, const unsigned int ticks);
 void Entity_render_system();

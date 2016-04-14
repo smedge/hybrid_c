@@ -10,6 +10,9 @@ static MapCell emptyCell = {true, {0,0,0,0}, {0,0,0,0}};
 static MapCell cell001 = {false, {20,0,20,255}, {128,0,128,255}};
 static MapCell cell002 = {false, {10,20,20,255}, {64,128,128,255}};
 
+static RenderableComponent renderable = {Map_render};
+static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collide};
+
 static void initialize_map_data(void);
 static void initialize_map_entity(void);
 static void set_map_cell(int x, int y, MapCell *cell);
@@ -24,14 +27,11 @@ void Map_initialize(void)
 static void initialize_map_entity(void)
 {
 	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
-									COMPONENT_RENDERABLE);
+									COMPONENT_RENDERABLE|
+									COMPONENT_COLLIDABLE);
 
-	RenderableComponent renderable;
-	renderable.render = Map_render;
-	Entity_add_renderable(id, renderable);
-
-	CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collide};
-	Entity_add_collidable(id, collidable);
+	Entity_add_renderable(id, &renderable);
+	Entity_add_collidable(id, &collidable);
 }
 
 static void initialize_map_data(void)
@@ -153,8 +153,22 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
-bool Map_collide() {
-	return false;
+bool Map_collide(Rectangle boundingBox) 
+{
+	// use int truncation to calculate cell
+	int cellX = boundingBox.aX / MAP_CELL_SIZE;
+	int cellY = boundingBox.aY / MAP_CELL_SIZE;
+
+	// correct for truncation
+	if (boundingBox.aX < 0.0)
+		cellX--;
+	if (boundingBox.aY < 0.0)
+		cellY--;
+
+	if (map[cellX + HALF_MAP_SIZE][cellY + HALF_MAP_SIZE]->empty)
+		return false;
+	else 
+		return true;
 }
 
 void Map_render()
