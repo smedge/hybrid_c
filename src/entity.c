@@ -1,5 +1,9 @@
 #include "entity.h"
 
+
+#include "stdio.h" // DEV
+
+
 static int entities[ENTITY_COUNT];
 static unsigned int highestIndex = 0;
 static PlaceableComponent *placeables[ENTITY_COUNT];
@@ -93,15 +97,25 @@ void Entity_collision_system()
 		{
 			if ((entities[j] & COLLISION_SYSTEM_MASK) != COLLISION_SYSTEM_MASK)
 				continue;
-			
+
 			if (i == j)
 				continue;
 
-			Position *otherPosition = &placeables[i]->position;
-			Rectangle *otherBoundingBox = &collidables[i]->boundingBox;
-			bool  collisionDetected = collidables[j]->collide(otherBoundingBox);
+			// create a cransformed bounding box for i
+			Position position = placeables[i]->position;
+			Rectangle boundingBox = collidables[i]->boundingBox;
+			Rectangle transformedBoundingBox = {
+				boundingBox.aX + position.x,
+				boundingBox.aY + position.y,
+				boundingBox.bX + position.x,
+				boundingBox.bY + position.y,
+			};
+
+			// call j's collide with i's transformed bounding box
+			bool collisionDetected = collidables[j]->collide(transformedBoundingBox);
 			if (collisionDetected)
 			{
+				printf("resolve\n");
 				collidables[i]->resolve();
 			}
 		}

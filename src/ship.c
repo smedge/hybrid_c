@@ -12,7 +12,7 @@ static ColorRGB color = {255, 0, 0, 255};
 static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 static RenderableComponent renderable = {Ship_render};
 static UserUpdatableComponent updatable = {Ship_update};
-static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, true, Ship_collide};
+static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, true, Ship_collide, Ship_resolve};
 
 static double get_heading(bool n, bool s, bool e, bool w);
 
@@ -20,7 +20,8 @@ void Ship_initialize()
 {
 	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
 									COMPONENT_RENDERABLE |
-									COMPONENT_PLAYER_UPDATABLE);
+									COMPONENT_PLAYER_UPDATABLE|
+									COMPONENT_COLLIDABLE);
 
 	Entity_add_placeable(id, &placeable);
 	Entity_add_renderable(id, &renderable);
@@ -33,9 +34,15 @@ void Ship_cleanup()
 
 }
 
-bool Ship_collide(const Rectangle *rectangle) 
+bool Ship_collide(const Rectangle rectangle) 
 {
 	return false;
+}
+
+void Ship_resolve()
+{
+	placeable.position.x = 0.0;
+	placeable.position.y = 0.0;
 }
 
 void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable)

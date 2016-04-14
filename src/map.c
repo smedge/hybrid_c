@@ -27,7 +27,8 @@ void Map_initialize(void)
 static void initialize_map_entity(void)
 {
 	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
-									COMPONENT_RENDERABLE);
+									COMPONENT_RENDERABLE|
+									COMPONENT_COLLIDABLE);
 
 	Entity_add_renderable(id, &renderable);
 	Entity_add_collidable(id, &collidable);
@@ -152,8 +153,22 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
-bool Map_collide() {
-	return false;
+bool Map_collide(Rectangle boundingBox) 
+{
+	// use int truncation to calculate cell
+	int cellX = boundingBox.aX / MAP_CELL_SIZE;
+	int cellY = boundingBox.aY / MAP_CELL_SIZE;
+
+	// correct for truncation
+	if (boundingBox.aX < 0.0)
+		cellX--;
+	if (boundingBox.aY < 0.0)
+		cellY--;
+
+	if (map[cellX + HALF_MAP_SIZE][cellY + HALF_MAP_SIZE]->empty)
+		return false;
+	else 
+		return true;
 }
 
 void Map_render()
