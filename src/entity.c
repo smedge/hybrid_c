@@ -101,7 +101,7 @@ void Entity_collision_system()
 			if (i == j)
 				continue;
 
-			// create a cransformed bounding box for i
+			// create a transformed bounding box for i
 			Position position = placeables[i]->position;
 			Rectangle boundingBox = collidables[i]->boundingBox;
 			Rectangle transformedBoundingBox = {
@@ -115,7 +115,6 @@ void Entity_collision_system()
 			bool collisionDetected = collidables[j]->collide(transformedBoundingBox);
 			if (collisionDetected)
 			{
-				printf("resolve\n");
 				collidables[i]->resolve();
 			}
 		}

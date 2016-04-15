@@ -165,6 +165,7 @@ bool Map_collide(Rectangle boundingBox)
 	if (boundingBox.aY < 0.0)
 		cellY--;
 
+	// check for emptiness
 	if (map[cellX + HALF_MAP_SIZE][cellY + HALF_MAP_SIZE]->empty)
 		return false;
 	else 

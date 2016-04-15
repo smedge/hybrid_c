@@ -24,6 +24,8 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	Entity_user_update_system(input, ticks);
 	Entity_collision_system();
 	View_update(input, ticks);
+
+	View_set_position(Ship_get_position());
 }
 
 void Mode_Gameplay_render(void)

@@ -33,7 +33,7 @@ typedef struct {
 typedef struct {
 	Rectangle boundingBox;
 	bool collidesWithOthers;
-	bool (*collide)(const Rectangle rectangle);
+	bool (*collide)(const Rectangle boundingBox);
 	void (*resolve)();
 } CollidableComponent;
 
