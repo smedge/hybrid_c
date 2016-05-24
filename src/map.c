@@ -17,6 +17,7 @@ static void initialize_map_data(void);
 static void initialize_map_entity(void);
 static void set_map_cell(int x, int y, MapCell *cell);
 static void render_cell(const int x, const int y);
+static int correctTruncation(int i);
  
 void Map_initialize(void)
 {
@@ -156,20 +157,31 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 bool Map_collide(Rectangle boundingBox) 
 {
 	// use int truncation to calculate cell
-	int cellX = boundingBox.aX / MAP_CELL_SIZE;
-	int cellY = boundingBox.aY / MAP_CELL_SIZE;
+	int corner1CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
+	int corner1CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
 
-	// correct for truncation
-	if (boundingBox.aX < 0.0)
-		cellX--;
-	if (boundingBox.aY < 0.0)
-		cellY--;
+	int corner2CellX = correctTruncation(boundingBox.bX / MAP_CELL_SIZE);
+	int corner2CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
+
+	int corner3CellX = correctTruncation(boundingBox.bX / MAP_CELL_SIZE);
+	int corner3CellY = correctTruncation(boundingBox.bY / MAP_CELL_SIZE);
+
+	int corner4CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
+	int corner4CellY = correctTruncation(boundingBox.bY / MAP_CELL_SIZE);
 
 	// check for emptiness
-	if (map[cellX + HALF_MAP_SIZE][cellY + HALF_MAP_SIZE]->empty)
+	if (map[corner1CellX + HALF_MAP_SIZE][corner1CellY + HALF_MAP_SIZE]->empty)
 		return false;
 	else 
 		return true;
+}
+
+static int correctTruncation(int i)
+{
+	if (i < 0)
+		return --i;
+	else 
+		return i;
 }
 
 void Map_render()
