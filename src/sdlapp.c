@@ -70,7 +70,7 @@ static void loop(void)
 	Input input;
 	input_initialize(&input);
 	unsigned int ticks = 0;
-	const unsigned int delay = 1000 / 60;
+	const unsigned int delay = 1000 / 90;
 	
 	while(!sdlApp.quit) {
 		ticks = timer_tick();

@@ -156,7 +156,7 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 
 bool Map_collide(Rectangle boundingBox) 
 {
-	// use int truncation to calculate cell
+	// use int truncation to calculate corner cells
 	int corner1CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
 	int corner1CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
 
@@ -169,8 +169,16 @@ bool Map_collide(Rectangle boundingBox)
 	int corner4CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
 	int corner4CellY = correctTruncation(boundingBox.bY / MAP_CELL_SIZE);
 
+	int mapX = corner1CellX + HALF_MAP_SIZE;
+	int mapY = corner1CellY + HALF_MAP_SIZE;
+
+	// bounds check on the map array
+	if (mapX < 0 || mapX >= MAP_SIZE ||
+		mapY < 0 || mapY >= MAP_SIZE)
+		return false;
+
 	// check for emptiness
-	if (map[corner1CellX + HALF_MAP_SIZE][corner1CellY + HALF_MAP_SIZE]->empty)
+	if (map[mapX][mapY]->empty)
 		return false;
 	else 
 		return true;

@@ -1,9 +1,5 @@
 #include "entity.h"
 
-
-#include "stdio.h" // DEV
-
-
 static int entities[ENTITY_COUNT];
 static unsigned int highestIndex = 0;
 static PlaceableComponent *placeables[ENTITY_COUNT];
