@@ -140,6 +140,14 @@ static void initialize_map_data(void)
 	set_map_cell(-12, -11, &cell001);
 	set_map_cell(-12, -12, &cell001);
 
+	set_map_cell(254, 254, &cell001);
+
+	set_map_cell(254, -254, &cell002);
+
+	set_map_cell(-254, 254, &cell001);
+
+	set_map_cell(-254, -254, &cell001);
+
 }
 
 static void set_map_cell(int x, int y, MapCell *cell) {
@@ -154,7 +162,7 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
-bool Map_collide(Rectangle boundingBox) 
+bool Map_collide(const Rectangle boundingBox) 
 {
 	// use int truncation to calculate corner cells
 	int corner1CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
@@ -172,7 +180,7 @@ bool Map_collide(Rectangle boundingBox)
 	int mapX = corner1CellX + HALF_MAP_SIZE;
 	int mapY = corner1CellY + HALF_MAP_SIZE;
 
-	// bounds check on the map array
+	// bounds check the map array
 	if (mapX < 0 || mapX >= MAP_SIZE ||
 		mapY < 0 || mapY >= MAP_SIZE)
 		return false;

@@ -23,7 +23,7 @@ int Entity_create_entity(int componentMask)
 	return entityId;
 }
 
-void Entity_destroy_all()
+void Entity_destroy_all(void)
 {
 	unsigned int entityId;
 	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
@@ -68,7 +68,7 @@ void Entity_user_update_system(const Input *input, const unsigned int ticks)
 	}
 }
 
-void Entity_render_system() 
+void Entity_render_system(void) 
 {
 	for(int i = 0; i <= highestIndex; i++) 
 	{
@@ -79,7 +79,7 @@ void Entity_render_system()
 	}
 }
 
-void Entity_collision_system()
+void Entity_collision_system(void)
 {
 	for(int i = 0; i <= highestIndex; i++) 
 	{

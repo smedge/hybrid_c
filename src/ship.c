@@ -16,11 +16,6 @@ static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, true, Ship_collid
 
 static double get_heading(bool n, bool s, bool e, bool w);
 
-Position Ship_get_position()
-{
-	return placeable.position;
-}
-
 void Ship_initialize() 
 {
 	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
@@ -53,7 +48,7 @@ bool Ship_collide(const Rectangle boundingBox)
 	return Collision_aabb_test(transformedBoundingBox, boundingBox);
 }
 
-void Ship_resolve()
+void Ship_resolve(void)
 {
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -99,6 +94,11 @@ void Ship_render(const PlaceableComponent *placeable)
 	else
 		Render_point(&placeable->position, colorFloat.red, colorFloat.green, 
 			colorFloat.blue, colorFloat.alpha);
+}
+
+Position Ship_get_position()
+{
+	return placeable.position;
 }
 
 static double get_heading(bool n, bool s, bool e, bool w)
