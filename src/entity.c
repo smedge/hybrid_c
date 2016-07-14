@@ -108,10 +108,10 @@ void Entity_collision_system(void)
 			};
 
 			// call j's collide with i's transformed bounding box
-			bool collisionDetected = collidables[j]->collide(transformedBoundingBox);
-			if (collisionDetected)
+			Collision collision = collidables[j]->collide(transformedBoundingBox);
+			if (collision.collisionDetected)
 			{
-				collidables[i]->resolve();
+				collidables[i]->resolve(collision);
 			}
 		}
 	}

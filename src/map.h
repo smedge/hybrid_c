@@ -17,7 +17,7 @@ typedef struct {
 } MapCell;
 
 void Map_initialize(void);
-bool Map_collide(Rectangle boundingBox);
+Collision Map_collide(Rectangle boundingBox);
 void Map_render();
 
 #endif

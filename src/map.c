@@ -162,34 +162,41 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
-bool Map_collide(const Rectangle boundingBox) 
+Collision Map_collide(const Rectangle boundingBox) 
 {
 	// use int truncation to calculate corner cells
 	int corner1CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
 	int corner1CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
 
-	int corner2CellX = correctTruncation(boundingBox.bX / MAP_CELL_SIZE);
-	int corner2CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
+	// TODO finish multicell dollision detection
+	// int corner2CellX = correctTruncation(boundingBox.bX / MAP_CELL_SIZE);
+	// int corner2CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
 
-	int corner3CellX = correctTruncation(boundingBox.bX / MAP_CELL_SIZE);
-	int corner3CellY = correctTruncation(boundingBox.bY / MAP_CELL_SIZE);
+	// int corner3CellX = correctTruncation(boundingBox.bX / MAP_CELL_SIZE);
+	// int corner3CellY = correctTruncation(boundingBox.bY / MAP_CELL_SIZE);
 
-	int corner4CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
-	int corner4CellY = correctTruncation(boundingBox.bY / MAP_CELL_SIZE);
+	// int corner4CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
+	// int corner4CellY = correctTruncation(boundingBox.bY / MAP_CELL_SIZE);
 
 	int mapX = corner1CellX + HALF_MAP_SIZE;
 	int mapY = corner1CellY + HALF_MAP_SIZE;
 
-	// bounds check the map array
-	if (mapX < 0 || mapX >= MAP_SIZE ||
-		mapY < 0 || mapY >= MAP_SIZE)
-		return false;
+	Collision collision = {false};
 
+	// bounds check the map array
+	if (mapX < 0 || mapX >= MAP_SIZE || mapY < 0 || mapY >= MAP_SIZE) {
+		collision.collisionDetected = false;
+	}
+		
 	// check for emptiness
-	if (map[mapX][mapY]->empty)
-		return false;
-	else 
-		return true;
+	if (map[mapX][mapY]->empty) {
+		collision.collisionDetected = false;
+	}
+	else {
+		collision.collisionDetected = true;
+	}
+	
+	return collision;
 }
 
 static int correctTruncation(int i)
