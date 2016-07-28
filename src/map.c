@@ -140,13 +140,13 @@ static void initialize_map_data(void)
 	set_map_cell(-12, -11, &cell001);
 	set_map_cell(-12, -12, &cell001);
 
-	set_map_cell(254, 254, &cell001);
+	set_map_cell(510, 510, &cell001);
 
-	set_map_cell(254, -254, &cell002);
+	set_map_cell(510, -510, &cell002);
 
-	set_map_cell(-254, 254, &cell001);
+	set_map_cell(-510, 510, &cell001);
 
-	set_map_cell(-254, -254, &cell001);
+	set_map_cell(-510, -510, &cell001);
 
 }
 
@@ -186,6 +186,7 @@ Collision Map_collide(const Rectangle boundingBox)
 	// bounds check the map array
 	if (mapX < 0 || mapX >= MAP_SIZE || mapY < 0 || mapY >= MAP_SIZE) {
 		collision.collisionDetected = false;
+		return collision;
 	}
 		
 	// check for emptiness

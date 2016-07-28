@@ -4,6 +4,7 @@
 #include <SDL2/SDL_opengl.h>
 
 const double GRID_SIZE = 100.0;
+const double BIG_GRID_SIZE = 16.0;
 const double GRID_MIN_LINE_SIZE = 1.0;
 const double GRID_MIN_BIG_LINE_SIZE = 3.0;
 
@@ -58,7 +59,7 @@ void Grid_render()
 		for (int i = GRID_SIZE;
 				i<HALF_SCREEN_WIDTH + view.position.x;
 				i+=GRID_SIZE) {
-			if (fmod(i, GRID_SIZE * 20.0) == 0.0)
+			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
 				glColor4f(0.0, 1.0, 0.0, 0.8);
 			else
 				glColor4f(0.0, 1.0, 0.0, 0.35);
@@ -70,7 +71,7 @@ void Grid_render()
 		for (int i = GRID_SIZE;
 				i < HALF_SCREEN_WIDTH-view.position.x;
 				i+=GRID_SIZE) {
-			if (fmod(i, GRID_SIZE * 20.0) == 0.0)
+			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
 				glColor4f(0.0, 1.0, 0.0, 0.8);
 			else
 				glColor4f(0.0, 1.0, 0.0, 0.35);
@@ -82,7 +83,7 @@ void Grid_render()
 		for (int i = GRID_SIZE;
 				i<HALF_SCREEN_HEIGHT + view.position.y;
 				i+=GRID_SIZE) {
-			if (fmod(i, GRID_SIZE * 20.0) == 0.0)
+			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
 				glColor4f(0.0, 1.0, 0.0, 0.8);
 			else
 				glColor4f(0.0, 1.0, 0.0, 0.35);
@@ -94,7 +95,7 @@ void Grid_render()
 		for (int i = GRID_SIZE;
 				i<HALF_SCREEN_HEIGHT - view.position.y;
 				i+=GRID_SIZE) {
-			if (fmod(i, GRID_SIZE * 20.0) == 0.0)
+			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
 				glColor4f(0.0, 1.0, 0.0, 0.8);
 			else
 				glColor4f(0.0, 1.0, 0.0, 0.35);
