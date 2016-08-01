@@ -11,6 +11,7 @@
 #include "view.h"
 #include "grid.h"
 #include "ship.h"
+#include "mine.h"
 
 void Mode_Gameplay_initialize(void);
 void Mode_Gameplay_cleanup(void);
