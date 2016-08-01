@@ -44,109 +44,109 @@ static void initialize_map_data(void)
 		}
 	}
 
-	set_map_cell(1, 1, &cell001);
+	set_map_cell(2, 2, &cell001);
 
-	set_map_cell(1, -1, &cell002);
+	set_map_cell(2, -2, &cell002);
 
-	set_map_cell(-1, 1, &cell001);
+	set_map_cell(-2, 2, &cell001);
 
-	set_map_cell(-1, -1, &cell001);
+	set_map_cell(-2, -2, &cell001);
 
 
 
+	set_map_cell(7, 7, &cell001);
+	set_map_cell(7, 8, &cell001);
+	set_map_cell(7, 9, &cell001);
+	set_map_cell(7, 10, &cell001);
+
+	set_map_cell(8, 7, &cell001);
+	set_map_cell(8, 8, &cell001);
+	set_map_cell(8, 9, &cell002);
+	set_map_cell(8, 10, &cell001);
+
+	set_map_cell(9, 7, &cell001);
+	set_map_cell(9, 8, &cell001);
 	set_map_cell(9, 9, &cell001);
 	set_map_cell(9, 10, &cell001);
-	set_map_cell(9, 11, &cell001);
-	set_map_cell(9, 12, &cell001);
 
+	set_map_cell(10, 7, &cell001);
+	set_map_cell(10, 8, &cell001);
 	set_map_cell(10, 9, &cell001);
 	set_map_cell(10, 10, &cell001);
-	set_map_cell(10, 11, &cell002);
-	set_map_cell(10, 12, &cell001);
-
-	set_map_cell(11, 9, &cell001);
-	set_map_cell(11, 10, &cell001);
-	set_map_cell(11, 11, &cell001);
-	set_map_cell(11, 12, &cell001);
-
-	set_map_cell(12, 9, &cell001);
-	set_map_cell(12, 10, &cell001);
-	set_map_cell(12, 11, &cell001);
-	set_map_cell(12, 12, &cell001);
 
 
 
-	set_map_cell(9, -9, &cell001);
+	set_map_cell(7, -7, &cell001);
+	set_map_cell(7, -8, &cell001);
+	set_map_cell(7, -9, &cell002);
+	set_map_cell(7, -10, &cell001);
+
+	set_map_cell(8, -7, &cell001);
+	set_map_cell(8, -8, &cell001);
+	set_map_cell(8, -9, &cell001);
+	set_map_cell(8, -10, &cell001);
+
+	set_map_cell(9, -7, &cell001);
+	set_map_cell(9, -8, &cell001);
+	set_map_cell(9, -9, &cell002);
 	set_map_cell(9, -10, &cell001);
-	set_map_cell(9, -11, &cell002);
-	set_map_cell(9, -12, &cell001);
 
+	set_map_cell(10, -7, &cell001);
+	set_map_cell(10, -8, &cell001);
 	set_map_cell(10, -9, &cell001);
 	set_map_cell(10, -10, &cell001);
-	set_map_cell(10, -11, &cell001);
-	set_map_cell(10, -12, &cell001);
-
-	set_map_cell(11, -9, &cell001);
-	set_map_cell(11, -10, &cell001);
-	set_map_cell(11, -11, &cell002);
-	set_map_cell(11, -12, &cell001);
-
-	set_map_cell(12, -9, &cell001);
-	set_map_cell(12, -10, &cell001);
-	set_map_cell(12, -11, &cell001);
-	set_map_cell(12, -12, &cell001);
 
 
 
+	set_map_cell(-7, 7, &cell001);
+	set_map_cell(-7, 8, &cell001);
+	set_map_cell(-7, 9, &cell001);
+	set_map_cell(-7, 10, &cell001);
+
+	set_map_cell(-8, 7, &cell002);
+	set_map_cell(-8, 8, &cell001);
+	set_map_cell(-8, 9, &cell001);
+	set_map_cell(-8, 10, &cell001);
+
+	set_map_cell(-9, 7, &cell001);
+	set_map_cell(-9, 8, &cell001);
 	set_map_cell(-9, 9, &cell001);
 	set_map_cell(-9, 10, &cell001);
-	set_map_cell(-9, 11, &cell001);
-	set_map_cell(-9, 12, &cell001);
 
+	set_map_cell(-10, 7, &cell001);
+	set_map_cell(-10, 8, &cell002);
 	set_map_cell(-10, 9, &cell002);
 	set_map_cell(-10, 10, &cell001);
-	set_map_cell(-10, 11, &cell001);
-	set_map_cell(-10, 12, &cell001);
-
-	set_map_cell(-11, 9, &cell001);
-	set_map_cell(-11, 10, &cell001);
-	set_map_cell(-11, 11, &cell001);
-	set_map_cell(-11, 12, &cell001);
-
-	set_map_cell(-12, 9, &cell001);
-	set_map_cell(-12, 10, &cell002);
-	set_map_cell(-12, 11, &cell002);
-	set_map_cell(-12, 12, &cell001);
 
 
 
-	set_map_cell(-9, -9, &cell002);
+	set_map_cell(-7, -7, &cell002);
+	set_map_cell(-7, -8, &cell001);
+	set_map_cell(-7, -9, &cell001);
+	set_map_cell(-7, -10, &cell001);
+
+	set_map_cell(-8, -7, &cell001);
+	set_map_cell(-8, -8, &cell001);
+	set_map_cell(-8, -9, &cell001);
+	set_map_cell(-8, -10, &cell001);
+
+	set_map_cell(-9, -7, &cell001);
+	set_map_cell(-9, -8, &cell002);
+	set_map_cell(-9, -9, &cell001);
 	set_map_cell(-9, -10, &cell001);
-	set_map_cell(-9, -11, &cell001);
-	set_map_cell(-9, -12, &cell001);
 
+	set_map_cell(-10, -7, &cell001);
+	set_map_cell(-10, -8, &cell001);
 	set_map_cell(-10, -9, &cell001);
 	set_map_cell(-10, -10, &cell001);
-	set_map_cell(-10, -11, &cell001);
-	set_map_cell(-10, -12, &cell001);
 
-	set_map_cell(-11, -9, &cell001);
-	set_map_cell(-11, -10, &cell002);
-	set_map_cell(-11, -11, &cell001);
-	set_map_cell(-11, -12, &cell001);
+	set_map_cell(511, 511, &cell001);
 
-	set_map_cell(-12, -9, &cell001);
-	set_map_cell(-12, -10, &cell001);
-	set_map_cell(-12, -11, &cell001);
-	set_map_cell(-12, -12, &cell001);
+	set_map_cell(511, -511, &cell002);
 
-	set_map_cell(510, 510, &cell001);
+	set_map_cell(-511, 511, &cell001);
 
-	set_map_cell(510, -510, &cell002);
-
-	set_map_cell(-510, 510, &cell001);
-
-	set_map_cell(-510, -510, &cell001);
+	set_map_cell(-511, -511, &cell001);
 
 }
 
@@ -154,9 +154,9 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 	if (x==0 || y==0)
 		return;
 
-	if (x < 0)
+	if (x > 0)
 		x--;
-	if (y < 0)
+	if (y > 0)
 		y--;
 
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
