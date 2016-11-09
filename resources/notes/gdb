@@ -1,0 +1,46 @@
+-- start gdb and load exe
+gdb <executable>
+
+-- run exe
+run
+
+-- set file:line breakpoint
+break main.c:15
+
+-- set function breakpoint
+break Ship_render
+
+-- list all breakpoints
+info breakpoints
+info b
+i b
+
+-- enable/disable breakpoint
+enable 1
+disable 1
+
+-- set conditional breakpoint
+break main.c:15 if x == 1
+
+-- breakpoint control
+step
+next
+continue
+
+-- add breakpoint condition
+cond 1 if x > 0
+
+-- remove breakpoint condition
+cond 1
+
+-- show variable value
+print x
+print x* (dereference a pointer)
+print x->size
+
+-- exit
+quit
+
+More information:
+http://cs.brynmawr.edu/cs312/gdb-tutorial-handout.pdf
+https://ccrma.stanford.edu/~jos/stkintro/Useful_commands_gdb.html
