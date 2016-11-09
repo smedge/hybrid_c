@@ -17,6 +17,7 @@ static UserUpdatableComponent updatable = {Ship_update};
 static CollidableComponent collidable = {{-10.0, 20.0, 10.0, -10.0}, true, Ship_collide, Ship_resolve};
 
 static double get_heading(bool n, bool s, bool e, bool w);
+static void render_bounding_box(const PlaceableComponent *placeable);
 
 void Ship_initialize() 
 {
@@ -103,21 +104,23 @@ void Ship_render(const PlaceableComponent *placeable)
 		Render_point(&placeable->position, colorFloat.red, colorFloat.green, 
 			colorFloat.blue, colorFloat.alpha);
 
-	// REFACTOR render bounding box
-	// glPushMatrix();
-	// glTranslatef(placeable->position.x, placeable->position.y, 0.0);
-	// //glRotatef(placeable->heading*-1, 0, 0, 1);
+	render_bounding_box(placeable);
+}
 
-	// glLineWidth(1.0);
-	// glColor4f(1.0, 1.0, 0.0, 1.0);
-	// glBegin(GL_LINE_LOOP);
-	// glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.aY);
-	// glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.bY);
-	// glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.bY);
-	// glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.aY);
-	// glEnd();
+static void render_bounding_box(const PlaceableComponent *placeable) {
+	glPushMatrix();
+	glTranslatef(placeable->position.x, placeable->position.y, 0.0);
 
-	// glPopMatrix();
+	glLineWidth(1.0);
+	glColor4f(1.0, 1.0, 0.0, 1.0);
+	glBegin(GL_LINE_LOOP);
+	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.aY);
+	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.bY);
+	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.bY);
+	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.aY);
+	glEnd();
+
+	glPopMatrix();
 }
 
 Position Ship_get_position()
