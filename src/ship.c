@@ -104,20 +104,20 @@ void Ship_render(const PlaceableComponent *placeable)
 			colorFloat.blue, colorFloat.alpha);
 
 	// REFACTOR render bounding box
-	glPushMatrix();
-	glTranslatef(placeable->position.x, placeable->position.y, 0.0);
-	//glRotatef(placeable->heading*-1, 0, 0, 1);
+	// glPushMatrix();
+	// glTranslatef(placeable->position.x, placeable->position.y, 0.0);
+	// //glRotatef(placeable->heading*-1, 0, 0, 1);
 
-	glLineWidth(1.0);
-	glColor4f(1.0, 1.0, 0.0, 1.0);
-	glBegin(GL_LINE_LOOP);
-	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.aY);
-	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.bY);
-	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.bY);
-	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.aY);
-	glEnd();
+	// glLineWidth(1.0);
+	// glColor4f(1.0, 1.0, 0.0, 1.0);
+	// glBegin(GL_LINE_LOOP);
+	// glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.aY);
+	// glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.bY);
+	// glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.bY);
+	// glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.aY);
+	// glEnd();
 
-	glPopMatrix();
+	// glPopMatrix();
 }
 
 Position Ship_get_position()
