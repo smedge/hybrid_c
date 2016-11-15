@@ -114,6 +114,7 @@ static void create_windowed_window(void)
 static void initialize_gl(void)
 {
 	graphics.glcontext = SDL_GL_CreateContext(graphics.window);
+	SDL_GL_SetSwapInterval(1);
 
 	glEnable (GL_BLEND);
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

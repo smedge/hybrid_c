@@ -10,10 +10,18 @@ void Mode_Gameplay_initialize(void)
 	Grid_initialize();
 	Map_initialize();
 	Ship_initialize();
+
+	Position position = {10.0, 10.0};
+	Mine_initialize(position);
+
+	position.x = -10.0;
+	position.y = -10.0;
+	Mine_initialize(position);
 }
 
 void Mode_Gameplay_cleanup(void)
 {
+	Mine_cleanup();
 	Entity_destroy_all();
 	Audio_stop_music();
 }

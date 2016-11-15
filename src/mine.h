@@ -1,9 +1,11 @@
 #ifndef MINE_H
 #define MINE_H
 
+#include "position.h"
 #include "entity.h"
+#include "color.h"
 
-void Mine_initialize();
+void Mine_initialize(Position position);
 void Mine_cleanup();
 
 Collision Mine_collide(const Rectangle boundingBox);

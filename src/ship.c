@@ -3,7 +3,7 @@
 #include "render.h"
 #include "color.h"
 
-//#include <SDL2/SDL_opengl.h> // REMOVE
+#include <SDL2/SDL_opengl.h> // REMOVE
 
 static const double NORMAL_VELOCITY = 500.0;
 static const double FAST_VELOCITY = 1500.0;
@@ -17,7 +17,7 @@ static UserUpdatableComponent updatable = {Ship_update};
 static CollidableComponent collidable = {{-10.0, 20.0, 10.0, -10.0}, true, Ship_collide, Ship_resolve};
 
 static double get_heading(bool n, bool s, bool e, bool w);
-//static void render_bounding_box(const PlaceableComponent *placeable);
+static void render_bounding_box(const PlaceableComponent *placeable);
 
 void Ship_initialize() 
 {
@@ -104,24 +104,25 @@ void Ship_render(const PlaceableComponent *placeable)
 		Render_point(&placeable->position, colorFloat.red, colorFloat.green, 
 			colorFloat.blue, colorFloat.alpha);
 
-	//render_bounding_box(placeable);
+	if (false)
+		render_bounding_box(placeable);
 }
 
-// static void render_bounding_box(const PlaceableComponent *placeable) {
-// 	glPushMatrix();
-// 	glTranslatef(placeable->position.x, placeable->position.y, 0.0);
+static void render_bounding_box(const PlaceableComponent *placeable) {
+	glPushMatrix();
+	glTranslatef(placeable->position.x, placeable->position.y, 0.0);
 
-// 	glLineWidth(1.0);
-// 	glColor4f(1.0, 1.0, 0.0, 1.0);
-// 	glBegin(GL_LINE_LOOP);
-// 	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.aY);
-// 	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.bY);
-// 	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.bY);
-// 	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.aY);
-// 	glEnd();
+	glLineWidth(1.0);
+	glColor4f(1.0, 1.0, 0.0, 1.0);
+	glBegin(GL_LINE_LOOP);
+	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.aY);
+	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.bY);
+	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.bY);
+	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.aY);
+	glEnd();
 
-// 	glPopMatrix();
-// }
+	glPopMatrix();
+}
 
 Position Ship_get_position()
 {
