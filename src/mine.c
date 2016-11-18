@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "mine.h"
 #include "view.h"
 #include "render.h"
@@ -30,7 +33,8 @@ void Mine_initialize(Position position)
 									COMPONENT_AI_UPDATABLE);
 
 	if (highestUsedIndex == MINE_COUNT) {
-		// TODO bail, too many
+		printf("FATAL ERROR: Too many mine entities.\n");
+		exit(-1);
 	}
 
 	mines[highestUsedIndex].active = false;

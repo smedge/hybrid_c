@@ -34,7 +34,9 @@ void Ship_initialize()
 
 void Ship_cleanup() 
 {
-
+	placeable.position.x = 0.0;
+	placeable.position.y = 0.0;
+	placeable.heading = 0.0;
 }
 
 Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox) 
