@@ -7,10 +7,10 @@
 
 #define MINE_COUNT 16
 #define MINE_ROTATION 0.0
-#define TICKS_ACTIVE 5000
+#define TICKS_ACTIVE 1000
 
 static RenderableComponent renderable = {Mine_render};
-static CollidableComponent collidable = {{-50.0, 50.0, 50.0, -50.0}, true, Mine_collide, Mine_resolve};
+static CollidableComponent collidable = {{-150.0, 150.0, 150.0, -150.0}, true, Mine_collide, Mine_resolve};
 static AIUpdatableComponent updatable = {Mine_update};
 
 static ColorRGB color = {120, 120, 120, 255};

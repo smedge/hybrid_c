@@ -177,7 +177,7 @@ Collision Map_collide(const void *entity, const PlaceableComponent *placeable, c
 
 	for (int x = map1X; x <= map3X; x++) {
 		for (int y = map3Y; y <= map1Y; y++) {
-			if (x >= 0 || x < MAP_SIZE || y >= 0 || y < MAP_SIZE) {	
+			if (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) {	
 				if (!map[x][y]->empty) {	
 					collision.collisionDetected = true;
 				}

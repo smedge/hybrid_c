@@ -13,12 +13,12 @@ void Mode_Gameplay_initialize(void)
 
 	Position position;
 	
-	position.x = 280.0;
-	position.y = 280.0;
+	position.x = 420.0;
+	position.y = 420.0;
 	Mine_initialize(position);
 
-	position.x = -280.0;
-	position.y = -280.0;
+	position.x = -420.0;
+	position.y = -420.0;
 	Mine_initialize(position);
 }
 
