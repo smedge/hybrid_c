@@ -37,7 +37,7 @@ void Ship_cleanup()
 
 }
 
-Collision Ship_collide(const Rectangle boundingBox, const PlaceableComponent *placeable) 
+Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox) 
 {
 	Position position = placeable->position;
 	Rectangle thisBoundingBox = collidable.boundingBox;
@@ -57,7 +57,7 @@ Collision Ship_collide(const Rectangle boundingBox, const PlaceableComponent *pl
 	return collision;
 }
 
-void Ship_resolve(Collision collision)
+void Ship_resolve(const void *entity, const Collision collision)
 {
 	if (collision.solid)
 	{
@@ -95,7 +95,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	}
 }
 
-void Ship_render(const PlaceableComponent *placeable)
+void Ship_render(const void *entity, const PlaceableComponent *placeable)
 {
 	View view =  View_get_view();
 	ColorFloat colorFloat = Color_rgb_to_float(&color);

@@ -30,6 +30,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
 	cursor_update(input);
 	Entity_user_update_system(input, ticks);
+	Entity_ai_update_system(ticks);
 	Entity_collision_system();
 	View_update(input, ticks);
 
