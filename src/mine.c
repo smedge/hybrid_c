@@ -12,12 +12,13 @@ static ColorRGB color = {0, 0, 255, 255};
 
 typedef struct {
 	PlaceableComponent placeable;
+	bool active;
 } MineState;
 
 static MineState mines[MINE_COUNT];
 static int highestUsedIndex = 0;
 
-void Mine_initialize(Position position) 
+void Mine_initialize(Position position)
 {
 	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
 									COMPONENT_RENDERABLE |
@@ -43,15 +44,31 @@ void Mine_cleanup()
 	highestUsedIndex = 0;
 }
 
-Collision Mine_collide(const Rectangle boundingBox)
+Collision Mine_collide(const Rectangle boundingBox, const PlaceableComponent *placeable)
 {
-	Collision collision = {false};
+	Position position = placeable->position;
+	Rectangle thisBoundingBox = collidable.boundingBox;
+	Rectangle transformedBoundingBox = {
+		thisBoundingBox.aX + position.x,
+		thisBoundingBox.aY + position.y,
+		thisBoundingBox.bX + position.x,
+		thisBoundingBox.bY + position.y,
+	};
+
+	Collision collision = {false, false};
+
+	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
+		collision.collisionDetected = true;
+	}
+
 	return collision;
 }
 
 void Mine_resolve(Collision collision) 
 {
-
+	color.red = 255;
+	color.green = 0;
+	color.blue = 0;
 }
 
 void Mine_update(const Input *userInput, const unsigned int ticks,

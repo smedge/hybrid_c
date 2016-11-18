@@ -3,14 +3,10 @@
 bool Collision_aabb_test(const Rectangle rect1, 
 						 const Rectangle rect2) 
 {
-	if (rect1.bX < rect2.aX || 
-		rect1.bY < rect2.aY || 
-		rect1.aX > rect2.bX || 
-		rect1.aY > rect2.bY) 
-	{
+	if (rect1.bX < rect2.aX || rect1.aX > rect2.bX ||
+		rect1.bY > rect2.aY || rect1.aY < rect2.bY)
 		return false;
-	}
-    else
+    else 
     	return true;
 }
 

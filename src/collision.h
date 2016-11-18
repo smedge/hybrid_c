@@ -12,6 +12,7 @@ typedef struct {
 
 typedef struct {
 	bool collisionDetected;
+	bool solid;
 } Collision;
 
 bool Collision_aabb_test(const Rectangle rect1, 

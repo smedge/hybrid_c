@@ -37,9 +37,9 @@ void Ship_cleanup()
 
 }
 
-Collision Ship_collide(const Rectangle boundingBox) 
+Collision Ship_collide(const Rectangle boundingBox, const PlaceableComponent *placeable) 
 {
-	Position position = placeable.position;
+	Position position = placeable->position;
 	Rectangle thisBoundingBox = collidable.boundingBox;
 	Rectangle transformedBoundingBox = {
 		thisBoundingBox.aX + position.x,
@@ -48,7 +48,7 @@ Collision Ship_collide(const Rectangle boundingBox)
 		thisBoundingBox.bY + position.y,
 	};
 
-	Collision collision = {false};
+	Collision collision = {false, true};
 
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
@@ -59,8 +59,11 @@ Collision Ship_collide(const Rectangle boundingBox)
 
 void Ship_resolve(Collision collision)
 {
-	placeable.position.x = 0.0;
-	placeable.position.y = 0.0;
+	if (collision.solid)
+	{
+		placeable.position.x = 0.0;
+		placeable.position.y = 0.0;
+	}
 }
 
 void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable)

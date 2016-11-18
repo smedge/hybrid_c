@@ -1,7 +1,6 @@
 #include "map.h"
 
 #include <SDL2/SDL_opengl.h>
-#include "entity.h"
 #include "view.h"
 
 static MapCell *map[MAP_SIZE][MAP_SIZE];
@@ -162,7 +161,7 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
-Collision Map_collide(const Rectangle boundingBox) 
+Collision Map_collide(const Rectangle boundingBox, const PlaceableComponent *placeable) 
 {
 	int corner1CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
 	int corner1CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
@@ -174,7 +173,7 @@ Collision Map_collide(const Rectangle boundingBox)
 	int map3X = corner3CellX + HALF_MAP_SIZE;
 	int map3Y = corner3CellY + HALF_MAP_SIZE;
 
-	Collision collision = {false};
+	Collision collision = {false, true};
 
 	for (int x = map1X; x <= map3X; x++) {
 		for (int y = map3Y; y <= map1Y; y++) {

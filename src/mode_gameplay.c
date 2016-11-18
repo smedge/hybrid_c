@@ -11,11 +11,11 @@ void Mode_Gameplay_initialize(void)
 	Map_initialize();
 	Ship_initialize();
 
-	Position position = {10.0, 10.0};
+	Position position = {280.0, 280.0};
 	Mine_initialize(position);
 
-	position.x = -10.0;
-	position.y = -10.0;
+	position.x = -280.0;
+	position.y = -280.0;
 	Mine_initialize(position);
 }
 

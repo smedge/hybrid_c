@@ -16,4 +16,6 @@ extern void Render_quad();
 
 extern void Render_convex_poly();
 
+extern void Render_bounding_box(/*const PlaceableComponent *placeable*/);
+
 #endif

@@ -8,7 +8,7 @@
 void Mine_initialize(Position position);
 void Mine_cleanup();
 
-Collision Mine_collide(const Rectangle boundingBox);
+Collision Mine_collide(const Rectangle boundingBox, const PlaceableComponent *placeable);
 void Mine_resolve(Collision collision);
 void Mine_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);
 void Mine_render(const PlaceableComponent *placeable);
