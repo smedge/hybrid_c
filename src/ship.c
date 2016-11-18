@@ -37,9 +37,9 @@ void Ship_cleanup()
 
 }
 
-Collision Ship_collide(const Rectangle boundingBox) 
+Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox) 
 {
-	Position position = placeable.position;
+	Position position = placeable->position;
 	Rectangle thisBoundingBox = collidable.boundingBox;
 	Rectangle transformedBoundingBox = {
 		thisBoundingBox.aX + position.x,
@@ -48,7 +48,7 @@ Collision Ship_collide(const Rectangle boundingBox)
 		thisBoundingBox.bY + position.y,
 	};
 
-	Collision collision = {false};
+	Collision collision = {false, true};
 
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
@@ -57,10 +57,13 @@ Collision Ship_collide(const Rectangle boundingBox)
 	return collision;
 }
 
-void Ship_resolve(Collision collision)
+void Ship_resolve(const void *entity, const Collision collision)
 {
-	placeable.position.x = 0.0;
-	placeable.position.y = 0.0;
+	if (collision.solid)
+	{
+		placeable.position.x = 0.0;
+		placeable.position.y = 0.0;
+	}
 }
 
 void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable)
@@ -92,7 +95,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	}
 }
 
-void Ship_render(const PlaceableComponent *placeable)
+void Ship_render(const void *entity, const PlaceableComponent *placeable)
 {
 	View view =  View_get_view();
 	ColorFloat colorFloat = Color_rgb_to_float(&color);

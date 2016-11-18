@@ -8,6 +8,7 @@
 #define ENTITY_COUNT 1024
 
 #define USER_UPDATE_SYSTEM_MASK (COMPONENT_PLACEABLE | COMPONENT_PLAYER_UPDATABLE)
+#define AI_UPDATE_SYSTEM_MASK (COMPONENT_PLACEABLE | COMPONENT_AI_UPDATABLE)
 #define RENDER_SYSTEM_MASK (COMPONENT_RENDERABLE | COMPONENT_PLACEABLE)
 #define COLLISION_SYSTEM_MASK (COMPONENT_COLLIDABLE | COMPONENT_PLACEABLE)
 
@@ -27,14 +28,14 @@ typedef struct {
 } PlaceableComponent;
 
 typedef struct {
-	void (*render)(const PlaceableComponent *placeable);
+	void (*render)(const void *entity, const PlaceableComponent *placeable);
 } RenderableComponent;
 
 typedef struct {
 	Rectangle boundingBox;
 	bool collidesWithOthers;
-	Collision (*collide)(const Rectangle boundingBox);
-	void (*resolve)(Collision collision);
+	Collision (*collide)(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox);
+	void (*resolve)(const void *entity, const Collision collision);
 } CollidableComponent;
 
 typedef struct {
@@ -46,15 +47,22 @@ typedef struct {
 					PlaceableComponent *placeable);
 } UserUpdatableComponent;
 
+typedef struct {
+	void (*update)(const void *entity, const PlaceableComponent *placeable, const unsigned int ticks);
+} AIUpdatableComponent;
+
 int Entity_create_entity(int componentMask);
 void Entity_destroy_all(void);
 void Entity_destroy(int entityId);
+void Entity_add_state(int entityId, void *state);
 void Entity_add_placeable(int entityId, PlaceableComponent *placeable);
 void Entity_add_renderable(int entityId, RenderableComponent *renderable);
 void Entity_add_user_updatable(int entityId, UserUpdatableComponent *updatable);
+void Entity_add_ai_updatable(int entityId, AIUpdatableComponent *updatable);
 void Entity_add_collidable(int entityId, CollidableComponent *collidable);
 
 void Entity_user_update_system(const Input *input, const unsigned int ticks);
+void Entity_ai_update_system(const unsigned int ticks);
 void Entity_render_system(void);
 void Entity_collision_system(void);
 

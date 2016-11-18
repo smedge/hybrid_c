@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "color.h"
 #include "collision.h"
+#include "entity.h"
 
 #define MAP_SIZE 1024
 #define HALF_MAP_SIZE MAP_SIZE / 2
@@ -17,7 +18,7 @@ typedef struct {
 } MapCell;
 
 void Map_initialize(void);
-Collision Map_collide(Rectangle boundingBox);
+Collision Map_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Map_render();
 
 #endif

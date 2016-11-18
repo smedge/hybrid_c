@@ -11,11 +11,11 @@ void Mode_Gameplay_initialize(void)
 	Map_initialize();
 	Ship_initialize();
 
-	Position position = {10.0, 10.0};
+	Position position = {280.0, 280.0};
 	Mine_initialize(position);
 
-	position.x = -10.0;
-	position.y = -10.0;
+	position.x = -280.0;
+	position.y = -280.0;
 	Mine_initialize(position);
 }
 
@@ -30,6 +30,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
 	cursor_update(input);
 	Entity_user_update_system(input, ticks);
+	Entity_ai_update_system(ticks);
 	Entity_collision_system();
 	View_update(input, ticks);
 
