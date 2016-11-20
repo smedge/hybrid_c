@@ -6,8 +6,9 @@
 
 int main(void) 
 {
-	printf("INFO: Starting application.\n");
+	printf("Starting application.\n");
 	Sdlapp_run();
-	printf("INFO: Application exiting normally.\n");
+	printf("Application exiting normally.\n");
+	
 	return 0;
 }

@@ -14,10 +14,9 @@ static ColorRGB color = {255, 0, 0, 255};
 static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 static RenderableComponent renderable = {Ship_render};
 static UserUpdatableComponent updatable = {Ship_update};
-static CollidableComponent collidable = {{-10.0, 20.0, 10.0, -10.0}, true, Ship_collide, Ship_resolve};
+static CollidableComponent collidable = {{-20.0, 20.0, 20.0, -20.0}, true, Ship_collide, Ship_resolve};
 
 static double get_heading(bool n, bool s, bool e, bool w);
-static void render_bounding_box(const PlaceableComponent *placeable);
 
 void Ship_initialize() 
 {
@@ -109,24 +108,7 @@ void Ship_render(const void *entity, const PlaceableComponent *placeable)
 		Render_point(&placeable->position, colorFloat.red, colorFloat.green, 
 			colorFloat.blue, colorFloat.alpha);
 
-	if (false)
-		render_bounding_box(placeable);
-}
-
-static void render_bounding_box(const PlaceableComponent *placeable) {
-	glPushMatrix();
-	glTranslatef(placeable->position.x, placeable->position.y, 0.0);
-
-	glLineWidth(1.0);
-	glColor4f(1.0, 1.0, 0.0, 1.0);
-	glBegin(GL_LINE_LOOP);
-	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.aY);
-	glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.bY);
-	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.bY);
-	glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.aY);
-	glEnd();
-
-	glPopMatrix();
+	Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }
 
 Position Ship_get_position()

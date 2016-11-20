@@ -53,18 +53,19 @@ extern void Render_convex_poly()
 	
 }
 
-extern void Render_bounding_box(/*const PlaceableComponent *placeable*/) {
-	// glPushMatrix();
-	// glTranslatef(placeable->position.x, placeable->position.y, 0.0);
+extern void Render_bounding_box(const Position *position, 
+		const Rectangle *boundingBox) {
+	glPushMatrix();
+	glTranslatef(position->x, position->y, 0.0);
 
-	// glLineWidth(1.0);
-	// glColor4f(1.0, 1.0, 0.0, 1.0);
-	// glBegin(GL_LINE_LOOP);
-	// glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.aY);
-	// glVertex2f(collidable.boundingBox.aX, collidable.boundingBox.bY);
-	// glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.bY);
-	// glVertex2f(collidable.boundingBox.bX, collidable.boundingBox.aY);
-	// glEnd();
+	glLineWidth(1.0);
+	glColor4f(1.0, 1.0, 0.0, 0.60);
+	glBegin(GL_LINE_LOOP);
+	glVertex2f(boundingBox->aX, boundingBox->aY);
+	glVertex2f(boundingBox->aX, boundingBox->bY);
+	glVertex2f(boundingBox->bX, boundingBox->bY);
+	glVertex2f(boundingBox->bX, boundingBox->aY);
+	glEnd();
 
-	// glPopMatrix();
+	glPopMatrix();
 }

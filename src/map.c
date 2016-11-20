@@ -173,7 +173,9 @@ Collision Map_collide(const void *entity, const PlaceableComponent *placeable, c
 	int map3X = corner3CellX + HALF_MAP_SIZE;
 	int map3Y = corner3CellY + HALF_MAP_SIZE;
 
-	Collision collision = {false, true};
+	Collision collision;
+	collision.collisionDetected = false;
+	collision.solid = true;
 
 	for (int x = map1X; x <= map3X; x++) {
 		for (int y = map3Y; y <= map1Y; y++) {
