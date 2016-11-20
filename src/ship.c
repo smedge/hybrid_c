@@ -3,8 +3,6 @@
 #include "render.h"
 #include "color.h"
 
-#include <SDL2/SDL_opengl.h> // REMOVE
-
 static const double NORMAL_VELOCITY = 500.0;
 static const double FAST_VELOCITY = 1500.0;
 static const double SLOW_VELOCITY = 100.0;
