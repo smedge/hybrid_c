@@ -53,13 +53,13 @@ typedef struct {
 
 int Entity_create_entity(int componentMask);
 void Entity_destroy_all(void);
-void Entity_destroy(int entityId);
-void Entity_add_state(int entityId, void *state);
-void Entity_add_placeable(int entityId, PlaceableComponent *placeable);
-void Entity_add_renderable(int entityId, RenderableComponent *renderable);
-void Entity_add_user_updatable(int entityId, UserUpdatableComponent *updatable);
-void Entity_add_ai_updatable(int entityId, AIUpdatableComponent *updatable);
-void Entity_add_collidable(int entityId, CollidableComponent *collidable);
+void Entity_destroy(const unsigned int entityId);
+void Entity_add_state(const unsigned int entityId, void *state);
+void Entity_add_placeable(const unsigned int entityId, PlaceableComponent *placeable);
+void Entity_add_renderable(const unsigned int entityId, RenderableComponent *renderable);
+void Entity_add_user_updatable(const unsigned int entityId, UserUpdatableComponent *updatable);
+void Entity_add_ai_updatable(const unsigned int entityId, AIUpdatableComponent *updatable);
+void Entity_add_collidable(const unsigned int entityId, CollidableComponent *collidable);
 
 void Entity_user_update_system(const Input *input, const unsigned int ticks);
 void Entity_ai_update_system(const unsigned int ticks);

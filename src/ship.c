@@ -114,7 +114,8 @@ Position Ship_get_position()
 	return placeable.position;
 }
 
-static double get_heading(bool n, bool s, bool e, bool w)
+static double get_heading(const bool n, const bool s, 
+	const bool e, const bool w)
 {
 	if (n) {
 		if (e)

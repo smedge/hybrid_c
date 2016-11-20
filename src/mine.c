@@ -4,6 +4,7 @@
 #include "mine.h"
 #include "view.h"
 #include "render.h"
+#include "color.h"
 
 #define MINE_COUNT 16
 #define MINE_ROTATION 0.0

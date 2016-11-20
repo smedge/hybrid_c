@@ -3,7 +3,6 @@
 
 #include "position.h"
 #include "entity.h"
-#include "color.h"
 
 void Mine_initialize(Position position);
 void Mine_cleanup();

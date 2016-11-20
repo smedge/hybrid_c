@@ -54,7 +54,8 @@ extern void Render_convex_poly()
 }
 
 extern void Render_bounding_box(const Position *position, 
-		const Rectangle *boundingBox) {
+		const Rectangle *boundingBox) 
+{
 	glPushMatrix();
 	glTranslatef(position->x, position->y, 0.0);
 
