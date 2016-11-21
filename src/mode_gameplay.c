@@ -20,6 +20,43 @@ void Mode_Gameplay_initialize(void)
 	position.x = -420.0;
 	position.y = -420.0;
 	Mine_initialize(position);
+
+
+
+
+	position.x = -1600.0;
+	position.y = 1600.0;
+	Mine_initialize(position);
+
+	position.x = 1600.0;
+	position.y = 1600.0;
+	Mine_initialize(position);
+
+	position.x = 1600.0;
+	position.y = -1600.0;
+	Mine_initialize(position);
+
+	position.x = -1600.0;
+	position.y = -1600.0;
+	Mine_initialize(position);
+
+
+
+	position.x = -1600.0;
+	position.y = 0.0;
+	Mine_initialize(position);
+
+	position.x = 1600.0;
+	position.y = 0.0;
+	Mine_initialize(position);
+
+	position.x = 0.0;
+	position.y = 1600.0;
+	Mine_initialize(position);
+
+	position.x = 0.0;
+	position.y = -1600.0;
+	Mine_initialize(position);
 }
 
 void Mode_Gameplay_cleanup(void)
@@ -53,7 +90,7 @@ void Mode_Gameplay_render(void)
 
 	glPopMatrix();
 	Graphics_set_ui_projection();
-	hud_render(&screen);
+	Hud_render(&screen);
 	cursor_render();
 
 	Graphics_flip();

@@ -6,7 +6,7 @@
 #include "input.h"
 #include "screen.h"
 
-void hud_update(const Input *input, const unsigned int ticks);
-void hud_render(const Screen *screen);
+void Hud_update(const Input *input, const unsigned int ticks);
+void Hud_render(const Screen *screen);
 
 #endif

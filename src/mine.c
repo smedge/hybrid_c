@@ -6,6 +6,8 @@
 #include "render.h"
 #include "color.h"
 
+#include <SDL2/SDL_mixer.h>
+
 #define MINE_COUNT 16
 #define MINE_ROTATION 0.0
 #define TICKS_ACTIVE 1000
@@ -25,6 +27,9 @@ typedef struct {
 static MineState mines[MINE_COUNT];
 static PlaceableComponent placeables[MINE_COUNT];
 static int highestUsedIndex = 0;
+
+static Mix_Chunk *sample01 = 0;
+static Mix_Chunk *sample02 = 0;
 
 void Mine_initialize(Position position)
 {
@@ -51,11 +56,34 @@ void Mine_initialize(Position position)
 	Entity_add_ai_updatable(id, &updatable);
 	
 	highestUsedIndex++;
+
+	if (!sample01) {
+		sample01 = Mix_LoadWAV("resources/sounds/bomb_set.wav");
+		if (!sample01) {
+			printf("FATAL ERROR: error loading sound for mine.\n");
+			exit(-1);
+		}
+	}
+
+	if (!sample02) {
+		sample02 = Mix_LoadWAV("resources/sounds/bomb_explode.wav");
+		if (!sample02) {
+			printf("FATAL ERROR: error loading sound for mine.\n");
+			exit(-1);
+		}
+	}
+
 }
 
 void Mine_cleanup()
 {
 	highestUsedIndex = 0;
+	
+	Mix_FreeChunk(sample01);
+	sample02 = 0;
+
+	Mix_FreeChunk(sample02);
+	sample02 = 0;
 }
 
 Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -81,6 +109,10 @@ Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, 
 void Mine_resolve(const void *entity, const Collision collision) 
 {
 	MineState* state = (MineState*)entity;
+	
+	if (!state->active)
+		Mix_PlayChannel(-1, sample01, 0);
+
 	state->active = true;
 	state->ticksActive = 0;
 }
@@ -91,8 +123,10 @@ void Mine_update(const void *entity, const PlaceableComponent *placeable, const 
 	if (state->active)
 	{
 		state->ticksActive += ticks;
-		if (state->ticksActive > TICKS_ACTIVE)
+		if (state->ticksActive > TICKS_ACTIVE) {
+			Mix_PlayChannel(-1, sample02, 0);
 			state->active = false;
+		}
 	}
 }
 

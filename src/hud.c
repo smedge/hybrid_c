@@ -6,12 +6,12 @@ static void render_skill_bar(const Screen *screen);
 static void render_skill_button();
 static void render_radar(const Screen *screen);
 
-void hud_update(const Input *input, const unsigned int ticks)
+void Hud_update(const Input *input, const unsigned int ticks)
 {
 
 }
 
-void hud_render(const Screen *screen)
+void Hud_render(const Screen *screen)
 {
 	glPushMatrix();
 	render_left_status(screen);

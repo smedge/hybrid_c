@@ -43,9 +43,10 @@ void Grid_render()
 		lineWidth = GRID_MIN_LINE_SIZE;
 
 	// draw centerlines
-	glLineWidth(bigLineWidth);
+	//glLineWidth(bigLineWidth);
+	glLineWidth(lineWidth);
 	glBegin(GL_LINES);
-		glColor4f(0.0, 1.0, 0.0, 1.0);
+		glColor4f(0.0, 1.0, 0.0, 0.8);
 		glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), 0.0);
 		glVertex2f(view.position.x + HALF_SCREEN_WIDTH, 0.0);
 		glVertex2f(0.0, view.position.y + HALF_SCREEN_HEIGHT);
