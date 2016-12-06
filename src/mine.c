@@ -10,7 +10,8 @@
 
 #define MINE_COUNT 16
 #define MINE_ROTATION 0.0
-#define TICKS_ACTIVE 1000
+#define TICKS_ACTIVE 500
+#define TICKS_DESTROYED 10000
 
 static RenderableComponent renderable = {Mine_render};
 static CollidableComponent collidable = {{-150.0, 150.0, 150.0, -150.0}, true, Mine_collide, Mine_resolve};
@@ -22,6 +23,8 @@ static ColorRGB colorActive = {255, 0, 0, 255};
 typedef struct {
 	bool active;
 	unsigned int ticksActive;
+	bool destroyed;
+	unsigned int ticksDestroyed;
 } MineState;
 
 static MineState mines[MINE_COUNT];
@@ -30,6 +33,8 @@ static int highestUsedIndex = 0;
 
 static Mix_Chunk *sample01 = 0;
 static Mix_Chunk *sample02 = 0;
+static Mix_Chunk *sample03 = 0;
+
 
 void Mine_initialize(Position position)
 {
@@ -44,7 +49,9 @@ void Mine_initialize(Position position)
 	}
 
 	mines[highestUsedIndex].active = false;
+	mines[highestUsedIndex].destroyed = false;
 	mines[highestUsedIndex].ticksActive = 0;
+	mines[highestUsedIndex].ticksDestroyed = 0;
 
 	placeables[highestUsedIndex].position = position;
 	placeables[highestUsedIndex].heading = MINE_ROTATION;
@@ -73,6 +80,14 @@ void Mine_initialize(Position position)
 		}
 	}
 
+	if (!sample03) {
+		sample03 = Mix_LoadWAV("resources/sounds/door.wav");
+		if (!sample03) {
+			printf("FATAL ERROR: error loading sound for mine.\n");
+			exit(-1);
+		}
+	}
+
 }
 
 void Mine_cleanup()
@@ -84,10 +99,15 @@ void Mine_cleanup()
 
 	Mix_FreeChunk(sample02);
 	sample02 = 0;
+
+	Mix_FreeChunk(sample03);
+	sample03 = 0;
 }
 
 Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
+	Collision collision = {false, false};
+
 	Position position = placeable->position;
 	Rectangle thisBoundingBox = collidable.boundingBox;
 	Rectangle transformedBoundingBox = {
@@ -96,8 +116,6 @@ Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, 
 		thisBoundingBox.bX + position.x,
 		thisBoundingBox.bY + position.y,
 	};
-
-	Collision collision = {false, false};
 
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
@@ -109,12 +127,16 @@ Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, 
 void Mine_resolve(const void *entity, const Collision collision) 
 {
 	MineState* state = (MineState*)entity;
+
+	if (state->destroyed)
+		return;
 	
-	if (!state->active)
+	if (!state->active) {
 		Mix_PlayChannel(-1, sample01, 0);
 
-	state->active = true;
-	state->ticksActive = 0;
+		state->active = true;
+		state->ticksActive = 0;
+	}
 }
 
 void Mine_update(const void *entity, const PlaceableComponent *placeable, const unsigned int ticks)
@@ -126,13 +148,27 @@ void Mine_update(const void *entity, const PlaceableComponent *placeable, const 
 		if (state->ticksActive > TICKS_ACTIVE) {
 			Mix_PlayChannel(-1, sample02, 0);
 			state->active = false;
+			state->destroyed = true;
+			state->ticksDestroyed = 0;
 		}
 	}
+	if (state->destroyed){
+		state->ticksDestroyed += ticks;
+		if (state->ticksDestroyed > TICKS_DESTROYED) {
+			Mix_PlayChannel(-1, sample03, 0);
+			state->destroyed = false;
+			state->active = false;
+		}
+	}
+
 }
 
 void Mine_render(const void *entity, const PlaceableComponent *placeable) 
 {
 	MineState* state = (MineState*)entity;
+
+	if (state->destroyed)
+		return;
 
 	ColorFloat colorFloat;
 	if (state->active)
