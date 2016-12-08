@@ -12,10 +12,9 @@ static RenderableComponent renderable = {Grid_render};
 
 void Grid_initialize()
 {
-	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
-									COMPONENT_RENDERABLE);
-
-	Entity_add_renderable(id, &renderable);
+	Entity entity = Entity_initialize_entity();
+	entity.renderable = &renderable;
+	Entity_add_entity(entity);
 }
 
 void Grid_cleanup()

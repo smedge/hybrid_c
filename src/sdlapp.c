@@ -7,7 +7,8 @@
 #include "mode_mainmenu.h"
 #include "mode_gameplay.h"
 
-static const unsigned int DELAY = 1000/60;
+//static const unsigned int DELAY = 1000/60;
+static const unsigned int DELAY = 5;
 
 static SdlApp sdlApp;
 

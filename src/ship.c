@@ -18,15 +18,13 @@ static double get_heading(bool n, bool s, bool e, bool w);
 
 void Ship_initialize() 
 {
-	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
-									COMPONENT_RENDERABLE |
-									COMPONENT_PLAYER_UPDATABLE|
-									COMPONENT_COLLIDABLE);
+	Entity entity = Entity_initialize_entity();
+	entity.placeable = &placeable;
+	entity.renderable = &renderable;
+	entity.userUpdatable = &updatable;
+	entity.collidable = &collidable;
 
-	Entity_add_placeable(id, &placeable);
-	Entity_add_renderable(id, &renderable);
-	Entity_add_user_updatable(id, &updatable);
-	Entity_add_collidable(id, &collidable);
+	Entity_add_entity(entity);
 }
 
 void Ship_cleanup() 

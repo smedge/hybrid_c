@@ -5,6 +5,8 @@
 
 void Mode_Gameplay_initialize(void)
 {
+	Entity_destroy_all();
+
 	Audio_loop_music(GAMEPLAY_MUSIC_PATH);
 	View_initialize();
 	Grid_initialize();
