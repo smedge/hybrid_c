@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "mine.h"
 #include "view.h"
@@ -38,11 +37,6 @@ static Mix_Chunk *sample03 = 0;
 
 void Mine_initialize(Position position)
 {
-	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
-									COMPONENT_RENDERABLE |
-									COMPONENT_COLLIDABLE |
-									COMPONENT_AI_UPDATABLE);
-
 	if (highestUsedIndex == MINE_COUNT) {
 		printf("FATAL ERROR: Too many mine entities.\n");
 		exit(-1);
@@ -55,12 +49,15 @@ void Mine_initialize(Position position)
 
 	placeables[highestUsedIndex].position = position;
 	placeables[highestUsedIndex].heading = MINE_ROTATION;
+
+	Entity entity = Entity_initialize_entity();
+	entity.state = &mines[highestUsedIndex];
+	entity.placeable = &placeables[highestUsedIndex];
+	entity.renderable = &renderable;
+	entity.collidable = &collidable;
+	entity.aiUpdatable = &updatable;
 	
-	Entity_add_state(id, &mines[highestUsedIndex]);
-	Entity_add_placeable(id, &placeables[highestUsedIndex]);
-	Entity_add_renderable(id, &renderable);
-	Entity_add_collidable(id, &collidable);
-	Entity_add_ai_updatable(id, &updatable);
+	Entity_add_entity(entity);
 	
 	highestUsedIndex++;
 
@@ -87,7 +84,6 @@ void Mine_initialize(Position position)
 			exit(-1);
 		}
 	}
-
 }
 
 void Mine_cleanup()

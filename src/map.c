@@ -26,12 +26,11 @@ void Map_initialize(void)
 
 static void initialize_map_entity(void)
 {
-	int id = Entity_create_entity(COMPONENT_PLACEABLE | 
-									COMPONENT_RENDERABLE|
-									COMPONENT_COLLIDABLE);
+	Entity entity = Entity_initialize_entity();
+	entity.renderable = &renderable;
+	entity.collidable = &collidable;
 
-	Entity_add_renderable(id, &renderable);
-	Entity_add_collidable(id, &collidable);
+	Entity_add_entity(entity);
 }
 
 static void initialize_map_data(void)

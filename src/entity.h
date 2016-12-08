@@ -7,21 +7,6 @@
 
 #define ENTITY_COUNT 1024
 
-#define USER_UPDATE_SYSTEM_MASK (COMPONENT_PLACEABLE | COMPONENT_PLAYER_UPDATABLE)
-#define AI_UPDATE_SYSTEM_MASK (COMPONENT_PLACEABLE | COMPONENT_AI_UPDATABLE)
-#define RENDER_SYSTEM_MASK (COMPONENT_RENDERABLE | COMPONENT_PLACEABLE)
-#define COLLISION_SYSTEM_MASK (COMPONENT_COLLIDABLE | COMPONENT_PLACEABLE)
-
-typedef enum {
-	COMPONENT_NONE = 0,
-	COMPONENT_PLACEABLE = 1 << 1,
-	COMPONENT_RENDERABLE = 1 << 2,
-	COMPONENT_COLLIDABLE = 1 << 3,
-	COMPONENT_PLAYER_UPDATABLE = 1 << 4,
-	COMPONENT_AI_UPDATABLE = 1 << 5,
-	COMPONENT_USER_INTERFACE = 1 << 6
-} Component;
-
 typedef struct {
 	Position position;
 	double heading;
@@ -51,7 +36,19 @@ typedef struct {
 	void (*update)(const void *entity, const PlaceableComponent *placeable, const unsigned int ticks);
 } AIUpdatableComponent;
 
-int Entity_create_entity(int componentMask);
+typedef struct {
+	bool empty;
+	void *state;
+	PlaceableComponent *placeable;
+	RenderableComponent *renderable;
+	CollidableComponent *collidable;
+	DynamicsComponent *dynamics;
+	UserUpdatableComponent *userUpdatable;
+	AIUpdatableComponent *aiUpdatable;
+} Entity;
+
+Entity Entity_initialize_entity();
+void Entity_add_entity(const Entity entity);
 void Entity_destroy_all(void);
 void Entity_destroy(const unsigned int entityId);
 void Entity_add_state(const unsigned int entityId, void *state);

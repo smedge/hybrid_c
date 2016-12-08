@@ -1,28 +1,53 @@
 #include "entity.h"
 
-static int entities[ENTITY_COUNT];
 static unsigned int highestIndex = 0;
-static void *states[ENTITY_COUNT];
-static PlaceableComponent *placeables[ENTITY_COUNT];
-static RenderableComponent *renderables[ENTITY_COUNT];
-static CollidableComponent *collidables[ENTITY_COUNT];
-static UserUpdatableComponent *user_updatables[ENTITY_COUNT];
-static AIUpdatableComponent *ai_updatables[ENTITY_COUNT];
+static Entity entities[ENTITY_COUNT];
 
-int Entity_create_entity(int componentMask)
-{
+Entity Entity_initialize_entity() {
+	Entity entity;
+	entity.state = 0;
+	entity.placeable = 0;
+	entity.renderable = 0;
+	entity.collidable = 0;
+	entity.dynamics = 0;
+	entity.userUpdatable = 0;
+	entity.aiUpdatable = 0;
+	return entity;
+}
+
+void Entity_add_entity(const Entity entity) {
 	unsigned int entityId;
 	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
 	{
-		if(entities[entityId] == COMPONENT_NONE)
+		if(entities[entityId].empty)
 			break;
 	}
 
 	if (highestIndex < entityId)
 		highestIndex = entityId;
 
-	entities[entityId] = componentMask;
-	return entityId;
+	entities[entityId].empty = false;
+
+	if (entity.state)
+		entities[entityId].state = entity.state;
+
+	if (entity.placeable)
+		entities[entityId].placeable = entity.placeable;
+	
+	if (entity.renderable)
+		entities[entityId].renderable = entity.renderable;
+
+	if (entity.collidable)
+		entities[entityId].collidable = entity.collidable;
+
+	if (entity.dynamics)
+		entities[entityId].dynamics = entity.dynamics;
+
+	if (entity.userUpdatable)
+		entities[entityId].userUpdatable = entity.userUpdatable;
+
+	if (entity.aiUpdatable)
+		entities[entityId].aiUpdatable = entity.aiUpdatable;
 }
 
 void Entity_destroy_all(void)
@@ -36,47 +61,18 @@ void Entity_destroy_all(void)
 
 void Entity_destroy(const unsigned int entityId) 
 {
-	entities[entityId] = COMPONENT_NONE;
-}
-
-void Entity_add_state(const unsigned int entityId, void *state)
-{
-	states[entityId] = state;
-}
-
-void Entity_add_placeable(const unsigned int entityId, PlaceableComponent *placeable) 
-{
-	placeables[entityId] = placeable;
-}
-
-void Entity_add_renderable(const unsigned int entityId, RenderableComponent *renderable)
-{
-	renderables[entityId] = renderable;
-}
-
-void Entity_add_collidable(const unsigned int entityId, CollidableComponent *collidable) 
-{
-	collidables[entityId] = collidable;
-}
-
-void Entity_add_user_updatable(const unsigned int entityId, UserUpdatableComponent *updatable) 
-{
-	user_updatables[entityId] = updatable;
-}
-
-void Entity_add_ai_updatable(const unsigned int entityId, AIUpdatableComponent *updatable) 
-{
-	ai_updatables[entityId] = updatable;
+	entities[entityId].empty = true;
 }
 
 void Entity_user_update_system(const Input *input, const unsigned int ticks)
 {
 	for(int i = 0; i <= highestIndex; i++) 
 	{
-		if ((entities[i] & USER_UPDATE_SYSTEM_MASK) != USER_UPDATE_SYSTEM_MASK)
+		if (entities[i].empty || entities[i].userUpdatable == 0 ||
+			entities[i].placeable == 0)
 			continue;
 
-		user_updatables[i]->update(input, ticks, placeables[i]);
+		entities[i].userUpdatable->update(input, ticks, entities[i].placeable);
 	}
 }
 
@@ -84,10 +80,11 @@ void Entity_ai_update_system(const unsigned int ticks)
 {
 	for(int i = 0; i <= highestIndex; i++) 
 	{
-		if ((entities[i] & AI_UPDATE_SYSTEM_MASK) != AI_UPDATE_SYSTEM_MASK)
+		if (entities[i].empty || entities[i].aiUpdatable == 0 ||
+			entities[i].placeable == 0 || entities[i].state == 0)
 			continue;
 
-		ai_updatables[i]->update(states[i], placeables[i], ticks);
+		entities[i].aiUpdatable->update(entities[i].state, entities[i].placeable, ticks);
 	}
 }
 
@@ -95,10 +92,10 @@ void Entity_render_system(void)
 {
 	for(int i = 0; i <= highestIndex; i++) 
 	{
-		if ((entities[i] & RENDER_SYSTEM_MASK) != RENDER_SYSTEM_MASK)
+		if (entities[i].empty || entities[i].renderable == 0)	
 			continue;
 		
-		renderables[i]->render(states[i], placeables[i]);
+		entities[i].renderable->render(entities[i].state, entities[i].placeable);
 	}
 }
 
@@ -106,23 +103,25 @@ void Entity_collision_system(void)
 {
 	for(int i = 0; i <= highestIndex; i++) 
 	{
-		if ((entities[i] & COLLISION_SYSTEM_MASK) != COLLISION_SYSTEM_MASK)
+		if (entities[i].empty || entities[i].collidable == 0 ||
+			entities[i].placeable == 0)	
 			continue;
 
-		if (!collidables[i]->collidesWithOthers)
+
+		if (!entities[i].collidable->collidesWithOthers)
 			continue;
 
 		for (int j = 0; j <= highestIndex; j++)
 		{
-			if ((entities[j] & COLLISION_SYSTEM_MASK) != COLLISION_SYSTEM_MASK)
+			if (entities[j].empty || entities[j].collidable == 0)	
 				continue;
 
 			if (i == j)
 				continue;
 
 			// create a transformed bounding box for i
-			Position position = placeables[i]->position;
-			Rectangle boundingBox = collidables[i]->boundingBox;
+			Position position = entities[i].placeable->position;
+			Rectangle boundingBox = entities[i].collidable->boundingBox;
 			Rectangle transformedBoundingBox = {
 				boundingBox.aX + position.x,
 				boundingBox.aY + position.y,
@@ -131,10 +130,10 @@ void Entity_collision_system(void)
 			};
 
 			// call j's collide with i's transformed bounding box
-			Collision collision = collidables[j]->collide(states[j], placeables[j], transformedBoundingBox);
+			Collision collision = entities[j].collidable->collide(entities[j].state, entities[j].placeable, transformedBoundingBox);
 			if (collision.collisionDetected)
 			{
-				collidables[i]->resolve(states[i], collision);
+				entities[i].collidable->resolve(entities[i].state, collision);
 			}
 		}
 	}
