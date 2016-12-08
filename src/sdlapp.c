@@ -7,6 +7,8 @@
 #include "mode_mainmenu.h"
 #include "mode_gameplay.h"
 
+static const unsigned int DELAY = 1000/60;
+
 static SdlApp sdlApp;
 
 static void initialize(void); 
@@ -70,8 +72,6 @@ static void loop(void)
 	Input input;
 	input_initialize(&input);
 	unsigned int ticks = 0;
-	//const unsigned int delay = 1000 / 60;
-	const unsigned int delay = 5;
 	
 	while(!sdlApp.quit) {
 		ticks = timer_tick();
@@ -79,7 +79,7 @@ static void loop(void)
 		handle_sdl_events(&input);
 		update(&input, ticks);
 		render();
-		SDL_Delay(delay);
+		SDL_Delay(DELAY);
 	}
 }
 
