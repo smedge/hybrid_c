@@ -7,7 +7,7 @@
 
 #include <SDL2/SDL_mixer.h>
 
-#define MINE_COUNT 16
+#define MINE_COUNT 128
 #define MINE_ROTATION 0.0
 #define TICKS_ACTIVE 500
 #define TICKS_DESTROYED 10000
@@ -91,7 +91,7 @@ void Mine_cleanup()
 	highestUsedIndex = 0;
 	
 	Mix_FreeChunk(sample01);
-	sample02 = 0;
+	sample01 = 0;
 
 	Mix_FreeChunk(sample02);
 	sample02 = 0;
