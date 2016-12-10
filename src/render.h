@@ -3,6 +3,7 @@
 
 #include "position.h"
 #include "collision.h"
+#include "color.h"
 
 extern void Render_point(const Position *position, const double colorR, 
 	const double colorG, const double colorB, const double colorA);
@@ -13,7 +14,8 @@ extern void Render_triangle(const Position *position, const double heading,
 	const double colorR, const double colorG, const double colorB, 
 	const double colorA);
 
-extern void Render_quad();
+extern void Render_quad(const Position *position, const double rotation, 
+	const Rectangle rectangle, const ColorRGB *color);
 
 extern void Render_convex_poly();
 

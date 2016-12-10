@@ -36,16 +36,21 @@ extern void Render_triangle(const Position *position, const double heading,
 	glPopMatrix();
 }
 
-extern void Render_quad()
+extern void Render_quad(const Position *position, const double rotation, 
+	const Rectangle rectangle, const ColorRGB *color)
 {
-	// ColorFloat primaryColor = Color_rgb_to_float(&mapCell.primaryColor);
-	// glColor4f(primaryColor.red, primaryColor.green, primaryColor.blue, primaryColor.alpha);
-	// glBegin(GL_QUADS);
-	// 	glVertex2f(ax, ay);
-	// 	glVertex2f(ax, by);
-	// 	glVertex2f(bx, by);
-	// 	glVertex2f(bx, ay);
-	// glEnd();
+	glPushMatrix();
+	ColorFloat primaryColor = Color_rgb_to_float(color);
+	glColor4f(primaryColor.red, primaryColor.green, primaryColor.blue, primaryColor.alpha);
+	glTranslatef(position->x, position->y, 0.0);
+	glRotatef(rotation*-1, 0, 0, 1);
+	glBegin(GL_QUADS);
+		glVertex2f(rectangle.aX, rectangle.aY);
+		glVertex2f(rectangle.aX, rectangle.bY);
+		glVertex2f(rectangle.bX, rectangle.bY);
+		glVertex2f(rectangle.bX, rectangle.aY);
+	glEnd();
+	glPopMatrix();
 }
 
 extern void Render_convex_poly()

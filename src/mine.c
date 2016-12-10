@@ -16,8 +16,9 @@ static RenderableComponent renderable = {Mine_render};
 static CollidableComponent collidable = {{-150.0, 150.0, 150.0, -150.0}, true, Mine_collide, Mine_resolve};
 static AIUpdatableComponent updatable = {Mine_update};
 
-static ColorRGB color = {120, 120, 120, 255};
-static ColorRGB colorActive = {255, 0, 0, 255};
+static const ColorRGB COLOR = {45, 45, 45, 255};
+static const ColorRGB COLOR_DARK = {50, 50, 50, 255};
+static const ColorRGB COLOR_ACTIVE = {255, 0, 0, 255};
 
 typedef struct {
 	bool active;
@@ -168,12 +169,16 @@ void Mine_render(const void *entity, const PlaceableComponent *placeable)
 
 	ColorFloat colorFloat;
 	if (state->active)
-		colorFloat= Color_rgb_to_float(&colorActive);
+		colorFloat= Color_rgb_to_float(&COLOR_ACTIVE);
 	else
-		colorFloat= Color_rgb_to_float(&color);
+		colorFloat= Color_rgb_to_float(&COLOR);
+
+	Rectangle rectangle = {-10, 10, 10, -10};
+
+	Render_quad(&placeable->position, 45.0, rectangle, &COLOR_DARK);
 
 	Render_point(&placeable->position, colorFloat.red, colorFloat.green, 
 			colorFloat.blue, colorFloat.alpha);
 
-	Render_bounding_box(&placeable->position, &collidable.boundingBox);
+	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }

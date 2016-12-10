@@ -104,7 +104,7 @@ void Ship_render(const void *entity, const PlaceableComponent *placeable)
 		Render_point(&placeable->position, colorFloat.red, colorFloat.green, 
 			colorFloat.blue, colorFloat.alpha);
 
-	Render_bounding_box(&placeable->position, &collidable.boundingBox);
+	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }
 
 Position Ship_get_position()

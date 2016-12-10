@@ -85,7 +85,8 @@ static void render_menu_button(const ButtonState *buttonState, bool showBounds)
 		glBegin(GL_LINE_LOOP);
 			glVertex2f(buttonState->position.x, buttonState->position.y);
 			glVertex2f(buttonState->position.x, buttonState->position.y - buttonState->height);
-			glVertex2f(buttonState->position.x + buttonState->width, buttonState->position.y - buttonState->height);
+			glVertex2f(buttonState->position.x + buttonState->width, 
+				buttonState->position.y - buttonState->height);
 			glVertex2f(buttonState->position.x + buttonState->width, buttonState->position.y);
 		glEnd();
 	}
