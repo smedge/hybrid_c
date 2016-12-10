@@ -20,6 +20,8 @@ static const ColorRGB COLOR = {45, 45, 45, 255};
 static const ColorRGB COLOR_DARK = {50, 50, 50, 255};
 static const ColorRGB COLOR_ACTIVE = {255, 0, 0, 255};
 
+static ColorFloat color, colorDark, colorActive;
+
 typedef struct {
 	bool active;
 	unsigned int ticksActive;
@@ -85,6 +87,10 @@ void Mine_initialize(Position position)
 			exit(-1);
 		}
 	}
+
+	color = Color_rgb_to_float(&COLOR);
+	colorDark = Color_rgb_to_float(&COLOR_DARK);
+	colorActive = Color_rgb_to_float(&COLOR_ACTIVE);
 }
 
 void Mine_cleanup()
@@ -167,18 +173,15 @@ void Mine_render(const void *entity, const PlaceableComponent *placeable)
 	if (state->destroyed)
 		return;
 
-	ColorFloat colorFloat;
-	if (state->active)
-		colorFloat= Color_rgb_to_float(&COLOR_ACTIVE);
-	else
-		colorFloat= Color_rgb_to_float(&COLOR);
-
 	Rectangle rectangle = {-10, 10, 10, -10};
+	View view =  View_get_view();
+	if (view.scale > 0.09)
+		Render_quad(&placeable->position, 45.0, rectangle, &colorDark);
 
-	Render_quad(&placeable->position, 45.0, rectangle, &COLOR_DARK);
-
-	Render_point(&placeable->position, colorFloat.red, colorFloat.green, 
-			colorFloat.blue, colorFloat.alpha);
+	if (state->active)
+		Render_point(&placeable->position, 2.0, &colorActive);
+	else
+		Render_point(&placeable->position, 2.0, &color);
 
 	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }

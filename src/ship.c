@@ -7,7 +7,8 @@ static const double NORMAL_VELOCITY = 500.0;
 static const double FAST_VELOCITY = 1500.0;
 static const double SLOW_VELOCITY = 100.0;
 
-static ColorRGB color = {255, 0, 0, 255};
+static const ColorRGB COLOR = {255, 0, 0, 255};
+static ColorFloat color;
 
 static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 static RenderableComponent renderable = {Ship_render};
@@ -25,6 +26,8 @@ void Ship_initialize()
 	entity.collidable = &collidable;
 
 	Entity_add_entity(entity);
+
+	color = Color_rgb_to_float(&COLOR);
 }
 
 void Ship_cleanup() 
@@ -95,14 +98,11 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 void Ship_render(const void *entity, const PlaceableComponent *placeable)
 {
 	View view =  View_get_view();
-	ColorFloat colorFloat = Color_rgb_to_float(&color);
 
 	if (view.scale > 0.09)
-		Render_triangle(&placeable->position, placeable->heading, 
-			colorFloat.red, colorFloat.green, colorFloat.blue, colorFloat.alpha);
+		Render_triangle(&placeable->position, placeable->heading, &color);
 	else
-		Render_point(&placeable->position, colorFloat.red, colorFloat.green, 
-			colorFloat.blue, colorFloat.alpha);
+		Render_point(&placeable->position, 2.0, &color);
 
 	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }

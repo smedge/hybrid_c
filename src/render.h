@@ -5,21 +5,20 @@
 #include "collision.h"
 #include "color.h"
 
-extern void Render_point(const Position *position, const double colorR, 
-	const double colorG, const double colorB, const double colorA);
+void Render_point(const Position *position, const float size, 
+	const ColorFloat *color);
 
-extern void Render_line();
+void Render_line();
 
-extern void Render_triangle(const Position *position, const double heading, 
-	const double colorR, const double colorG, const double colorB, 
-	const double colorA);
+void Render_triangle(const Position *position, const double heading, 
+	const ColorFloat *color);
 
-extern void Render_quad(const Position *position, const double rotation, 
-	const Rectangle rectangle, const ColorRGB *color);
+void Render_quad(const Position *position, const double rotation, 
+	const Rectangle rectangle, const ColorFloat *color);
 
-extern void Render_convex_poly();
+void Render_convex_poly();
 
-extern void Render_bounding_box(const Position *position, 
+void Render_bounding_box(const Position *position, 
 	const Rectangle *rectangle);
 
 #endif

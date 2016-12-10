@@ -2,12 +2,12 @@
 
 #include <SDL2/SDL_opengl.h>
 
-extern void Render_point(const Position *position, const double colorR, 
-	const double colorG, const double colorB, const double colorA)
+void Render_point(const Position *position, const float size, 
+	const ColorFloat *color)
 {
 	glPushMatrix();
-	glPointSize(2.0);
-	glColor4f(colorR, colorG, colorB, colorA);
+	glPointSize(size);
+	glColor4f(color->red, color->green, color->blue, color->alpha);
 	glTranslatef(position->x, position->y, 0.0);
 	glBegin(GL_POINTS);
 		glVertex2f(0.0, 0.0);
@@ -15,20 +15,19 @@ extern void Render_point(const Position *position, const double colorR,
 	glPopMatrix();
 }
 
-extern void Render_line()
+void Render_line()
 {
 	
 }
 
-extern void Render_triangle(const Position *position, const double heading, 
-	const double colorR, const double colorG, const double colorB, 
-	const double colorA) 
+void Render_triangle(const Position *position, const double heading, 
+	const ColorFloat *color) 
 {
 	glPushMatrix();
 	glTranslatef(position->x, position->y, 0.0);
 	glRotatef(heading*-1, 0, 0, 1);
 	glBegin(GL_TRIANGLES);
-	    glColor4f(colorR, colorG, colorB, colorA);
+	    glColor4f(color->red, color->green, color->blue, color->alpha);
 		glVertex2f(0.0, 20.0);
 		glVertex2f(10.0, -10.0);
 		glVertex2f(-10.0, -10.0);
@@ -36,12 +35,11 @@ extern void Render_triangle(const Position *position, const double heading,
 	glPopMatrix();
 }
 
-extern void Render_quad(const Position *position, const double rotation, 
-	const Rectangle rectangle, const ColorRGB *color)
+void Render_quad(const Position *position, const double rotation, 
+	const Rectangle rectangle, const ColorFloat *color)
 {
 	glPushMatrix();
-	ColorFloat primaryColor = Color_rgb_to_float(color);
-	glColor4f(primaryColor.red, primaryColor.green, primaryColor.blue, primaryColor.alpha);
+	glColor4f(color->red, color->green, color->blue, color->alpha);
 	glTranslatef(position->x, position->y, 0.0);
 	glRotatef(rotation*-1, 0, 0, 1);
 	glBegin(GL_QUADS);
@@ -53,12 +51,12 @@ extern void Render_quad(const Position *position, const double rotation,
 	glPopMatrix();
 }
 
-extern void Render_convex_poly()
+void Render_convex_poly()
 {
 	
 }
 
-extern void Render_bounding_box(const Position *position, 
+void Render_bounding_box(const Position *position, 
 		const Rectangle *boundingBox) 
 {
 	glPushMatrix();
