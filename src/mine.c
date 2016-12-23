@@ -7,9 +7,10 @@
 
 #include <SDL2/SDL_mixer.h>
 
-#define MINE_COUNT 128
+#define MINE_COUNT 64
 #define MINE_ROTATION 0.0
 #define TICKS_ACTIVE 500
+#define TICKS_EXPLODING 100
 #define TICKS_DESTROYED 10000
 
 static RenderableComponent renderable = {Mine_render};
@@ -19,14 +20,17 @@ static AIUpdatableComponent updatable = {Mine_update};
 static const ColorRGB COLOR = {45, 45, 45, 255};
 static const ColorRGB COLOR_DARK = {50, 50, 50, 255};
 static const ColorRGB COLOR_ACTIVE = {255, 0, 0, 255};
+static const ColorRGB COLOR_WHITE = {255, 255, 255, 255};
 
-static ColorFloat color, colorDark, colorActive;
+static ColorFloat color, colorDark, colorActive, colorWhite;
 
 typedef struct {
 	bool active;
 	unsigned int ticksActive;
 	bool destroyed;
 	unsigned int ticksDestroyed;
+	bool exploding;
+	unsigned int ticksExploding;
 } MineState;
 
 static MineState mines[MINE_COUNT];
@@ -46,8 +50,10 @@ void Mine_initialize(Position position)
 	}
 
 	mines[highestUsedIndex].active = false;
+	mines[highestUsedIndex].exploding = false;
 	mines[highestUsedIndex].destroyed = false;
 	mines[highestUsedIndex].ticksActive = 0;
+	mines[highestUsedIndex].ticksExploding = 0;
 	mines[highestUsedIndex].ticksDestroyed = 0;
 
 	placeables[highestUsedIndex].position = position;
@@ -91,6 +97,7 @@ void Mine_initialize(Position position)
 	color = Color_rgb_to_float(&COLOR);
 	colorDark = Color_rgb_to_float(&COLOR_DARK);
 	colorActive = Color_rgb_to_float(&COLOR_ACTIVE);
+	colorWhite = Color_rgb_to_float(&COLOR_WHITE);
 }
 
 void Mine_cleanup()
@@ -131,7 +138,7 @@ void Mine_resolve(const void *entity, const Collision collision)
 {
 	MineState* state = (MineState*)entity;
 
-	if (state->destroyed)
+	if (state->destroyed || state->exploding)
 		return;
 	
 	if (!state->active) {
@@ -151,19 +158,29 @@ void Mine_update(const void *entity, const PlaceableComponent *placeable, const 
 		if (state->ticksActive > TICKS_ACTIVE) {
 			Mix_PlayChannel(-1, sample02, 0);
 			state->active = false;
+			state->exploding = true;
+			state->ticksExploding = 0;
+		}
+	}
+	
+	if (state->exploding) {
+		state->ticksExploding += ticks;
+		if (state->ticksExploding > TICKS_EXPLODING) {
+			state->exploding = false;
 			state->destroyed = true;
 			state->ticksDestroyed = 0;
 		}
 	}
+
 	if (state->destroyed){
 		state->ticksDestroyed += ticks;
 		if (state->ticksDestroyed > TICKS_DESTROYED) {
 			Mix_PlayChannel(-1, sample03, 0);
-			state->destroyed = false;
 			state->active = false;
+			state->exploding = false;
+			state->destroyed = false;
 		}
 	}
-
 }
 
 void Mine_render(const void *entity, const PlaceableComponent *placeable) 
@@ -173,15 +190,22 @@ void Mine_render(const void *entity, const PlaceableComponent *placeable)
 	if (state->destroyed)
 		return;
 
+	if (state->exploding) {
+		Rectangle explosion = {-150, 150, 150, -150};
+		Render_quad(&placeable->position, 22.5, explosion, &colorWhite);
+		Render_quad(&placeable->position, 67.5, explosion, &colorWhite);
+		return;
+	}
+
 	Rectangle rectangle = {-10, 10, 10, -10};
 	View view =  View_get_view();
 	if (view.scale > 0.09)
 		Render_quad(&placeable->position, 45.0, rectangle, &colorDark);
 
 	if (state->active)
-		Render_point(&placeable->position, 2.0, &colorActive);
+		Render_point(&placeable->position, 3.0, &colorActive);
 	else
-		Render_point(&placeable->position, 2.0, &color);
+		Render_point(&placeable->position, 3.0, &color);
 
 	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }

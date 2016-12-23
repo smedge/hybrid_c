@@ -45,7 +45,7 @@ void Grid_render()
 	//glLineWidth(bigLineWidth);
 	glLineWidth(lineWidth);
 	glBegin(GL_LINES);
-		glColor4f(0.0, 1.0, 0.0, 0.8);
+		glColor4f(0.0, 1.0, 0.0, 0.4);
 		glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), 0.0);
 		glVertex2f(view.position.x + HALF_SCREEN_WIDTH, 0.0);
 		glVertex2f(0.0, view.position.y + HALF_SCREEN_HEIGHT);
@@ -60,9 +60,9 @@ void Grid_render()
 				i<HALF_SCREEN_WIDTH + view.position.x;
 				i+=GRID_SIZE) {
 			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.8);
+				glColor4f(0.0, 1.0, 0.0, 0.4);
 			else
-				glColor4f(0.0, 1.0, 0.0, 0.35);
+				glColor4f(0.0, 1.0, 0.0, 0.2);
 			glVertex2f(i, view.position.y + HALF_SCREEN_HEIGHT);
 			glVertex2f(i, view.position.y + (-HALF_SCREEN_HEIGHT));
 		}
@@ -72,9 +72,9 @@ void Grid_render()
 				i < HALF_SCREEN_WIDTH-view.position.x;
 				i+=GRID_SIZE) {
 			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.8);
+				glColor4f(0.0, 1.0, 0.0, 0.4);
 			else
-				glColor4f(0.0, 1.0, 0.0, 0.35);
+				glColor4f(0.0, 1.0, 0.0, 0.2);
 			glVertex2f(-i, view.position.y + HALF_SCREEN_HEIGHT);
 			glVertex2f(-i, view.position.y + (-HALF_SCREEN_HEIGHT));
 		}
@@ -84,9 +84,9 @@ void Grid_render()
 				i<HALF_SCREEN_HEIGHT + view.position.y;
 				i+=GRID_SIZE) {
 			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.8);
+				glColor4f(0.0, 1.0, 0.0, 0.4);
 			else
-				glColor4f(0.0, 1.0, 0.0, 0.35);
+				glColor4f(0.0, 1.0, 0.0, 0.2);
 			glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), i);
 			glVertex2f(view.position.x + HALF_SCREEN_WIDTH, i);
 		}
@@ -96,9 +96,9 @@ void Grid_render()
 				i<HALF_SCREEN_HEIGHT - view.position.y;
 				i+=GRID_SIZE) {
 			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.8);
+				glColor4f(0.0, 1.0, 0.0, 0.4);
 			else
-				glColor4f(0.0, 1.0, 0.0, 0.35);
+				glColor4f(0.0, 1.0, 0.0, 0.2);
 			glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), -i);
 			glVertex2f(view.position.x + HALF_SCREEN_WIDTH, -i);
 		}

@@ -107,7 +107,6 @@ void Entity_collision_system(void)
 			entities[i].placeable == 0)	
 			continue;
 
-
 		if (!entities[i].collidable->collidesWithOthers)
 			continue;
 
