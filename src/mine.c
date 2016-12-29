@@ -116,6 +116,8 @@ void Mine_cleanup()
 
 Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
+	MineState* state = (MineState*)entity;
+
 	Collision collision = {false, false};
 
 	Position position = placeable->position;
@@ -129,6 +131,8 @@ Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, 
 
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
+		if (state->exploding)
+			collision.solid = true;
 	}
 
 	return collision;
@@ -161,6 +165,7 @@ void Mine_update(const void *entity, const PlaceableComponent *placeable, const 
 			state->exploding = true;
 			state->ticksExploding = 0;
 		}
+		return;
 	}
 	
 	if (state->exploding) {
@@ -170,6 +175,7 @@ void Mine_update(const void *entity, const PlaceableComponent *placeable, const 
 			state->destroyed = true;
 			state->ticksDestroyed = 0;
 		}
+		return;
 	}
 
 	if (state->destroyed){
@@ -180,6 +186,7 @@ void Mine_update(const void *entity, const PlaceableComponent *placeable, const 
 			state->exploding = false;
 			state->destroyed = false;
 		}
+		return;
 	}
 }
 
