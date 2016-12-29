@@ -1,7 +1,7 @@
 #ifndef MODE_GAMEPLAY_H
 #define MODE_GAMEPLAY_H
 
-#define GAMEPLAY_MUSIC_PATH "./resources/music/deadmau5_Snowcone.mp3"
+#define GAMEPLAY_MUSIC_PATH "./resources/music/deadmau5_Hyperlandia.mp3"
 
 #include "cursor.h"
 #include "graphics.h"
