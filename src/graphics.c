@@ -2,7 +2,7 @@
 
 #include <SDL2/SDL_opengl.h>
 
-static Graphics graphics = {0, false};
+static Graphics graphics = {0, true};
 
 static void create_window(void);
 static void create_fullscreen_window(void);
