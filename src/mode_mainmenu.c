@@ -6,7 +6,7 @@ static ButtonState exitButton = {{98.0, 228.0}, 59, 12, false, false, false, EXI
 static FTGLfont *font = 0;
 
 static void render_menu_text(void);
-static void render_menu_button(const ButtonState *buttonState, bool showBounds);
+static void render_menu_button(const ButtonState *buttonState, const bool showBounds);
 
 static void (*quit_callback)();
 static void (*gameplay_mode_callback)();
@@ -38,7 +38,7 @@ void Mode_Mainmenu_update(
 	const unsigned int ticks)
 {
 	Screen screen = Graphics_get_screen();
-	int fifthScreenWidth = screen.width / 5;
+	const int fifthScreenWidth = screen.width / 5;
 	newButton.position.x = fifthScreenWidth;
 	loadButton.position.x = fifthScreenWidth;
 	exitButton.position.x = fifthScreenWidth;
@@ -75,7 +75,7 @@ static void render_menu_text(void)
 	ftglRenderFont(font, TITLE_TEXT, FTGL_RENDER_ALL);
 }
 
-static void render_menu_button(const ButtonState *buttonState, bool showBounds)
+static void render_menu_button(const ButtonState *buttonState, const bool showBounds)
 {
 	glPushMatrix();
 
