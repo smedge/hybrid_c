@@ -407,6 +407,12 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 		sdlApp.quit = true;
 		break;
 
+	case SDLK_RETURN:
+
+		if(event->key.keysym.mod & KMOD_RALT || event->key.keysym.mod & KMOD_LALT)
+			Graphics_toggle_fullscreen();
+		break;
+
 	case SDLK_ESCAPE:
 		change_mode(MAINMENU);
 		break;
