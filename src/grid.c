@@ -10,6 +10,8 @@ const double GRID_MIN_BIG_LINE_SIZE = 3.0;
 
 static RenderableComponent renderable = {Grid_render};
 
+static int get_nearest_start_point(int x);
+
 void Grid_initialize()
 {
 	Entity entity = Entity_initialize_entity();
@@ -41,21 +43,12 @@ void Grid_render()
 	if (lineWidth < GRID_MIN_LINE_SIZE)
 		lineWidth = GRID_MIN_LINE_SIZE;
 
-	// draw centerlines
+	// draw lines
 	glLineWidth(lineWidth);
 	glBegin(GL_LINES);
-		glColor4f(0.0, 1.0, 0.0, 0.4);
-		glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), 0.0);
-		glVertex2f(view.position.x + HALF_SCREEN_WIDTH, 0.0);
-		glVertex2f(0.0, view.position.y + HALF_SCREEN_HEIGHT);
-		glVertex2f(0.0, view.position.y + (-HALF_SCREEN_HEIGHT));
-	glEnd();
-
-	// draw others
-	glLineWidth(lineWidth);
-	glBegin(GL_LINES);
-		// draw verts along x positive
-		for (int i = GRID_SIZE; 
+		
+		// draw vert lines along x
+		for (int i = get_nearest_start_point(view.position.x - HALF_SCREEN_WIDTH); 
 				i<HALF_SCREEN_WIDTH + view.position.x;
 				i+=GRID_SIZE) {
 			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
@@ -66,22 +59,9 @@ void Grid_render()
 			glVertex2f(i, view.position.y + HALF_SCREEN_HEIGHT);
 			glVertex2f(i, view.position.y + (-HALF_SCREEN_HEIGHT));
 		}
-
-		// draw verts along x negative
-		for (int i = GRID_SIZE;
-				i < HALF_SCREEN_WIDTH - view.position.x;
-				i+=GRID_SIZE) {
-			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.4);
-			else
-				glColor4f(0.0, 1.0, 0.0, 0.2);
-				
-			glVertex2f(-i, view.position.y + HALF_SCREEN_HEIGHT);
-			glVertex2f(-i, view.position.y + (-HALF_SCREEN_HEIGHT));
-		}
-
-		// draw horz along y positive
-		for (int i = GRID_SIZE;
+		
+		// draw horz lines along y
+		for (int i = get_nearest_start_point(view.position.y - HALF_SCREEN_HEIGHT); 
 				i<HALF_SCREEN_HEIGHT + view.position.y;
 				i+=GRID_SIZE) {
 			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
@@ -89,23 +69,27 @@ void Grid_render()
 			else
 				glColor4f(0.0, 1.0, 0.0, 0.2);
 				
-			glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), i);
 			glVertex2f(view.position.x + HALF_SCREEN_WIDTH, i);
-		}
-
-		// draw horz along y negative
-		for (int i = GRID_SIZE;
-				i<HALF_SCREEN_HEIGHT - view.position.y;
-				i+=GRID_SIZE) {
-			if (fmod(i, GRID_SIZE * BIG_GRID_SIZE) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.4);
-			else
-				glColor4f(0.0, 1.0, 0.0, 0.2);
-					
-			glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), -i);
-			glVertex2f(view.position.x + HALF_SCREEN_WIDTH, -i);
+			glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), i);
 		}
 
 	glEnd();
 	glPopMatrix();
+}
+
+static int get_nearest_start_point(int x)
+{
+	int a, b;
+
+	if (x > 0) {
+		a = x % 100;
+		b = x - a;
+		return b; 
+	}
+	else {
+		x = -x;
+		a = x % 100;
+		b = 100 - a;
+		return -x - b;	
+	}
 }
