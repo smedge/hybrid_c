@@ -14,6 +14,6 @@ void View_initialize();
 void View_update(const Input *input, const unsigned int ticks);
 void View_transform(const Screen *screen);
 const View View_get_view(void);
-void View_set_position(Position position);
+void View_set_position(const Position position);
 
 #endif
