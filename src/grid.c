@@ -46,7 +46,7 @@ void Grid_render()
 	// draw lines
 	glLineWidth(lineWidth);
 	glBegin(GL_LINES);
-		
+
 		// draw vert lines along x
 		for (int i = get_nearest_start_point(view.position.x - HALF_SCREEN_WIDTH); 
 				i<HALF_SCREEN_WIDTH + view.position.x;
@@ -80,16 +80,17 @@ void Grid_render()
 static int get_nearest_start_point(int x)
 {
 	int a, b;
+	int gridSize = (int) GRID_SIZE;
 
 	if (x > 0) {
-		a = x % 100;
+		a = x % gridSize;
 		b = x - a;
 		return b; 
 	}
 	else {
 		x = -x;
-		a = x % 100;
-		b = 100 - a;
+		a = x % gridSize;
+		b = gridSize - a;
 		return -x - b;	
 	}
 }
