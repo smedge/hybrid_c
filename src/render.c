@@ -2,7 +2,7 @@
 
 #include <SDL2/SDL_opengl.h>
 
-static int get_nearest_start_point(int x, const double GRID_SIZE);
+static int get_nearest_grid_start_point(int x, const double GRID_SIZE);
 
 void Render_point(const Position *position, const float size, 
 	const ColorFloat *color)
@@ -102,7 +102,7 @@ void Render_grid_lines(const double gridSize, const double bigGridSize,
 	glBegin(GL_LINES);
 
 		// draw vert lines along x
-		for (int i = get_nearest_start_point(view.position.x - HALF_SCREEN_WIDTH, gridSize); 
+		for (int i = get_nearest_grid_start_point(view.position.x - HALF_SCREEN_WIDTH, gridSize); 
 				i<HALF_SCREEN_WIDTH + view.position.x;
 				i+=gridSize) {
 			if (fmod(i, gridSize * bigGridSize) == 0.0)
@@ -115,7 +115,7 @@ void Render_grid_lines(const double gridSize, const double bigGridSize,
 		}
 		
 		// draw horz lines along y
-		for (int i = get_nearest_start_point(view.position.y - HALF_SCREEN_HEIGHT, gridSize); 
+		for (int i = get_nearest_grid_start_point(view.position.y - HALF_SCREEN_HEIGHT, gridSize); 
 				i<HALF_SCREEN_HEIGHT + view.position.y;
 				i+=gridSize) {
 			if (fmod(i, gridSize * bigGridSize) == 0.0)
@@ -131,7 +131,7 @@ void Render_grid_lines(const double gridSize, const double bigGridSize,
 	glPopMatrix();
 }
 
-static int get_nearest_start_point(int x, const double GRID_SIZE)
+static int get_nearest_grid_start_point(int x, const double GRID_SIZE)
 {
 	int a, b;
 	int gridSize = (int) GRID_SIZE;
