@@ -4,6 +4,8 @@
 #include "position.h"
 #include "collision.h"
 #include "color.h"
+#include "view.h"
+#include "graphics.h"
 
 void Render_point(const Position *position, const float size, 
 	const ColorFloat *color);
@@ -21,4 +23,6 @@ void Render_convex_poly();
 void Render_bounding_box(const Position *position, 
 	const Rectangle *rectangle);
 
+void Render_grid_lines(const double gridSize, const double bigGridSize,
+	const double minLineSize, const double minBigLineSize);
 #endif

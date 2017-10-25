@@ -7,7 +7,7 @@
 #include "screen.h"
 
 #define SDL_WINDOW_NAME "> - - - #"
-#define SDL_WINDOW_FULLSCREEN false 
+#define SDL_WINDOW_FULLSCREEN true 
 #define SDL_WINDOW_WINDOWED_WIDTH 640
 #define SDL_WINDOW_WINDOWED_HEIGHT 480
 #define SDL_WINDOW_FULLSCREEN_WIDTH 1920
