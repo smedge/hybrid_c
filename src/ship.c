@@ -35,6 +35,9 @@ void Ship_initialize()
 
 	Entity_add_entity(entity);
 
+	state = STATE_DESTROYED;
+	stateTimer = 0;
+
 	color = Color_rgb_to_float(&COLOR);
 
 	if (!sample01) {
