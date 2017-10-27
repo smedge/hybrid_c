@@ -1,5 +1,6 @@
 #include "render.h"
 
+#include <math.h>
 #include <SDL2/SDL_opengl.h>
 
 static int get_nearest_grid_start_point(int x, const double GRID_SIZE);
