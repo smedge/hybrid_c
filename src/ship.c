@@ -9,9 +9,6 @@ static const double NORMAL_VELOCITY = 500.0;
 static const double FAST_VELOCITY = 1500.0;
 static const double SLOW_VELOCITY = 100.0;
 
-static int state = STATE_DESTROYED;
-static int stateTimer = 0;
-
 static Mix_Chunk *sample01 = 0;
 static Mix_Chunk *sample02 = 0;
 
@@ -22,6 +19,13 @@ static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 static RenderableComponent renderable = {Ship_render};
 static UserUpdatableComponent updatable = {Ship_update};
 static CollidableComponent collidable = {{-20.0, 20.0, 20.0, -20.0}, true, Ship_collide, Ship_resolve};
+
+typedef struct {
+	bool destroyed;
+	unsigned int ticksDestroyed;
+} ShipState;
+
+static ShipState shipState = {true, 0};
 
 static double get_heading(bool n, bool s, bool e, bool w);
 
@@ -35,8 +39,8 @@ void Ship_initialize()
 
 	Entity_add_entity(entity);
 
-	state = STATE_DESTROYED;
-	stateTimer = 0;
+	shipState.destroyed = true;
+	shipState.ticksDestroyed = 0;
 
 	color = Color_rgb_to_float(&COLOR);
 
@@ -92,12 +96,12 @@ Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, 
 
 void Ship_resolve(const void *entity, const Collision collision)
 {
-	if (state == STATE_DESTROYED)
+	if (shipState.destroyed)
 		return;
 
 	if (collision.solid)
 	{
-		state = STATE_DESTROYED;
+		shipState.destroyed = true;
 		Mix_PlayChannel(-1, sample02, 0);
 	}
 }
@@ -106,12 +110,12 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 {
 	double ticksNormalized = ticks / 1000.0;
 
-	if (state == STATE_DESTROYED) {
-		stateTimer += ticks;
+	if (shipState.destroyed) {
+		shipState.ticksDestroyed += ticks;
 		
-		if (stateTimer > DEATH_TIMER) {
-			state = STATE_NORMAL;
-			stateTimer = 0.0;
+		if (shipState.ticksDestroyed >= DEATH_TIMER) {
+			shipState.destroyed = false;
+			shipState.ticksDestroyed = 0;
 			placeable->position.x = 0.0;
 			placeable->position.y = 0.0;
 			placeable->heading = 0.0;
@@ -150,7 +154,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 
 void Ship_render(const void *entity, const PlaceableComponent *placeable)
 {
-	if (state == STATE_DESTROYED) {
+	if (shipState.destroyed == true) {
 		return;
 	}
 

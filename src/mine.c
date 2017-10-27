@@ -1,10 +1,9 @@
-#include <stdlib.h>
-
 #include "mine.h"
 #include "view.h"
 #include "render.h"
 #include "color.h"
 
+#include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
 #define MINE_COUNT 64

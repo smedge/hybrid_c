@@ -1,5 +1,5 @@
 #include "mode_gameplay.h"
-
+#include <time.h>
 #include <SDL2/SDL_opengl.h>
 #include "map.h"
 
@@ -7,6 +7,7 @@ void Mode_Gameplay_initialize(void)
 {
 	Entity_destroy_all();
 
+	srand(time(NULL));
 	int num_between_1_and_3 = (rand() % 3) + 1;
 	
 	switch (num_between_1_and_3) {
