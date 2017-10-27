@@ -4,8 +4,8 @@
 
 static FTGLfont *font = 0;
 
-static void render_left_status(const Screen *screen);
-static void render_right_status(const Screen *screen);
+//static void render_left_status(const Screen *screen);
+//static void render_right_status(const Screen *screen);
 static void render_skill_bar(const Screen *screen);
 static void render_blank_skill_button();
 static void render_radar(const Screen *screen);
@@ -32,8 +32,8 @@ void Hud_update(const Input *input, const unsigned int ticks)
 void Hud_render(const Screen *screen)
 {
 	glPushMatrix();
-	render_left_status(screen);
-	render_right_status(screen);
+	//render_left_status(screen);
+	//render_right_status(screen);
 	render_radar(screen);
 	render_skill_bar(screen);
 	glPopMatrix();
