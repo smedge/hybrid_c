@@ -3,6 +3,7 @@
 
 #define STATE_NORMAL 0
 #define STATE_DESTROYED 1
+#define DEATH_TIMER 3500
 
 #include "input.h"
 #include "position.h"

@@ -109,7 +109,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	if (state == STATE_DESTROYED) {
 		stateTimer += ticks;
 		
-		if (stateTimer > 3000) {
+		if (stateTimer > DEATH_TIMER) {
 			state = STATE_NORMAL;
 			stateTimer = 0.0;
 			placeable->position.x = 0.0;
