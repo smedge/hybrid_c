@@ -143,7 +143,7 @@ static void render_skill_bar(const Screen *screen)
 	ftglRenderFont(font, "9", FTGL_RENDER_ALL);
 
 	glRasterPos2f(550.0f, screen->height - 10.0);
-	ftglRenderFont(font, "10", FTGL_RENDER_ALL);
+	ftglRenderFont(font, "0", FTGL_RENDER_ALL);
 }
 
 static void render_blank_skill_button()
