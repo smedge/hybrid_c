@@ -1,5 +1,7 @@
 #include "sdlapp.h"
 
+#include <time.h>
+
 #include "graphics.h"
 #include "audio.h"
 #include "input.h"
@@ -53,6 +55,8 @@ static void initialize(void)
 
 	Graphics_initialize();
 	Audio_initialize();
+
+	srand(time(NULL));
 
 	Mode_Mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
 	

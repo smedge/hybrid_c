@@ -1,14 +1,13 @@
 #include "mode_gameplay.h"
-#include <time.h>
 #include <SDL2/SDL_opengl.h>
 #include "map.h"
+
 
 void Mode_Gameplay_initialize(void)
 {
 	Entity_destroy_all();
 
-	srand(time(NULL));
-	int num_between_1_and_3 = (rand() % 3) + 1;
+	int num_between_1_and_3 = (rand() % 5) + 1;
 	
 	switch (num_between_1_and_3) {
 	case 1:
@@ -20,8 +19,12 @@ void Mode_Gameplay_initialize(void)
 	case 3:
 		Audio_loop_music(GAMEPLAY_MUSIC_03_PATH);
 		break;
-	default:
-		Audio_loop_music(GAMEPLAY_MUSIC_01_PATH);
+	case 4:
+		Audio_loop_music(GAMEPLAY_MUSIC_04_PATH);
+		break;
+	case 5:
+		Audio_loop_music(GAMEPLAY_MUSIC_05_PATH);
+		break;
 	}
 
 

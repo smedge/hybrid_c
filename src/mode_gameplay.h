@@ -4,6 +4,8 @@
 #define GAMEPLAY_MUSIC_01_PATH "./resources/music/deadmau5_Analogical.mp3"
 #define GAMEPLAY_MUSIC_02_PATH "./resources/music/deadmau5_Snowcone.mp3"
 #define GAMEPLAY_MUSIC_03_PATH "./resources/music/deadmau5_ArcadiaRemasteredAgain.mp3"
+#define GAMEPLAY_MUSIC_04_PATH "./resources/music/deadmau5_Avarita.mp3"
+#define GAMEPLAY_MUSIC_05_PATH "./resources/music/deadmau5_CatThrusterOriginal.mp3"
 
 #include "cursor.h"
 #include "graphics.h"
