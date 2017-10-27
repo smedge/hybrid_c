@@ -7,7 +7,23 @@ void Mode_Gameplay_initialize(void)
 {
 	Entity_destroy_all();
 
-	Audio_loop_music(GAMEPLAY_MUSIC_PATH);
+	int num_between_1_and_3 = (rand() % 3) + 1;
+	
+	switch (num_between_1_and_3) {
+	case 1:
+	 	Audio_loop_music(GAMEPLAY_MUSIC_01_PATH);
+		break;
+	case 2:
+		Audio_loop_music(GAMEPLAY_MUSIC_02_PATH);
+		break;
+	case 3:
+		Audio_loop_music(GAMEPLAY_MUSIC_03_PATH);
+		break;
+	default:
+		Audio_loop_music(GAMEPLAY_MUSIC_01_PATH);
+	}
+
+
 	View_initialize();
 	Hud_initialize();
 	Grid_initialize();

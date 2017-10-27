@@ -1,7 +1,9 @@
 #ifndef MODE_GAMEPLAY_H
 #define MODE_GAMEPLAY_H
 
-#define GAMEPLAY_MUSIC_PATH "./resources/music/deadmau5_Analogical.mp3"
+#define GAMEPLAY_MUSIC_01_PATH "./resources/music/deadmau5_Analogical.mp3"
+#define GAMEPLAY_MUSIC_02_PATH "./resources/music/deadmau5_Snowcone.mp3"
+#define GAMEPLAY_MUSIC_03_PATH "./resources/music/deadmau5_ArcadiaRemasteredAgain.mp3"
 
 #include "cursor.h"
 #include "graphics.h"
