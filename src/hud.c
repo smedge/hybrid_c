@@ -4,8 +4,8 @@
 
 static FTGLfont *font = 0;
 
-//static void render_left_status(const Screen *screen);
-//static void render_right_status(const Screen *screen);
+// static void render_left_status(const Screen *screen);
+// static void render_right_status(const Screen *screen);
 static void render_skill_bar(const Screen *screen);
 static void render_blank_skill_button();
 static void render_radar(const Screen *screen);
@@ -39,37 +39,37 @@ void Hud_render(const Screen *screen)
 	glPopMatrix();
 }
 
-static void render_left_status(const Screen *screen)
-{
-	glPushMatrix();
-	glLineWidth(1.0);
-	glColor4f(0.1, 0.1, 0.1, 0.8);
-	glTranslatef(10.0, 10.0, 0.0);
+// static void render_left_status(const Screen *screen)
+// {
+// 	glPushMatrix();
+// 	glLineWidth(1.0);
+// 	glColor4f(0.1, 0.1, 0.1, 0.8);
+// 	glTranslatef(10.0, 10.0, 0.0);
 
-	glBegin(GL_LINE_LOOP);
-		glVertex2f(0.0, 0.0);
-		glVertex2f(0.0, 100.0);
-		glVertex2f(250.0, 100.0);
-		glVertex2f(250.0, 0.0);
-	glEnd();
-	glPopMatrix();
-}
+// 	glBegin(GL_LINE_LOOP);
+// 		glVertex2f(0.0, 0.0);
+// 		glVertex2f(0.0, 100.0);
+// 		glVertex2f(250.0, 100.0);
+// 		glVertex2f(250.0, 0.0);
+// 	glEnd();
+// 	glPopMatrix();
+// }
 
-static void render_right_status(const Screen *screen)
-{
-	glPushMatrix();
-	glLineWidth(1.0);
-	glColor4f(0.1, 0.1, 0.1, 0.8);
-	glTranslatef(screen->width - 260.0, 10.0, 0.0);
+// static void render_right_status(const Screen *screen)
+// {
+// 	glPushMatrix();
+// 	glLineWidth(1.0);
+// 	glColor4f(0.1, 0.1, 0.1, 0.8);
+// 	glTranslatef(screen->width - 260.0, 10.0, 0.0);
 
-	glBegin(GL_LINE_LOOP);
-		glVertex2f(0.0, 0.0);
-		glVertex2f(0.0, 100.0);
-		glVertex2f(250.0, 100.0);
-		glVertex2f(250.0, 0.0);
-	glEnd();
-	glPopMatrix();
-}
+// 	glBegin(GL_LINE_LOOP);
+// 		glVertex2f(0.0, 0.0);
+// 		glVertex2f(0.0, 100.0);
+// 		glVertex2f(250.0, 100.0);
+// 		glVertex2f(250.0, 0.0);
+// 	glEnd();
+// 	glPopMatrix();
+// }
 
 static void render_skill_bar(const Screen *screen)
 {
