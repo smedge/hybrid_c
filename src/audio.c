@@ -24,7 +24,7 @@ void Audio_cleanup(void)
 void Audio_loop_music(const char *path)
 {
 	music = Mix_LoadMUS(path);
-	Mix_PlayMusic(music, 2);
+	Mix_PlayMusic(music, -1);
 }
 
 void Audio_play_music_fade(const char *path, int playTime, 
