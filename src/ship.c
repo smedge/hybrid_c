@@ -3,12 +3,17 @@
 #include "render.h"
 #include "color.h"
 
+#include <SDL2/SDL_mixer.h>
+
 static const double NORMAL_VELOCITY = 500.0;
 static const double FAST_VELOCITY = 1500.0;
 static const double SLOW_VELOCITY = 100.0;
 
-static int state = STATE_NORMAL;
+static int state = STATE_DESTROYED;
 static int stateTimer = 0;
+
+static Mix_Chunk *sample01 = 0;
+static Mix_Chunk *sample02 = 0;
 
 static const ColorRGB COLOR = {255, 0, 0, 255};
 static ColorFloat color;
@@ -31,6 +36,22 @@ void Ship_initialize()
 	Entity_add_entity(entity);
 
 	color = Color_rgb_to_float(&COLOR);
+
+	if (!sample01) {
+		sample01 = Mix_LoadWAV("resources/sounds/statue_rise.wav");
+		if (!sample01) {
+			printf("FATAL ERROR: error loading sound for mine.\n");
+			exit(-1);
+		}
+	}
+
+	if (!sample02) {
+		sample02 = Mix_LoadWAV("resources/sounds/samus_die.wav");
+		if (!sample02) {
+			printf("FATAL ERROR: error loading sound for mine.\n");
+			exit(-1);
+		}
+	}
 }
 
 void Ship_cleanup() 
@@ -38,10 +59,18 @@ void Ship_cleanup()
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
 	placeable.heading = 0.0;
+
+	Mix_FreeChunk(sample01);
+	sample01 = 0;
+
+	Mix_FreeChunk(sample02);
+	sample02 = 0;
 }
 
 Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox) 
 {
+	Collision collision = {false, true};
+
 	Position position = placeable->position;
 	Rectangle thisBoundingBox = collidable.boundingBox;
 	Rectangle transformedBoundingBox = {
@@ -50,8 +79,6 @@ Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, 
 		thisBoundingBox.bX + position.x,
 		thisBoundingBox.bY + position.y,
 	};
-
-	Collision collision = {false, true};
 
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
@@ -62,9 +89,13 @@ Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, 
 
 void Ship_resolve(const void *entity, const Collision collision)
 {
+	if (state == STATE_DESTROYED)
+		return;
+
 	if (collision.solid)
 	{
 		state = STATE_DESTROYED;
+		Mix_PlayChannel(-1, sample02, 0);
 	}
 }
 
@@ -81,6 +112,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			placeable->position.x = 0.0;
 			placeable->position.y = 0.0;
 			placeable->heading = 0.0;
+
+			Mix_PlayChannel(-1, sample01, 0);
 		}
 		else {
 			return;
