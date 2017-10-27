@@ -1,6 +1,9 @@
 #ifndef SHIP_H
 #define SHIP_H
 
+#define STATE_NORMAL 0
+#define STATE_DESTROYED 1
+
 #include "input.h"
 #include "position.h"
 #include "entity.h"

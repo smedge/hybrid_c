@@ -7,6 +7,9 @@ static const double NORMAL_VELOCITY = 500.0;
 static const double FAST_VELOCITY = 1500.0;
 static const double SLOW_VELOCITY = 100.0;
 
+static int state = STATE_NORMAL;
+static int stateTimer = 0;
+
 static const ColorRGB COLOR = {255, 0, 0, 255};
 static ColorFloat color;
 
@@ -61,14 +64,28 @@ void Ship_resolve(const void *entity, const Collision collision)
 {
 	if (collision.solid)
 	{
-		placeable.position.x = 0.0;
-		placeable.position.y = 0.0;
+		state = STATE_DESTROYED;
 	}
 }
 
 void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable)
 {
 	double ticksNormalized = ticks / 1000.0;
+
+	if (state == STATE_DESTROYED) {
+		stateTimer += ticks;
+		
+		if (stateTimer > 3000) {
+			state = STATE_NORMAL;
+			stateTimer = 0.0;
+			placeable->position.x = 0.0;
+			placeable->position.y = 0.0;
+			placeable->heading = 0.0;
+		}
+		else {
+			return;
+		}
+	}
 	
 	double velocity;
 	if (userInput->keyLShift)
@@ -97,6 +114,10 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 
 void Ship_render(const void *entity, const PlaceableComponent *placeable)
 {
+	if (state == STATE_DESTROYED) {
+		return;
+	}
+
 	View view =  View_get_view();
 
 	if (view.scale > 0.09)
