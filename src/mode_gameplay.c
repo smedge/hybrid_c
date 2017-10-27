@@ -9,6 +9,7 @@ void Mode_Gameplay_initialize(void)
 
 	Audio_loop_music(GAMEPLAY_MUSIC_PATH);
 	View_initialize();
+	Hud_initialize();
 	Grid_initialize();
 	Map_initialize();
 	Ship_initialize();
@@ -66,6 +67,7 @@ void Mode_Gameplay_cleanup(void)
 	Mine_cleanup();
 	Ship_cleanup();
 	Entity_destroy_all();
+	Hud_cleanup();
 	Audio_stop_music();
 }
 
