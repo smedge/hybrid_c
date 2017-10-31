@@ -13,7 +13,8 @@
 #define TICKS_DESTROYED 10000
 
 static RenderableComponent renderable = {Mine_render};
-static CollidableComponent collidable = {{-150.0, 150.0, 150.0, -150.0}, true, Mine_collide, Mine_resolve};
+static CollidableComponent collidable = {{-150.0, 150.0, 150.0, -150.0},
+											true, Mine_collide, Mine_resolve};
 static AIUpdatableComponent updatable = {Mine_update};
 
 static const ColorRGB COLOR = {45, 45, 45, 255};
