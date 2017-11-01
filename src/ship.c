@@ -5,8 +5,8 @@
 
 #include <SDL2/SDL_mixer.h>
 
-static const double NORMAL_VELOCITY = 500.0;
-static const double FAST_VELOCITY = 1500.0;
+static const double NORMAL_VELOCITY = 800.0;
+static const double FAST_VELOCITY = 1600.0;
 static const double SLOW_VELOCITY = 100.0;
 
 static Mix_Chunk *sample01 = 0;
