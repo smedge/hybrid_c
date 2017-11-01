@@ -107,9 +107,9 @@ void Render_grid_lines(const double gridSize, const double bigGridSize,
 				i<HALF_SCREEN_WIDTH + view.position.x;
 				i+=gridSize) {
 			if (fmod(i, gridSize * bigGridSize) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.4);
+				glColor4f(0.0, 1.0, 0.0, 0.3);
 			else
-				glColor4f(0.0, 1.0, 0.0, 0.2);
+				glColor4f(0.0, 1.0, 0.0, 0.15);
 				
 			glVertex2f(i, view.position.y + HALF_SCREEN_HEIGHT);
 			glVertex2f(i, view.position.y + (-HALF_SCREEN_HEIGHT));
@@ -120,9 +120,9 @@ void Render_grid_lines(const double gridSize, const double bigGridSize,
 				i<HALF_SCREEN_HEIGHT + view.position.y;
 				i+=gridSize) {
 			if (fmod(i, gridSize * bigGridSize) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.4);
+				glColor4f(0.0, 1.0, 0.0, 0.3);
 			else
-				glColor4f(0.0, 1.0, 0.0, 0.2);
+				glColor4f(0.0, 1.0, 0.0, 0.15);
 				
 			glVertex2f(view.position.x + HALF_SCREEN_WIDTH, i);
 			glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), i);

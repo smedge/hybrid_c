@@ -13,7 +13,7 @@
 #define TICKS_DESTROYED 10000
 
 static RenderableComponent renderable = {Mine_render};
-static CollidableComponent collidable = {{-150.0, 150.0, 150.0, -150.0},
+static CollidableComponent collidable = {{-250.0, 250.0, 250.0, -250.0},
 											true, Mine_collide, Mine_resolve};
 static AIUpdatableComponent updatable = {Mine_update};
 
@@ -198,7 +198,7 @@ void Mine_render(const void *entity, const PlaceableComponent *placeable)
 		return;
 
 	if (state->exploding) {
-		Rectangle explosion = {-150, 150, 150, -150};
+		Rectangle explosion = {-250, 250, 250, -250};
 		Render_quad(&placeable->position, 22.5, explosion, &colorWhite);
 		Render_quad(&placeable->position, 67.5, explosion, &colorWhite);
 		return;

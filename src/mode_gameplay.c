@@ -36,17 +36,6 @@ void Mode_Gameplay_initialize(void)
 
 	Position position;
 	
-	position.x = 420.0;
-	position.y = 420.0;
-	Mine_initialize(position);
-
-	position.x = -420.0;
-	position.y = -420.0;
-	Mine_initialize(position);
-
-
-
-
 	position.x = -1600.0;
 	position.y = 1600.0;
 	Mine_initialize(position);
@@ -79,6 +68,132 @@ void Mode_Gameplay_initialize(void)
 
 	position.x = 0.0;
 	position.y = -1600.0;
+	Mine_initialize(position);
+
+
+
+	position.x = -3200.0;
+	position.y = 3200.0;
+	Mine_initialize(position);
+	
+	position.x = -1600.0;
+	position.y = 3200.0;
+	Mine_initialize(position);
+
+	position.x = 0.0;
+	position.y = 3200.0;
+	Mine_initialize(position);
+
+	position.x = 1600.0;
+	position.y = 3200.0;
+	Mine_initialize(position);
+
+	position.x = 3200.0;
+	position.y = 3200.0;
+	Mine_initialize(position);
+
+
+
+	position.x = -3200.0;
+	position.y = -3200.0;
+	Mine_initialize(position);
+	
+	position.x = -1600.0;
+	position.y = -3200.0;
+	Mine_initialize(position);
+
+	position.x = 0.0;
+	position.y = -3200.0;
+	Mine_initialize(position);
+
+	position.x = 1600.0;
+	position.y = -3200.0;
+	Mine_initialize(position);
+
+	position.x = 3200.0;
+	position.y = -3200.0;
+	Mine_initialize(position);
+
+
+
+	position.x = -3200.0;
+	position.y = 1600.0;
+	Mine_initialize(position);
+
+	position.x = -3200.0;
+	position.y = 0.0;
+	Mine_initialize(position);
+
+	position.x = -3200.0;
+	position.y = -1600.0;
+	Mine_initialize(position);
+
+
+
+	position.x = 3200.0;
+	position.y = 1600.0;
+	Mine_initialize(position);
+
+	position.x = 3200.0;
+	position.y = 0.0;
+	Mine_initialize(position);
+
+	position.x = 3200.0;
+	position.y = -1600.0;
+	Mine_initialize(position);
+
+
+
+	position.x = -2400.0;
+	position.y = 2400.0;
+	Mine_initialize(position);
+
+	position.x = -800.0;
+	position.y = 2400.0;
+	Mine_initialize(position);
+
+	position.x = 800.0;
+	position.y = 2400.0;
+	Mine_initialize(position);
+
+	position.x = 2400.0;
+	position.y = 2400.0;
+	Mine_initialize(position);
+
+
+
+	position.x = -2400.0;
+	position.y = -2400.0;
+	Mine_initialize(position);
+
+	position.x = -800.0;
+	position.y = -2400.0;
+	Mine_initialize(position);
+
+	position.x = 800.0;
+	position.y = -2400.0;
+	Mine_initialize(position);
+
+	position.x = 2400.0;
+	position.y = -2400.0;
+	Mine_initialize(position);
+
+
+
+	position.x = -2400.0;
+	position.y = 800.0;
+	Mine_initialize(position);
+
+	position.x = -2400.0;
+	position.y = -800.0;
+	Mine_initialize(position);
+
+	position.x = 2400.0;
+	position.y = 800.0;
+	Mine_initialize(position);
+
+	position.x = 2400.0;
+	position.y = -800.0;
 	Mine_initialize(position);
 }
 
