@@ -32,6 +32,7 @@ static double get_heading(bool n, bool s, bool e, bool w);
 void Ship_initialize() 
 {
 	Entity entity = Entity_initialize_entity();
+	entity.state = &shipState;
 	entity.placeable = &placeable;
 	entity.renderable = &renderable;
 	entity.userUpdatable = &updatable;

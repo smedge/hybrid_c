@@ -29,7 +29,7 @@ void Sub_Pea_cleanup()
 
 }
 
-void Sub_Pea_update(int ticks, const UserInput &input) 
+void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable) 
 {
 	if (input.mouseLeft && !active) {
 		active = true;

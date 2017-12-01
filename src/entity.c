@@ -3,7 +3,8 @@
 static unsigned int highestIndex = 0;
 static Entity entities[ENTITY_COUNT];
 
-Entity Entity_initialize_entity() {
+Entity Entity_initialize_entity() 
+{
 	Entity entity;
 	entity.state = 0;
 	entity.placeable = 0;
@@ -15,7 +16,8 @@ Entity Entity_initialize_entity() {
 	return entity;
 }
 
-void Entity_add_entity(const Entity entity) {
+void Entity_add_entity(const Entity entity) 
+{
 	unsigned int entityId;
 	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
 	{
