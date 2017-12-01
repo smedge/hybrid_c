@@ -5,6 +5,8 @@
 #include "render.h"
 #include "view.h"
 
+#include <SDL2/SDL_mixer.h>
+
 static bool active;
 static double velocity;
 static Position position;
@@ -13,6 +15,9 @@ static double heading;
 static int timeToLive;
 static int ticksLived;
 static double headingSin, headingCos;
+
+static Mix_Chunk *sample01 = 0;
+static Mix_Chunk *sample02 = 0;
 
 static double calculateDeltaX (int ticks);
 static double calculateDeltaY (int ticks);
@@ -28,11 +33,31 @@ void Sub_Pea_initialize()
 	heading = 0;
 	timeToLive = 1000;
 	ticksLived = 0;
+
+	if (!sample01) {
+		sample01 = Mix_LoadWAV("resources/sounds/long_beam.wav");
+		if (!sample01) {
+			printf("FATAL ERROR: error loading sound for sub pea.\n");
+			exit(-1);
+		}
+	}
+
+	if (!sample02) {
+		sample02 = Mix_LoadWAV("resources/sounds/ricochet.wav");
+		if (!sample02) {
+			printf("FATAL ERROR: error loading sound for sub pea.\n");
+			exit(-1);
+		}
+	}
 }
 
 void Sub_Pea_cleanup()
 {
+	Mix_FreeChunk(sample01);
+	sample01 = 0;
 
+	Mix_FreeChunk(sample02);
+	sample02 = 0;
 }
 
 void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable) 
@@ -56,6 +81,8 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 		heading = Position_get_heading(position, position_cursor_world);
 		velocity = 3500; // TODO should be added to ship speed
 		doTrig();
+
+		Mix_PlayChannel(-1, sample01, 0);
 	}
 
 	if (active) {
