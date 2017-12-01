@@ -1,8 +1,6 @@
 #ifndef SHIP_H
 #define SHIP_H
 
-#define STATE_NORMAL 0
-#define STATE_DESTROYED 1
 #define DEATH_TIMER 3000
 
 #include "input.h"
