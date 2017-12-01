@@ -1,8 +1,14 @@
 #include "sub_pea.h"
 
+#include "graphics.h"
+#include "position.h"
+#include "render.h"
+#include "view.h"
+
 static bool active;
 static double velocity;
 static Position position;
+static ColorFloat color  = {1.0, 1.0, 1.0, 1.0}; 
 static double heading;
 static int timeToLive;
 static int ticksLived;
@@ -11,6 +17,7 @@ static double headingSin, headingCos;
 static double calculateDeltaX (int ticks);
 static double calculateDeltaY (int ticks);
 static void doTrig(void);
+static double getRadians(double degrees);
 
 void Sub_Pea_initialize()
 {
@@ -33,15 +40,21 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 	if (userInput->mouseLeft && !active) {
 		active = true;
 		
+		position.x = placeable->position.x;
+		position.y = placeable->position.y;
+
+		Position position_cursor = {userInput->mouseX, userInput->mouseY};
+		Screen screen = Graphics_get_screen();
+		Position position_cursor_world = View_get_world_position(&screen, position_cursor);
 
 
-		
+		printf("X: %f", position_cursor_world.x);
+		printf(", Y: %f", position_cursor_world.y);
+		printf("\n");
 
 
-		position = Position(ship.getX(),ship.getY());
-		heading = position.getHeading(Position(input.mouseWorldX,
-			input.mouseWorldY));
-		velocity = ship.getVelocity() + 3000;
+		heading = Position_get_heading(position, position_cursor_world);
+		velocity = 3500; // TODO should be added to ship speed
 		doTrig();
 	}
 
@@ -50,28 +63,32 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 		if (ticksLived > timeToLive) {
 			active = false;
 			ticksLived = 0;
-			position = Position(0,0);
+			position.x = 0.0;
+			position.y = 0.0;
 		}
 
 		Position positionDelta;
-		positionDelta.setX(calculateDeltaX(ticks));
-		positionDelta.setY(calculateDeltaY(ticks));
+		positionDelta.x = calculateDeltaX(ticks);
+		positionDelta.y = calculateDeltaY(ticks);
 
-		position += positionDelta;
+		position.x += positionDelta.x;
+		position.y += positionDelta.y;
 	}
 }
 
 void Sub_Pea_render() 
 {
+	View view = View_get_view();
+
 	const double UNSCALED_POINT_SIZE = 3.0;
 	const double MIN_POINT_SIZE = 2.0;
 	
 	if (active) {
-		double size = UNSCALED_POINT_SIZE * camera.getScale();
+		double size = UNSCALED_POINT_SIZE * view.scale;
 		if (size < MIN_POINT_SIZE)
 			size = MIN_POINT_SIZE;
 
-		RenderContext::renderPoint(position, size, 1.0, 1.0, 1.0, 1.0);
+		Render_point(&position, size, &color);
 	}
 }
 
@@ -87,6 +104,10 @@ static double calculateDeltaY (int ticks)
 
 static void doTrig(void)
 {
-	headingSin = sin(heading.getRadians());
-	headingCos = cos(heading.getRadians());
+	headingSin = sin(getRadians(heading));
+	headingCos = cos(getRadians(heading));
+}
+
+static double getRadians(double degrees) {
+	return degrees * 3.14159265358979323846 / 180.0;
 }

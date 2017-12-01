@@ -1,6 +1,7 @@
 #include "ship.h"
 #include "view.h"
 #include "render.h"
+#include "sub_pea.h"
 #include "color.h"
 
 #include <SDL2/SDL_mixer.h>
@@ -60,10 +61,14 @@ void Ship_initialize()
 			exit(-1);
 		}
 	}
+
+	Sub_Pea_initialize();
 }
 
 void Ship_cleanup() 
 {
+	Sub_Pea_cleanup();
+
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
 	placeable.heading = 0.0;
@@ -151,6 +156,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		placeable->heading = get_heading(userInput->keyW, userInput->keyS, 
 										userInput->keyD, userInput->keyA);
 	}
+
+	Sub_Pea_update(userInput, ticks, placeable);
 }
 
 void Ship_render(const void *entity, const PlaceableComponent *placeable)
@@ -165,6 +172,8 @@ void Ship_render(const void *entity, const PlaceableComponent *placeable)
 		Render_triangle(&placeable->position, placeable->heading, &color);
 	else
 		Render_point(&placeable->position, 2.0, &color);
+
+	Sub_Pea_render();
 
 	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }

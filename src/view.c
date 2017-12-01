@@ -39,7 +39,7 @@ void View_transform(const Screen *screen)
 
 Position View_get_world_position(const Screen *screen, const Position uiPosition) 
 {
-	double x = (view.position.x + uiPosition.x - (screen->width / 2)) / view.scale;
+	double x = (-view.position.x + uiPosition.x - (screen->width / 2)) / view.scale;
 	double y = (view.position.y - uiPosition.y + (screen->height / 2)) / view.scale;
 	Position position = {x, y};
 	return position;
