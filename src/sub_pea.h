@@ -2,11 +2,12 @@
 #define SUB_PEA_H
 
 #include "input.h"
+#include "entity.h"
 
 void Sub_Pea_initialize();
 void Sub_Pea_cleanup();
 
 void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);
-void Sub_Pea_render(const ScreenMetrics &screenMetrics, const Camera &camera);
+void Sub_Pea_render();
 
 #endif
