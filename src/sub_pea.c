@@ -79,7 +79,7 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 
 
 		heading = Position_get_heading(position, position_cursor_world);
-		velocity = 3500; // TODO should be added to ship speed
+		velocity = 3500;
 		doTrig();
 
 		Mix_PlayChannel(-1, sample01, 0);
@@ -92,6 +92,7 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 			ticksLived = 0;
 			position.x = 0.0;
 			position.y = 0.0;
+			Mix_PlayChannel(-1, sample02, 0);
 		}
 
 		Position positionDelta;
