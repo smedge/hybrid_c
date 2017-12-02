@@ -7,9 +7,9 @@ void Mode_Gameplay_initialize(void)
 {
 	Entity_destroy_all();
 
-	int num_between_1_and_3 = (rand() % 5) + 1;
+	int num_between_1_and_7 = (rand() % 7) + 1;
 	
-	switch (num_between_1_and_3) {
+	switch (num_between_1_and_7) {
 	case 1:
 	 	Audio_loop_music(GAMEPLAY_MUSIC_01_PATH);
 		break;
@@ -24,6 +24,12 @@ void Mode_Gameplay_initialize(void)
 		break;
 	case 5:
 		Audio_loop_music(GAMEPLAY_MUSIC_05_PATH);
+		break;
+	case 6:
+		Audio_loop_music(GAMEPLAY_MUSIC_06_PATH);
+		break;
+	case 7:
+		Audio_loop_music(GAMEPLAY_MUSIC_07_PATH);
 		break;
 	}
 
