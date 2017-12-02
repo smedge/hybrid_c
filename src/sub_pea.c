@@ -27,7 +27,7 @@ static double getRadians(double degrees);
 void Sub_Pea_initialize()
 {
 	active = false;
-	velocity = 3000.0;
+	velocity = 2500.0;
 	position.x = 0.0;
 	position.y = 0.0;
 	heading = 0;
@@ -71,12 +71,11 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 		Position position_cursor = {userInput->mouseX, userInput->mouseY};
 		Screen screen = Graphics_get_screen();
 		Position position_cursor_world = View_get_world_position_gl(&screen, position_cursor);
-
-
-		printf("X: %f", position_cursor_world.x);
-		printf(", Y: %f", position_cursor_world.y);
-		printf("\n");
-
+		
+        // TODO build a logger
+		//printf("X: %f", position_cursor_world.x);
+        //printf(", Y: %f", position_cursor_world.y);
+        //printf("\n");
 
 		heading = Position_get_heading(position, position_cursor_world);
 		velocity = 3500;
@@ -108,7 +107,7 @@ void Sub_Pea_render()
 {
 	View view = View_get_view();
 
-	const double UNSCALED_POINT_SIZE = 3.0;
+	const double UNSCALED_POINT_SIZE = 8.0;
 	const double MIN_POINT_SIZE = 2.0;
 	
 	if (active) {

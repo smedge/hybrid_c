@@ -8,7 +8,7 @@
 
 static const double NORMAL_VELOCITY = 800.0;
 static const double FAST_VELOCITY = 1600.0;
-static const double SLOW_VELOCITY = 100.0;
+static const double SLOW_VELOCITY = 6400.0;  // warp speed right now, not slow
 
 static Mix_Chunk *sample01 = 0;
 static Mix_Chunk *sample02 = 0;
