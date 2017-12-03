@@ -10,7 +10,7 @@
 static bool active;
 static double velocity;
 static Position position;
-static ColorFloat color  = {1.0, 1.0, 1.0, 1.0}; 
+static ColorFloat color  = {1.0, 1.0, 1.0, 1.0};
 static double heading;
 static int timeToLive;
 static int ticksLived;
@@ -64,18 +64,13 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 {
 	if (userInput->mouseLeft && !active) {
 		active = true;
-		
+
 		position.x = placeable->position.x;
 		position.y = placeable->position.y;
 
 		Position position_cursor = {userInput->mouseX, userInput->mouseY};
 		Screen screen = Graphics_get_screen();
 		Position position_cursor_world = View_get_world_position_gl(&screen, position_cursor);
-		
-        // TODO build a logger
-		//printf("X: %f", position_cursor_world.x);
-        //printf(", Y: %f", position_cursor_world.y);
-        //printf("\n");
 
 		heading = Position_get_heading(position, position_cursor_world);
 		velocity = 3500;
@@ -109,7 +104,7 @@ void Sub_Pea_render()
 
 	const double UNSCALED_POINT_SIZE = 8.0;
 	const double MIN_POINT_SIZE = 2.0;
-	
+
 	if (active) {
 		double size = UNSCALED_POINT_SIZE * view.scale;
 		if (size < MIN_POINT_SIZE)
@@ -135,6 +130,7 @@ static void doTrig(void)
 	headingCos = cos(getRadians(heading));
 }
 
-static double getRadians(double degrees) {
+static double getRadians(double degrees) 
+{
 	return degrees * 3.14159265358979323846 / 180.0;
 }
