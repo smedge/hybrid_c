@@ -6,6 +6,7 @@
 #include "collision.h"
 
 #define ENTITY_COUNT 1024
+#define COLLISION_COUNT 64
 
 typedef struct {
 	Position position;
@@ -46,6 +47,11 @@ typedef struct {
 	UserUpdatableComponent *userUpdatable;
 	AIUpdatableComponent *aiUpdatable;
 } Entity;
+
+typedef struct {
+	Collision collision;
+	Entity *entity;
+} ResolveCollisionCommand;
 
 Entity Entity_initialize_entity();
 void Entity_add_entity(const Entity entity);

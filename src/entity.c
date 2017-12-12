@@ -2,6 +2,8 @@
 
 static unsigned int highestIndex = 0;
 static Entity entities[ENTITY_COUNT];
+static unsigned int highestCollisionIndex = 0;
+static ResolveCollisionCommand collisions[COLLISION_COUNT];
 
 Entity Entity_initialize_entity() 
 {
@@ -103,6 +105,8 @@ void Entity_render_system(void)
 
 void Entity_collision_system(void)
 {
+	highestCollisionIndex = 0;
+
 	for(int i = 0; i <= highestIndex; i++) 
 	{
 		if (entities[i].empty || entities[i].collidable == 0 ||
@@ -134,8 +138,18 @@ void Entity_collision_system(void)
 			Collision collision = entities[j].collidable->collide(entities[j].state, entities[j].placeable, transformedBoundingBox);
 			if (collision.collisionDetected)
 			{
-				entities[i].collidable->resolve(entities[i].state, collision);
+				//entities[i].collidable->resolve(entities[i].state, collision);
+				collisions[highestCollisionIndex].collision = collision;
+				collisions[highestCollisionIndex].entity = &entities[i];
+				highestCollisionIndex++;
 			}
 		}
 	}
+
+	for (int i = 0; i < highestCollisionIndex; i++) 
+	{
+		collisions[i].entity->collidable->resolve(collisions[i].entity->state, collisions[i].collision); 
+	}
+
+
 }
