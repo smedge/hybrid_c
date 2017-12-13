@@ -4,7 +4,7 @@
 #include "input.h"
 #include "entity.h"
 
-void Sub_Pea_initialize();
+void Sub_Pea_initialize(Entity *parent);
 void Sub_Pea_cleanup();
 
 void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);

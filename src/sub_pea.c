@@ -4,9 +4,11 @@
 #include "position.h"
 #include "render.h"
 #include "view.h"
+#include "shipstate.h"
 
 #include <SDL2/SDL_mixer.h>
 
+static Entity *parent;
 static bool active;
 static double velocity;
 static Position position;
@@ -24,8 +26,9 @@ static double calculateDeltaY (int ticks);
 static void doTrig(void);
 static double getRadians(double degrees);
 
-void Sub_Pea_initialize()
+void Sub_Pea_initialize(Entity *p)
 {
+	parent = p;
 	active = false;
 	velocity = 2500.0;
 	position.x = 0.0;
@@ -62,7 +65,9 @@ void Sub_Pea_cleanup()
 
 void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable) 
 {
-	if (userInput->mouseLeft && !active) {
+	ShipState *state = (ShipState*)parent->state;
+
+	if (userInput->mouseLeft && !active && !state->destroyed) {
 		active = true;
 
 		position.x = placeable->position.x;

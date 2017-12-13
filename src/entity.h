@@ -54,7 +54,7 @@ typedef struct {
 } ResolveCollisionCommand;
 
 Entity Entity_initialize_entity();
-void Entity_add_entity(const Entity entity);
+Entity* Entity_add_entity(const Entity entity);
 void Entity_destroy_all(void);
 void Entity_destroy(const unsigned int entityId);
 void Entity_add_state(const unsigned int entityId, void *state);

@@ -3,6 +3,7 @@
 #include "render.h"
 #include "sub_pea.h"
 #include "color.h"
+#include "shipstate.h"
 
 #include <SDL2/SDL_mixer.h>
 
@@ -21,11 +22,6 @@ static RenderableComponent renderable = {Ship_render};
 static UserUpdatableComponent updatable = {Ship_update};
 static CollidableComponent collidable = {{-20.0, 20.0, 20.0, -20.0}, true, Ship_collide, Ship_resolve};
 
-typedef struct {
-	bool destroyed;
-	unsigned int ticksDestroyed;
-} ShipState;
-
 static ShipState shipState = {true, 0};
 
 static double get_heading(bool n, bool s, bool e, bool w);
@@ -39,7 +35,7 @@ void Ship_initialize()
 	entity.userUpdatable = &updatable;
 	entity.collidable = &collidable;
 
-	Entity_add_entity(entity);
+	Entity *liveEntity = Entity_add_entity(entity);
 
 	shipState.destroyed = true;
 	shipState.ticksDestroyed = 0;
@@ -62,7 +58,7 @@ void Ship_initialize()
 		}
 	}
 
-	Sub_Pea_initialize();
+	Sub_Pea_initialize(liveEntity);
 }
 
 void Ship_cleanup() 
@@ -128,33 +124,34 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 
 			Mix_PlayChannel(-1, sample01, 0);
 		}
-		else {
-			return;
-		}
+//		else {
+//			return;
+//		}
 	}
+	else {
+		double velocity;
+		if (userInput->keyLShift)
+			velocity = FAST_VELOCITY;
+		else if (userInput->keyLControl)
+			velocity = SLOW_VELOCITY;
+		else
+			velocity = NORMAL_VELOCITY;
 	
-	double velocity;
-	if (userInput->keyLShift)
-		velocity = FAST_VELOCITY;
-	else if (userInput->keyLControl)
-		velocity = SLOW_VELOCITY;
-	else
-		velocity = NORMAL_VELOCITY;
-
-	if (userInput->keyW)
-		placeable->position.y += velocity * ticksNormalized;
-	if (userInput->keyS)
-		placeable->position.y -= velocity * ticksNormalized;
-	if (userInput->keyD)
-		placeable->position.x += velocity * ticksNormalized;
-	if (userInput->keyA)
-		placeable->position.x -= velocity * ticksNormalized;
-
-	if (userInput->keyW || userInput->keyA || 
-		userInput->keyS || userInput->keyD)
-	{
-		placeable->heading = get_heading(userInput->keyW, userInput->keyS, 
-										userInput->keyD, userInput->keyA);
+		if (userInput->keyW)
+			placeable->position.y += velocity * ticksNormalized;
+		if (userInput->keyS)
+			placeable->position.y -= velocity * ticksNormalized;
+		if (userInput->keyD)
+			placeable->position.x += velocity * ticksNormalized;
+		if (userInput->keyA)
+			placeable->position.x -= velocity * ticksNormalized;
+	
+		if (userInput->keyW || userInput->keyA || 
+			userInput->keyS || userInput->keyD)
+		{
+			placeable->heading = get_heading(userInput->keyW, userInput->keyS, 
+											userInput->keyD, userInput->keyA);
+		}
 	}
 
 	Sub_Pea_update(userInput, ticks, placeable);
@@ -162,20 +159,19 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 
 void Ship_render(const void *entity, const PlaceableComponent *placeable)
 {
-	if (shipState.destroyed == true) {
-		return;
+	if (!shipState.destroyed) {
+		View view =  View_get_view();
+
+		if (view.scale > 0.09)
+			Render_triangle(&placeable->position, placeable->heading, &color);
+		else
+			Render_point(&placeable->position, 2.0, &color);
+		
+		//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 	}
-
-	View view =  View_get_view();
-
-	if (view.scale > 0.09)
-		Render_triangle(&placeable->position, placeable->heading, &color);
-	else
-		Render_point(&placeable->position, 2.0, &color);
 
 	Sub_Pea_render();
 
-	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }
 
 Position Ship_get_position()
