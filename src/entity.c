@@ -18,7 +18,7 @@ Entity Entity_initialize_entity()
 	return entity;
 }
 
-void Entity_add_entity(const Entity entity) 
+Entity* Entity_add_entity(const Entity entity) 
 {
 	unsigned int entityId;
 	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
@@ -52,6 +52,8 @@ void Entity_add_entity(const Entity entity)
 
 	if (entity.aiUpdatable)
 		entities[entityId].aiUpdatable = entity.aiUpdatable;
+
+	return &entities[entityId];
 }
 
 void Entity_destroy_all(void)

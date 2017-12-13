@@ -4,6 +4,7 @@
 #include "position.h"
 #include "render.h"
 #include "view.h"
+#include "shipstate.h"
 
 #include <SDL2/SDL_mixer.h>
 
@@ -24,11 +25,6 @@ static double calculateDeltaX (int ticks);
 static double calculateDeltaY (int ticks);
 static void doTrig(void);
 static double getRadians(double degrees);
-
-typedef struct {
-	bool destroyed;
-	unsigned int ticksDestroyed;
-} ShipState;
 
 void Sub_Pea_initialize(Entity *p)
 {

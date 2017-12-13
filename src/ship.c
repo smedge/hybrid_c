@@ -3,6 +3,7 @@
 #include "render.h"
 #include "sub_pea.h"
 #include "color.h"
+#include "shipstate.h"
 
 #include <SDL2/SDL_mixer.h>
 
@@ -21,11 +22,6 @@ static RenderableComponent renderable = {Ship_render};
 static UserUpdatableComponent updatable = {Ship_update};
 static CollidableComponent collidable = {{-20.0, 20.0, 20.0, -20.0}, true, Ship_collide, Ship_resolve};
 
-typedef struct {
-	bool destroyed;
-	unsigned int ticksDestroyed;
-} ShipState;
-
 static ShipState shipState = {true, 0};
 
 static double get_heading(bool n, bool s, bool e, bool w);
@@ -39,7 +35,7 @@ void Ship_initialize()
 	entity.userUpdatable = &updatable;
 	entity.collidable = &collidable;
 
-	Entity_add_entity(entity);
+	Entity *liveEntity = Entity_add_entity(entity);
 
 	shipState.destroyed = true;
 	shipState.ticksDestroyed = 0;
@@ -62,7 +58,7 @@ void Ship_initialize()
 		}
 	}
 
-	Sub_Pea_initialize(&entity);
+	Sub_Pea_initialize(liveEntity);
 }
 
 void Ship_cleanup() 
