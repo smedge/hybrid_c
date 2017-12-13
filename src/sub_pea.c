@@ -71,7 +71,7 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 {
 	ShipState *state = (ShipState*)parent->state;
 
-	if (userInput->mouseLeft && !active) {
+	if (userInput->mouseLeft && !active && !state->destroyed) {
 		active = true;
 
 		position.x = placeable->position.x;
