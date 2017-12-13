@@ -62,7 +62,7 @@ void Ship_initialize()
 		}
 	}
 
-	Sub_Pea_initialize();
+	Sub_Pea_initialize(&entity);
 }
 
 void Ship_cleanup() 
@@ -128,33 +128,34 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 
 			Mix_PlayChannel(-1, sample01, 0);
 		}
-		else {
-			return;
-		}
+//		else {
+//			return;
+//		}
 	}
+	else {
+		double velocity;
+		if (userInput->keyLShift)
+			velocity = FAST_VELOCITY;
+		else if (userInput->keyLControl)
+			velocity = SLOW_VELOCITY;
+		else
+			velocity = NORMAL_VELOCITY;
 	
-	double velocity;
-	if (userInput->keyLShift)
-		velocity = FAST_VELOCITY;
-	else if (userInput->keyLControl)
-		velocity = SLOW_VELOCITY;
-	else
-		velocity = NORMAL_VELOCITY;
-
-	if (userInput->keyW)
-		placeable->position.y += velocity * ticksNormalized;
-	if (userInput->keyS)
-		placeable->position.y -= velocity * ticksNormalized;
-	if (userInput->keyD)
-		placeable->position.x += velocity * ticksNormalized;
-	if (userInput->keyA)
-		placeable->position.x -= velocity * ticksNormalized;
-
-	if (userInput->keyW || userInput->keyA || 
-		userInput->keyS || userInput->keyD)
-	{
-		placeable->heading = get_heading(userInput->keyW, userInput->keyS, 
-										userInput->keyD, userInput->keyA);
+		if (userInput->keyW)
+			placeable->position.y += velocity * ticksNormalized;
+		if (userInput->keyS)
+			placeable->position.y -= velocity * ticksNormalized;
+		if (userInput->keyD)
+			placeable->position.x += velocity * ticksNormalized;
+		if (userInput->keyA)
+			placeable->position.x -= velocity * ticksNormalized;
+	
+		if (userInput->keyW || userInput->keyA || 
+			userInput->keyS || userInput->keyD)
+		{
+			placeable->heading = get_heading(userInput->keyW, userInput->keyS, 
+											userInput->keyD, userInput->keyA);
+		}
 	}
 
 	Sub_Pea_update(userInput, ticks, placeable);
