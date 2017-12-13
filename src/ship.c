@@ -45,7 +45,7 @@ void Ship_initialize()
 	if (!sample01) {
 		sample01 = Mix_LoadWAV("resources/sounds/statue_rise.wav");
 		if (!sample01) {
-			printf("FATAL ERROR: error loading sound for mine.\n");
+			printf("FATAL ERROR: error loading sound for ship.\n");
 			exit(-1);
 		}
 	}
@@ -53,7 +53,7 @@ void Ship_initialize()
 	if (!sample02) {
 		sample02 = Mix_LoadWAV("resources/sounds/samus_die.wav");
 		if (!sample02) {
-			printf("FATAL ERROR: error loading sound for mine.\n");
+			printf("FATAL ERROR: error loading sound for ship.\n");
 			exit(-1);
 		}
 	}
