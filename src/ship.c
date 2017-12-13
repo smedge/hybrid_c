@@ -159,20 +159,19 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 
 void Ship_render(const void *entity, const PlaceableComponent *placeable)
 {
-	if (shipState.destroyed == true) {
-		return;
+	if (!shipState.destroyed) {
+		View view =  View_get_view();
+
+		if (view.scale > 0.09)
+			Render_triangle(&placeable->position, placeable->heading, &color);
+		else
+			Render_point(&placeable->position, 2.0, &color);
+		
+		//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 	}
-
-	View view =  View_get_view();
-
-	if (view.scale > 0.09)
-		Render_triangle(&placeable->position, placeable->heading, &color);
-	else
-		Render_point(&placeable->position, 2.0, &color);
 
 	Sub_Pea_render();
 
-	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }
 
 Position Ship_get_position()
