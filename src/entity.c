@@ -137,7 +137,10 @@ void Entity_collision_system(void)
 			};
 
 			// call j's collide with i's transformed bounding box
-			Collision collision = entities[j].collidable->collide(entities[j].state, entities[j].placeable, transformedBoundingBox);
+			Collision collision = entities[j].collidable->collide(entities[j].state, 
+																	entities[j].placeable, 
+																	transformedBoundingBox);
+
 			if (collision.collisionDetected)
 			{
 				collisions[highestCollisionIndex].collision = collision;
@@ -151,6 +154,4 @@ void Entity_collision_system(void)
 	{
 		collisions[i].entity->collidable->resolve(collisions[i].entity->state, collisions[i].collision); 
 	}
-
-
 }

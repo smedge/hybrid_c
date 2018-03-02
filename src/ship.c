@@ -4,6 +4,7 @@
 #include "sub_pea.h"
 #include "color.h"
 #include "shipstate.h"
+#include "audio.h"
 
 #include <SDL2/SDL_mixer.h>
 
@@ -42,21 +43,8 @@ void Ship_initialize()
 
 	color = Color_rgb_to_float(&COLOR);
 
-	if (!sample01) {
-		sample01 = Mix_LoadWAV("resources/sounds/statue_rise.wav");
-		if (!sample01) {
-			printf("FATAL ERROR: error loading sound for ship.\n");
-			exit(-1);
-		}
-	}
-
-	if (!sample02) {
-		sample02 = Mix_LoadWAV("resources/sounds/samus_die.wav");
-		if (!sample02) {
-			printf("FATAL ERROR: error loading sound for ship.\n");
-			exit(-1);
-		}
-	}
+	Audio_load_sample(&sample01, "resources/sounds/statue_rise.wav");
+	Audio_load_sample(&sample02, "resources/sounds/samus_die.wav");
 
 	Sub_Pea_initialize(liveEntity);
 }
@@ -69,11 +57,8 @@ void Ship_cleanup()
 	placeable.position.y = 0.0;
 	placeable.heading = 0.0;
 
-	Mix_FreeChunk(sample01);
-	sample01 = 0;
-
-	Mix_FreeChunk(sample02);
-	sample02 = 0;
+	Audio_unload_sample(&sample01);
+	Audio_unload_sample(&sample02);
 }
 
 Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox) 
@@ -104,7 +89,7 @@ void Ship_resolve(const void *entity, const Collision collision)
 	if (collision.solid)
 	{
 		shipState.destroyed = true;
-		Mix_PlayChannel(-1, sample02, 0);
+		Audio_play_sample(&sample02);
 	}
 }
 
@@ -122,11 +107,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			placeable->position.y = 0.0;
 			placeable->heading = 0.0;
 
-			Mix_PlayChannel(-1, sample01, 0);
+			Audio_play_sample(&sample01);
 		}
-//		else {
-//			return;
-//		}
 	}
 	else {
 		double velocity;

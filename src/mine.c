@@ -2,6 +2,7 @@
 #include "view.h"
 #include "render.h"
 #include "color.h"
+#include "audio.h"
 
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
@@ -70,29 +71,9 @@ void Mine_initialize(Position position)
 	
 	highestUsedIndex++;
 
-	if (!sample01) {
-		sample01 = Mix_LoadWAV("resources/sounds/bomb_set.wav");
-		if (!sample01) {
-			printf("FATAL ERROR: error loading sound for mine.\n");
-			exit(-1);
-		}
-	}
-
-	if (!sample02) {
-		sample02 = Mix_LoadWAV("resources/sounds/bomb_explode.wav");
-		if (!sample02) {
-			printf("FATAL ERROR: error loading sound for mine.\n");
-			exit(-1);
-		}
-	}
-
-	if (!sample03) {
-		sample03 = Mix_LoadWAV("resources/sounds/door.wav");
-		if (!sample03) {
-			printf("FATAL ERROR: error loading sound for mine.\n");
-			exit(-1);
-		}
-	}
+	Audio_load_sample(&sample01, "resources/sounds/bomb_set.wav");
+	Audio_load_sample(&sample02, "resources/sounds/bomb_explode.wav");
+	Audio_load_sample(&sample03, "resources/sounds/door.wav");
 
 	color = Color_rgb_to_float(&COLOR);
 	colorDark = Color_rgb_to_float(&COLOR_DARK);
@@ -103,15 +84,10 @@ void Mine_initialize(Position position)
 void Mine_cleanup()
 {
 	highestUsedIndex = 0;
-	
-	Mix_FreeChunk(sample01);
-	sample01 = 0;
 
-	Mix_FreeChunk(sample02);
-	sample02 = 0;
-
-	Mix_FreeChunk(sample03);
-	sample03 = 0;
+	Audio_unload_sample(&sample01);
+	Audio_unload_sample(&sample02);
+	Audio_unload_sample(&sample03);
 }
 
 Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -146,7 +122,7 @@ void Mine_resolve(const void *entity, const Collision collision)
 		return;
 	
 	if (!state->active) {
-		Mix_PlayChannel(-1, sample01, 0);
+		Audio_play_sample(&sample01);
 
 		state->active = true;
 		state->ticksActive = 0;
@@ -160,7 +136,7 @@ void Mine_update(const void *entity, const PlaceableComponent *placeable, const 
 	{
 		state->ticksActive += ticks;
 		if (state->ticksActive > TICKS_ACTIVE) {
-			Mix_PlayChannel(-1, sample02, 0);
+			Audio_play_sample(&sample02);
 			state->active = false;
 			state->exploding = true;
 			state->ticksExploding = 0;
@@ -181,7 +157,7 @@ void Mine_update(const void *entity, const PlaceableComponent *placeable, const 
 	if (state->destroyed){
 		state->ticksDestroyed += ticks;
 		if (state->ticksDestroyed > TICKS_DESTROYED) {
-			Mix_PlayChannel(-1, sample03, 0);
+			Audio_play_sample(&sample03);
 			state->active = false;
 			state->exploding = false;
 			state->destroyed = false;

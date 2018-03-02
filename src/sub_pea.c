@@ -1,6 +1,7 @@
 #include "sub_pea.h"
 
 #include "graphics.h"
+#include "audio.h"
 #include "position.h"
 #include "render.h"
 #include "view.h"
@@ -37,30 +38,14 @@ void Sub_Pea_initialize(Entity *p)
 	timeToLive = 1000;
 	ticksLived = 0;
 
-	if (!sample01) {
-		sample01 = Mix_LoadWAV("resources/sounds/long_beam.wav");
-		if (!sample01) {
-			printf("FATAL ERROR: error loading sound for sub pea.\n");
-			exit(-1);
-		}
-	}
-
-	if (!sample02) {
-		sample02 = Mix_LoadWAV("resources/sounds/ricochet.wav");
-		if (!sample02) {
-			printf("FATAL ERROR: error loading sound for sub pea.\n");
-			exit(-1);
-		}
-	}
+	Audio_load_sample(&sample01, "resources/sounds/long_beam.wav");
+	Audio_load_sample(&sample02, "resources/sounds/ricochet.wav");
 }
 
 void Sub_Pea_cleanup()
 {
-	Mix_FreeChunk(sample01);
-	sample01 = 0;
-
-	Mix_FreeChunk(sample02);
-	sample02 = 0;
+	Audio_unload_sample(&sample01);
+	Audio_unload_sample(&sample02);
 }
 
 void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable) 
@@ -81,7 +66,7 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 		velocity = 3500;
 		doTrig();
 
-		Mix_PlayChannel(-1, sample01, 0);
+		Audio_play_sample(&sample01);
 	}
 
 	if (active) {
@@ -91,7 +76,7 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 			ticksLived = 0;
 			position.x = 0.0;
 			position.y = 0.0;
-			Mix_PlayChannel(-1, sample02, 0);
+			Audio_play_sample(&sample02);
 		}
 
 		Position positionDelta;

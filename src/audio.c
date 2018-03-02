@@ -37,3 +37,25 @@ void Audio_stop_music(void)
 {
 	Mix_FreeMusic(music);
 }
+
+void Audio_load_sample(Mix_Chunk **sample, char *path)
+{
+	if (!*sample) {
+		*sample = Mix_LoadWAV(path);
+		if (!*sample) {
+			printf("FATAL ERROR: error loading sound: %s\n", path);
+			exit(-1);
+		}
+	}
+}
+
+void Audio_unload_sample(Mix_Chunk **sample)
+{
+	Mix_FreeChunk(*sample);
+	*sample = 0;
+}
+
+void Audio_play_sample(Mix_Chunk **sample)
+{
+	Mix_PlayChannel(-1, *sample, 0);
+}
