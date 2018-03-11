@@ -68,5 +68,6 @@ void Entity_user_update_system(const Input *input, const unsigned int ticks);
 void Entity_ai_update_system(const unsigned int ticks);
 void Entity_render_system(void);
 void Entity_collision_system(void);
+void Entity_collision_detected(Collision collision, Entity *entity);
 
 #endif

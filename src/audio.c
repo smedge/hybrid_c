@@ -3,6 +3,8 @@
 static Mix_Music *music = NULL;
 static int timer_ticks;
 
+// TODO audio files/resonrces SHOUD be managed here, not in the entities
+
 void Audio_initialize(void)
 {
 	if( Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 4096 ) < 0 ) {

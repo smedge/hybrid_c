@@ -3,6 +3,12 @@
 
 #include <SDL2/SDL_mixer.h>
 
+// TODO need to incororate this struct into sample calls
+typedef struct {
+	Mix_Chunk *mix_chunk;
+	char *path;
+} Sample;
+
 void Audio_initialize(void);
 void Audio_cleanup(void);
 void Audio_loop_music(const char *path);

@@ -155,3 +155,10 @@ void Entity_collision_system(void)
 		collisions[i].entity->collidable->resolve(collisions[i].entity->state, collisions[i].collision); 
 	}
 }
+
+void Entity_collision_detected(Collision collision, Entity *entity)
+{
+	collisions[highestCollisionIndex].collision = collision;
+	collisions[highestCollisionIndex].entity = entity;
+	highestCollisionIndex++;
+}

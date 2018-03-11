@@ -138,13 +138,13 @@ static void initialize_map_data(void)
 	set_map_cell(-10, -9, &cell001);
 	set_map_cell(-10, -10, &cell001);
 
-//	set_map_cell(511, 511, &cell001);
-//
-//	set_map_cell(511, -511, &cell002);
-//
-//	set_map_cell(-511, 511, &cell001);
-//
-//	set_map_cell(-511, -511, &cell001);
+	//set_map_cell(511, 511, &cell001);
+
+	//set_map_cell(511, -511, &cell002);
+
+	//set_map_cell(-511, 511, &cell001);
+
+	//set_map_cell(-511, -511, &cell001);
 
 }
 
