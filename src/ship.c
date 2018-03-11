@@ -67,12 +67,7 @@ Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, 
 
 	Position position = placeable->position;
 	Rectangle thisBoundingBox = collidable.boundingBox;
-	Rectangle transformedBoundingBox = {
-		thisBoundingBox.aX + position.x,
-		thisBoundingBox.aY + position.y,
-		thisBoundingBox.bX + position.x,
-		thisBoundingBox.bY + position.y,
-	};
+	Rectangle transformedBoundingBox = Collision_transform_bounding_box(position, thisBoundingBox);
 
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
@@ -149,7 +144,7 @@ void Ship_render(const void *entity, const PlaceableComponent *placeable)
 		else
 			Render_point(&placeable->position, 2.0, &color);
 		
-		//Render_bounding_box(&placeable->position, &collidable.boundingBox);
+		Render_bounding_box(&placeable->position, &collidable.boundingBox);
 	}
 
 	Sub_Pea_render();

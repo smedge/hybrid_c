@@ -98,12 +98,7 @@ Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, 
 
 	Position position = placeable->position;
 	Rectangle thisBoundingBox = collidable.boundingBox;
-	Rectangle transformedBoundingBox = {
-		thisBoundingBox.aX + position.x,
-		thisBoundingBox.aY + position.y,
-		thisBoundingBox.bX + position.x,
-		thisBoundingBox.bY + position.y,
-	};
+	Rectangle transformedBoundingBox = Collision_transform_bounding_box(position, thisBoundingBox);
 
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
@@ -190,5 +185,5 @@ void Mine_render(const void *entity, const PlaceableComponent *placeable)
 	else
 		Render_point(&placeable->position, 3.0, &color);
 
-	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
+	Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }

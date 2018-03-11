@@ -2,6 +2,7 @@
 #define COLLISION_H
 
 #include <stdbool.h>
+#include "position.h"
 
 typedef struct {
 	double aX;
@@ -20,5 +21,7 @@ bool Collision_aabb_test(const Rectangle rect1,
 bool Collision_point_test(const double x, 
 						  const double y, 
 						  const Rectangle rect);
+
+Rectangle Collision_transform_bounding_box(const Position position, const Rectangle boundingBox);
 
 #endif

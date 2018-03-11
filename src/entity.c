@@ -129,12 +129,7 @@ void Entity_collision_system(void)
 			// create a transformed bounding box for i
 			Position position = entities[i].placeable->position;
 			Rectangle boundingBox = entities[i].collidable->boundingBox;
-			Rectangle transformedBoundingBox = {
-				boundingBox.aX + position.x,
-				boundingBox.aY + position.y,
-				boundingBox.bX + position.x,
-				boundingBox.bY + position.y,
-			};
+			Rectangle transformedBoundingBox = Collision_transform_bounding_box(position, boundingBox);
 
 			// call j's collide with i's transformed bounding box
 			Collision collision = entities[j].collidable->collide(entities[j].state, 

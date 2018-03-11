@@ -20,3 +20,15 @@ bool Collision_point_test(const double x,
 	else
 		return false;
 }
+
+Rectangle Collision_transform_bounding_box(const Position position, const Rectangle boundingBox)
+{
+	Rectangle transformedBoundingBox = {
+		boundingBox.aX + position.x,
+		boundingBox.aY + position.y,
+		boundingBox.bX + position.x,
+		boundingBox.bY + position.y,
+	};
+
+	return transformedBoundingBox;
+}
