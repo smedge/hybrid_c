@@ -39,6 +39,7 @@ typedef struct {
 
 typedef struct {
 	bool empty;
+	bool disabled;
 	void *state;
 	PlaceableComponent *placeable;
 	RenderableComponent *renderable;

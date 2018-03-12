@@ -31,6 +31,7 @@ Entity* Entity_add_entity(const Entity entity)
 		highestIndex = entityId;
 
 	entities[entityId].empty = false;
+	entities[entityId].disabled = false;
 
 	if (entity.state)
 		entities[entityId].state = entity.state;
@@ -74,8 +75,8 @@ void Entity_user_update_system(const Input *input, const unsigned int ticks)
 {
 	for(int i = 0; i <= highestIndex; i++) 
 	{
-		if (entities[i].empty || entities[i].userUpdatable == 0 ||
-			entities[i].placeable == 0)
+		if (entities[i].empty || entities[i].disabled || entities[i].userUpdatable == 0 ||
+				entities[i].placeable == 0)
 			continue;
 
 		entities[i].userUpdatable->update(input, ticks, entities[i].placeable);
@@ -86,7 +87,7 @@ void Entity_ai_update_system(const unsigned int ticks)
 {
 	for(int i = 0; i <= highestIndex; i++) 
 	{
-		if (entities[i].empty || entities[i].aiUpdatable == 0 ||
+		if (entities[i].empty || entities[i].disabled || entities[i].aiUpdatable == 0 ||
 			entities[i].placeable == 0 || entities[i].state == 0)
 			continue;
 
@@ -98,7 +99,7 @@ void Entity_render_system(void)
 {
 	for(int i = 0; i <= highestIndex; i++) 
 	{
-		if (entities[i].empty || entities[i].renderable == 0)	
+		if (entities[i].empty || entities[i].disabled || entities[i].renderable == 0)	
 			continue;
 		
 		entities[i].renderable->render(entities[i].state, entities[i].placeable);
@@ -111,7 +112,7 @@ void Entity_collision_system(void)
 
 	for(int i = 0; i <= highestIndex; i++) 
 	{
-		if (entities[i].empty || entities[i].collidable == 0 ||
+		if (entities[i].empty || entities[i].disabled || entities[i].collidable == 0 ||
 			entities[i].placeable == 0)	
 			continue;
 
@@ -120,7 +121,8 @@ void Entity_collision_system(void)
 
 		for (int j = 0; j <= highestIndex; j++)
 		{
-			if (entities[j].empty || entities[j].collidable == 0)	
+			if (entities[j].empty || entities[j].disabled || entities[j].collidable == 0 ||
+				entities[i].placeable == 0)	
 				continue;
 
 			if (i == j)
