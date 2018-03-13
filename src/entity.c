@@ -155,9 +155,9 @@ void Entity_collision_system(void)
 void Entity_create_collision_command(void (*resolve)(const void *state, const Collision collision),
 	void *state, Collision collision)
 {
-                collisions[highestCollisionIndex].resolve = resolve;
-                collisions[highestCollisionIndex].state = state;
-                collisions[highestCollisionIndex].collision = collision;
-                highestCollisionIndex++;
+	collisions[highestCollisionIndex].resolve = resolve;
+	collisions[highestCollisionIndex].state = state;
+	collisions[highestCollisionIndex].collision = collision;
+	highestCollisionIndex++;
 
 }
