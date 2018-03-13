@@ -42,7 +42,6 @@ static Mix_Chunk *sample01 = 0;
 static Mix_Chunk *sample02 = 0;
 static Mix_Chunk *sample03 = 0;
 
-
 void Mine_initialize(Position position)
 {
 	if (highestUsedIndex == MINE_COUNT) {

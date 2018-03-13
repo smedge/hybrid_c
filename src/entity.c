@@ -8,6 +8,8 @@ static ResolveCollisionCommand collisions[COLLISION_COUNT];
 Entity Entity_initialize_entity() 
 {
 	Entity entity;
+	entity.empty = true;
+	entity.disabled = false;
 	entity.state = 0;
 	entity.placeable = 0;
 	entity.renderable = 0;
@@ -31,7 +33,7 @@ Entity* Entity_add_entity(const Entity entity)
 		highestIndex = entityId;
 
 	entities[entityId].empty = false;
-	entities[entityId].disabled = false;
+	entities[entityId].disabled = entity.disabled;
 
 	if (entity.state)
 		entities[entityId].state = entity.state;
@@ -139,23 +141,23 @@ void Entity_collision_system(void)
 																	transformedBoundingBox);
 
 			if (collision.collisionDetected)
-			{
-				collisions[highestCollisionIndex].collision = collision;
-				collisions[highestCollisionIndex].entity = &entities[i];
-				highestCollisionIndex++;
-			}
+				Entity_create_collision_command(entities[i].collidable->resolve, entities[i].state, collision);
 		}
 	}
 
 	for (int i = 0; i < highestCollisionIndex; i++) 
 	{
-		collisions[i].entity->collidable->resolve(collisions[i].entity->state, collisions[i].collision); 
+		ResolveCollisionCommand collision = collisions[i];
+		collision.resolve(collision.state, collision.collision); 
 	}
 }
 
-void Entity_collision_detected(Collision collision, Entity *entity)
+void Entity_create_collision_command(void (*resolve)(const void *state, const Collision collision),
+	void *state, Collision collision)
 {
-	collisions[highestCollisionIndex].collision = collision;
-	collisions[highestCollisionIndex].entity = entity;
-	highestCollisionIndex++;
+                collisions[highestCollisionIndex].resolve = resolve;
+                collisions[highestCollisionIndex].state = state;
+                collisions[highestCollisionIndex].collision = collision;
+                highestCollisionIndex++;
+
 }

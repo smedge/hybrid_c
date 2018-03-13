@@ -21,7 +21,7 @@ typedef struct {
 	Rectangle boundingBox;
 	bool collidesWithOthers;
 	Collision (*collide)(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox);
-	void (*resolve)(const void *entity, const Collision collision);
+	void (*resolve)(const void *state, const Collision collision);
 } CollidableComponent;
 
 typedef struct {
@@ -29,8 +29,7 @@ typedef struct {
 } DynamicsComponent;
 
 typedef struct {
-	void (*update)(const Input *input, const unsigned int ticks, 
-					PlaceableComponent *placeable);
+	void (*update)(const Input *input, const unsigned int ticks, PlaceableComponent *placeable);
 } UserUpdatableComponent;
 
 typedef struct {
@@ -50,8 +49,9 @@ typedef struct {
 } Entity;
 
 typedef struct {
+	void (*resolve)(const void *state, const Collision collision);
+	void *state;
 	Collision collision;
-	Entity *entity;
 } ResolveCollisionCommand;
 
 Entity Entity_initialize_entity();
@@ -69,6 +69,7 @@ void Entity_user_update_system(const Input *input, const unsigned int ticks);
 void Entity_ai_update_system(const unsigned int ticks);
 void Entity_render_system(void);
 void Entity_collision_system(void);
-void Entity_collision_detected(Collision collision, Entity *entity);
+void Entity_create_collision_command(void (*resolve)(const void *state, const Collision collision),
+	void *state, Collision collision);
 
 #endif
