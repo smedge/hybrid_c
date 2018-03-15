@@ -61,7 +61,7 @@ void Ship_cleanup()
 	Audio_unload_sample(&sample02);
 }
 
-Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox) 
+Collision Ship_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox) 
 {
 	Collision collision = {false, true};
 
@@ -76,7 +76,7 @@ Collision Ship_collide(const void *entity, const PlaceableComponent *placeable, 
 	return collision;
 }
 
-void Ship_resolve(const void *entity, const Collision collision)
+void Ship_resolve(const void *state, const Collision collision)
 {
 	if (shipState.destroyed)
 		return;
@@ -134,7 +134,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	Sub_Pea_update(userInput, ticks, placeable);
 }
 
-void Ship_render(const void *entity, const PlaceableComponent *placeable)
+void Ship_render(const void *state, const PlaceableComponent *placeable)
 {
 	if (!shipState.destroyed) {
 		View view =  View_get_view();

@@ -18,7 +18,7 @@ typedef struct {
 } MapCell;
 
 void Map_initialize(void);
-Collision Map_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox);
+Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Map_render();
 
 #endif

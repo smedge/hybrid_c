@@ -89,9 +89,9 @@ void Mine_cleanup()
 	Audio_unload_sample(&sample03);
 }
 
-Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, const Rectangle boundingBox)
+Collision Mine_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
-	MineState* state = (MineState*)entity;
+	MineState* mineState = (MineState*)state;
 
 	Collision collision = {false, false};
 
@@ -101,73 +101,73 @@ Collision Mine_collide(const void *entity, const PlaceableComponent *placeable, 
 
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
-		if (state->exploding)
+		if (mineState->exploding)
 			collision.solid = true;
 	}
 
 	return collision;
 }
 
-void Mine_resolve(const void *entity, const Collision collision) 
+void Mine_resolve(const void *state, const Collision collision) 
 {
-	MineState* state = (MineState*)entity;
+	MineState* mineState = (MineState*)state;
 
-	if (state->destroyed || state->exploding)
+	if (mineState->destroyed || mineState->exploding)
 		return;
 	
-	if (!state->active) {
+	if (!mineState->active) {
 		Audio_play_sample(&sample01);
 
-		state->active = true;
-		state->ticksActive = 0;
+		mineState->active = true;
+		mineState->ticksActive = 0;
 	}
 }
 
-void Mine_update(const void *entity, const PlaceableComponent *placeable, const unsigned int ticks)
+void Mine_update(const void *state, const PlaceableComponent *placeable, const unsigned int ticks)
 {
-	MineState* state = (MineState*)entity;
-	if (state->active)
+	MineState* mineState = (MineState*)state;
+	if (mineState->active)
 	{
-		state->ticksActive += ticks;
-		if (state->ticksActive > TICKS_ACTIVE) {
+		mineState->ticksActive += ticks;
+		if (mineState->ticksActive > TICKS_ACTIVE) {
 			Audio_play_sample(&sample02);
-			state->active = false;
-			state->exploding = true;
-			state->ticksExploding = 0;
+			mineState->active = false;
+			mineState->exploding = true;
+			mineState->ticksExploding = 0;
 		}
 		return;
 	}
 	
-	if (state->exploding) {
-		state->ticksExploding += ticks;
-		if (state->ticksExploding > TICKS_EXPLODING) {
-			state->exploding = false;
-			state->destroyed = true;
-			state->ticksDestroyed = 0;
+	if (mineState->exploding) {
+		mineState->ticksExploding += ticks;
+		if (mineState->ticksExploding > TICKS_EXPLODING) {
+			mineState->exploding = false;
+			mineState->destroyed = true;
+			mineState->ticksDestroyed = 0;
 		}
 		return;
 	}
 
-	if (state->destroyed){
-		state->ticksDestroyed += ticks;
-		if (state->ticksDestroyed > TICKS_DESTROYED) {
+	if (mineState->destroyed){
+		mineState->ticksDestroyed += ticks;
+		if (mineState->ticksDestroyed > TICKS_DESTROYED) {
 			Audio_play_sample(&sample03);
-			state->active = false;
-			state->exploding = false;
-			state->destroyed = false;
+			mineState->active = false;
+			mineState->exploding = false;
+			mineState->destroyed = false;
 		}
 		return;
 	}
 }
 
-void Mine_render(const void *entity, const PlaceableComponent *placeable) 
+void Mine_render(const void *state, const PlaceableComponent *placeable) 
 {
-	MineState* state = (MineState*)entity;
+	MineState* mineState = (MineState*)state;
 
-	if (state->destroyed)
+	if (mineState->destroyed)
 		return;
 
-	if (state->exploding) {
+	if (mineState->exploding) {
 		Rectangle explosion = {-250, 250, 250, -250};
 		Render_quad(&placeable->position, 22.5, explosion, &colorWhite);
 		Render_quad(&placeable->position, 67.5, explosion, &colorWhite);
@@ -179,7 +179,7 @@ void Mine_render(const void *entity, const PlaceableComponent *placeable)
 	if (view.scale > 0.09)
 		Render_quad(&placeable->position, 45.0, rectangle, &colorDark);
 
-	if (state->active)
+	if (mineState->active)
 		Render_point(&placeable->position, 3.0, &colorActive);
 	else
 		Render_point(&placeable->position, 3.0, &color);
