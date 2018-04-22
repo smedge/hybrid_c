@@ -139,7 +139,8 @@ void Entity_collision_system(void)
 			Collision collision = entities[j].collidable->collide(entities[j].state, 
 																	entities[j].placeable, 
 																	transformedBoundingBox);
-
+			
+			// call i's collision resolver if there was a collision
 			if (collision.collisionDetected)
 				Entity_create_collision_command(entities[i].collidable->resolve, entities[i].state, collision);
 		}
@@ -159,5 +160,4 @@ void Entity_create_collision_command(void (*resolve)(const void *state, const Co
 	collisions[highestCollisionIndex].state = state;
 	collisions[highestCollisionIndex].collision = collision;
 	highestCollisionIndex++;
-
 }
