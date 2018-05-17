@@ -89,7 +89,8 @@ void Mine_cleanup()
 	Audio_unload_sample(&sample03);
 }
 
-Collision Mine_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
+Collision Mine_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox,
+	void (*resolve)(const void *state, const Collision collision), void *stateOther)
 {
 	MineState* mineState = (MineState*)state;
 
@@ -103,6 +104,7 @@ Collision Mine_collide(const void *state, const PlaceableComponent *placeable, c
 		collision.collisionDetected = true;
 		if (mineState->exploding)
 			collision.solid = true;
+		Entity_create_collision_command(resolve, stateOther, collision);
 	}
 
 	return collision;

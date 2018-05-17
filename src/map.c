@@ -160,7 +160,8 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
-Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox) 
+Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox,
+	void (*resolve)(const void *state, const Collision collision), void *stateOther)
 {
 	int corner1CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
 	int corner1CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
@@ -181,6 +182,7 @@ Collision Map_collide(const void *state, const PlaceableComponent *placeable, co
 			if (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) {	
 				if (!map[x][y]->empty) {	
 					collision.collisionDetected = true;
+					Entity_create_collision_command(resolve, stateOther, collision);
 				}
 			}
 		}
