@@ -144,7 +144,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 		else
 			Render_point(&placeable->position, 2.0, &color);
 		
-		Render_bounding_box(&placeable->position, &collidable.boundingBox);
+		//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 	}
 
 	Sub_Pea_render();

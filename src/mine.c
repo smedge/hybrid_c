@@ -184,5 +184,5 @@ void Mine_render(const void *state, const PlaceableComponent *placeable)
 	else
 		Render_point(&placeable->position, 3.0, &color);
 
-	Render_bounding_box(&placeable->position, &collidable.boundingBox);
+	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }
