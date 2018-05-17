@@ -22,10 +22,10 @@ static double headingSin, headingCos;
 static Mix_Chunk *sample01 = 0;
 static Mix_Chunk *sample02 = 0;
 
-static double calculateDeltaX (int ticks);
-static double calculateDeltaY (int ticks);
-static void doTrig(void);
-static double getRadians(double degrees);
+static double calculate_delta_x (int ticks);
+static double calculate_delta_y (int ticks);
+static void do_trig(void);
+static double get_radians(double degrees);
 
 void Sub_Pea_initialize(Entity *p)
 {
@@ -64,7 +64,7 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 
 		heading = Position_get_heading(position, position_cursor_world);
 		velocity = 3500;
-		doTrig();
+		do_trig();
 
 		Audio_play_sample(&sample01);
 	}
@@ -80,8 +80,8 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 		}
 
 		Position positionDelta;
-		positionDelta.x = calculateDeltaX(ticks);
-		positionDelta.y = calculateDeltaY(ticks);
+		positionDelta.x = calculate_delta_x(ticks);
+		positionDelta.y = calculate_delta_y(ticks);
 
 		position.x += positionDelta.x;
 		position.y += positionDelta.y;
@@ -104,23 +104,23 @@ void Sub_Pea_render()
 	}
 }
 
-static double calculateDeltaX (int ticks)
+static double calculate_delta_x (int ticks)
 {
 	return headingSin * velocity / (1000/ticks);
 }
 
-static double calculateDeltaY (int ticks)
+static double calculate_delta_y (int ticks)
 {
 	return headingCos * velocity / (1000/ticks);
 }
 
-static void doTrig(void)
+static void do_trig(void)
 {
-	headingSin = sin(getRadians(heading));
-	headingCos = cos(getRadians(heading));
+	headingSin = sin(get_radians(heading));
+	headingCos = cos(get_radians(heading));
 }
 
-static double getRadians(double degrees) 
+static double get_radians(double degrees) 
 {
 	return degrees * 3.14159265358979323846 / 180.0;
 }
