@@ -10,7 +10,7 @@
 void Ship_initialize();
 void Ship_cleanup();
 
-Collision Ship_collide(const void* state, const PlaceableComponent *placeable, const Rectangle boundingBox,
+void Ship_collide(const void* state, const PlaceableComponent *placeable, const Rectangle boundingBox,
 	void (*resolve)(const void *state, const Collision collision), void *stateOther);
 void Ship_resolve(const void *state, const Collision collision);
 void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);

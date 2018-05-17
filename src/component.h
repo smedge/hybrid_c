@@ -13,7 +13,7 @@ typedef struct {
 typedef struct {
 	Rectangle boundingBox;
 	bool collidesWithOthers;
-	Collision (*collide)(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox, 
+	void (*collide)(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox, 
 		void (*resolve)(const void *state, const Collision collision), void *stateOther);
 	void (*resolve)(const void *state, const Collision collision);
 } CollidableComponent;

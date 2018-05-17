@@ -61,7 +61,7 @@ void Ship_cleanup()
 	Audio_unload_sample(&sample02);
 }
 
-Collision Ship_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox,
+void Ship_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox,
 	void (*resolve)(const void *state, const Collision collision), void *stateOther)
 {
 	Collision collision = {false, true};
@@ -74,8 +74,6 @@ Collision Ship_collide(const void *state, const PlaceableComponent *placeable, c
 		collision.collisionDetected = true;
 		Entity_create_collision_command(resolve, stateOther, collision);
 	}
-
-	return collision;
 }
 
 void Ship_resolve(const void *state, const Collision collision)
