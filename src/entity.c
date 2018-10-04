@@ -142,7 +142,8 @@ void Entity_collision_system(void)
 			
 			// call i's collision resolver if there was a collision
 			if (collision.collisionDetected)
-				Entity_create_collision_command(entities[i].collidable->resolve, entities[i].state, collision);
+				Entity_create_collision_command(entities[i].collidable->resolve, 
+					entities[i].state, collision);
 		}
 	}
 
