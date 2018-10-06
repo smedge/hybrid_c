@@ -9,7 +9,7 @@
 #define ENTITY_COUNT 1024
 #define COLLISION_COUNT 64
 
-typedef struct {
+typedef struct Entity {
 	bool empty;
 	bool disabled;
 	void *state;
