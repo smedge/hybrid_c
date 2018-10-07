@@ -61,7 +61,7 @@ void Ship_cleanup()
 	Audio_unload_sample(&sample02);
 }
 
-Collision Ship_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox) 
+Collision Ship_collide(const Entity *entity1, const Entity *entity2) 
 {
 	Collision collision = {false, true};
 
@@ -76,7 +76,7 @@ Collision Ship_collide(const void *state, const PlaceableComponent *placeable, c
 	return collision;
 }
 
-void Ship_resolve(const void *state, const Collision collision)
+void Ship_resolve(Entity *entity, const Collision collision)
 {
 	if (shipState.destroyed)
 		return;
