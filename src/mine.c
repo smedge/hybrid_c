@@ -89,23 +89,25 @@ void Mine_cleanup()
 	Audio_unload_sample(&sample03);
 }
 
-Collision Mine_collide(const Entity *entity1, const Entity *entity2)
+void Mine_collide(const Entity *entity1, const Entity *entity2)
 {
-	MineState* mineState = (MineState*)state;
+	MineState* mineState = (MineState*)entity1->state;
+	
+	Position position = entity1->placeable->position;
+	Rectangle thisBoundingBox = entity1->collidable.boundingBox;
+	Rectangle transformedBoundingBox1 = Collision_transform_bounding_box(position, thisBoundingBox);
+
+	Position position2 = entity2->placeable->position;
+	Rectangle thisBoundingBox2 = entity2->collidable.boundingBox;
+	Rectangle transformedBoundingBox2 = Collision_transform_bounding_box(position2, thisBoundingBox2);
 
 	Collision collision = {false, false};
-
-	Position position = placeable->position;
-	Rectangle thisBoundingBox = collidable.boundingBox;
-	Rectangle transformedBoundingBox = Collision_transform_bounding_box(position, thisBoundingBox);
-
-	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
+	if (Collision_aabb_test(transformedBoundingBox1, transformedBoundingBox2)) {
 		collision.collisionDetected = true;
 		if (mineState->exploding)
 			collision.solid = true;
+		Entity_create_collision_command(entities1->collidable->resolve, entities[i].state, collision);
 	}
-
-	return collision;
 }
 
 void Mine_resolve(Entity *entity, const Collision collision) 

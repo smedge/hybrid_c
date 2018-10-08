@@ -1,7 +1,7 @@
 #ifndef COMPONENT_H
 #define COMPONENT_H
 
-typedef struct Entity Entity_t;
+typedef struct Entity Entity;
 
 typedef struct {
 	Position position;
@@ -22,8 +22,8 @@ typedef struct {
 typedef struct {
 	Rectangle boundingBox;
 	bool collidesWithOthers;
-	Collision (*collide)(const Entity_t *entity1, const Entity_t *entity2);
-	void (*resolve)(const Entity_t *entity, const Collision collision);
+	void (*collide)(const Entity *entity1, const Entity *entity2);
+	void (*resolve)(const Entity *entity, const Collision collision);
 } CollidableComponent;
 
 typedef struct {

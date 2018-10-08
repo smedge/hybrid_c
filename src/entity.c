@@ -130,23 +130,7 @@ void Entity_collision_system(void)
 			if (i == j)
 				continue;
 
-			// create a transformed bounding box for i
-			Position position = entities[i].placeable->position;
-			Rectangle boundingBox = entities[i].collidable->boundingBox;
-			Rectangle transformedBoundingBox = Collision_transform_bounding_box(position, boundingBox);
-
-			// call j's collide with i's transformed bounding box
-			// Collision collision = entities[j].collidable->collide(entities[j].state, 
-			// 														entities[j].placeable, 
-			// 														transformedBoundingBox);
-
-			// call j's collide with i's transformed bounding box
-			Collision collision = entities[j].collidable->collide(&entities[j], &entities[i]);
-			
-			// call i's collision resolver if there was a collision
-			// if (collision.collisionDetected)
-			// 	Entity_create_collision_command(entities[i].collidable->resolve, 
-			// 		entities[i].state, collision);
+			entities[j].collidable->collide(&entities[j], &entities[i]);
 		}
 	}
 
