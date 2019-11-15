@@ -63,14 +63,20 @@ void Ship_cleanup()
 
 Collision Ship_collide(const Entity *entity1, const Entity *entity2) 
 {
+	
+	Position position = entity1->placeable->position;
+	Rectangle thisBoundingBox = entity1->collidable.boundingBox;
+	Rectangle transformedBoundingBox1 = Collision_transform_bounding_box(position, thisBoundingBox);
+
+	Position position2 = entity2->placeable->position;
+	Rectangle thisBoundingBox2 = entity2->collidable.boundingBox;
+	Rectangle transformedBoundingBox2 = Collision_transform_bounding_box(position2, thisBoundingBox2);
+
+
 	Collision collision = {false, true};
-
-	Position position = placeable->position;
-	Rectangle thisBoundingBox = collidable.boundingBox;
-	Rectangle transformedBoundingBox = Collision_transform_bounding_box(position, thisBoundingBox);
-
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
+		Entity_create_collision_command(entities2->collidable->resolve, entities2.state, collision);
 	}
 
 	return collision;

@@ -112,7 +112,7 @@ void Mine_collide(const Entity *entity1, const Entity *entity2)
 
 void Mine_resolve(Entity *entity, const Collision collision) 
 {
-	MineState* mineState = (MineState*)state;
+	MineState* mineState = (MineState*)entity->state;
 
 	if (mineState->destroyed || mineState->exploding)
 		return;
