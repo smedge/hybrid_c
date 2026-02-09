@@ -60,7 +60,7 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 
 		Position position_cursor = {userInput->mouseX, userInput->mouseY};
 		Screen screen = Graphics_get_screen();
-		Position position_cursor_world = View_get_world_position_gl(&screen, position_cursor);
+		Position position_cursor_world = View_get_world_position(&screen, position_cursor);
 
 		heading = Position_get_heading(position, position_cursor_world);
 		velocity = 3500;

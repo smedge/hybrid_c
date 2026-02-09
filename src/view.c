@@ -1,9 +1,5 @@
 #include "view.h"
 
-#include <SDL2/SDL_opengl.h>
-
-#include <GL/glu.h>
-
 const double MAX_ZOOM = 4.0;
 const double MIN_ZOOM = 0.01;
 const double ZOOM_IN_RATE = 1.05;
@@ -11,7 +7,7 @@ const double ZOOM_OUT_RATE = 0.95;
 
 static View view;
 
-void View_initialize() 
+void View_initialize()
 {
 	view.position.x = 0.0;
 	view.position.y = 0.0;
@@ -31,65 +27,38 @@ void View_update(const Input *input, const unsigned int ticks)
 		view.scale = MIN_ZOOM;
 }
 
-void View_transform(const Screen *screen)
+Mat4 View_get_transform(const Screen *screen)
 {
 	double x = (screen->width / 2.0) - (view.position.x * view.scale);
 	double y = (screen->height / 2.0) - (view.position.y * view.scale);
-	glTranslatef(x, y, 0.0);
-	glScalef(view.scale, view.scale, view.scale);
+	Mat4 t = Mat4_translate((float)x, (float)y, 0.0f);
+	Mat4 s = Mat4_scale((float)view.scale, (float)view.scale, 1.0f);
+	return Mat4_multiply(&t, &s);
 }
 
-Position View_get_world_position(const Screen *screen, const Position uiPosition) 
+Position View_get_world_position(const Screen *screen, const Position screenPosition)
 {
-	// This method is bubbed, use the gl version below
+	/* SDL mouse coords: y=0 at top. World projection: y=0 at bottom. Flip Y. */
+	float flipped_y = (float)screen->height - (float)screenPosition.y;
 
-	// correct when ship doesnt move
-	double x = (view.position.x + uiPosition.x - (screen->width / 2)) / view.scale;
-	double y = (view.position.y - uiPosition.y + (screen->height / 2)) / view.scale;
+	Mat4 view_mat = View_get_transform(screen);
+	Mat4 inv = Mat4_inverse(&view_mat);
 
-	// correct when view isn't scaled
-	//double x = (view.position.x + uiPosition.x - (screen->width / 2)) / view.scale - view.position.x;
-	//double y = (view.position.y - uiPosition.y + (screen->height / 2)) / view.scale - view.position.y;
-
-	Position position = {x, y};
-	return position;
-}
-
-Position View_get_world_position_gl(const Screen *screen, const Position screenPosition) {
-
-	View_transform(screen);
-
-	GLdouble worldX, worldY, worldZ;
-
-	GLdouble projectionMatrix[16];
-	glGetDoublev(GL_PROJECTION_MATRIX, projectionMatrix);
-	GLdouble modelViewMatrix[16];
-	glGetDoublev(GL_MODELVIEW_MATRIX, modelViewMatrix);
-	GLint viewport[4];
-	glGetIntegerv(GL_VIEWPORT, viewport);
-
-	gluUnProject(screenPosition.x, screenPosition.y, 0,
-		modelViewMatrix,
-		projectionMatrix,
-		viewport,
-		&worldX, &worldY, &worldZ);
-
-	glLoadIdentity();
+	float wx, wy;
+	Mat4_transform_point(&inv, (float)screenPosition.x, flipped_y, &wx, &wy);
 
 	Position worldPosition;
-	worldPosition.x = worldX;
-	worldPosition.y = worldY;
-
+	worldPosition.x = wx;
+	worldPosition.y = wy;
 	return worldPosition;
 }
 
-
-const View View_get_view(void) 
+const View View_get_view(void)
 {
 	return view;
 }
 
-void View_set_position(const Position position) 
+void View_set_position(const Position position)
 {
 	view.position = position;
 }

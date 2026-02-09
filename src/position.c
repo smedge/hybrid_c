@@ -2,7 +2,7 @@
 
 #include "math.h"
 
-#define M_PI (3.14159265358979323846)
+//#define M_PI (3.14159265358979323846)
 
 double Position_get_heading(const Position p1, const Position p2)
 {

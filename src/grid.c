@@ -1,7 +1,5 @@
 #include "grid.h"
 
-#include <SDL2/SDL_opengl.h>
-
 const double GRID_SIZE = 100.0;
 const double BIG_GRID_SIZE = 16.0;
 const double GRID_MIN_LINE_SIZE = 1.0;

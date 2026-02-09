@@ -1,10 +1,6 @@
 #ifndef HUD_H
 #define HUD_H
 
-#include <SDL2/SDL_opengl.h>
-
-#define TITLE_FONT_PATH "./resources/fonts/square_sans_serif_7.ttf"
-
 #include "input.h"
 #include "screen.h"
 

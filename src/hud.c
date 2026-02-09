@@ -1,172 +1,63 @@
 #include "hud.h"
+#include "render.h"
+#include "text.h"
+#include "graphics.h"
 
-#include <FTGL/ftgl.h>
-
-static FTGLfont *font = 0;
-
-// static void render_left_status(const Screen *screen);
-// static void render_right_status(const Screen *screen);
 static void render_skill_bar(const Screen *screen);
-static void render_blank_skill_button();
 static void render_radar(const Screen *screen);
 
 void Hud_initialize()
 {
-	font = ftglCreatePixmapFont(TITLE_FONT_PATH);
-	if(!font) {
-		puts("error: failed to load font in hud");
-		exit(-1);
-	}
 }
 
 void Hud_cleanup(void)
 {
-	ftglDestroyFont(font);
 }
 
 void Hud_update(const Input *input, const unsigned int ticks)
 {
-
+	(void)input;
+	(void)ticks;
 }
 
 void Hud_render(const Screen *screen)
 {
-	glPushMatrix();
-	//render_left_status(screen);
-	//render_right_status(screen);
 	render_radar(screen);
 	render_skill_bar(screen);
-	glPopMatrix();
 }
-
-// static void render_left_status(const Screen *screen)
-// {
-// 	glPushMatrix();
-// 	glLineWidth(1.0);
-// 	glColor4f(0.1, 0.1, 0.1, 0.8);
-// 	glTranslatef(10.0, 10.0, 0.0);
-
-// 	glBegin(GL_LINE_LOOP);
-// 		glVertex2f(0.0, 0.0);
-// 		glVertex2f(0.0, 100.0);
-// 		glVertex2f(250.0, 100.0);
-// 		glVertex2f(250.0, 0.0);
-// 	glEnd();
-// 	glPopMatrix();
-// }
-
-// static void render_right_status(const Screen *screen)
-// {
-// 	glPushMatrix();
-// 	glLineWidth(1.0);
-// 	glColor4f(0.1, 0.1, 0.1, 0.8);
-// 	glTranslatef(screen->width - 260.0, 10.0, 0.0);
-
-// 	glBegin(GL_LINE_LOOP);
-// 		glVertex2f(0.0, 0.0);
-// 		glVertex2f(0.0, 100.0);
-// 		glVertex2f(250.0, 100.0);
-// 		glVertex2f(250.0, 0.0);
-// 	glEnd();
-// 	glPopMatrix();
-// }
 
 static void render_skill_bar(const Screen *screen)
 {
+	float base_x = 10.0f;
+	float base_y = (float)screen->height - 60.0f;
 
-	glColor4f(0.1, 0.1, 0.1, 0.8);
-	
-	glPushMatrix();
+	/* 10 skill buttons */
+	for (int i = 0; i < 10; i++) {
+		float bx = base_x + i * 60.0f;
+		Render_quad_absolute(bx, base_y, bx + 50.0f, base_y + 50.0f,
+			0.1f, 0.1f, 0.1f, 0.8f);
+	}
 
-	glTranslatef(10.0, screen->height - 60.0, 0.0);
-	render_blank_skill_button();
+	/* Number labels */
+	TextRenderer *tr = Graphics_get_text_renderer();
+	Shaders *shaders = Graphics_get_shaders();
+	Mat4 proj = Graphics_get_ui_projection();
+	Mat4 ident = Mat4_identity();
 
-	glTranslatef(60.0, 0.0, 0.0);
-	render_blank_skill_button();
-
-	glTranslatef(60.0, 0.0, 0.0);
-	render_blank_skill_button();
-
-	glTranslatef(60.0, 0.0, 0.0);
-	render_blank_skill_button();
-
-	glTranslatef(60.0, 0.0, 0.0);
-	render_blank_skill_button();
-
-	glTranslatef(60.0, 0.0, 0.0);
-	render_blank_skill_button();
-
-	glTranslatef(60.0, 0.0, 0.0);
-	render_blank_skill_button();
-
-	glTranslatef(60.0, 0.0, 0.0);
-	render_blank_skill_button();
-
-	glTranslatef(60.0, 0.0, 0.0);
-	render_blank_skill_button();
-
-	glTranslatef(60.0, 0.0, 0.0);
-	render_blank_skill_button();
-
-	glPopMatrix();
-
-
-
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	ftglSetFontFaceSize(font, 14, 72);
-	
-	glRasterPos2f(10.0f, screen->height - 10.0);
-	ftglRenderFont(font, "1", FTGL_RENDER_ALL);
-
-	glRasterPos2f(70.0f, screen->height - 10.0);
-	ftglRenderFont(font, "2", FTGL_RENDER_ALL);
-
-	glRasterPos2f(130.0f, screen->height - 10.0);
-	ftglRenderFont(font, "3", FTGL_RENDER_ALL);
-
-	glRasterPos2f(190.0f, screen->height - 10.0);
-	ftglRenderFont(font, "4", FTGL_RENDER_ALL);
-
-	glRasterPos2f(250.0f, screen->height - 10.0);
-	ftglRenderFont(font, "5", FTGL_RENDER_ALL);
-
-	glRasterPos2f(310.0f, screen->height - 10.0);
-	ftglRenderFont(font, "6", FTGL_RENDER_ALL);
-
-	glRasterPos2f(370.0f, screen->height - 10.0);
-	ftglRenderFont(font, "7", FTGL_RENDER_ALL);
-
-	glRasterPos2f(430.0f, screen->height - 10.0);
-	ftglRenderFont(font, "8", FTGL_RENDER_ALL);
-
-	glRasterPos2f(490.0f, screen->height - 10.0);
-	ftglRenderFont(font, "9", FTGL_RENDER_ALL);
-
-	glRasterPos2f(550.0f, screen->height - 10.0);
-	ftglRenderFont(font, "0", FTGL_RENDER_ALL);
-}
-
-static void render_blank_skill_button()
-{
-	glBegin(GL_QUADS);
-		glVertex2f(0.0, 0.0);
-		glVertex2f(0.0, 50.0);
-		glVertex2f(50.0, 50.0);
-		glVertex2f(50.0, 0.0);
-	glEnd();
+	const char *labels[] = {"1","2","3","4","5","6","7","8","9","0"};
+	for (int i = 0; i < 10; i++) {
+		float lx = base_x + i * 60.0f;
+		float ly = (float)screen->height - 10.0f;
+		Text_render(tr, shaders, &proj, &ident,
+			labels[i], lx, ly,
+			1.0f, 1.0f, 1.0f, 1.0f);
+	}
 }
 
 static void render_radar(const Screen *screen)
 {
-	glPushMatrix();
-	glColor4f(0.1, 0.1, 0.1, 0.8);
-	glTranslatef(screen->width - 210.0, screen->height - 210.0, 0.0);
-
-	glBegin(GL_QUADS);
-		glVertex2f(0.0, 0.0);
-		glVertex2f(0.0, 200.0);
-		glVertex2f(200.0, 200.0);
-		glVertex2f(200.0, 0.0);
-	glEnd();
-	glPopMatrix();
+	float rx = (float)screen->width - 210.0f;
+	float ry = (float)screen->height - 210.0f;
+	Render_quad_absolute(rx, ry, rx + 200.0f, ry + 200.0f,
+		0.1f, 0.1f, 0.1f, 0.8f);
 }

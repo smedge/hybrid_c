@@ -1,84 +1,95 @@
 #include "render.h"
 
 #include <math.h>
-#include <SDL2/SDL_opengl.h>
 
 static int get_nearest_grid_start_point(int x, const double GRID_SIZE);
 
-void Render_point(const Position *position, const float size, 
+void Render_point(const Position *position, const float size,
 	const ColorFloat *color)
 {
-	glPushMatrix();
-	glPointSize(size);
-	glColor4f(color->red, color->green, color->blue, color->alpha);
-	glTranslatef(position->x, position->y, 0.0);
-	glBegin(GL_POINTS);
-		glVertex2f(0.0, 0.0);
-	glEnd();
-	glPopMatrix();
+	BatchRenderer *batch = Graphics_get_batch();
+	Batch_push_point_vertex(batch,
+		(float)position->x, (float)position->y, size,
+		color->red, color->green, color->blue, color->alpha);
 }
 
 void Render_line()
 {
-	
 }
 
-void Render_triangle(const Position *position, const double heading, 
-	const ColorFloat *color) 
+void Render_triangle(const Position *position, const double heading,
+	const ColorFloat *color)
 {
-	glPushMatrix();
-	glTranslatef(position->x, position->y, 0.0);
-	glRotatef(heading*-1, 0, 0, 1);
-	glBegin(GL_TRIANGLES);
-	    glColor4f(color->red, color->green, color->blue, color->alpha);
-		glVertex2f(0.0, 20.0);
-		glVertex2f(10.0, -10.0);
-		glVertex2f(-10.0, -10.0);
-	glEnd();
-	glPopMatrix();
+	/* Build model transform: translate then rotate */
+	Mat4 t = Mat4_translate((float)position->x, (float)position->y, 0.0f);
+	Mat4 r = Mat4_rotate_z((float)(heading * -1.0));
+	Mat4 m = Mat4_multiply(&t, &r);
+
+	/* Triangle vertices in local space */
+	float lx[3] = { 0.0f, 10.0f, -10.0f };
+	float ly[3] = { 20.0f, -10.0f, -10.0f };
+
+	float wx[3], wy[3];
+	for (int i = 0; i < 3; i++)
+		Mat4_transform_point(&m, lx[i], ly[i], &wx[i], &wy[i]);
+
+	BatchRenderer *batch = Graphics_get_batch();
+	Batch_push_triangle_vertices(batch,
+		wx[0], wy[0], wx[1], wy[1], wx[2], wy[2],
+		color->red, color->green, color->blue, color->alpha);
 }
 
-void Render_quad(const Position *position, const double rotation, 
+void Render_quad(const Position *position, const double rotation,
 	const Rectangle rectangle, const ColorFloat *color)
 {
-	glPushMatrix();
-	glColor4f(color->red, color->green, color->blue, color->alpha);
-	glTranslatef(position->x, position->y, 0.0);
-	glRotatef(rotation*-1, 0, 0, 1);
-	glBegin(GL_QUADS);
-		glVertex2f(rectangle.aX, rectangle.aY);
-		glVertex2f(rectangle.aX, rectangle.bY);
-		glVertex2f(rectangle.bX, rectangle.bY);
-		glVertex2f(rectangle.bX, rectangle.aY);
-	glEnd();
-	glPopMatrix();
+	Mat4 t = Mat4_translate((float)position->x, (float)position->y, 0.0f);
+	Mat4 r = Mat4_rotate_z((float)(rotation * -1.0));
+	Mat4 m = Mat4_multiply(&t, &r);
+
+	/* Quad corners in local space */
+	float lx[4] = { (float)rectangle.aX, (float)rectangle.aX,
+	                 (float)rectangle.bX, (float)rectangle.bX };
+	float ly[4] = { (float)rectangle.aY, (float)rectangle.bY,
+	                 (float)rectangle.bY, (float)rectangle.aY };
+
+	float wx[4], wy[4];
+	for (int i = 0; i < 4; i++)
+		Mat4_transform_point(&m, lx[i], ly[i], &wx[i], &wy[i]);
+
+	/* Two triangles: 0-1-2 and 0-2-3 */
+	BatchRenderer *batch = Graphics_get_batch();
+	Batch_push_triangle_vertices(batch,
+		wx[0], wy[0], wx[1], wy[1], wx[2], wy[2],
+		color->red, color->green, color->blue, color->alpha);
+	Batch_push_triangle_vertices(batch,
+		wx[0], wy[0], wx[2], wy[2], wx[3], wy[3],
+		color->red, color->green, color->blue, color->alpha);
 }
 
 void Render_convex_poly()
 {
-	
 }
 
-void Render_bounding_box(const Position *position, 
-		const Rectangle *boundingBox) 
+void Render_bounding_box(const Position *position,
+	const Rectangle *boundingBox)
 {
-	glPushMatrix();
-	glTranslatef(position->x, position->y, 0.0);
+	float px = (float)position->x;
+	float py = (float)position->y;
 
-	glLineWidth(1.0);
-	glColor4f(1.0, 1.0, 0.0, 0.60);
-	glBegin(GL_LINE_LOOP);
-	glVertex2f(boundingBox->aX, boundingBox->aY);
-	glVertex2f(boundingBox->aX, boundingBox->bY);
-	glVertex2f(boundingBox->bX, boundingBox->bY);
-	glVertex2f(boundingBox->bX, boundingBox->aY);
-	glEnd();
+	float ax = px + (float)boundingBox->aX;
+	float ay = py + (float)boundingBox->aY;
+	float bx = px + (float)boundingBox->bX;
+	float by = py + (float)boundingBox->bY;
 
-	glPopMatrix();
+	/* GL_LINE_LOOP → 4 GL_LINES segments */
+	Render_line_segment(ax, ay, ax, by, 1.0f, 1.0f, 0.0f, 0.60f);
+	Render_line_segment(ax, by, bx, by, 1.0f, 1.0f, 0.0f, 0.60f);
+	Render_line_segment(bx, by, bx, ay, 1.0f, 1.0f, 0.0f, 0.60f);
+	Render_line_segment(bx, ay, ax, ay, 1.0f, 1.0f, 0.0f, 0.60f);
 }
 
-void Render_grid_lines(const double gridSize, const double bigGridSize, 
-		const double minLineSize, const double minBigLineSize)
+void Render_grid_lines(const double gridSize, const double bigGridSize,
+	const double minLineSize, const double minBigLineSize)
 {
 	const View view = View_get_view();
 	const Screen screen = Graphics_get_screen();
@@ -86,66 +97,85 @@ void Render_grid_lines(const double gridSize, const double bigGridSize,
 	const double HALF_SCREEN_WIDTH = (screen.width / 2) / view.scale;
 	const double HALF_SCREEN_HEIGHT = (screen.height / 2) / view.scale;
 
-	// calculate line widths
-	double bigLineWidth = minBigLineSize  * view.scale;
-	if (bigLineWidth < minBigLineSize )
-		bigLineWidth = minBigLineSize;
-	
-	double lineWidth = minLineSize * view.scale;
-	if (lineWidth < minLineSize)
-		lineWidth = minLineSize;
+	(void)minBigLineSize;
+	(void)minLineSize;
 
+	BatchRenderer *batch = Graphics_get_batch();
 
-	glPushMatrix();
-	
-	// draw lines
-	glLineWidth(lineWidth);
-	glBegin(GL_LINES);
+	/* Vertical lines along x */
+	for (int i = get_nearest_grid_start_point(
+			(int)(view.position.x - HALF_SCREEN_WIDTH), gridSize);
+			i < HALF_SCREEN_WIDTH + view.position.x;
+			i += (int)gridSize) {
+		float alpha;
+		if (fmod(i, gridSize * bigGridSize) == 0.0)
+			alpha = 0.3f;
+		else
+			alpha = 0.15f;
 
-		// draw vert lines along x
-		for (int i = get_nearest_grid_start_point(view.position.x - HALF_SCREEN_WIDTH, gridSize); 
-				i<HALF_SCREEN_WIDTH + view.position.x;
-				i+=gridSize) {
-			if (fmod(i, gridSize * bigGridSize) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.3);
-			else
-				glColor4f(0.0, 1.0, 0.0, 0.15);
-				
-			glVertex2f(i, view.position.y + HALF_SCREEN_HEIGHT);
-			glVertex2f(i, view.position.y + (-HALF_SCREEN_HEIGHT));
-		}
-		
-		// draw horz lines along y
-		for (int i = get_nearest_grid_start_point(view.position.y - HALF_SCREEN_HEIGHT, gridSize); 
-				i<HALF_SCREEN_HEIGHT + view.position.y;
-				i+=gridSize) {
-			if (fmod(i, gridSize * bigGridSize) == 0.0)
-				glColor4f(0.0, 1.0, 0.0, 0.3);
-			else
-				glColor4f(0.0, 1.0, 0.0, 0.15);
-				
-			glVertex2f(view.position.x + HALF_SCREEN_WIDTH, i);
-			glVertex2f(view.position.x + (-HALF_SCREEN_WIDTH), i);
-		}
+		Batch_push_line_vertices(batch,
+			(float)i, (float)(view.position.y + HALF_SCREEN_HEIGHT),
+			(float)i, (float)(view.position.y + (-HALF_SCREEN_HEIGHT)),
+			0.0f, 1.0f, 0.0f, alpha);
+	}
 
-	glEnd();
-	glPopMatrix();
+	/* Horizontal lines along y */
+	for (int i = get_nearest_grid_start_point(
+			(int)(view.position.y - HALF_SCREEN_HEIGHT), gridSize);
+			i < HALF_SCREEN_HEIGHT + view.position.y;
+			i += (int)gridSize) {
+		float alpha;
+		if (fmod(i, gridSize * bigGridSize) == 0.0)
+			alpha = 0.3f;
+		else
+			alpha = 0.15f;
+
+		Batch_push_line_vertices(batch,
+			(float)(view.position.x + HALF_SCREEN_WIDTH), (float)i,
+			(float)(view.position.x + (-HALF_SCREEN_WIDTH)), (float)i,
+			0.0f, 1.0f, 0.0f, alpha);
+	}
+}
+
+void Render_line_segment(float x0, float y0, float x1, float y1,
+	float r, float g, float b, float a)
+{
+	BatchRenderer *batch = Graphics_get_batch();
+	Batch_push_line_vertices(batch, x0, y0, x1, y1, r, g, b, a);
+}
+
+void Render_quad_absolute(float ax, float ay, float bx, float by,
+	float r, float g, float b, float a)
+{
+	BatchRenderer *batch = Graphics_get_batch();
+	/* Two triangles: (ax,ay)-(ax,by)-(bx,by) and (ax,ay)-(bx,by)-(bx,ay) */
+	Batch_push_triangle_vertices(batch,
+		ax, ay, ax, by, bx, by, r, g, b, a);
+	Batch_push_triangle_vertices(batch,
+		ax, ay, bx, by, bx, ay, r, g, b, a);
+}
+
+void Render_flush(const Mat4 *projection, const Mat4 *view)
+{
+	BatchRenderer *batch = Graphics_get_batch();
+	Shaders *shaders = Graphics_get_shaders();
+	Batch_flush(batch, shaders, projection, view);
 }
 
 static int get_nearest_grid_start_point(int x, const double GRID_SIZE)
 {
 	int a, b;
-	int gridSize = (int) GRID_SIZE;
+	int gridSize = (int)GRID_SIZE;
 
 	if (x > 0) {
 		a = x % gridSize;
 		b = x - a;
-		return b; 
+		return b;
 	}
 	else {
 		x = -x;
 		a = x % gridSize;
 		b = gridSize - a;
-		return -x - b;	
+		return -x - b;
 	}
 }

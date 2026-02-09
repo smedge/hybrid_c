@@ -1,6 +1,7 @@
 #include "mode_gameplay.h"
-#include <SDL2/SDL_opengl.h>
 #include "map.h"
+#include "render.h"
+#include "mat4.h"
 
 
 void Mode_Gameplay_initialize(void)
@@ -8,10 +9,10 @@ void Mode_Gameplay_initialize(void)
 	Entity_destroy_all();
 
 	int num_between_1_and_7 = (rand() % 7) + 1;
-	
+
 	switch (num_between_1_and_7) {
 	case 1:
-	 	Audio_loop_music(GAMEPLAY_MUSIC_01_PATH);
+		Audio_loop_music(GAMEPLAY_MUSIC_01_PATH);
 		break;
 	case 2:
 		Audio_loop_music(GAMEPLAY_MUSIC_02_PATH);
@@ -41,7 +42,7 @@ void Mode_Gameplay_initialize(void)
 	Ship_initialize();
 
 	Position position;
-	
+
 	position.x = -1600.0;
 	position.y = 1600.0;
 	Mine_initialize(position);
@@ -81,7 +82,7 @@ void Mode_Gameplay_initialize(void)
 	position.x = -3200.0;
 	position.y = 3200.0;
 	Mine_initialize(position);
-	
+
 	position.x = -1600.0;
 	position.y = 3200.0;
 	Mine_initialize(position);
@@ -103,7 +104,7 @@ void Mode_Gameplay_initialize(void)
 	position.x = -3200.0;
 	position.y = -3200.0;
 	Mine_initialize(position);
-	
+
 	position.x = -1600.0;
 	position.y = -3200.0;
 	Mine_initialize(position);
@@ -228,15 +229,18 @@ void Mode_Gameplay_render(void)
 	Graphics_clear();
 	Screen screen = Graphics_get_screen();
 
-	Graphics_set_world_projection();
-	glPushMatrix();
-	View_transform(&screen);
+	/* World pass */
+	Mat4 world_proj = Graphics_get_world_projection();
+	Mat4 view = View_get_transform(&screen);
 	Entity_render_system();
+	Render_flush(&world_proj, &view);
 
-	glPopMatrix();
-	Graphics_set_ui_projection();
+	/* UI pass */
+	Mat4 ui_proj = Graphics_get_ui_projection();
+	Mat4 identity = Mat4_identity();
 	Hud_render(&screen);
 	cursor_render();
+	Render_flush(&ui_proj, &identity);
 
 	Graphics_flip();
 }

@@ -1,7 +1,8 @@
 #include "map.h"
 
-#include <SDL2/SDL_opengl.h>
 #include "view.h"
+#include "render.h"
+#include "color.h"
 
 static MapCell *map[MAP_SIZE][MAP_SIZE];
 
@@ -17,7 +18,7 @@ static void initialize_map_entity(void);
 static void set_map_cell(int x, int y, MapCell *cell);
 static void render_cell(const int x, const int y);
 static int correctTruncation(int i);
- 
+
 void Map_initialize(void)
 {
 	initialize_map_entity();
@@ -137,15 +138,6 @@ static void initialize_map_data(void)
 	set_map_cell(-10, -8, &cell001);
 	set_map_cell(-10, -9, &cell001);
 	set_map_cell(-10, -10, &cell001);
-
-	//set_map_cell(511, 511, &cell001);
-
-	//set_map_cell(511, -511, &cell002);
-
-	//set_map_cell(-511, 511, &cell001);
-
-	//set_map_cell(-511, -511, &cell001);
-
 }
 
 static void set_map_cell(int x, int y, MapCell *cell) {
@@ -160,7 +152,7 @@ static void set_map_cell(int x, int y, MapCell *cell) {
 	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
-Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox) 
+Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
 	int corner1CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
 	int corner1CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
@@ -178,8 +170,8 @@ Collision Map_collide(const void *state, const PlaceableComponent *placeable, co
 
 	for (int x = map1X; x <= map3X; x++) {
 		for (int y = map3Y; y <= map1Y; y++) {
-			if (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) {	
-				if (!map[x][y]->empty) {	
+			if (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) {
+				if (!map[x][y]->empty) {
 					collision.collisionDetected = true;
 				}
 			}
@@ -193,7 +185,7 @@ static int correctTruncation(int i)
 {
 	if (i < 0)
 		return --i;
-	else 
+	else
 		return i;
 }
 
@@ -213,64 +205,31 @@ static void render_cell(const int x, const int y)
 	if (mapCell.empty)
 		return;
 
-	View view = View_get_view();
-
-	// render the inside of the cell
-	double lineWidth = MAP_MIN_LINE_SIZE * view.scale * 10.0;
-	if (lineWidth < MAP_MIN_LINE_SIZE)
-		lineWidth = MAP_MIN_LINE_SIZE;
-
-	glLineWidth(lineWidth);
-
-	float ax = (x - HALF_MAP_SIZE) * MAP_CELL_SIZE; // TODO USE
-	float ay = (y - HALF_MAP_SIZE) * MAP_CELL_SIZE; // GL HERE INSTEAD 
+	float ax = (float)(x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	float ay = (float)(y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
 	float bx = ax + MAP_CELL_SIZE;
 	float by = ay + MAP_CELL_SIZE;
-	
-	ColorFloat primaryColor = Color_rgb_to_float(&mapCell.primaryColor);
-	glColor4f(primaryColor.red, primaryColor.green, primaryColor.blue, primaryColor.alpha);
-	glBegin(GL_QUADS);
-		glVertex2f(ax, ay);
-		glVertex2f(ax, by);
-		glVertex2f(bx, by);
-		glVertex2f(bx, ay);
-	glEnd();
 
-	// render the outside of the cell
+	ColorFloat primaryColor = Color_rgb_to_float(&mapCell.primaryColor);
+	Render_quad_absolute(ax, ay, bx, by,
+		primaryColor.red, primaryColor.green, primaryColor.blue, primaryColor.alpha);
+
+	/* Render outline edges where adjacent cell is empty */
 	ColorFloat outlineColor = Color_rgb_to_float(&mapCell.outlineColor);
-	glColor4f(outlineColor.red, outlineColor.green, outlineColor.blue, outlineColor.alpha);
-	
+	float or_ = outlineColor.red, og = outlineColor.green;
+	float ob = outlineColor.blue, oa = outlineColor.alpha;
+
 	MapCell northCell = *map[x][y+1];
 	MapCell eastCell = *map[x+1][y];
 	MapCell southCell = *map[x][y-1];
 	MapCell westCell = *map[x-1][y];
 
 	if (northCell.empty)
-	{
-		glBegin(GL_LINE_STRIP);
-		glVertex2f(ax, by);
-	 	glVertex2f(bx, by);
-		glEnd();
-	}
+		Render_line_segment(ax, by, bx, by, or_, og, ob, oa);
 	if (eastCell.empty)
-	{
-		glBegin(GL_LINE_STRIP);
-		glVertex2f(bx, by);
-	 	glVertex2f(bx, ay);
-		glEnd();
-	}
+		Render_line_segment(bx, by, bx, ay, or_, og, ob, oa);
 	if (southCell.empty)
-	{
-		glBegin(GL_LINE_STRIP);
-		glVertex2f(bx, ay);;
-	 	glVertex2f(ax, ay);
-		glEnd();
-	}
+		Render_line_segment(bx, ay, ax, ay, or_, og, ob, oa);
 	if (westCell.empty)
-	{
-		glBegin(GL_LINE_STRIP);
-		glVertex2f(ax, ay);
-	 	glVertex2f(ax, by);
-		glEnd();
-	}
+		Render_line_segment(ax, ay, ax, by, or_, og, ob, oa);
 }

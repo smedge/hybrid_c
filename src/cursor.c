@@ -1,42 +1,36 @@
 #include "cursor.h"
+#include "render.h"
 
 static int x = 0;
 static int y = 0;
 static bool visible = false;
 
-void cursor_update(const Input *input) 
+void cursor_update(const Input *input)
 {
 	visible = input->showMouse;
 	x = input->mouseX;
 	y = input->mouseY;
 }
 
-void cursor_render(void) 
+void cursor_render(void)
 {
 	if (!visible)
 		return;
-		
-	glPushMatrix();
-	glPointSize(2.0);
-	glColor4f(0.9, 0.0, 0.0, 0.70);
-	glTranslatef(x, y, 0.0);
-	glBegin(GL_POINTS);
-		glVertex2f(0.0, 0.0);
-	glEnd();
-	glLineWidth(2.0);
-	glColor4f(0.9, 0.9, 0.9, 0.50);
-	glBegin(GL_LINES);
-		glVertex2f(0.0, 7.0);
-		glVertex2f(0.0, 3.0);
 
-		glVertex2f(7.0, 0.0);
-		glVertex2f(3.0, 0.0);
+	/* Red center dot */
+	Position pos = {x, y};
+	ColorFloat red = {0.9f, 0.0f, 0.0f, 0.70f};
+	Render_point(&pos, 2.0f, &red);
 
-		glVertex2f(0.0, -3.0);
-		glVertex2f(0.0, -7.0);
-
-		glVertex2f(-7.0, 0.0);
-		glVertex2f(-3.0, 0.0);
-	glEnd();
-	glPopMatrix();
+	/* White crosshair lines */
+	float fx = (float)x;
+	float fy = (float)y;
+	Render_line_segment(fx, fy + 7.0f, fx, fy + 3.0f,
+		0.9f, 0.9f, 0.9f, 0.50f);
+	Render_line_segment(fx + 7.0f, fy, fx + 3.0f, fy,
+		0.9f, 0.9f, 0.9f, 0.50f);
+	Render_line_segment(fx, fy - 3.0f, fx, fy - 7.0f,
+		0.9f, 0.9f, 0.9f, 0.50f);
+	Render_line_segment(fx - 7.0f, fy, fx - 3.0f, fy,
+		0.9f, 0.9f, 0.9f, 0.50f);
 }

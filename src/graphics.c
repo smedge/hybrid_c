@@ -1,8 +1,14 @@
 #include "graphics.h"
 
-#include <SDL2/SDL_opengl.h>
+#include <OpenGL/gl3.h>
+
+#define TITLE_FONT_PATH "./resources/fonts/square_sans_serif_7.ttf"
 
 static Graphics graphics = {0, SDL_WINDOW_FULLSCREEN};
+static Shaders shaders;
+static BatchRenderer batch;
+static TextRenderer text_renderer;
+static TextRenderer title_text_renderer;
 
 static void create_window(void);
 static void create_fullscreen_window(void);
@@ -10,60 +16,68 @@ static void create_windowed_window(void);
 static void initialize_gl(void);
 static void destroy_window(void);
 
-void Graphics_initialize(void) 
+void Graphics_initialize(void)
 {
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
+		SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
+		SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+
 	create_window();
 	initialize_gl();
 	Graphics_clear();
 	Graphics_flip();
 }
 
-void Graphics_cleanup(void) 
+void Graphics_cleanup(void)
 {
+	Text_cleanup(&title_text_renderer);
+	Text_cleanup(&text_renderer);
+	Batch_cleanup(&batch);
+	Shaders_cleanup(&shaders);
 	destroy_window();
 }
 
 void Graphics_resize_window(const unsigned int width,
-		const unsigned int height) 
+		const unsigned int height)
 {
 	graphics.screen.width = width;
 	graphics.screen.height = height;
-	glViewport(0, 0, width, height);
+
+	int draw_w, draw_h;
+	SDL_GL_GetDrawableSize(graphics.window, &draw_w, &draw_h);
+	glViewport(0, 0, draw_w, draw_h);
 }
 
-void Graphics_toggle_fullscreen(void) 
+void Graphics_toggle_fullscreen(void)
 {
 	Graphics_cleanup();
 	graphics.fullScreen = !graphics.fullScreen;
 	Graphics_initialize();
 }
 
-void Graphics_clear(void) 
+void Graphics_clear(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void Graphics_flip(void) 
+void Graphics_flip(void)
 {
 	SDL_GL_SwapWindow(graphics.window);
 }
 
-void Graphics_set_ui_projection(void) 
+Mat4 Graphics_get_ui_projection(void)
 {
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, graphics.screen.width, graphics.screen.height, 0, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	return Mat4_ortho(0, (float)graphics.screen.width,
+		(float)graphics.screen.height, 0, -1, 1);
 }
 
-void Graphics_set_world_projection(void)
+Mat4 Graphics_get_world_projection(void)
 {
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, graphics.screen.width, 0, graphics.screen.height, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	return Mat4_ortho(0, (float)graphics.screen.width,
+		0, (float)graphics.screen.height, -1, 1);
 }
 
 const Screen Graphics_get_screen(void)
@@ -71,7 +85,27 @@ const Screen Graphics_get_screen(void)
 	return graphics.screen;
 }
 
-static void create_window(void) 
+Shaders *Graphics_get_shaders(void)
+{
+	return &shaders;
+}
+
+BatchRenderer *Graphics_get_batch(void)
+{
+	return &batch;
+}
+
+TextRenderer *Graphics_get_text_renderer(void)
+{
+	return &text_renderer;
+}
+
+TextRenderer *Graphics_get_title_text_renderer(void)
+{
+	return &title_text_renderer;
+}
+
+static void create_window(void)
 {
 	if (graphics.fullScreen)
 		create_fullscreen_window();
@@ -79,15 +113,15 @@ static void create_window(void)
 		create_windowed_window();
 }
 
-static void create_fullscreen_window(void) 
+static void create_fullscreen_window(void)
 {
 	graphics.window = SDL_CreateWindow(
-		SDL_WINDOW_NAME, 
-		SDL_WINDOWPOS_UNDEFINED, 
-		SDL_WINDOWPOS_UNDEFINED, 
-		SDL_WINDOW_FULLSCREEN_WIDTH, 
-		SDL_WINDOW_FULLSCREEN_HEIGHT, 
-		SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | 
+		SDL_WINDOW_NAME,
+		SDL_WINDOWPOS_UNDEFINED,
+		SDL_WINDOWPOS_UNDEFINED,
+		SDL_WINDOW_FULLSCREEN_WIDTH,
+		SDL_WINDOW_FULLSCREEN_HEIGHT,
+		SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI |
 			SDL_WINDOW_FULLSCREEN | SDL_WINDOW_SHOWN
 	);
 
@@ -95,19 +129,19 @@ static void create_fullscreen_window(void)
 	graphics.screen.height = SDL_WINDOW_FULLSCREEN_HEIGHT;
 }
 
-static void create_windowed_window(void) 
+static void create_windowed_window(void)
 {
 	graphics.window = SDL_CreateWindow(
-        SDL_WINDOW_NAME,
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOW_WINDOWED_WIDTH, 
-        SDL_WINDOW_WINDOWED_HEIGHT,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | 
-        	SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
-    );
+		SDL_WINDOW_NAME,
+		SDL_WINDOWPOS_UNDEFINED,
+		SDL_WINDOWPOS_UNDEFINED,
+		SDL_WINDOW_WINDOWED_WIDTH,
+		SDL_WINDOW_WINDOWED_HEIGHT,
+		SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI |
+			SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
+	);
 
-    graphics.screen.width = SDL_WINDOW_WINDOWED_WIDTH;
+	graphics.screen.width = SDL_WINDOW_WINDOWED_WIDTH;
 	graphics.screen.height = SDL_WINDOW_WINDOWED_HEIGHT;
 }
 
@@ -116,13 +150,22 @@ static void initialize_gl(void)
 	graphics.glcontext = SDL_GL_CreateContext(graphics.window);
 	SDL_GL_SetSwapInterval(1);
 
-	glEnable (GL_BLEND);
-	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glClearColor(0,0,0,1);
-	glViewport(0, 0, graphics.screen.width, graphics.screen.height);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_PROGRAM_POINT_SIZE);
+	glClearColor(0, 0, 0, 1);
+
+	int draw_w, draw_h;
+	SDL_GL_GetDrawableSize(graphics.window, &draw_w, &draw_h);
+	glViewport(0, 0, draw_w, draw_h);
+
+	Shaders_initialize(&shaders);
+	Batch_initialize(&batch);
+	Text_initialize(&text_renderer, TITLE_FONT_PATH, 14.0f);
+	Text_initialize(&title_text_renderer, TITLE_FONT_PATH, 80.0f);
 }
 
-static void destroy_window(void) 
+static void destroy_window(void)
 {
 	SDL_GL_DeleteContext(graphics.glcontext);
 	SDL_DestroyWindow(graphics.window);
