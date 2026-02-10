@@ -184,6 +184,15 @@ Position Ship_get_position()
 	return placeable.position;
 }
 
+void Ship_force_spawn(Position pos)
+{
+	shipState.destroyed = false;
+	shipState.ticksDestroyed = 0;
+	placeable.position = pos;
+	placeable.heading = 0.0;
+	Audio_play_sample(&sample01);
+}
+
 static double get_heading(const bool n, const bool s, 
 	const bool e, const bool w)
 {

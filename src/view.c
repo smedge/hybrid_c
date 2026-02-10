@@ -62,3 +62,8 @@ void View_set_position(const Position position)
 {
 	view.position = position;
 }
+
+void View_set_scale(double scale)
+{
+	view.scale = scale;
+}

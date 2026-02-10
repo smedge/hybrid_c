@@ -29,12 +29,6 @@ void Audio_loop_music(const char *path)
 	Mix_PlayMusic(music, -1);
 }
 
-void Audio_play_music_fade(const char *path, int playTime, 
-						   int fadeTime, void (*on_end)())
-{
-
-}
-
 void Audio_stop_music(void)
 {
 	Mix_FreeMusic(music);
@@ -60,4 +54,14 @@ void Audio_unload_sample(Mix_Chunk **sample)
 void Audio_play_sample(Mix_Chunk **sample)
 {
 	Mix_PlayChannel(-1, *sample, 0);
+}
+
+int Audio_play_sample_on_channel(Mix_Chunk **sample, int channel)
+{
+	return Mix_PlayChannel(channel, *sample, 0);
+}
+
+void Audio_fade_out_channel(int channel, int ms)
+{
+	Mix_FadeOutChannel(channel, ms);
 }

@@ -17,5 +17,6 @@ Mat4 View_get_transform(const Screen *screen);
 Position View_get_world_position(const Screen *screen, const Position uiPosition);
 const View View_get_view(void);
 void View_set_position(const Position position);
+void View_set_scale(double scale);
 
 #endif

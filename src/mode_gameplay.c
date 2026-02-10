@@ -3,37 +3,44 @@
 #include "render.h"
 #include "mat4.h"
 
+#include <math.h>
+#include <stdlib.h>
+
+typedef enum {
+	GAMEPLAY_REBIRTH,
+	GAMEPLAY_ACTIVE
+} GameplayState;
+
+#define REBIRTH_DURATION 13000
+#define REBIRTH_FADE_MS 2000
+#define REBIRTH_MIN_ZOOM 0.01
+#define REBIRTH_DEFAULT_ZOOM 0.5
+#define REBIRTH_CHANNEL 1
+
+static GameplayState gameplayState;
+static int rebirthTimer;
+static Mix_Chunk *rebirthSample = 0;
+static int selectedBgm;
+
+static const char *bgm_paths[] = {
+	GAMEPLAY_MUSIC_01_PATH,
+	GAMEPLAY_MUSIC_02_PATH,
+	GAMEPLAY_MUSIC_03_PATH,
+	GAMEPLAY_MUSIC_04_PATH,
+	GAMEPLAY_MUSIC_05_PATH,
+	GAMEPLAY_MUSIC_06_PATH,
+	GAMEPLAY_MUSIC_07_PATH
+};
+
+static double ease_in_out_cubic(double t);
+static void start_zone_bgm(void);
+static void complete_rebirth(void);
 
 void Mode_Gameplay_initialize(void)
 {
 	Entity_destroy_all();
 
-	int num_between_1_and_7 = (rand() % 7) + 1;
-
-	switch (num_between_1_and_7) {
-	case 1:
-		Audio_loop_music(GAMEPLAY_MUSIC_01_PATH);
-		break;
-	case 2:
-		Audio_loop_music(GAMEPLAY_MUSIC_02_PATH);
-		break;
-	case 3:
-		Audio_loop_music(GAMEPLAY_MUSIC_03_PATH);
-		break;
-	case 4:
-		Audio_loop_music(GAMEPLAY_MUSIC_04_PATH);
-		break;
-	case 5:
-		Audio_loop_music(GAMEPLAY_MUSIC_05_PATH);
-		break;
-	case 6:
-		Audio_loop_music(GAMEPLAY_MUSIC_06_PATH);
-		break;
-	case 7:
-		Audio_loop_music(GAMEPLAY_MUSIC_07_PATH);
-		break;
-	}
-
+	selectedBgm = rand() % 7;
 
 	View_initialize();
 	Hud_initialize();
@@ -202,6 +209,14 @@ void Mode_Gameplay_initialize(void)
 	position.x = 2400.0;
 	position.y = -800.0;
 	Mine_initialize(position);
+
+	/* Start rebirth sequence */
+	gameplayState = GAMEPLAY_REBIRTH;
+	rebirthTimer = 0;
+	View_set_scale(REBIRTH_MIN_ZOOM);
+
+	Audio_load_sample(&rebirthSample, REBIRTH_MUSIC_PATH);
+	Audio_play_sample_on_channel(&rebirthSample, REBIRTH_CHANNEL);
 }
 
 void Mode_Gameplay_cleanup(void)
@@ -211,10 +226,36 @@ void Mode_Gameplay_cleanup(void)
 	Entity_destroy_all();
 	Hud_cleanup();
 	Audio_stop_music();
+	Audio_unload_sample(&rebirthSample);
 }
 
 void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
+	if (gameplayState == GAMEPLAY_REBIRTH) {
+		rebirthTimer += ticks;
+
+		/* Animate zoom */
+		double t = (double)rebirthTimer / REBIRTH_DURATION;
+		if (t > 1.0) t = 1.0;
+
+		double progress = ease_in_out_cubic(t);
+		double scale = REBIRTH_MIN_ZOOM + (REBIRTH_DEFAULT_ZOOM - REBIRTH_MIN_ZOOM) * progress;
+		View_set_scale(scale);
+
+		/* AI still runs so the world feels alive */
+		Entity_ai_update_system(ticks);
+
+		/* Camera stays centered on spawn point */
+		Position origin = {0.0, 0.0};
+		View_set_position(origin);
+
+		if (rebirthTimer >= REBIRTH_DURATION)
+			complete_rebirth();
+
+		return;
+	}
+
+	/* Normal gameplay */
 	cursor_update(input);
 	Entity_user_update_system(input, ticks);
 	Entity_ai_update_system(ticks);
@@ -239,8 +280,39 @@ void Mode_Gameplay_render(void)
 	Mat4 ui_proj = Graphics_get_ui_projection();
 	Mat4 identity = Mat4_identity();
 	Hud_render(&screen);
-	cursor_render();
+	if (gameplayState == GAMEPLAY_ACTIVE)
+		cursor_render();
 	Render_flush(&ui_proj, &identity);
 
 	Graphics_flip();
+}
+
+static void complete_rebirth(void)
+{
+	gameplayState = GAMEPLAY_ACTIVE;
+
+	/* Spawn ship */
+	Position origin = {0.0, 0.0};
+	Ship_force_spawn(origin);
+
+	/* Start zone BGM */
+	start_zone_bgm();
+
+	/* Fade out Memory Man over 2 seconds */
+	Audio_fade_out_channel(REBIRTH_CHANNEL, REBIRTH_FADE_MS);
+}
+
+static void start_zone_bgm(void)
+{
+	Audio_loop_music(bgm_paths[selectedBgm]);
+}
+
+static double ease_in_out_cubic(double t)
+{
+	if (t < 0.5)
+		return 4.0 * t * t * t;
+	else {
+		double f = -2.0 * t + 2.0;
+		return 1.0 - (f * f * f) / 2.0;
+	}
 }

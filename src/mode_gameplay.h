@@ -8,6 +8,7 @@
 #define GAMEPLAY_MUSIC_05_PATH "./resources/music/deadmau5_CatThrusterOriginal.mp3"
 #define GAMEPLAY_MUSIC_06_PATH "./resources/music/deadmau5_Monophobia_Original.mp3"
 #define GAMEPLAY_MUSIC_07_PATH "./resources/music/deadmau5_HeavyPettingZoo.mp3"
+#define REBIRTH_MUSIC_PATH "./resources/music/deadmau5_MemoryMan.mp3"
 
 #include "cursor.h"
 #include "graphics.h"
