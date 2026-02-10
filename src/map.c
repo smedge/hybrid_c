@@ -16,7 +16,7 @@ static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collid
 static void initialize_map_data(void);
 static void initialize_map_entity(void);
 static void set_map_cell(int x, int y, MapCell *cell);
-static void render_cell(const int x, const int y);
+static void render_cell(const int x, const int y, const float outlineThickness);
 static int correctTruncation(int i);
 
 void Map_initialize(void)
@@ -189,17 +189,72 @@ static int correctTruncation(int i)
 		return i;
 }
 
+bool Map_line_test_hit(double x0, double y0, double x1, double y1,
+					   double *hit_x, double *hit_y)
+{
+	double minX = x0 < x1 ? x0 : x1;
+	double maxX = x0 > x1 ? x0 : x1;
+	double minY = y0 < y1 ? y0 : y1;
+	double maxY = y0 > y1 ? y0 : y1;
+
+	int cellMinX = correctTruncation((int)(minX / MAP_CELL_SIZE));
+	int cellMaxX = correctTruncation((int)(maxX / MAP_CELL_SIZE));
+	int cellMinY = correctTruncation((int)(minY / MAP_CELL_SIZE));
+	int cellMaxY = correctTruncation((int)(maxY / MAP_CELL_SIZE));
+
+	double best_t = 2.0;
+	bool hit = false;
+
+	for (int cx = cellMinX; cx <= cellMaxX; cx++) {
+		for (int cy = cellMinY; cy <= cellMaxY; cy++) {
+			int mx = cx + HALF_MAP_SIZE;
+			int my = cy + HALF_MAP_SIZE;
+			if (mx < 0 || mx >= MAP_SIZE || my < 0 || my >= MAP_SIZE)
+				continue;
+			if (map[mx][my]->empty)
+				continue;
+
+			Rectangle cellRect = {
+				cx * MAP_CELL_SIZE,
+				(cy + 1) * MAP_CELL_SIZE,
+				(cx + 1) * MAP_CELL_SIZE,
+				cy * MAP_CELL_SIZE
+			};
+			double t;
+			if (Collision_line_aabb_test(x0, y0, x1, y1, cellRect, &t)) {
+				if (t < best_t) {
+					best_t = t;
+					hit = true;
+					if (best_t <= 0.0)
+						goto done;
+				}
+			}
+		}
+	}
+
+done:
+	if (hit) {
+		*hit_x = x0 + (x1 - x0) * best_t;
+		*hit_y = y0 + (y1 - y0) * best_t;
+	}
+	return hit;
+}
+
 void Map_render()
 {
+	View view = View_get_view();
+	float outlineThickness = 2.0f / (float)view.scale;
+	if (outlineThickness < 2.0f) outlineThickness = 2.0f;
+
 	unsigned int x = 0, y = 0;
 	for(x = 0; x < MAP_SIZE; x++) {
 		for(y = 0; y < MAP_SIZE; y++) {
-			render_cell(x,y);
+			render_cell(x, y, outlineThickness);
 		}
 	}
 }
 
-static void render_cell(const int x, const int y)
+static void render_cell(const int x, const int y, const float outlineThickness)
 {
 	MapCell mapCell = *map[x][y];
 	if (mapCell.empty)
@@ -224,12 +279,13 @@ static void render_cell(const int x, const int y)
 	MapCell southCell = *map[x][y-1];
 	MapCell westCell = *map[x-1][y];
 
+	float t = outlineThickness;
 	if (northCell.empty)
-		Render_line_segment(ax, by, bx, by, or_, og, ob, oa);
+		Render_quad_absolute(ax, by - t, bx, by, or_, og, ob, oa);
 	if (eastCell.empty)
-		Render_line_segment(bx, by, bx, ay, or_, og, ob, oa);
+		Render_quad_absolute(bx - t, ay, bx, by, or_, og, ob, oa);
 	if (southCell.empty)
-		Render_line_segment(bx, ay, ax, ay, or_, og, ob, oa);
+		Render_quad_absolute(ax, ay, bx, ay + t, or_, og, ob, oa);
 	if (westCell.empty)
-		Render_line_segment(ax, ay, ax, by, or_, og, ob, oa);
+		Render_quad_absolute(ax, ay, ax + t, by, or_, og, ob, oa);
 }

@@ -24,4 +24,7 @@ bool Collision_point_test(const double x,
 
 Rectangle Collision_transform_bounding_box(const Position position, const Rectangle boundingBox);
 
+bool Collision_line_aabb_test(double x0, double y0, double x1, double y1,
+							 const Rectangle rect, double *t_out);
+
 #endif

@@ -112,9 +112,9 @@ void Batch_push_point_vertex(BatchRenderer *batch,
 void Batch_flush(BatchRenderer *batch, const Shaders *shaders,
 	const Mat4 *projection, const Mat4 *view)
 {
-	flush_batch(&batch->triangles, GL_TRIANGLES,
-		&shaders->color_shader, projection, view);
 	flush_batch(&batch->lines, GL_LINES,
+		&shaders->color_shader, projection, view);
+	flush_batch(&batch->triangles, GL_TRIANGLES,
 		&shaders->color_shader, projection, view);
 	flush_batch(&batch->points, GL_POINTS,
 		&shaders->color_shader, projection, view);

@@ -1,4 +1,5 @@
 #include "mine.h"
+#include "sub_pea.h"
 #include "view.h"
 #include "render.h"
 #include "color.h"
@@ -32,6 +33,7 @@ typedef struct {
 	unsigned int ticksDestroyed;
 	bool exploding;
 	unsigned int ticksExploding;
+	unsigned int blinkTimer;
 } MineState;
 
 static MineState mines[MINE_COUNT];
@@ -55,6 +57,7 @@ void Mine_initialize(Position position)
 	mines[highestUsedIndex].ticksActive = 0;
 	mines[highestUsedIndex].ticksExploding = 0;
 	mines[highestUsedIndex].ticksDestroyed = 0;
+	mines[highestUsedIndex].blinkTimer = rand() % 1000;
 
 	placeables[highestUsedIndex].position = position;
 	placeables[highestUsedIndex].heading = MINE_ROTATION;
@@ -126,6 +129,18 @@ void Mine_resolve(const void *state, const Collision collision)
 void Mine_update(const void *state, const PlaceableComponent *placeable, const unsigned int ticks)
 {
 	MineState* mineState = (MineState*)state;
+
+	if (!mineState->destroyed && !mineState->exploding) {
+		Rectangle body = {-10.0, 10.0, 10.0, -10.0};
+		Rectangle mineBody = Collision_transform_bounding_box(placeable->position, body);
+		if (Sub_Pea_check_hit(mineBody)) {
+			Audio_play_sample(&sample02);
+			mineState->active = false;
+			mineState->exploding = true;
+			mineState->ticksExploding = 0;
+		}
+	}
+
 	if (mineState->active)
 	{
 		mineState->ticksActive += ticks;
@@ -158,6 +173,10 @@ void Mine_update(const void *state, const PlaceableComponent *placeable, const u
 		}
 		return;
 	}
+
+	mineState->blinkTimer += ticks;
+	if (mineState->blinkTimer >= 1000)
+		mineState->blinkTimer -= 1000;
 }
 
 void Mine_render(const void *state, const PlaceableComponent *placeable) 
@@ -181,8 +200,8 @@ void Mine_render(const void *state, const PlaceableComponent *placeable)
 
 	if (mineState->active)
 		Render_point(&placeable->position, 3.0, &colorActive);
-	else
-		Render_point(&placeable->position, 3.0, &color);
+	else if (mineState->blinkTimer < 100)
+		Render_point(&placeable->position, 3.0, &colorActive);
 
 	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }

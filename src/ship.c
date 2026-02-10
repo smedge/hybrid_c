@@ -14,9 +14,16 @@ static const double SLOW_VELOCITY = 6400.0;  // warp speed right now, not slow
 
 static Mix_Chunk *sample01 = 0;
 static Mix_Chunk *sample02 = 0;
+static Mix_Chunk *sample03 = 0;
 
 static const ColorRGB COLOR = {255, 0, 0, 255};
 static ColorFloat color;
+
+static bool sparkActive;
+static Position sparkPosition;
+static int sparkTicksLeft;
+#define SPARK_DURATION 80
+#define SPARK_SIZE 30.0
 
 static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 static RenderableComponent renderable = {Ship_render};
@@ -40,11 +47,14 @@ void Ship_initialize()
 
 	shipState.destroyed = true;
 	shipState.ticksDestroyed = 0;
+	sparkActive = false;
 
 	color = Color_rgb_to_float(&COLOR);
 
 	Audio_load_sample(&sample01, "resources/sounds/statue_rise.wav");
 	Audio_load_sample(&sample02, "resources/sounds/samus_die.wav");
+
+	Audio_load_sample(&sample03, "resources/sounds/bomb_explode.wav");
 
 	Sub_Pea_initialize(liveEntity);
 }
@@ -59,6 +69,7 @@ void Ship_cleanup()
 
 	Audio_unload_sample(&sample01);
 	Audio_unload_sample(&sample02);
+	Audio_unload_sample(&sample03);
 }
 
 Collision Ship_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox) 
@@ -83,8 +94,12 @@ void Ship_resolve(const void *state, const Collision collision)
 
 	if (collision.solid)
 	{
+		sparkActive = true;
+		sparkPosition = placeable.position;
+		sparkTicksLeft = SPARK_DURATION;
 		shipState.destroyed = true;
 		Audio_play_sample(&sample02);
+		Audio_play_sample(&sample03);
 	}
 }
 
@@ -131,6 +146,12 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		}
 	}
 
+	if (sparkActive) {
+		sparkTicksLeft -= ticks;
+		if (sparkTicksLeft <= 0)
+			sparkActive = false;
+	}
+
 	Sub_Pea_update(userInput, ticks, placeable);
 }
 
@@ -147,8 +168,15 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 		//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 	}
 
-	Sub_Pea_render();
+	if (sparkActive) {
+		float fade = (float)sparkTicksLeft / SPARK_DURATION;
+		ColorFloat sparkColor = {1.0f, 1.0f, 1.0f, fade};
+		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
+		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
+		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
+	}
 
+	Sub_Pea_render();
 }
 
 Position Ship_get_position()
