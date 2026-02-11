@@ -13,6 +13,7 @@
 
 typedef struct {
 	bool empty;
+	bool circuitPattern;
 	ColorRGB primaryColor;
 	ColorRGB outlineColor;
 } MapCell;

@@ -155,6 +155,43 @@ void Render_quad_absolute(float ax, float ay, float bx, float by,
 		ax, ay, bx, by, bx, ay, r, g, b, a);
 }
 
+void Render_thick_line(float x0, float y0, float x1, float y1,
+	float thickness, float r, float g, float b, float a)
+{
+	float dx = x1 - x0;
+	float dy = y1 - y0;
+	float len = sqrtf(dx * dx + dy * dy);
+	if (len < 0.001f) return;
+
+	float nx = (-dy / len) * thickness * 0.5f;
+	float ny = (dx / len) * thickness * 0.5f;
+
+	BatchRenderer *batch = Graphics_get_batch();
+	Batch_push_triangle_vertices(batch,
+		x0 + nx, y0 + ny, x0 - nx, y0 - ny, x1 - nx, y1 - ny,
+		r, g, b, a);
+	Batch_push_triangle_vertices(batch,
+		x0 + nx, y0 + ny, x1 - nx, y1 - ny, x1 + nx, y1 + ny,
+		r, g, b, a);
+}
+
+void Render_filled_circle(float cx, float cy, float radius, int segments,
+	float r, float g, float b, float a)
+{
+	BatchRenderer *batch = Graphics_get_batch();
+	float step = 2.0f * (float)M_PI / (float)segments;
+
+	for (int i = 0; i < segments; i++) {
+		float a0 = (float)i * step;
+		float a1 = (float)(i + 1) * step;
+		Batch_push_triangle_vertices(batch,
+			cx, cy,
+			cx + radius * cosf(a0), cy + radius * sinf(a0),
+			cx + radius * cosf(a1), cy + radius * sinf(a1),
+			r, g, b, a);
+	}
+}
+
 void Render_flush(const Mat4 *projection, const Mat4 *view)
 {
 	BatchRenderer *batch = Graphics_get_batch();

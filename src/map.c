@@ -1,14 +1,15 @@
 #include "map.h"
 
+#include <string.h>
 #include "view.h"
 #include "render.h"
 #include "color.h"
 
 static MapCell *map[MAP_SIZE][MAP_SIZE];
 
-static MapCell emptyCell = {true, {0,0,0,0}, {0,0,0,0}};
-static MapCell cell001 = {false, {20,0,20,255}, {128,0,128,255}};
-static MapCell cell002 = {false, {10,20,20,255}, {64,128,128,255}};
+static MapCell emptyCell = {true, false, {0,0,0,0}, {0,0,0,0}};
+static MapCell cell001 = {false, false, {20,0,20,255}, {128,0,128,255}};
+static MapCell cell002 = {false, true, {10,20,20,255}, {64,128,128,255}};
 
 static RenderableComponent renderable = {Map_render};
 static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collide};
@@ -16,7 +17,7 @@ static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collid
 static void initialize_map_data(void);
 static void initialize_map_entity(void);
 static void set_map_cell(int x, int y, MapCell *cell);
-static void render_cell(const int x, const int y, const float outlineThickness);
+static void render_cell(int x, int y, float outlineThickness);
 static int correctTruncation(int i);
 
 void Map_initialize(void)
@@ -247,14 +248,300 @@ void Map_render()
 	if (outlineThickness < 2.0f) outlineThickness = 2.0f;
 
 	unsigned int x = 0, y = 0;
-	for(x = 0; x < MAP_SIZE; x++) {
-		for(y = 0; y < MAP_SIZE; y++) {
+	for (x = 0; x < MAP_SIZE; x++)
+		for (y = 0; y < MAP_SIZE; y++)
 			render_cell(x, y, outlineThickness);
+}
+
+/* --- Circuit board pattern generation --- */
+
+static unsigned int circuit_rand(unsigned int *state)
+{
+	unsigned int s = *state;
+	s ^= s << 13;
+	s ^= s >> 17;
+	s ^= s << 5;
+	*state = s;
+	return s;
+}
+
+static float circuit_rand_range(unsigned int *state, float min, float max)
+{
+	unsigned int r = circuit_rand(state);
+	return min + (float)(r % 10000) / 10000.0f * (max - min);
+}
+
+/* Occupancy grid prevents traces from crossing */
+#define CGRID 50
+
+static unsigned char g_occupy[CGRID][CGRID];
+
+static int grid_coord(float world, float origin)
+{
+	int g = (int)((world - origin) * 0.5f);
+	if (g < 0) return 0;
+	if (g >= CGRID) return CGRID - 1;
+	return g;
+}
+
+/* Walk a line on the grid; mark=1 writes, mark=0 checks for conflict */
+static int grid_walk(float wx0, float wy0, float wx1, float wy1,
+	float ox, float oy, int margin, int do_mark)
+{
+	int x0 = grid_coord(wx0, ox), y0 = grid_coord(wy0, oy);
+	int x1 = grid_coord(wx1, ox), y1 = grid_coord(wy1, oy);
+	int dx = x1 > x0 ? x1 - x0 : x0 - x1;
+	int dy = y1 > y0 ? y1 - y0 : y0 - y1;
+	int steps = dx > dy ? dx : dy;
+	if (steps == 0) steps = 1;
+
+	for (int s = 0; s <= steps; s++) {
+		int gx = x0 + (x1 - x0) * s / steps;
+		int gy = y0 + (y1 - y0) * s / steps;
+		for (int mx = -margin; mx <= margin; mx++) {
+			for (int my = -margin; my <= margin; my++) {
+				int cx = gx + mx, cy = gy + my;
+				if (cx < 0 || cx >= CGRID || cy < 0 || cy >= CGRID)
+					continue;
+				if (do_mark)
+					g_occupy[cx][cy] = 1;
+				else if (g_occupy[cx][cy])
+					return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+static int path_conflicts(float *xs, float *ys, int n, float ox, float oy)
+{
+	for (int i = 0; i < n - 1; i++)
+		if (grid_walk(xs[i], ys[i], xs[i+1], ys[i+1], ox, oy, 1, 0))
+			return 1;
+	return 0;
+}
+
+static void path_mark(float *xs, float *ys, int n, float ox, float oy)
+{
+	for (int i = 0; i < n - 1; i++)
+		grid_walk(xs[i], ys[i], xs[i+1], ys[i+1], ox, oy, 2, 1);
+}
+
+static void render_circuit_pattern(int cellX, int cellY, float ax, float ay,
+	const ColorFloat *traceColor, const ColorFloat *fillColor,
+	int adjN, int adjE, int adjS, int adjW)
+{
+	const float TW = 1.5f;
+	const float PAD_R = 2.5f;
+	const float VIA_OUT = 3.5f;
+	const float VIA_IN = 1.8f;
+	const int CSEGS = 10;
+	const float EPAD = 4.0f;
+	const float CF = 5.0f; /* chamfer length */
+
+	float ux0 = ax + EPAD, uy0 = ay + EPAD;
+	float ux1 = ax + MAP_CELL_SIZE - EPAD;
+	float uy1 = ay + MAP_CELL_SIZE - EPAD;
+	float uw = ux1 - ux0, uh = uy1 - uy0;
+
+	float tr = traceColor->red, tg = traceColor->green;
+	float tb = traceColor->blue, ta = traceColor->alpha;
+	float fr = fillColor->red, fg = fillColor->green;
+	float fb = fillColor->blue, fa = fillColor->alpha;
+
+	unsigned int seed = (unsigned int)(cellX * 73856093u) ^ (unsigned int)(cellY * 19349663u);
+	if (seed == 0) seed = 1;
+
+	memset(g_occupy, 0, sizeof(g_occupy));
+
+	int numAttempts = 24 + (int)(circuit_rand(&seed) % 5);
+
+	for (int i = 0; i < numAttempts; i++) {
+		/* Consume consistent random values per iteration */
+		int typeRoll = circuit_rand(&seed) % 10;
+		float r1 = circuit_rand_range(&seed, 0.08f, 0.92f);
+		float r2 = circuit_rand_range(&seed, 0.0f, 0.3f);
+		float r3 = circuit_rand_range(&seed, 0.0f, 0.3f);
+		float r4 = circuit_rand_range(&seed, 0.08f, 0.92f);
+		float r5 = circuit_rand_range(&seed, 0.3f, 0.7f);
+		int extStart = (circuit_rand(&seed) % 5 <= 2); /* 60% */
+		int extEnd = (circuit_rand(&seed) % 5 <= 2);
+		int busRoll = circuit_rand(&seed) % 10;
+		float busSp = circuit_rand_range(&seed, 5.0f, 7.0f);
+		int startMk = circuit_rand(&seed) % 5;
+		int endMk = circuit_rand(&seed) % 5;
+
+		int busCount = busRoll < 3 ? 1 : (busRoll < 7 ? 2 : 3);
+		int startPad = 1, endPad = 1;
+
+		float bxs[3][5], bys[3][5];
+		int bn[3];
+
+		if (typeRoll <= 1) {
+			/* --- Horizontal straight / bus --- */
+			float baseY = uy0 + r1 * uh;
+			float x0 = ux0 + r2 * uw;
+			float x1 = ux1 - r3 * uw;
+			if (x1 - x0 < 15.0f) continue;
+
+			if (extStart && adjW) { x0 = ax; startPad = 0; }
+			if (extEnd && adjE) { x1 = ax + MAP_CELL_SIZE; endPad = 0; }
+
+			for (int b = 0; b < busCount; b++) {
+				float y = baseY + (float)b * busSp;
+				if (y < uy0 || y > uy1) { busCount = b; break; }
+				bxs[b][0] = x0; bys[b][0] = y;
+				bxs[b][1] = x1; bys[b][1] = y;
+				bn[b] = 2;
+			}
+		}
+		else if (typeRoll <= 3) {
+			/* --- Vertical straight / bus --- */
+			float baseX = ux0 + r1 * uw;
+			float y0 = uy0 + r2 * uh;
+			float y1 = uy1 - r3 * uh;
+			if (y1 - y0 < 15.0f) continue;
+
+			if (extStart && adjS) { y0 = ay; startPad = 0; }
+			if (extEnd && adjN) { y1 = ay + MAP_CELL_SIZE; endPad = 0; }
+
+			for (int b = 0; b < busCount; b++) {
+				float x = baseX + (float)b * busSp;
+				if (x < ux0 || x > ux1) { busCount = b; break; }
+				bxs[b][0] = x; bys[b][0] = y0;
+				bxs[b][1] = x; bys[b][1] = y1;
+				bn[b] = 2;
+			}
+		}
+		else if (typeRoll <= 6) {
+			/* --- L-shape: H then V, always 45° chamfer --- */
+			float hY = uy0 + r1 * uh;
+			float startX = ux0 + r2 * uw;
+			float turnX = ux0 + r5 * uw;
+			float endY = uy0 + r4 * uh;
+			float vLen = endY - hY;
+			float absVLen = vLen > 0 ? vLen : -vLen;
+			if (turnX - startX < 12.0f || absVLen < 15.0f) continue;
+
+			float vDir = vLen > 0 ? 1.0f : -1.0f;
+			if (extStart && adjW) { startX = ax; startPad = 0; }
+			if (vDir > 0 && extEnd && adjN)
+				{ endY = ay + MAP_CELL_SIZE; endPad = 0; }
+			if (vDir < 0 && extEnd && adjS)
+				{ endY = ay; endPad = 0; }
+
+			for (int b = 0; b < busCount; b++) {
+				float offY = (float)b * busSp * vDir;
+				float offT = -(float)b * busSp;
+				float bHY = hY + offY;
+				float bTX = turnX + offT;
+				float bVStart = bHY + CF * vDir;
+
+				if (bHY < uy0 || bHY > uy1 || bTX < ux0
+					|| bTX - CF - startX < 5.0f
+					|| (endY - bVStart) * vDir < 5.0f) {
+					busCount = b; break;
+				}
+
+				bxs[b][0] = startX;   bys[b][0] = bHY;
+				bxs[b][1] = bTX - CF; bys[b][1] = bHY;
+				bxs[b][2] = bTX;      bys[b][2] = bHY + CF * vDir;
+				bxs[b][3] = bTX;      bys[b][3] = endY;
+				bn[b] = 4;
+			}
+		}
+		else {
+			/* --- L-shape: V then H, always 45° chamfer --- */
+			float vX = ux0 + r1 * uw;
+			float startY = uy0 + r2 * uh;
+			float turnY = uy0 + r5 * uh;
+			float endX = ux0 + r4 * uw;
+			float hLen = endX - vX;
+			float absHLen = hLen > 0 ? hLen : -hLen;
+			float vLen = turnY - startY;
+			if (vLen < 12.0f || absHLen < 15.0f) continue;
+
+			float hDir = hLen > 0 ? 1.0f : -1.0f;
+			if (extStart && adjS) { startY = ay; startPad = 0; }
+			if (hDir > 0 && extEnd && adjE)
+				{ endX = ax + MAP_CELL_SIZE; endPad = 0; }
+			if (hDir < 0 && extEnd && adjW)
+				{ endX = ax; endPad = 0; }
+
+			for (int b = 0; b < busCount; b++) {
+				float offX = -(float)b * busSp * hDir;
+				float offT = -(float)b * busSp;
+				float bVX = vX + offX;
+				float bTY = turnY + offT;
+				float bHStart = bVX + CF * hDir;
+
+				if (bVX < ux0 || bVX > ux1 || bTY < uy0
+					|| bTY - CF - startY < 5.0f
+					|| (endX - bHStart) * hDir < 5.0f) {
+					busCount = b; break;
+				}
+
+				bxs[b][0] = bVX;            bys[b][0] = startY;
+				bxs[b][1] = bVX;            bys[b][1] = bTY - CF;
+				bxs[b][2] = bVX + CF*hDir;  bys[b][2] = bTY;
+				bxs[b][3] = endX;           bys[b][3] = bTY;
+				bn[b] = 4;
+			}
+		}
+
+		if (busCount < 1) continue;
+
+		/* Check all bus traces against occupancy grid */
+		int conflict = 0;
+		for (int b = 0; b < busCount; b++) {
+			if (path_conflicts(bxs[b], bys[b], bn[b], ax, ay))
+				{ conflict = 1; break; }
+		}
+		if (conflict) continue;
+
+		/* Mark and render all bus traces */
+		for (int b = 0; b < busCount; b++) {
+			path_mark(bxs[b], bys[b], bn[b], ax, ay);
+			for (int j = 0; j < bn[b] - 1; j++)
+				Render_thick_line(bxs[b][j], bys[b][j],
+					bxs[b][j+1], bys[b][j+1], TW, tr, tg, tb, ta);
+			for (int j = 1; j < bn[b] - 1; j++)
+				Render_filled_circle(bxs[b][j], bys[b][j],
+					TW * 0.6f, 6, tr, tg, tb, ta);
+		}
+
+		/* Endpoint markers */
+		for (int b = 0; b < busCount; b++) {
+			if (startPad) {
+				if (busCount == 1 && startMk >= 4) {
+					Render_filled_circle(bxs[b][0], bys[b][0],
+						VIA_OUT, CSEGS, tr, tg, tb, ta);
+					Render_filled_circle(bxs[b][0], bys[b][0],
+						VIA_IN, CSEGS, fr, fg, fb, fa);
+				} else {
+					Render_filled_circle(bxs[b][0], bys[b][0],
+						PAD_R, CSEGS, tr, tg, tb, ta);
+				}
+			}
+			if (endPad) {
+				int last = bn[b] - 1;
+				if (busCount == 1 && endMk >= 4) {
+					Render_filled_circle(bxs[b][last], bys[b][last],
+						VIA_OUT, CSEGS, tr, tg, tb, ta);
+					Render_filled_circle(bxs[b][last], bys[b][last],
+						VIA_IN, CSEGS, fr, fg, fb, fa);
+				} else {
+					Render_filled_circle(bxs[b][last], bys[b][last],
+						PAD_R, CSEGS, tr, tg, tb, ta);
+				}
+			}
 		}
 	}
 }
 
-static void render_cell(const int x, const int y, const float outlineThickness)
+/* --- Cell rendering --- */
+
+static void render_cell(int x, int y, float outlineThickness)
 {
 	MapCell mapCell = *map[x][y];
 	if (mapCell.empty)
@@ -269,23 +556,53 @@ static void render_cell(const int x, const int y, const float outlineThickness)
 	Render_quad_absolute(ax, ay, bx, by,
 		primaryColor.red, primaryColor.green, primaryColor.blue, primaryColor.alpha);
 
-	/* Render outline edges where adjacent cell is empty */
+	/* Circuit board pattern */
+	if (mapCell.circuitPattern) {
+		View view = View_get_view();
+		if (view.scale >= 0.15) {
+			int adjN = !map[x][y+1]->empty;
+			int adjE = !map[x+1][y]->empty;
+			int adjS = !map[x][y-1]->empty;
+			int adjW = !map[x-1][y]->empty;
+			ColorFloat outlineColorF = Color_rgb_to_float(&mapCell.outlineColor);
+			render_circuit_pattern(x - HALF_MAP_SIZE, y - HALF_MAP_SIZE,
+				ax, ay, &outlineColorF, &primaryColor,
+				adjN, adjE, adjS, adjW);
+		}
+	}
+
+	/* Outline edges */
 	ColorFloat outlineColor = Color_rgb_to_float(&mapCell.outlineColor);
 	float or_ = outlineColor.red, og = outlineColor.green;
 	float ob = outlineColor.blue, oa = outlineColor.alpha;
 
-	MapCell northCell = *map[x][y+1];
-	MapCell eastCell = *map[x+1][y];
-	MapCell southCell = *map[x][y-1];
-	MapCell westCell = *map[x-1][y];
-
 	float t = outlineThickness;
-	if (northCell.empty)
-		Render_quad_absolute(ax, by - t, bx, by, or_, og, ob, oa);
-	if (eastCell.empty)
-		Render_quad_absolute(bx - t, ay, bx, by, or_, og, ob, oa);
-	if (southCell.empty)
-		Render_quad_absolute(ax, ay, bx, ay + t, or_, og, ob, oa);
-	if (westCell.empty)
-		Render_quad_absolute(ax, ay, ax + t, by, or_, og, ob, oa);
+
+	MapCell *nPtr = map[x][y+1], *ePtr = map[x+1][y];
+	MapCell *sPtr = map[x][y-1], *wPtr = map[x-1][y];
+
+	/* Draw outline on empty-adjacent edges (own color).
+	   On edges adjacent to a different non-empty type, only the
+	   circuitPattern cell draws (using the non-circuit cell's color).
+	   This keeps corners covered within one cell and avoids double-draw. */
+
+#define EDGE_DRAW(ptr, QAX, QAY, QBX, QBY) \
+	if ((ptr)->empty) { \
+		Render_quad_absolute(QAX, QAY, QBX, QBY, or_, og, ob, oa); \
+	} else if ((ptr) != map[x][y]) { \
+		if (mapCell.circuitPattern) { \
+			ColorFloat bc = Color_rgb_to_float(&(ptr)->outlineColor); \
+			Render_quad_absolute(QAX, QAY, QBX, QBY, \
+				bc.red, bc.green, bc.blue, bc.alpha); \
+		} else if (!(ptr)->circuitPattern) { \
+			Render_quad_absolute(QAX, QAY, QBX, QBY, or_, og, ob, oa); \
+		} \
+	}
+
+	EDGE_DRAW(nPtr, ax, by - t, bx, by)
+	EDGE_DRAW(ePtr, bx - t, ay, bx, by)
+	EDGE_DRAW(sPtr, ax, ay, bx, ay + t)
+	EDGE_DRAW(wPtr, ax, ay, ax + t, by)
+
+#undef EDGE_DRAW
 }

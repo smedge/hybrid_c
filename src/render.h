@@ -32,6 +32,12 @@ void Render_line_segment(float x0, float y0, float x1, float y1,
 void Render_quad_absolute(float ax, float ay, float bx, float by,
 	float r, float g, float b, float a);
 
+void Render_thick_line(float x0, float y0, float x1, float y1,
+	float thickness, float r, float g, float b, float a);
+
+void Render_filled_circle(float cx, float cy, float radius, int segments,
+	float r, float g, float b, float a);
+
 void Render_flush(const Mat4 *projection, const Mat4 *view);
 
 #endif
