@@ -1,4 +1,5 @@
 #include "view.h"
+#include <math.h>
 
 const double MAX_ZOOM = 4.0;
 const double MIN_ZOOM = 0.01;
@@ -31,6 +32,11 @@ Mat4 View_get_transform(const Screen *screen)
 {
 	double x = (screen->width / 2.0) - (view.position.x * view.scale);
 	double y = (screen->height / 2.0) - (view.position.y * view.scale);
+
+	/* Snap to pixel grid to prevent subpixel jitter on thin geometry */
+	x = floor(x + 0.5);
+	y = floor(y + 0.5);
+
 	Mat4 t = Mat4_translate((float)x, (float)y, 0.0f);
 	Mat4 s = Mat4_scale((float)view.scale, (float)view.scale, 1.0f);
 	return Mat4_multiply(&t, &s);

@@ -147,6 +147,14 @@ void Sub_Pea_render()
 
 	for (int i = 0; i < MAX_PROJECTILES; i++) {
 		if (projectiles[i].active) {
+			/* Motion trail from prev to current */
+			Render_thick_line(
+				(float)projectiles[i].prevPosition.x,
+				(float)projectiles[i].prevPosition.y,
+				(float)projectiles[i].position.x,
+				(float)projectiles[i].position.y,
+				3.0f, 1.0f, 1.0f, 1.0f, 0.6f);
+
 			double size = UNSCALED_POINT_SIZE * view.scale;
 			if (size < MIN_POINT_SIZE)
 				size = MIN_POINT_SIZE;
@@ -172,6 +180,13 @@ void Sub_Pea_render_bloom_source(void)
 
 	for (int i = 0; i < MAX_PROJECTILES; i++) {
 		if (projectiles[i].active) {
+			Render_thick_line(
+				(float)projectiles[i].prevPosition.x,
+				(float)projectiles[i].prevPosition.y,
+				(float)projectiles[i].position.x,
+				(float)projectiles[i].position.y,
+				3.0f, 1.0f, 1.0f, 1.0f, 0.6f);
+
 			double size = UNSCALED_POINT_SIZE * view.scale;
 			if (size < MIN_POINT_SIZE)
 				size = MIN_POINT_SIZE;

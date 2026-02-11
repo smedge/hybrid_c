@@ -253,6 +253,58 @@ void Map_render()
 			render_cell(x, y, outlineThickness);
 }
 
+void Map_render_minimap(float center_x, float center_y,
+	float screen_x, float screen_y, float size, float range)
+{
+	float half_range = range * 0.5f;
+	float scale = size / range;
+
+	/* World bounds visible on minimap */
+	float world_min_x = center_x - half_range;
+	float world_max_x = center_x + half_range;
+	float world_min_y = center_y - half_range;
+	float world_max_y = center_y + half_range;
+
+	/* Convert to map indices */
+	int cell_min_x = (int)(world_min_x / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+	int cell_max_x = (int)(world_max_x / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+	int cell_min_y = (int)(world_min_y / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+	int cell_max_y = (int)(world_max_y / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+
+	if (cell_min_x < 0) cell_min_x = 0;
+	if (cell_min_y < 0) cell_min_y = 0;
+	if (cell_max_x >= MAP_SIZE) cell_max_x = MAP_SIZE - 1;
+	if (cell_max_y >= MAP_SIZE) cell_max_y = MAP_SIZE - 1;
+
+	for (int x = cell_min_x; x <= cell_max_x; x++) {
+		for (int y = cell_min_y; y <= cell_max_y; y++) {
+			if (map[x][y]->empty)
+				continue;
+
+			/* World position of cell center */
+			float wx = (float)(x - HALF_MAP_SIZE) * MAP_CELL_SIZE + MAP_CELL_SIZE * 0.5f;
+			float wy = (float)(y - HALF_MAP_SIZE) * MAP_CELL_SIZE + MAP_CELL_SIZE * 0.5f;
+
+			/* Screen position on minimap (UI coords: y-down) */
+			float sx = screen_x + (wx - world_min_x) * scale;
+			float sy = screen_y + size - (wy - world_min_y) * scale;
+
+			float cell_px = MAP_CELL_SIZE * scale;
+			float half_px = cell_px * 0.5f;
+
+			ColorFloat c = Color_rgb_to_float(&map[x][y]->primaryColor);
+			/* Brighten for minimap visibility */
+			float br = c.red * 8.0f;  if (br > 1.0f) br = 1.0f;
+			float bg = c.green * 8.0f; if (bg > 1.0f) bg = 1.0f;
+			float bb = c.blue * 8.0f;  if (bb > 1.0f) bb = 1.0f;
+			Render_quad_absolute(
+				sx - half_px, sy - half_px,
+				sx + half_px, sy + half_px,
+				br, bg, bb, 1.0f);
+		}
+	}
+}
+
 /* --- Circuit board pattern generation --- */
 
 static unsigned int circuit_rand(unsigned int *state)

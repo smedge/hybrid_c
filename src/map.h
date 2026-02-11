@@ -21,6 +21,8 @@ typedef struct {
 void Map_initialize(void);
 Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Map_render();
+void Map_render_minimap(float center_x, float center_y,
+	float screen_x, float screen_y, float size, float range);
 bool Map_line_test_hit(double x0, double y0, double x1, double y1,
 					   double *hit_x, double *hit_y);
 

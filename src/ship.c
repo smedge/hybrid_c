@@ -17,6 +17,11 @@ static const double FRICTION = 14.0;    /* how fast velocity bleeds off (per sec
 
 static double vel_x = 0.0;
 static double vel_y = 0.0;
+static Position prevPosition = {0.0, 0.0};
+static bool isBoosting = false;
+
+#define TRAIL_GHOSTS 20
+#define TRAIL_LENGTH 4.0
 
 static Mix_Chunk *sample01 = 0;
 static Mix_Chunk *sample02 = 0;
@@ -113,9 +118,12 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 {
 	double ticksNormalized = ticks / 1000.0;
 
+	prevPosition = placeable->position;
+
 	if (shipState.destroyed) {
+		isBoosting = false;
 		shipState.ticksDestroyed += ticks;
-		
+
 		if (shipState.ticksDestroyed >= DEATH_TIMER) {
 			shipState.destroyed = false;
 			shipState.ticksDestroyed = 0;
@@ -124,11 +132,14 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			placeable->heading = 0.0;
 			vel_x = 0.0;
 			vel_y = 0.0;
+			prevPosition = placeable->position;
 
 			Audio_play_sample(&sample01);
 		}
 	}
 	else {
+		isBoosting = userInput->keyLShift;
+
 		double maxSpeed;
 		if (userInput->keyLShift)
 			maxSpeed = FAST_VELOCITY;
@@ -186,13 +197,28 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 void Ship_render(const void *state, const PlaceableComponent *placeable)
 {
 	if (!shipState.destroyed) {
+		/* Motion trail when boosting */
+		if (isBoosting) {
+			double dx = placeable->position.x - prevPosition.x;
+			double dy = placeable->position.y - prevPosition.y;
+			for (int i = TRAIL_GHOSTS; i >= 1; i--) {
+				float t = (float)i / (float)(TRAIL_GHOSTS + 1);
+				Position ghost;
+				ghost.x = placeable->position.x - dx * TRAIL_LENGTH * t;
+				ghost.y = placeable->position.y - dy * TRAIL_LENGTH * t;
+				float alpha = (1.0f - t) * 0.4f;
+				ColorFloat ghostColor = {color.red, color.green, color.blue, alpha};
+				Render_triangle(&ghost, placeable->heading, &ghostColor);
+			}
+		}
+
 		View view =  View_get_view();
 
 		if (view.scale > 0.09)
 			Render_triangle(&placeable->position, placeable->heading, &color);
 		else
 			Render_point(&placeable->position, 2.0, &color);
-		
+
 		//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 	}
 
@@ -209,8 +235,22 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 
 void Ship_render_bloom_source(void)
 {
-	if (!shipState.destroyed)
+	if (!shipState.destroyed) {
+		if (isBoosting) {
+			double dx = placeable.position.x - prevPosition.x;
+			double dy = placeable.position.y - prevPosition.y;
+			for (int i = TRAIL_GHOSTS; i >= 1; i--) {
+				float t = (float)i / (float)(TRAIL_GHOSTS + 1);
+				Position ghost;
+				ghost.x = placeable.position.x - dx * TRAIL_LENGTH * t;
+				ghost.y = placeable.position.y - dy * TRAIL_LENGTH * t;
+				float alpha = (1.0f - t) * 0.4f;
+				ColorFloat ghostColor = {color.red, color.green, color.blue, alpha};
+				Render_triangle(&ghost, placeable.heading, &ghostColor);
+			}
+		}
 		Render_triangle(&placeable.position, placeable.heading, &color);
+	}
 
 	if (sparkActive) {
 		float fade = (float)sparkTicksLeft / SPARK_DURATION;
