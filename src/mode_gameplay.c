@@ -2,6 +2,7 @@
 #include "map.h"
 #include "render.h"
 #include "mat4.h"
+#include "background.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -44,6 +45,7 @@ void Mode_Gameplay_initialize(void)
 
 	View_initialize();
 	Hud_initialize();
+	Background_initialize();
 	Grid_initialize();
 	Map_initialize();
 	Ship_initialize();
@@ -226,11 +228,14 @@ void Mode_Gameplay_cleanup(void)
 	Entity_destroy_all();
 	Hud_cleanup();
 	Audio_stop_music();
+	Mix_HaltChannel(REBIRTH_CHANNEL);
 	Audio_unload_sample(&rebirthSample);
 }
 
 void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
+	Background_update(ticks);
+
 	if (gameplayState == GAMEPLAY_REBIRTH) {
 		rebirthTimer += ticks;
 
@@ -273,6 +278,11 @@ void Mode_Gameplay_render(void)
 	/* World pass */
 	Mat4 world_proj = Graphics_get_world_projection();
 	Mat4 view = View_get_transform(&screen);
+
+	/* Background atmosphere (behind grid and entities) */
+	Background_render();
+	Render_flush(&world_proj, &view);
+
 	Entity_render_system();
 	Render_flush(&world_proj, &view);
 

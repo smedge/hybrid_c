@@ -66,6 +66,7 @@ void Entity_destroy_all(void)
 	{
 		Entity_destroy(entityId);
 	}
+	highestIndex = 0;
 }
 
 void Entity_destroy(const unsigned int entityId) 

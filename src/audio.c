@@ -31,7 +31,10 @@ void Audio_loop_music(const char *path)
 
 void Audio_stop_music(void)
 {
-	Mix_FreeMusic(music);
+	if (music) {
+		Mix_FreeMusic(music);
+		music = NULL;
+	}
 }
 
 void Audio_load_sample(Mix_Chunk **sample, char *path)

@@ -1,6 +1,17 @@
 #include "mode_mainmenu.h"
 #include "render.h"
 #include "text.h"
+#include "background.h"
+#include "view.h"
+
+#include <stdlib.h>
+#include <math.h>
+
+#define MENU_BG_SPEED_MULT 3
+#define MENU_CAM_SPEED 200.0
+
+static double menu_cam_dx, menu_cam_dy;
+static double menu_cam_x, menu_cam_y;
 
 static ButtonState newButton = {{98.0f, 190.0f}, 59, 12, false, false, false, NEW_BUTTON_TEXT};
 static ButtonState loadButton = {{98.0f, 208.0f}, 59, 12, false, false, true, LOAD_BUTTON_TEXT};
@@ -19,6 +30,19 @@ void Mode_Mainmenu_initialize(
 	quit_callback = quit;
 	gameplay_mode_callback = gameplay_mode;
 
+	View_initialize();
+	View_set_scale(0.3);
+	Background_initialize();
+
+	/* Pick a random 8-directional drift for the camera */
+	int dir = rand() % 8;
+	double angles[] = {0, 45, 90, 135, 180, 225, 270, 315};
+	double rad = angles[dir] * 3.14159265 / 180.0;
+	menu_cam_dx = cos(rad) * MENU_CAM_SPEED;
+	menu_cam_dy = sin(rad) * MENU_CAM_SPEED;
+	menu_cam_x = 0.0;
+	menu_cam_y = 0.0;
+
 	Audio_loop_music(MENU_MUSIC_PATH);
 }
 
@@ -31,6 +55,15 @@ void Mode_Mainmenu_update(
 	const Input *input,
 	const unsigned int ticks)
 {
+	Background_update(ticks * MENU_BG_SPEED_MULT);
+
+	/* Slowly drift camera in the chosen direction */
+	double dt = ticks / 1000.0;
+	menu_cam_x += menu_cam_dx * dt;
+	menu_cam_y += menu_cam_dy * dt;
+	Position pos = {menu_cam_x, menu_cam_y};
+	View_set_position(pos);
+
 	Screen screen = Graphics_get_screen();
 	const int fifthScreenWidth = screen.width / 5;
 	float menu_top = screen.height * 0.30f;
@@ -51,6 +84,14 @@ void Mode_Mainmenu_render(void)
 {
 	Graphics_clear();
 
+	/* Background world pass */
+	Screen screen = Graphics_get_screen();
+	Mat4 world_proj = Graphics_get_world_projection();
+	Mat4 view = View_get_transform(&screen);
+	Background_render();
+	Render_flush(&world_proj, &view);
+
+	/* UI pass */
 	Mat4 ui_proj = Graphics_get_ui_projection();
 	Mat4 identity = Mat4_identity();
 

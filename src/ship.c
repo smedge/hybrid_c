@@ -12,6 +12,12 @@ static const double NORMAL_VELOCITY = 800.0;
 static const double FAST_VELOCITY = 1600.0;
 static const double SLOW_VELOCITY = 6400.0;  // warp speed right now, not slow
 
+static const double ACCEL_RATE = 10.0;  /* how fast velocity ramps up (per second, multiplier) */
+static const double FRICTION = 14.0;    /* how fast velocity bleeds off (per second, multiplier) */
+
+static double vel_x = 0.0;
+static double vel_y = 0.0;
+
 static Mix_Chunk *sample01 = 0;
 static Mix_Chunk *sample02 = 0;
 static Mix_Chunk *sample03 = 0;
@@ -116,32 +122,54 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			placeable->position.x = 0.0;
 			placeable->position.y = 0.0;
 			placeable->heading = 0.0;
+			vel_x = 0.0;
+			vel_y = 0.0;
 
 			Audio_play_sample(&sample01);
 		}
 	}
 	else {
-		double velocity;
+		double maxSpeed;
 		if (userInput->keyLShift)
-			velocity = FAST_VELOCITY;
+			maxSpeed = FAST_VELOCITY;
 		else if (userInput->keyLControl)
-			velocity = SLOW_VELOCITY;
+			maxSpeed = SLOW_VELOCITY;
 		else
-			velocity = NORMAL_VELOCITY;
-	
-		if (userInput->keyW)
-			placeable->position.y += velocity * ticksNormalized;
-		if (userInput->keyS)
-			placeable->position.y -= velocity * ticksNormalized;
-		if (userInput->keyD)
-			placeable->position.x += velocity * ticksNormalized;
-		if (userInput->keyA)
-			placeable->position.x -= velocity * ticksNormalized;
-	
-		if (userInput->keyW || userInput->keyA || 
-			userInput->keyS || userInput->keyD)
-		{
-			placeable->heading = get_heading(userInput->keyW, userInput->keyS, 
+			maxSpeed = NORMAL_VELOCITY;
+
+		/* Target velocity from input */
+		double target_vx = 0.0, target_vy = 0.0;
+		if (userInput->keyW) target_vy += 1.0;
+		if (userInput->keyS) target_vy -= 1.0;
+		if (userInput->keyD) target_vx += 1.0;
+		if (userInput->keyA) target_vx -= 1.0;
+
+		/* Normalize diagonal so it doesn't go faster */
+		if (target_vx != 0.0 && target_vy != 0.0) {
+			target_vx *= 0.7071;
+			target_vy *= 0.7071;
+		}
+
+		target_vx *= maxSpeed;
+		target_vy *= maxSpeed;
+
+		/* Lerp toward target (acceleration) or toward zero (friction) */
+		int hasInput = userInput->keyW || userInput->keyA ||
+			userInput->keyS || userInput->keyD;
+
+		double rate = hasInput ? ACCEL_RATE : FRICTION;
+		double blend = rate * ticksNormalized;
+		if (blend > 1.0) blend = 1.0;
+
+		vel_x += (target_vx - vel_x) * blend;
+		vel_y += (target_vy - vel_y) * blend;
+
+		/* Apply velocity */
+		placeable->position.x += vel_x * ticksNormalized;
+		placeable->position.y += vel_y * ticksNormalized;
+
+		if (hasInput) {
+			placeable->heading = get_heading(userInput->keyW, userInput->keyS,
 											userInput->keyD, userInput->keyA);
 		}
 	}
@@ -190,6 +218,8 @@ void Ship_force_spawn(Position pos)
 	shipState.ticksDestroyed = 0;
 	placeable.position = pos;
 	placeable.heading = 0.0;
+	vel_x = 0.0;
+	vel_y = 0.0;
 	Audio_play_sample(&sample01);
 }
 

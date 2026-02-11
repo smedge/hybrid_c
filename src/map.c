@@ -513,7 +513,7 @@ static void render_circuit_pattern(int cellX, int cellY, float ax, float ay,
 		/* Endpoint markers */
 		for (int b = 0; b < busCount; b++) {
 			if (startPad) {
-				if (busCount == 1 && startMk >= 4) {
+				if (busCount == 1 && startMk >= 2) {
 					Render_filled_circle(bxs[b][0], bys[b][0],
 						VIA_OUT, CSEGS, tr, tg, tb, ta);
 					Render_filled_circle(bxs[b][0], bys[b][0],
@@ -525,7 +525,7 @@ static void render_circuit_pattern(int cellX, int cellY, float ax, float ay,
 			}
 			if (endPad) {
 				int last = bn[b] - 1;
-				if (busCount == 1 && endMk >= 4) {
+				if (busCount == 1 && endMk >= 2) {
 					Render_filled_circle(bxs[b][last], bys[b][last],
 						VIA_OUT, CSEGS, tr, tg, tb, ta);
 					Render_filled_circle(bxs[b][last], bys[b][last],
@@ -552,18 +552,53 @@ static void render_cell(int x, int y, float outlineThickness)
 	float bx = ax + MAP_CELL_SIZE;
 	float by = ay + MAP_CELL_SIZE;
 
+	MapCell *nPtr = map[x][y+1], *ePtr = map[x+1][y];
+	MapCell *sPtr = map[x][y-1], *wPtr = map[x-1][y];
+
+	/* Chamfer NE and SW corners of circuit cells when both edges face empty */
+	float chamf = MAP_CELL_SIZE * 0.17f;
+	int chamfer_ne = mapCell.circuitPattern && nPtr->empty && ePtr->empty;
+	int chamfer_sw = mapCell.circuitPattern && sPtr->empty && wPtr->empty;
+
+	/* Cell fill */
 	ColorFloat primaryColor = Color_rgb_to_float(&mapCell.primaryColor);
-	Render_quad_absolute(ax, ay, bx, by,
-		primaryColor.red, primaryColor.green, primaryColor.blue, primaryColor.alpha);
+	float pr = primaryColor.red, pg = primaryColor.green;
+	float pb = primaryColor.blue, pa = primaryColor.alpha;
+
+	if (chamfer_ne || chamfer_sw) {
+		float vx[6], vy[6];
+		int n = 0;
+		vx[n] = bx; vy[n] = ay; n++;
+		if (chamfer_ne) {
+			vx[n] = bx;         vy[n] = by - chamf; n++;
+			vx[n] = bx - chamf; vy[n] = by;         n++;
+		} else {
+			vx[n] = bx; vy[n] = by; n++;
+		}
+		vx[n] = ax; vy[n] = by; n++;
+		if (chamfer_sw) {
+			vx[n] = ax;         vy[n] = ay + chamf; n++;
+			vx[n] = ax + chamf; vy[n] = ay;         n++;
+		} else {
+			vx[n] = ax; vy[n] = ay; n++;
+		}
+		BatchRenderer *batch = Graphics_get_batch();
+		for (int i = 1; i < n - 1; i++)
+			Batch_push_triangle_vertices(batch,
+				vx[0], vy[0], vx[i], vy[i], vx[i+1], vy[i+1],
+				pr, pg, pb, pa);
+	} else {
+		Render_quad_absolute(ax, ay, bx, by, pr, pg, pb, pa);
+	}
 
 	/* Circuit board pattern */
 	if (mapCell.circuitPattern) {
 		View view = View_get_view();
 		if (view.scale >= 0.15) {
-			int adjN = !map[x][y+1]->empty;
-			int adjE = !map[x+1][y]->empty;
-			int adjS = !map[x][y-1]->empty;
-			int adjW = !map[x-1][y]->empty;
+			int adjN = !nPtr->empty;
+			int adjE = !ePtr->empty;
+			int adjS = !sPtr->empty;
+			int adjW = !wPtr->empty;
 			ColorFloat outlineColorF = Color_rgb_to_float(&mapCell.outlineColor);
 			render_circuit_pattern(x - HALF_MAP_SIZE, y - HALF_MAP_SIZE,
 				ax, ay, &outlineColorF, &primaryColor,
@@ -578,8 +613,11 @@ static void render_cell(int x, int y, float outlineThickness)
 
 	float t = outlineThickness;
 
-	MapCell *nPtr = map[x][y+1], *ePtr = map[x+1][y];
-	MapCell *sPtr = map[x][y-1], *wPtr = map[x-1][y];
+	/* Shorten edges at chamfered corners */
+	float n_bx = chamfer_ne ? bx - chamf : bx;
+	float e_by = chamfer_ne ? by - chamf : by;
+	float s_ax = chamfer_sw ? ax + chamf : ax;
+	float w_ay = chamfer_sw ? ay + chamf : ay;
 
 	/* Draw outline on empty-adjacent edges (own color).
 	   On edges adjacent to a different non-empty type, only the
@@ -599,10 +637,30 @@ static void render_cell(int x, int y, float outlineThickness)
 		} \
 	}
 
-	EDGE_DRAW(nPtr, ax, by - t, bx, by)
-	EDGE_DRAW(ePtr, bx - t, ay, bx, by)
-	EDGE_DRAW(sPtr, ax, ay, bx, ay + t)
-	EDGE_DRAW(wPtr, ax, ay, ax + t, by)
+	EDGE_DRAW(nPtr, ax, by - t, n_bx, by)
+	EDGE_DRAW(ePtr, bx - t, ay, bx, e_by)
+	EDGE_DRAW(sPtr, s_ax, ay, bx, ay + t)
+	EDGE_DRAW(wPtr, ax, w_ay, ax + t, by)
 
 #undef EDGE_DRAW
+
+	/* Chamfer diagonal outlines — quads that join flush with edge outlines */
+	if (chamfer_ne) {
+		BatchRenderer *batch = Graphics_get_batch();
+		Batch_push_triangle_vertices(batch,
+			bx - chamf, by, bx, by - chamf,
+			bx - t, by - chamf, or_, og, ob, oa);
+		Batch_push_triangle_vertices(batch,
+			bx - chamf, by, bx - t, by - chamf,
+			bx - chamf, by - t, or_, og, ob, oa);
+	}
+	if (chamfer_sw) {
+		BatchRenderer *batch = Graphics_get_batch();
+		Batch_push_triangle_vertices(batch,
+			ax, ay + chamf, ax + chamf, ay,
+			ax + chamf, ay + t, or_, og, ob, oa);
+		Batch_push_triangle_vertices(batch,
+			ax, ay + chamf, ax + chamf, ay + t,
+			ax + t, ay + chamf, or_, og, ob, oa);
+	}
 }
