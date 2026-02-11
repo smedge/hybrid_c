@@ -1,6 +1,7 @@
 #include "render.h"
 
 #include <math.h>
+#include <OpenGL/gl3.h>
 
 static int get_nearest_grid_start_point(int x, const double GRID_SIZE);
 
@@ -197,6 +198,15 @@ void Render_flush(const Mat4 *projection, const Mat4 *view)
 	BatchRenderer *batch = Graphics_get_batch();
 	Shaders *shaders = Graphics_get_shaders();
 	Batch_flush(batch, shaders, projection, view);
+}
+
+void Render_flush_additive(const Mat4 *projection, const Mat4 *view)
+{
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	BatchRenderer *batch = Graphics_get_batch();
+	Shaders *shaders = Graphics_get_shaders();
+	Batch_flush(batch, shaders, projection, view);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 static int get_nearest_grid_start_point(int x, const double GRID_SIZE)

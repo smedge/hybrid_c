@@ -286,6 +286,11 @@ void Mode_Gameplay_render(void)
 	Entity_render_system();
 	Render_flush(&world_proj, &view);
 
+	/* Additive glow pass */
+	Map_render_glow();
+	Ship_render_glow();
+	Render_flush_additive(&world_proj, &view);
+
 	/* UI pass */
 	Mat4 ui_proj = Graphics_get_ui_projection();
 	Mat4 identity = Mat4_identity();

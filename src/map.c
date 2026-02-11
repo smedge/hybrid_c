@@ -253,6 +253,57 @@ void Map_render()
 			render_cell(x, y, outlineThickness);
 }
 
+void Map_render_glow(void)
+{
+	#define GLOW_LAYERS 10
+	#define GLOW_CORNER_SEGS 8
+
+	for (int x = 0; x < MAP_SIZE; x++) {
+		for (int y = 0; y < MAP_SIZE; y++) {
+			if (map[x][y]->empty)
+				continue;
+
+			ColorFloat c = Color_rgb_to_float(&map[x][y]->primaryColor);
+			float cx = (float)(x - HALF_MAP_SIZE) * MAP_CELL_SIZE + MAP_CELL_SIZE * 0.5f;
+			float cy = (float)(y - HALF_MAP_SIZE) * MAP_CELL_SIZE + MAP_CELL_SIZE * 0.5f;
+			float half = MAP_CELL_SIZE * 0.5f;
+
+			/* Brighten color 5x, clamped to 1.0 */
+			float gr = c.red * 5.0f;  if (gr > 1.0f) gr = 1.0f;
+			float gg = c.green * 5.0f; if (gg > 1.0f) gg = 1.0f;
+			float gb = c.blue * 5.0f;  if (gb > 1.0f) gb = 1.0f;
+
+			/* 10 concentric rounded rects */
+			for (int i = 0; i < GLOW_LAYERS; i++) {
+				float t = (float)i / (GLOW_LAYERS - 1);
+				float scale = 3.0f - t * 1.8f;
+				float alpha = 0.005f + t * 0.045f;
+				float h = half * scale;
+				float cr = h * 0.3f;
+
+				/* Horizontal rect (full width, inset top/bottom) */
+				Render_quad_absolute(cx - h, cy - h + cr, cx + h, cy + h - cr,
+					gr, gg, gb, alpha);
+				/* Vertical rect (full height, inset left/right) */
+				Render_quad_absolute(cx - h + cr, cy - h, cx + h - cr, cy + h,
+					gr, gg, gb, alpha);
+				/* Four corner circles */
+				Render_filled_circle(cx - h + cr, cy + h - cr, cr, GLOW_CORNER_SEGS,
+					gr, gg, gb, alpha);
+				Render_filled_circle(cx + h - cr, cy + h - cr, cr, GLOW_CORNER_SEGS,
+					gr, gg, gb, alpha);
+				Render_filled_circle(cx - h + cr, cy - h + cr, cr, GLOW_CORNER_SEGS,
+					gr, gg, gb, alpha);
+				Render_filled_circle(cx + h - cr, cy - h + cr, cr, GLOW_CORNER_SEGS,
+					gr, gg, gb, alpha);
+			}
+		}
+	}
+
+	#undef GLOW_CORNER_SEGS
+	#undef GLOW_LAYERS
+}
+
 /* --- Circuit board pattern generation --- */
 
 static unsigned int circuit_rand(unsigned int *state)
