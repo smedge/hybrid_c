@@ -11,5 +11,6 @@ Collision Mine_collide(const void *state, const PlaceableComponent *placeable, c
 void Mine_resolve(const void *state, const Collision collision);
 void Mine_update(const void *state, const PlaceableComponent *placeable, const unsigned int ticks);
 void Mine_render(const void *state, const PlaceableComponent *placeable);
+void Mine_render_bloom_source(void);
 
 #endif

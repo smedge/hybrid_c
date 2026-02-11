@@ -205,3 +205,24 @@ void Mine_render(const void *state, const PlaceableComponent *placeable)
 
 	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }
+
+void Mine_render_bloom_source(void)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		MineState *ms = &mines[i];
+		PlaceableComponent *pl = &placeables[i];
+
+		if (ms->destroyed)
+			continue;
+
+		if (ms->exploding) {
+			Rectangle explosion = {-250, 250, 250, -250};
+			Render_quad(&pl->position, 22.5, explosion, &colorWhite);
+			Render_quad(&pl->position, 67.5, explosion, &colorWhite);
+			continue;
+		}
+
+		if (ms->active || ms->blinkTimer < 100)
+			Render_point(&pl->position, 3.0, &colorActive);
+	}
+}

@@ -84,12 +84,23 @@ void Mode_Mainmenu_render(void)
 {
 	Graphics_clear();
 
-	/* Background world pass */
+	/* Background bloom pass (blurred only — no raw polygon render) */
 	Screen screen = Graphics_get_screen();
 	Mat4 world_proj = Graphics_get_world_projection();
 	Mat4 view = View_get_transform(&screen);
-	Background_render();
-	Render_flush(&world_proj, &view);
+	{
+		int draw_w, draw_h;
+		Graphics_get_drawable_size(&draw_w, &draw_h);
+		Bloom *bg_bloom = Graphics_get_bg_bloom();
+
+		Bloom_begin_source(bg_bloom);
+		Background_render();
+		Render_flush(&world_proj, &view);
+		Bloom_end_source(bg_bloom, draw_w, draw_h);
+
+		Bloom_blur(bg_bloom);
+		Bloom_composite(bg_bloom, draw_w, draw_h);
+	}
 
 	/* UI pass */
 	Mat4 ui_proj = Graphics_get_ui_projection();

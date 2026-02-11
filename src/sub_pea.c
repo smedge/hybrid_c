@@ -163,6 +163,31 @@ void Sub_Pea_render()
 	}
 }
 
+void Sub_Pea_render_bloom_source(void)
+{
+	View view = View_get_view();
+
+	const double UNSCALED_POINT_SIZE = 8.0;
+	const double MIN_POINT_SIZE = 2.0;
+
+	for (int i = 0; i < MAX_PROJECTILES; i++) {
+		if (projectiles[i].active) {
+			double size = UNSCALED_POINT_SIZE * view.scale;
+			if (size < MIN_POINT_SIZE)
+				size = MIN_POINT_SIZE;
+			Render_point(&projectiles[i].position, size, &color);
+		}
+	}
+
+	if (sparkActive) {
+		float fade = (float)sparkTicksLeft / SPARK_DURATION;
+		ColorFloat sparkColor = {1.0f, 1.0f, 1.0f, fade};
+		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
+		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
+		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
+	}
+}
+
 bool Sub_Pea_check_hit(Rectangle target)
 {
 	for (int i = 0; i < MAX_PROJECTILES; i++) {

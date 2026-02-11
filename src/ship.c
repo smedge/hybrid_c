@@ -207,51 +207,20 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Pea_render();
 }
 
-void Ship_render_glow(void)
+void Ship_render_bloom_source(void)
 {
-	#define GLOW_LAYERS 10
-	#define GLOW_CORNER_SEGS 8
+	if (!shipState.destroyed)
+		Render_triangle(&placeable.position, placeable.heading, &color);
 
-	if (shipState.destroyed)
-		return;
-
-	Mat4 t = Mat4_translate((float)placeable.position.x,
-		(float)placeable.position.y, 0.0f);
-	Mat4 r = Mat4_rotate_z((float)(placeable.heading * -1.0));
-	Mat4 m = Mat4_multiply(&t, &r);
-
-	/* Brighten color 5x, clamped to 1.0 */
-	float gr = color.red * 5.0f;   if (gr > 1.0f) gr = 1.0f;
-	float gg = color.green * 5.0f; if (gg > 1.0f) gg = 1.0f;
-	float gb = color.blue * 5.0f;  if (gb > 1.0f) gb = 1.0f;
-
-	/* 10 concentric rounded triangles */
-	for (int i = 0; i < GLOW_LAYERS; i++) {
-		float ft = (float)i / (GLOW_LAYERS - 1);
-		float scale = 3.0f - ft * 1.8f;
-		float alpha = 0.005f + ft * 0.045f;
-		float cr = scale * 4.0f;
-
-		float lx[3] = { 0.0f * scale, 10.0f * scale, -10.0f * scale };
-		float ly[3] = { 20.0f * scale, -10.0f * scale, -10.0f * scale };
-
-		float wx[3], wy[3];
-		for (int j = 0; j < 3; j++)
-			Mat4_transform_point(&m, lx[j], ly[j], &wx[j], &wy[j]);
-
-		BatchRenderer *batch = Graphics_get_batch();
-		Batch_push_triangle_vertices(batch,
-			wx[0], wy[0], wx[1], wy[1], wx[2], wy[2],
-			gr, gg, gb, alpha);
-
-		/* Circles at each vertex to round corners */
-		for (int j = 0; j < 3; j++)
-			Render_filled_circle(wx[j], wy[j], cr, GLOW_CORNER_SEGS,
-				gr, gg, gb, alpha);
+	if (sparkActive) {
+		float fade = (float)sparkTicksLeft / SPARK_DURATION;
+		ColorFloat sparkColor = {1.0f, 1.0f, 1.0f, fade};
+		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
+		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
+		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
 	}
 
-	#undef GLOW_CORNER_SEGS
-	#undef GLOW_LAYERS
+	Sub_Pea_render_bloom_source();
 }
 
 Position Ship_get_position()

@@ -279,17 +279,40 @@ void Mode_Gameplay_render(void)
 	Mat4 world_proj = Graphics_get_world_projection();
 	Mat4 view = View_get_transform(&screen);
 
-	/* Background atmosphere (behind grid and entities) */
-	Background_render();
-	Render_flush(&world_proj, &view);
+	/* Background bloom pass (blurred only — no raw polygon render) */
+	{
+		int draw_w, draw_h;
+		Graphics_get_drawable_size(&draw_w, &draw_h);
+		Bloom *bg_bloom = Graphics_get_bg_bloom();
+
+		Bloom_begin_source(bg_bloom);
+		Background_render();
+		Render_flush(&world_proj, &view);
+		Bloom_end_source(bg_bloom, draw_w, draw_h);
+
+		Bloom_blur(bg_bloom);
+		Bloom_composite(bg_bloom, draw_w, draw_h);
+	}
 
 	Entity_render_system();
 	Render_flush(&world_proj, &view);
 
-	/* Additive glow pass */
-	Map_render_glow();
-	Ship_render_glow();
-	Render_flush_additive(&world_proj, &view);
+	/* FBO bloom pass */
+	{
+		int draw_w, draw_h;
+		Graphics_get_drawable_size(&draw_w, &draw_h);
+		Bloom *bloom = Graphics_get_bloom();
+
+		Bloom_begin_source(bloom);
+		Map_render();
+		Ship_render_bloom_source();
+		Mine_render_bloom_source();
+		Render_flush(&world_proj, &view);
+		Bloom_end_source(bloom, draw_w, draw_h);
+
+		Bloom_blur(bloom);
+		Bloom_composite(bloom, draw_w, draw_h);
+	}
 
 	/* UI pass */
 	Mat4 ui_proj = Graphics_get_ui_projection();

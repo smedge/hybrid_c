@@ -9,6 +9,8 @@ static Shaders shaders;
 static BatchRenderer batch;
 static TextRenderer text_renderer;
 static TextRenderer title_text_renderer;
+static Bloom bloom;
+static Bloom bg_bloom;
 
 static void create_window(void);
 static void create_fullscreen_window(void);
@@ -33,6 +35,8 @@ void Graphics_initialize(void)
 
 void Graphics_cleanup(void)
 {
+	Bloom_cleanup(&bg_bloom);
+	Bloom_cleanup(&bloom);
 	Text_cleanup(&title_text_renderer);
 	Text_cleanup(&text_renderer);
 	Batch_cleanup(&batch);
@@ -49,6 +53,8 @@ void Graphics_resize_window(const unsigned int width,
 	int draw_w, draw_h;
 	SDL_GL_GetDrawableSize(graphics.window, &draw_w, &draw_h);
 	glViewport(0, 0, draw_w, draw_h);
+	Bloom_resize(&bloom, draw_w, draw_h);
+	Bloom_resize(&bg_bloom, draw_w, draw_h);
 }
 
 void Graphics_toggle_fullscreen(void)
@@ -103,6 +109,21 @@ TextRenderer *Graphics_get_text_renderer(void)
 TextRenderer *Graphics_get_title_text_renderer(void)
 {
 	return &title_text_renderer;
+}
+
+Bloom *Graphics_get_bloom(void)
+{
+	return &bloom;
+}
+
+Bloom *Graphics_get_bg_bloom(void)
+{
+	return &bg_bloom;
+}
+
+void Graphics_get_drawable_size(int *w, int *h)
+{
+	SDL_GL_GetDrawableSize(graphics.window, w, h);
 }
 
 static void create_window(void)
@@ -163,6 +184,12 @@ static void initialize_gl(void)
 	Batch_initialize(&batch);
 	Text_initialize(&text_renderer, TITLE_FONT_PATH, 14.0f);
 	Text_initialize(&title_text_renderer, TITLE_FONT_PATH, 80.0f);
+	Bloom_initialize(&bloom, draw_w, draw_h);
+	Bloom_initialize(&bg_bloom, draw_w, draw_h);
+	bg_bloom.divisor = 8;
+	bg_bloom.intensity = 1.5f;
+	bg_bloom.blur_passes = 10;
+	Bloom_resize(&bg_bloom, draw_w, draw_h);
 }
 
 static void destroy_window(void)
