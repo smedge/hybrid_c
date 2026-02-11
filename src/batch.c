@@ -120,6 +120,59 @@ void Batch_flush(BatchRenderer *batch, const Shaders *shaders,
 		&shaders->color_shader, projection, view);
 }
 
+static void flush_batch_keep(PrimitiveBatch *b, GLenum mode,
+	const ShaderProgram *sp, const Mat4 *projection, const Mat4 *view)
+{
+	if (b->count == 0)
+		return;
+
+	Shader_set_matrices(sp, projection, view);
+
+	glBindVertexArray(b->vao);
+	glBindBuffer(GL_ARRAY_BUFFER, b->vbo);
+	glBufferData(GL_ARRAY_BUFFER,
+		(GLsizeiptr)(b->count * sizeof(ColorVertex)),
+		b->vertices, GL_DYNAMIC_DRAW);
+	glDrawArrays(mode, 0, b->count);
+	glBindVertexArray(0);
+	/* count NOT reset — vertices stay in VBO for redraw */
+}
+
+static void redraw_batch(PrimitiveBatch *b, GLenum mode,
+	const ShaderProgram *sp, const Mat4 *projection, const Mat4 *view)
+{
+	if (b->count == 0)
+		return;
+
+	Shader_set_matrices(sp, projection, view);
+
+	glBindVertexArray(b->vao);
+	glDrawArrays(mode, 0, b->count);
+	glBindVertexArray(0);
+}
+
+void Batch_flush_keep(BatchRenderer *batch, const Shaders *shaders,
+	const Mat4 *projection, const Mat4 *view)
+{
+	flush_batch_keep(&batch->lines, GL_LINES,
+		&shaders->color_shader, projection, view);
+	flush_batch_keep(&batch->triangles, GL_TRIANGLES,
+		&shaders->color_shader, projection, view);
+	flush_batch_keep(&batch->points, GL_POINTS,
+		&shaders->color_shader, projection, view);
+}
+
+void Batch_redraw(BatchRenderer *batch, const Shaders *shaders,
+	const Mat4 *projection, const Mat4 *view)
+{
+	redraw_batch(&batch->lines, GL_LINES,
+		&shaders->color_shader, projection, view);
+	redraw_batch(&batch->triangles, GL_TRIANGLES,
+		&shaders->color_shader, projection, view);
+	redraw_batch(&batch->points, GL_POINTS,
+		&shaders->color_shader, projection, view);
+}
+
 void Batch_clear(BatchRenderer *batch)
 {
 	batch->triangles.count = 0;

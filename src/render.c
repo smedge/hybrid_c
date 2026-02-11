@@ -200,6 +200,26 @@ void Render_flush(const Mat4 *projection, const Mat4 *view)
 	Batch_flush(batch, shaders, projection, view);
 }
 
+void Render_flush_keep(const Mat4 *projection, const Mat4 *view)
+{
+	BatchRenderer *batch = Graphics_get_batch();
+	Shaders *shaders = Graphics_get_shaders();
+	Batch_flush_keep(batch, shaders, projection, view);
+}
+
+void Render_redraw(const Mat4 *projection, const Mat4 *view)
+{
+	BatchRenderer *batch = Graphics_get_batch();
+	Shaders *shaders = Graphics_get_shaders();
+	Batch_redraw(batch, shaders, projection, view);
+}
+
+void Render_clear(void)
+{
+	BatchRenderer *batch = Graphics_get_batch();
+	Batch_clear(batch);
+}
+
 void Render_flush_additive(const Mat4 *projection, const Mat4 *view)
 {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE);

@@ -8,7 +8,7 @@
 
 #define BLOBS_PER_CLOUD 3
 #define NUM_LAYERS 3
-#define MAX_CLOUDS 20
+#define MAX_CLOUDS 44
 #define IRREG_SEGS 12
 
 typedef struct {
@@ -63,7 +63,7 @@ void Background_initialize(void)
 {
 	/* Different tile sizes per layer so repeats never align */
 	float tile_sizes[NUM_LAYERS] = {14000.0f, 17000.0f, 21000.0f};
-	int cloud_counts[NUM_LAYERS] = {18, 15, 12};
+	int cloud_counts[NUM_LAYERS] = {43, 36, 29};
 	float parallax_values[NUM_LAYERS] = {0.05f, 0.15f, 0.30f};
 	float alpha_mults[NUM_LAYERS] = {0.5f, 0.8f, 1.0f};
 
@@ -144,64 +144,65 @@ static void render_blob(Blob *blob, float wx, float wy, float rad, float alpha)
 	}
 }
 
-static void render_layer_clouds(int layer_idx, float cam_x, float cam_y,
-	float half_vw, float half_vh)
+void Background_render(void)
 {
-	Layer *layer = &layers[layer_idx];
-	float p = layer->parallax;
-	float am = layer->alpha_mult;
-	float ts = layer->tile_size;
+	View v = View_get_view();
+	Screen screen = Graphics_get_screen();
+	Mat4 proj = Graphics_get_world_projection();
+	Mat4 base_view = View_get_transform(&screen);
 
-	float eff_cx = cam_x * p;
-	float eff_cy = cam_y * p;
+	float cam_x = (float)v.position.x;
+	float cam_y = (float)v.position.y;
+	float half_vw = (float)(screen.width / 2.0 / v.scale);
+	float half_vh = (float)(screen.height / 2.0 / v.scale);
 
-	float view_min_x = eff_cx - half_vw;
-	float view_max_x = eff_cx + half_vw;
-	float view_min_y = eff_cy - half_vh;
-	float view_max_y = eff_cy + half_vh;
+	for (int l = 0; l < NUM_LAYERS; l++) {
+		Layer *layer = &layers[l];
+		float p = layer->parallax;
+		float am = layer->alpha_mult;
+		float ts = layer->tile_size;
 
-	int tile_min_x = (int)floorf(view_min_x / ts);
-	int tile_max_x = (int)floorf(view_max_x / ts);
-	int tile_min_y = (int)floorf(view_min_y / ts);
-	int tile_max_y = (int)floorf(view_max_y / ts);
+		/* Push all blobs once at base tile position (no tile offset) */
+		for (int c = 0; c < layer->cloud_count; c++) {
+			for (int b = 0; b < BLOBS_PER_CLOUD; b++) {
+				Blob *blob = &layer->clouds[c].blobs[b];
+				float dx = fmodf(blob->drift_dx * bg_time, ts);
+				float dy = fmodf(blob->drift_dy * bg_time, ts);
+				float wx = blob->x + cam_x * (1.0f - p) + dx;
+				float wy = blob->y + cam_y * (1.0f - p) + dy;
 
-	for (int tx = tile_min_x; tx <= tile_max_x; tx++) {
-		for (int ty = tile_min_y; ty <= tile_max_y; ty++) {
-			float tile_ox = (float)tx * ts;
-			float tile_oy = (float)ty * ts;
+				float pulse = 1.0f + 0.08f * sinf(
+					bg_time * blob->pulse_speed + blob->pulse_phase);
+				float rad = blob->radius * pulse;
+				float alpha = blob->a * am;
+				render_blob(blob, wx, wy, rad, alpha);
+			}
+		}
 
-			for (int c = 0; c < layer->cloud_count; c++) {
-				for (int b = 0; b < BLOBS_PER_CLOUD; b++) {
-					Blob *blob = &layer->clouds[c].blobs[b];
+		/* Compute visible tile range */
+		float eff_cx = cam_x * p;
+		float eff_cy = cam_y * p;
+		int tile_min_x = (int)floorf((eff_cx - half_vw) / ts);
+		int tile_max_x = (int)floorf((eff_cx + half_vw) / ts);
+		int tile_min_y = (int)floorf((eff_cy - half_vh) / ts);
+		int tile_max_y = (int)floorf((eff_cy + half_vh) / ts);
 
-					float dx = fmodf(blob->drift_dx * bg_time, ts);
-					float dy = fmodf(blob->drift_dy * bg_time, ts);
-					float wx = blob->x + tile_ox + cam_x * (1.0f - p) + dx;
-					float wy = blob->y + tile_oy + cam_y * (1.0f - p) + dy;
+		/* Upload geometry once, redraw per tile with offset view */
+		int first = 1;
+		for (int tx = tile_min_x; tx <= tile_max_x; tx++) {
+			for (int ty = tile_min_y; ty <= tile_max_y; ty++) {
+				Mat4 offset = Mat4_translate(
+					(float)tx * ts, (float)ty * ts, 0.0f);
+				Mat4 tile_view = Mat4_multiply(&base_view, &offset);
 
-					float pulse = 1.0f + 0.08f * sinf(
-						bg_time * blob->pulse_speed + blob->pulse_phase);
-					float rad = blob->radius * pulse;
-
-					float alpha = blob->a * am;
-					render_blob(blob, wx, wy, rad, alpha);
+				if (first) {
+					Render_flush_keep(&proj, &tile_view);
+					first = 0;
+				} else {
+					Render_redraw(&proj, &tile_view);
 				}
 			}
 		}
-	}
-}
-
-void Background_render(void)
-{
-	View view = View_get_view();
-	Screen screen = Graphics_get_screen();
-
-	float cam_x = (float)view.position.x;
-	float cam_y = (float)view.position.y;
-	float half_vw = (float)(screen.width / 2.0 / view.scale);
-	float half_vh = (float)(screen.height / 2.0 / view.scale);
-
-	for (int l = 0; l < NUM_LAYERS; l++) {
-		render_layer_clouds(l, cam_x, cam_y, half_vw, half_vh);
+		Render_clear();
 	}
 }

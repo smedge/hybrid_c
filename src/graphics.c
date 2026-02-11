@@ -26,7 +26,6 @@ void Graphics_initialize(void)
 		SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
 		SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-
 	create_window();
 	initialize_gl();
 	Graphics_clear();

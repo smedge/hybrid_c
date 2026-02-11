@@ -44,6 +44,12 @@ void Batch_push_point_vertex(BatchRenderer *batch,
 void Batch_flush(BatchRenderer *batch, const Shaders *shaders,
 	const Mat4 *projection, const Mat4 *view);
 
+void Batch_flush_keep(BatchRenderer *batch, const Shaders *shaders,
+	const Mat4 *projection, const Mat4 *view);
+
+void Batch_redraw(BatchRenderer *batch, const Shaders *shaders,
+	const Mat4 *projection, const Mat4 *view);
+
 void Batch_clear(BatchRenderer *batch);
 
 #endif

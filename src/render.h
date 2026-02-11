@@ -39,6 +39,9 @@ void Render_filled_circle(float cx, float cy, float radius, int segments,
 	float r, float g, float b, float a);
 
 void Render_flush(const Mat4 *projection, const Mat4 *view);
+void Render_flush_keep(const Mat4 *projection, const Mat4 *view);
+void Render_redraw(const Mat4 *projection, const Mat4 *view);
 void Render_flush_additive(const Mat4 *projection, const Mat4 *view);
+void Render_clear(void);
 
 #endif
