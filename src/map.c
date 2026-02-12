@@ -8,22 +8,58 @@
 static MapCell *map[MAP_SIZE][MAP_SIZE];
 
 static MapCell emptyCell = {true, false, {0,0,0,0}, {0,0,0,0}};
-static MapCell cell001 = {false, false, {20,0,20,255}, {128,0,128,255}};
-static MapCell cell002 = {false, true, {10,20,20,255}, {64,128,128,255}};
+
+/* Pool of dynamically-set cells for zone loader */
+#define CELL_POOL_SIZE (MAP_SIZE * MAP_SIZE)
+static MapCell cellPool[CELL_POOL_SIZE];
+static int cellPoolCount = 0;
 
 static RenderableComponent renderable = {Map_render};
 static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collide};
 
-static void initialize_map_data(void);
 static void initialize_map_entity(void);
-static void set_map_cell(int x, int y, MapCell *cell);
 static void render_cell(int x, int y, float outlineThickness);
 static int correctTruncation(int i);
 
 void Map_initialize(void)
 {
 	initialize_map_entity();
-	initialize_map_data();
+	Map_clear();
+}
+
+/* --- Zone loader API --- */
+
+void Map_clear(void)
+{
+	for (int i = 0; i < MAP_SIZE; i++)
+		for (int j = 0; j < MAP_SIZE; j++)
+			map[i][j] = &emptyCell;
+	cellPoolCount = 0;
+}
+
+void Map_set_cell(int grid_x, int grid_y, const MapCell *cell)
+{
+	if (grid_x < 0 || grid_x >= MAP_SIZE || grid_y < 0 || grid_y >= MAP_SIZE)
+		return;
+	if (cellPoolCount >= CELL_POOL_SIZE)
+		return;
+	cellPool[cellPoolCount] = *cell;
+	map[grid_x][grid_y] = &cellPool[cellPoolCount];
+	cellPoolCount++;
+}
+
+void Map_clear_cell(int grid_x, int grid_y)
+{
+	if (grid_x < 0 || grid_x >= MAP_SIZE || grid_y < 0 || grid_y >= MAP_SIZE)
+		return;
+	map[grid_x][grid_y] = &emptyCell;
+}
+
+const MapCell *Map_get_cell(int grid_x, int grid_y)
+{
+	if (grid_x < 0 || grid_x >= MAP_SIZE || grid_y < 0 || grid_y >= MAP_SIZE)
+		return &emptyCell;
+	return map[grid_x][grid_y];
 }
 
 static void initialize_map_entity(void)
@@ -33,124 +69,6 @@ static void initialize_map_entity(void)
 	entity.collidable = &collidable;
 
 	Entity_add_entity(entity);
-}
-
-static void initialize_map_data(void)
-{
-	unsigned int i = 0, j = 0;
-	for(i = 0; i < MAP_SIZE; i++) {
-		for(j = 0; j < MAP_SIZE; j++) {
-			map[i][j] = &emptyCell;
-		}
-	}
-
-	set_map_cell(2, 2, &cell001);
-
-	set_map_cell(2, -2, &cell002);
-
-	set_map_cell(-2, 2, &cell001);
-
-	set_map_cell(-2, -2, &cell001);
-
-
-
-	set_map_cell(7, 7, &cell001);
-	set_map_cell(7, 8, &cell001);
-	set_map_cell(7, 9, &cell001);
-	set_map_cell(7, 10, &cell001);
-
-	set_map_cell(8, 7, &cell001);
-	set_map_cell(8, 8, &cell001);
-	set_map_cell(8, 9, &cell002);
-	set_map_cell(8, 10, &cell001);
-
-	set_map_cell(9, 7, &cell001);
-	set_map_cell(9, 8, &cell001);
-	set_map_cell(9, 9, &cell001);
-	set_map_cell(9, 10, &cell001);
-
-	set_map_cell(10, 7, &cell001);
-	set_map_cell(10, 8, &cell001);
-	set_map_cell(10, 9, &cell001);
-	set_map_cell(10, 10, &cell001);
-
-
-
-	set_map_cell(7, -7, &cell001);
-	set_map_cell(7, -8, &cell001);
-	set_map_cell(7, -9, &cell002);
-	set_map_cell(7, -10, &cell001);
-
-	set_map_cell(8, -7, &cell001);
-	set_map_cell(8, -8, &cell001);
-	set_map_cell(8, -9, &cell001);
-	set_map_cell(8, -10, &cell001);
-
-	set_map_cell(9, -7, &cell001);
-	set_map_cell(9, -8, &cell001);
-	set_map_cell(9, -9, &cell002);
-	set_map_cell(9, -10, &cell001);
-
-	set_map_cell(10, -7, &cell001);
-	set_map_cell(10, -8, &cell001);
-	set_map_cell(10, -9, &cell001);
-	set_map_cell(10, -10, &cell001);
-
-
-
-	set_map_cell(-7, 7, &cell001);
-	set_map_cell(-7, 8, &cell001);
-	set_map_cell(-7, 9, &cell001);
-	set_map_cell(-7, 10, &cell001);
-
-	set_map_cell(-8, 7, &cell002);
-	set_map_cell(-8, 8, &cell001);
-	set_map_cell(-8, 9, &cell001);
-	set_map_cell(-8, 10, &cell001);
-
-	set_map_cell(-9, 7, &cell001);
-	set_map_cell(-9, 8, &cell001);
-	set_map_cell(-9, 9, &cell001);
-	set_map_cell(-9, 10, &cell001);
-
-	set_map_cell(-10, 7, &cell001);
-	set_map_cell(-10, 8, &cell002);
-	set_map_cell(-10, 9, &cell002);
-	set_map_cell(-10, 10, &cell001);
-
-
-
-	set_map_cell(-7, -7, &cell002);
-	set_map_cell(-7, -8, &cell001);
-	set_map_cell(-7, -9, &cell001);
-	set_map_cell(-7, -10, &cell001);
-
-	set_map_cell(-8, -7, &cell001);
-	set_map_cell(-8, -8, &cell001);
-	set_map_cell(-8, -9, &cell001);
-	set_map_cell(-8, -10, &cell001);
-
-	set_map_cell(-9, -7, &cell001);
-	set_map_cell(-9, -8, &cell002);
-	set_map_cell(-9, -9, &cell001);
-	set_map_cell(-9, -10, &cell001);
-
-	set_map_cell(-10, -7, &cell001);
-	set_map_cell(-10, -8, &cell001);
-	set_map_cell(-10, -9, &cell001);
-	set_map_cell(-10, -10, &cell001);
-}
-
-static void set_map_cell(int x, int y, MapCell *cell) {
-	if (x==0 || y==0)
-		return;
-
-	if (x > 0)
-		x--;
-	if (y > 0)
-		y--;
-
-	map[x+HALF_MAP_SIZE][y+HALF_MAP_SIZE] = cell;
 }
 
 Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -676,10 +594,15 @@ static void render_cell(int x, int y, float outlineThickness)
 	   circuitPattern cell draws (using the non-circuit cell's color).
 	   This keeps corners covered within one cell and avoids double-draw. */
 
+#define CELLS_MATCH(a, b) \
+	((a)->circuitPattern == (b)->circuitPattern && \
+	 memcmp(&(a)->primaryColor, &(b)->primaryColor, sizeof(ColorRGB)) == 0 && \
+	 memcmp(&(a)->outlineColor, &(b)->outlineColor, sizeof(ColorRGB)) == 0)
+
 #define EDGE_DRAW(ptr, QAX, QAY, QBX, QBY) \
 	if ((ptr)->empty) { \
 		Render_quad_absolute(QAX, QAY, QBX, QBY, or_, og, ob, oa); \
-	} else if ((ptr) != map[x][y]) { \
+	} else if (!CELLS_MATCH(ptr, map[x][y])) { \
 		if (mapCell.circuitPattern) { \
 			ColorFloat bc = Color_rgb_to_float(&(ptr)->outlineColor); \
 			Render_quad_absolute(QAX, QAY, QBX, QBY, \
@@ -695,6 +618,7 @@ static void render_cell(int x, int y, float outlineThickness)
 	EDGE_DRAW(wPtr, ax, w_ay, ax + t, by)
 
 #undef EDGE_DRAW
+#undef CELLS_MATCH
 
 	/* Chamfer diagonal outlines — quads that join flush with edge outlines */
 	if (chamfer_ne) {

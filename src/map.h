@@ -19,6 +19,10 @@ typedef struct {
 } MapCell;
 
 void Map_initialize(void);
+void Map_clear(void);
+void Map_set_cell(int grid_x, int grid_y, const MapCell *cell);
+void Map_clear_cell(int grid_x, int grid_y);
+const MapCell *Map_get_cell(int grid_x, int grid_y);
 Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Map_render();
 void Map_render_minimap(float center_x, float center_y,

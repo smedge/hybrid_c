@@ -9,6 +9,7 @@
 - **Mines**: Security intrusion detection devices. Part of the system's defenses against the Hybrid.
 - **Future Enemies**: Security programs that actively hunt and try to kill the player.
 - **Viruses**: Planned as tools the player eventually uses *against* the system.
+- **The Alien Entity**: The ultimate antagonist — a foreign alien intelligence projecting into human Earth cyberspace via a network connection. Its presence warps the final zone into something alien and unrecognizable.
 
 ## Genre
 
@@ -59,15 +60,26 @@ Enemies drop **pills** (small collectibles) when destroyed. Collecting pills fro
 ### World Design
 
 **Structure**:
-- 128×128 grid of 100-unit cells (12,800×12,800 unit world)
+- Each zone is a complete map — grid size varies by zone (default 128×128, 100-unit cells)
 - Zones are always accessible (no hard locks) except the **final zone** which requires all normal bosses defeated
 - Zones are **difficulty-gated**: without the right subroutines, areas are effectively impossible to survive
 - This creates natural metroidvania progression — unlock abilities, access harder zones, unlock more abilities
+- Portals connect zones — stepping on a portal unloads the current zone and loads the destination
+
+**Zones** (12+ planned):
+
+| Zone | Theme | Description |
+|------|-------|-------------|
+| Starting Zone | Neutral/tutorial | Player spawn, safe structures, introduction to mechanics |
+| 10 Themed Zones | Fire, Ice, Poison, Blood, etc. | Each themed visually with custom cell types and patterns. Each contains 1 major boss + mini bosses. |
+| Final Zone | Alien | Alien entity's domain — visually alien and unrecognizable. Locked until all 10 zone bosses defeated. |
 
 **Bosses**:
-- Normal bosses spread across zones
-- Final boss zone locked until all normal bosses defeated
+- Each themed zone has 1 major boss and several mini bosses
+- Final boss is the alien entity in the final zone
 - Boss encounters drive major progression milestones
+
+**Cell types per zone**: Each zone defines its own visual theme through custom cell type definitions. The engine provides global defaults (solid, circuit) but zones can override colors, patterns, and define zone-specific types (fire walls, ice barriers, poison pools, etc.).
 
 ### Map & Navigation
 
@@ -425,20 +437,50 @@ As enemy counts grow, brute-force collision checks (every projectile × every en
 The current zone is hand-built in code (`mode_gameplay.c` spawns 32 mines at hardcoded positions, `map.c` places wall cells via `set_map_cell` calls). This will be replaced with a data-driven zone system where each zone is defined by a single file. Zone files are the primary output of God Mode editing.
 
 **Design**:
-- One file per zone, 1:1 mapping (e.g., `resources/zones/zone_01.zone`)
-- A zone file contains all data needed to fully load that zone:
-  - **Map cells / walls**: Grid position, cell type (solid, circuit, etc.), colors
-  - **Enemy spawn points**: World position, enemy type, count/behavior params
-  - **Portals**: World position, destination zone ID, destination coordinates
-  - **Future data**: Boss triggers, environmental hazards, scripted events, loot tables
+- One file per zone, 1:1 mapping (e.g., `resources/zones/zone_001.zone`)
+- A zone file contains all data needed to fully load that zone
 - A zone loader reads the file and populates the map grid, spawns entities, and registers portals
 - The current hardcoded zone becomes the first zone file, serving as the reference format
+- Map size can vary per zone (stored in the file, not hardcoded)
+
+**File format** (line-based text, one entry per line, `#` comments):
+
+```
+# Zone metadata
+name Starting Zone
+size 128
+
+# Cell type definitions (global defaults + zone overrides)
+# celltype <id> <primary_r> <primary_g> <primary_b> <primary_a> <outline_r> <outline_g> <outline_b> <outline_a> <pattern>
+celltype solid 20 0 20 255 128 0 128 255 none
+celltype circuit 10 20 20 255 64 128 128 255 circuit
+
+# Cell placements (grid coordinates, 0-indexed)
+# cell <grid_x> <grid_y> <type_id>
+cell 65 65 solid
+cell 65 66 solid
+cell 72 73 circuit
+
+# Enemy spawn points (world coordinates)
+# spawn <enemy_type> <world_x> <world_y>
+spawn mine 1600.0 1600.0
+spawn mine -1600.0 1600.0
+
+# Portals (grid coordinates + destination)
+# portal <grid_x> <grid_y> <dest_zone> <dest_x> <dest_y>
+portal 10 64 zone_002 64 64
+```
+
+**Cell type registry**: The engine provides built-in global cell types (solid, circuit) with default colors and patterns. Zone files can override these defaults or define entirely new zone-specific types. This enables themed zones (fire, ice, poison, blood) with custom visuals without engine changes.
+
+**Grid coordinates**: Cell positions use 0-indexed grid coordinates (0 to size-1) mapped directly to the map array. The zone loader handles conversion to/from world coordinates. No centered coordinate quirks.
 
 **Persistent editing**:
-- Every God Mode edit (place, remove, modify) writes to the zone file immediately
+- Every God Mode edit (place, remove, modify) rewrites the zone file from in-memory state
 - The zone file is the single source of truth — the in-memory world state is always a reflection of the file
-- Stepwise undo modifies both in-memory state and the zone file in lockstep
+- Stepwise undo modifies in-memory state and rewrites the zone file
 - Undo history is maintained per editing session (not persisted across sessions)
+- For expected data volumes (hundreds of cells, dozens of spawns), full file rewrites are sub-millisecond
 
 **Benefits**:
 - Zones can be authored, tested, and iterated independently
@@ -446,14 +488,18 @@ The current zone is hand-built in code (`mode_gameplay.c` spawns 32 mines at har
 - Zone transitions (portals) become simple: unload current zone, load target zone file
 - God Mode is the zone editor — no external tooling needed
 - Toggle G to instantly playtest what you just built
+- Text format is human-readable, diffable, and version-control friendly
 
 **Implementation Plan**:
 - New files: `zone.h` / `zone.c` — zone loading, unloading, editing, and persistence
-- Define a text-based format for zone data (human-readable, easy to diff/debug)
 - `Zone_load(const char *path)` — parse file, populate map, spawn enemies, register portals
 - `Zone_unload()` — clear map, destroy zone entities, reset state
-- `Zone_place(type, position, params)` — add an element, persist to file
-- `Zone_remove(position)` — remove an element, persist to file
-- `Zone_undo()` — revert last edit, persist to file
+- `Zone_save(const char *path)` — write current in-memory state to zone file
+- `Zone_place_cell(grid_x, grid_y, type_id)` — place a cell, save
+- `Zone_remove_cell(grid_x, grid_y)` — remove a cell, save
+- `Zone_place_spawn(enemy_type, world_x, world_y)` — add spawn point, save
+- `Zone_remove_spawn(index)` — remove spawn point, save
+- `Zone_undo()` — revert last edit, save
 - `mode_gameplay.c` initialization calls `Zone_load()` instead of inline spawning code
 - Zone directory: `resources/zones/`
+- `map.c` needs a public `Map_set_cell()` function and `Map_clear()` for the zone loader to use

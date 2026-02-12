@@ -1,5 +1,6 @@
 #include "mode_gameplay.h"
 #include "map.h"
+#include "zone.h"
 #include "render.h"
 #include "mat4.h"
 #include "background.h"
@@ -49,168 +50,7 @@ void Mode_Gameplay_initialize(void)
 	Grid_initialize();
 	Map_initialize();
 	Ship_initialize();
-
-	Position position;
-
-	position.x = -1600.0;
-	position.y = 1600.0;
-	Mine_initialize(position);
-
-	position.x = 1600.0;
-	position.y = 1600.0;
-	Mine_initialize(position);
-
-	position.x = 1600.0;
-	position.y = -1600.0;
-	Mine_initialize(position);
-
-	position.x = -1600.0;
-	position.y = -1600.0;
-	Mine_initialize(position);
-
-
-
-	position.x = -1600.0;
-	position.y = 0.0;
-	Mine_initialize(position);
-
-	position.x = 1600.0;
-	position.y = 0.0;
-	Mine_initialize(position);
-
-	position.x = 0.0;
-	position.y = 1600.0;
-	Mine_initialize(position);
-
-	position.x = 0.0;
-	position.y = -1600.0;
-	Mine_initialize(position);
-
-
-
-	position.x = -3200.0;
-	position.y = 3200.0;
-	Mine_initialize(position);
-
-	position.x = -1600.0;
-	position.y = 3200.0;
-	Mine_initialize(position);
-
-	position.x = 0.0;
-	position.y = 3200.0;
-	Mine_initialize(position);
-
-	position.x = 1600.0;
-	position.y = 3200.0;
-	Mine_initialize(position);
-
-	position.x = 3200.0;
-	position.y = 3200.0;
-	Mine_initialize(position);
-
-
-
-	position.x = -3200.0;
-	position.y = -3200.0;
-	Mine_initialize(position);
-
-	position.x = -1600.0;
-	position.y = -3200.0;
-	Mine_initialize(position);
-
-	position.x = 0.0;
-	position.y = -3200.0;
-	Mine_initialize(position);
-
-	position.x = 1600.0;
-	position.y = -3200.0;
-	Mine_initialize(position);
-
-	position.x = 3200.0;
-	position.y = -3200.0;
-	Mine_initialize(position);
-
-
-
-	position.x = -3200.0;
-	position.y = 1600.0;
-	Mine_initialize(position);
-
-	position.x = -3200.0;
-	position.y = 0.0;
-	Mine_initialize(position);
-
-	position.x = -3200.0;
-	position.y = -1600.0;
-	Mine_initialize(position);
-
-
-
-	position.x = 3200.0;
-	position.y = 1600.0;
-	Mine_initialize(position);
-
-	position.x = 3200.0;
-	position.y = 0.0;
-	Mine_initialize(position);
-
-	position.x = 3200.0;
-	position.y = -1600.0;
-	Mine_initialize(position);
-
-
-
-	position.x = -2400.0;
-	position.y = 2400.0;
-	Mine_initialize(position);
-
-	position.x = -800.0;
-	position.y = 2400.0;
-	Mine_initialize(position);
-
-	position.x = 800.0;
-	position.y = 2400.0;
-	Mine_initialize(position);
-
-	position.x = 2400.0;
-	position.y = 2400.0;
-	Mine_initialize(position);
-
-
-
-	position.x = -2400.0;
-	position.y = -2400.0;
-	Mine_initialize(position);
-
-	position.x = -800.0;
-	position.y = -2400.0;
-	Mine_initialize(position);
-
-	position.x = 800.0;
-	position.y = -2400.0;
-	Mine_initialize(position);
-
-	position.x = 2400.0;
-	position.y = -2400.0;
-	Mine_initialize(position);
-
-
-
-	position.x = -2400.0;
-	position.y = 800.0;
-	Mine_initialize(position);
-
-	position.x = -2400.0;
-	position.y = -800.0;
-	Mine_initialize(position);
-
-	position.x = 2400.0;
-	position.y = 800.0;
-	Mine_initialize(position);
-
-	position.x = 2400.0;
-	position.y = -800.0;
-	Mine_initialize(position);
+	Zone_load("./resources/zones/zone_001.zone");
 
 	/* Start rebirth sequence */
 	gameplayState = GAMEPLAY_REBIRTH;
@@ -223,7 +63,7 @@ void Mode_Gameplay_initialize(void)
 
 void Mode_Gameplay_cleanup(void)
 {
-	Mine_cleanup();
+	Zone_unload();
 	Ship_cleanup();
 	Entity_destroy_all();
 	Hud_cleanup();
