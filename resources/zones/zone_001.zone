@@ -1,91 +1,79 @@
-# Zone 001 — Starting Zone
+# Zone: Starting Zone
 name Starting Zone
 size 128
 
-# Cell type definitions
-# celltype <id> <primary_r> <primary_g> <primary_b> <primary_a> <outline_r> <outline_g> <outline_b> <outline_a> <pattern>
 celltype solid 20 0 20 255 128 0 128 255 none
 celltype circuit 10 20 20 255 64 128 128 255 circuit
 
-# Center cells
-cell 65 65 solid
-cell 65 62 circuit
-cell 62 65 solid
+cell 54 54 solid
+cell 54 55 solid
+cell 54 56 solid
+cell 54 57 solid
+cell 54 70 solid
+cell 54 71 circuit
+cell 54 72 circuit
+cell 54 73 solid
+cell 55 54 solid
+cell 55 55 solid
+cell 55 56 circuit
+cell 55 57 solid
+cell 55 70 solid
+cell 55 71 solid
+cell 55 72 solid
+cell 55 73 solid
+cell 56 54 solid
+cell 56 55 solid
+cell 56 56 solid
+cell 56 57 solid
+cell 56 70 circuit
+cell 56 71 solid
+cell 56 72 solid
+cell 56 73 solid
+cell 57 54 solid
+cell 57 55 solid
+cell 57 56 solid
+cell 57 57 circuit
+cell 57 70 solid
+cell 57 71 solid
+cell 57 72 solid
+cell 57 73 solid
 cell 62 62 solid
-
-# Northeast block (4x4)
+cell 62 65 solid
+cell 65 62 circuit
+cell 65 65 solid
+cell 70 54 solid
+cell 70 55 circuit
+cell 70 56 solid
+cell 70 57 solid
 cell 70 70 solid
 cell 70 71 solid
 cell 70 72 solid
 cell 70 73 solid
+cell 71 54 solid
+cell 71 55 solid
+cell 71 56 solid
+cell 71 57 solid
 cell 71 70 solid
 cell 71 71 solid
 cell 71 72 circuit
 cell 71 73 solid
+cell 72 54 solid
+cell 72 55 circuit
+cell 72 56 solid
+cell 72 57 solid
 cell 72 70 solid
 cell 72 71 solid
 cell 72 72 solid
 cell 72 73 solid
+cell 73 54 solid
+cell 73 55 solid
+cell 73 56 solid
+cell 73 57 solid
 cell 73 70 solid
 cell 73 71 solid
 cell 73 72 solid
 cell 73 73 solid
 
-# Southeast block (4x4)
-cell 70 57 solid
-cell 70 56 solid
-cell 70 55 circuit
-cell 70 54 solid
-cell 71 57 solid
-cell 71 56 solid
-cell 71 55 solid
-cell 71 54 solid
-cell 72 57 solid
-cell 72 56 solid
-cell 72 55 circuit
-cell 72 54 solid
-cell 73 57 solid
-cell 73 56 solid
-cell 73 55 solid
-cell 73 54 solid
-
-# Northwest block (4x4)
-cell 57 70 solid
-cell 57 71 solid
-cell 57 72 solid
-cell 57 73 solid
-cell 56 70 circuit
-cell 56 71 solid
-cell 56 72 solid
-cell 56 73 solid
-cell 55 70 solid
-cell 55 71 solid
-cell 55 72 solid
-cell 55 73 solid
-cell 54 70 solid
-cell 54 71 circuit
-cell 54 72 circuit
-cell 54 73 solid
-
-# Southwest block (4x4)
-cell 57 57 circuit
-cell 57 56 solid
-cell 57 55 solid
-cell 57 54 solid
-cell 56 57 solid
-cell 56 56 solid
-cell 56 55 solid
-cell 56 54 solid
-cell 55 57 solid
-cell 55 56 circuit
-cell 55 55 solid
-cell 55 54 solid
-cell 54 57 solid
-cell 54 56 solid
-cell 54 55 solid
-cell 54 54 solid
-
-# Enemy spawns (world coordinates)
 spawn mine -1600.0 1600.0
 spawn mine 1600.0 1600.0
 spawn mine 1600.0 -1600.0

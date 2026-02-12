@@ -20,6 +20,10 @@ typedef struct {
 
 	bool keyLShift;
 	bool keyLControl;
+
+	bool keyG;
+	bool keyZ;
+	bool keyTab;
 } Input;
 
 void input_initialize(Input *input);

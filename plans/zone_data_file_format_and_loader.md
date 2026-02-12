@@ -154,3 +154,20 @@ This file becomes the reference zone and proves the format works.
 5. Collision still works (ship-wall, projectile-wall, ship-mine)
 6. `Zone_save()` writes a file that `Zone_load()` can round-trip (save then load produces identical state)
 7. Manually edit zone_001.zone (add/remove a cell), reload — change is reflected in-game
+
+---
+
+## Post-Implementation Addendum: MapCell Border Rendering Fix
+
+**Problem**: The original plan called for a `type_id` field on `MapCell` so the border rendering macro (`EDGE_DRAW`) could compare cell types. The old code relied on pointer identity (`ptr != map[x][y]`) which worked with static singletons but broke with the cell pool (every cell gets a unique pointer).
+
+**Decision**: Removed `type_id` from `MapCell`. Instead, the renderer compares visual properties directly via a `CELLS_MATCH` macro:
+
+```c
+#define CELLS_MATCH(a, b) \
+    ((a)->circuitPattern == (b)->circuitPattern && \
+     memcmp(&(a)->primaryColor, &(b)->primaryColor, sizeof(ColorRGB)) == 0 && \
+     memcmp(&(a)->outlineColor, &(b)->outlineColor, sizeof(ColorRGB)) == 0)
+```
+
+**Rationale**: MapCell should be a pure visual/physical description with no coupling to the zone type system. This keeps the rendering concern in the renderer and allows gameplay events to mutate individual cells (damage, dissolve, transform) without type bookkeeping — borders update naturally based on what cells look like, not what they were created from.

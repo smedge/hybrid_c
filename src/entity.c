@@ -131,6 +131,9 @@ void Entity_collision_system(void)
 			if (i == j)
 				continue;
 
+			if (!(entities[i].collidable->mask & entities[j].collidable->layer))
+				continue;
+
 			// create a transformed bounding box for i
 			Position position = entities[i].placeable->position;
 			Rectangle boundingBox = entities[i].collidable->boundingBox;

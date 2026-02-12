@@ -91,6 +91,9 @@ static void reset_input(Input *input)
 {
 	input->mouseWheelUp = false;
 	input->mouseWheelDown = false;
+	input->keyG = false;
+	input->keyZ = false;
+	input->keyTab = false;
 }
 
 static void quit_callback(void) 
@@ -354,18 +357,23 @@ static void handle_sdl_keydown_event(Input *input, const SDL_Event *event)
 		input->keyS = true;
 		break;
 			
+	case SDLK_z:
+		if (event->key.keysym.mod & KMOD_LCTRL)
+			input->keyZ = true;
+		break;
+
 	case SDLK_F10:
 		break;
-			
+
 	case SDLK_F11:
 		break;
-			
+
 	case SDLK_F12:
 		break;
 
 	case SDLK_ESCAPE:
 		break;
-			
+
 	default:
 		break;
 	}
@@ -399,6 +407,14 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 		input->keyS = false;
 		break;
 			
+	case SDLK_g:
+		input->keyG = true;
+		break;
+
+	case SDLK_TAB:
+		input->keyTab = true;
+		break;
+
 	case SDLK_F10:
 		// graphics_toggle_multisampling();
 		break;

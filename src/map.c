@@ -15,7 +15,9 @@ static MapCell cellPool[CELL_POOL_SIZE];
 static int cellPoolCount = 0;
 
 static RenderableComponent renderable = {Map_render};
-static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false, Map_collide};
+static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false,
+	COLLISION_LAYER_TERRAIN, 0,
+	Map_collide};
 
 static void initialize_map_entity(void);
 static void render_cell(int x, int y, float outlineThickness);
@@ -616,6 +618,30 @@ static void render_cell(int x, int y, float outlineThickness)
 	EDGE_DRAW(ePtr, bx - t, ay, bx, e_by)
 	EDGE_DRAW(sPtr, s_ax, ay, bx, ay + t)
 	EDGE_DRAW(wPtr, ax, w_ay, ax + t, by)
+
+	/* Concave corner fills — patch t×t gaps at inner L-corners where
+	   both cardinal neighbors match (suppressing their edge) but the
+	   diagonal cell is empty */
+	MapCell *me = map[x][y];
+	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
+		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
+		map[x+1][y+1]->empty)
+		Render_quad_absolute(bx - t, by - t, bx, by, or_, og, ob, oa);
+
+	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
+		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
+		map[x-1][y+1]->empty)
+		Render_quad_absolute(ax, by - t, ax + t, by, or_, og, ob, oa);
+
+	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
+		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
+		map[x+1][y-1]->empty)
+		Render_quad_absolute(bx - t, ay, bx, ay + t, or_, og, ob, oa);
+
+	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
+		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
+		map[x-1][y-1]->empty)
+		Render_quad_absolute(ax, ay, ax + t, ay + t, or_, og, ob, oa);
 
 #undef EDGE_DRAW
 #undef CELLS_MATCH

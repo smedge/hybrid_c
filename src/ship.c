@@ -39,9 +39,12 @@ static int sparkTicksLeft;
 static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 static RenderableComponent renderable = {Ship_render};
 static UserUpdatableComponent updatable = {Ship_update};
-static CollidableComponent collidable = {{-20.0, 20.0, 20.0, -20.0}, true, Ship_collide, Ship_resolve};
+static CollidableComponent collidable = {{-20.0, 20.0, 20.0, -20.0}, true,
+	COLLISION_LAYER_PLAYER, COLLISION_LAYER_TERRAIN | COLLISION_LAYER_ENEMY,
+	Ship_collide, Ship_resolve};
 
 static ShipState shipState = {true, 0};
+static bool godMode = false;
 
 static double get_heading(bool n, bool s, bool e, bool w);
 
@@ -100,6 +103,9 @@ Collision Ship_collide(const void *state, const PlaceableComponent *placeable, c
 
 void Ship_resolve(const void *state, const Collision collision)
 {
+	if (godMode)
+		return;
+
 	if (shipState.destroyed)
 		return;
 
@@ -279,7 +285,12 @@ void Ship_force_spawn(Position pos)
 	Audio_play_sample(&sample01);
 }
 
-static double get_heading(const bool n, const bool s, 
+void Ship_set_god_mode(bool enabled)
+{
+	godMode = enabled;
+}
+
+static double get_heading(const bool n, const bool s,
 	const bool e, const bool w)
 {
 	if (n) {

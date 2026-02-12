@@ -268,10 +268,19 @@ void Zone_undo(void)
 
 	switch (undo.type) {
 	case UNDO_PLACE_CELL:
+		/* Restore previous cell type directly — no full world rebuild */
 		zone.cell_grid[undo.grid_x][undo.grid_y] = undo.cell_type_index;
+		{
+			ZoneCellType *ct = &zone.cell_types[undo.cell_type_index];
+			MapCell cell = {false, strcmp(ct->pattern, "circuit") == 0,
+				ct->primaryColor, ct->outlineColor};
+			Map_set_cell(undo.grid_x, undo.grid_y, &cell);
+		}
 		break;
 	case UNDO_REMOVE_CELL:
+		/* Cell was empty before — clear it directly */
 		zone.cell_grid[undo.grid_x][undo.grid_y] = -1;
+		Map_clear_cell(undo.grid_x, undo.grid_y);
 		break;
 	case UNDO_PLACE_SPAWN:
 		/* Re-insert spawn at original index */
@@ -281,15 +290,16 @@ void Zone_undo(void)
 			zone.spawns[undo.spawn_index] = undo.spawn;
 			zone.spawn_count++;
 		}
+		apply_zone_to_world();
 		break;
 	case UNDO_REMOVE_SPAWN:
 		/* Remove last spawn */
 		if (zone.spawn_count > undo.spawn_index)
 			zone.spawn_count = undo.spawn_index;
+		apply_zone_to_world();
 		break;
 	}
 
-	apply_zone_to_world();
 	Zone_save();
 }
 

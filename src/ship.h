@@ -17,5 +17,6 @@ void Ship_render(const void *state, const PlaceableComponent *placeable);
 void Ship_render_bloom_source(void);
 Position Ship_get_position(void);
 void Ship_force_spawn(Position pos);
+void Ship_set_god_mode(bool enabled);
 
 #endif

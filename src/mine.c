@@ -1,5 +1,6 @@
 #include "mine.h"
 #include "sub_pea.h"
+#include "fragment.h"
 #include "view.h"
 #include "render.h"
 #include "color.h"
@@ -16,7 +17,10 @@
 
 static RenderableComponent renderable = {Mine_render};
 static CollidableComponent collidable = {{-250.0, 250.0, 250.0, -250.0},
-											true, Mine_collide, Mine_resolve};
+											true,
+											COLLISION_LAYER_ENEMY,
+											COLLISION_LAYER_PLAYER,
+											Mine_collide, Mine_resolve};
 static AIUpdatableComponent updatable = {Mine_update};
 
 static const ColorRGB COLOR = {45, 45, 45, 255};
@@ -34,6 +38,7 @@ typedef struct {
 	bool exploding;
 	unsigned int ticksExploding;
 	unsigned int blinkTimer;
+	bool killedByPlayer;
 } MineState;
 
 static MineState mines[MINE_COUNT];
@@ -58,6 +63,7 @@ void Mine_initialize(Position position)
 	mines[highestUsedIndex].ticksExploding = 0;
 	mines[highestUsedIndex].ticksDestroyed = 0;
 	mines[highestUsedIndex].blinkTimer = rand() % 1000;
+	mines[highestUsedIndex].killedByPlayer = false;
 
 	placeables[highestUsedIndex].position = position;
 	placeables[highestUsedIndex].heading = MINE_ROTATION;
@@ -111,19 +117,16 @@ Collision Mine_collide(const void *state, const PlaceableComponent *placeable, c
 	return collision;
 }
 
-void Mine_resolve(const void *state, const Collision collision) 
+void Mine_resolve(const void *state, const Collision collision)
 {
 	MineState* mineState = (MineState*)state;
 
-	if (mineState->destroyed || mineState->exploding)
+	if (mineState->active || mineState->exploding || mineState->destroyed)
 		return;
-	
-	if (!mineState->active) {
-		Audio_play_sample(&sample01);
 
-		mineState->active = true;
-		mineState->ticksActive = 0;
-	}
+	Audio_play_sample(&sample01);
+	mineState->active = true;
+	mineState->ticksActive = 0;
 }
 
 void Mine_update(const void *state, const PlaceableComponent *placeable, const unsigned int ticks)
@@ -138,6 +141,7 @@ void Mine_update(const void *state, const PlaceableComponent *placeable, const u
 			mineState->active = false;
 			mineState->exploding = true;
 			mineState->ticksExploding = 0;
+			mineState->killedByPlayer = true;
 		}
 	}
 
@@ -159,6 +163,8 @@ void Mine_update(const void *state, const PlaceableComponent *placeable, const u
 			mineState->exploding = false;
 			mineState->destroyed = true;
 			mineState->ticksDestroyed = 0;
+			if (mineState->killedByPlayer)
+				Fragment_spawn(placeable->position, FRAG_TYPE_MINE);
 		}
 		return;
 	}
@@ -170,6 +176,7 @@ void Mine_update(const void *state, const PlaceableComponent *placeable, const u
 			mineState->active = false;
 			mineState->exploding = false;
 			mineState->destroyed = false;
+			mineState->killedByPlayer = false;
 		}
 		return;
 	}
