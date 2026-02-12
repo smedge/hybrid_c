@@ -149,12 +149,31 @@ void Background_render(void)
 	View v = View_get_view();
 	Screen screen = Graphics_get_screen();
 	Mat4 proj = Graphics_get_world_projection();
-	Mat4 base_view = View_get_transform(&screen);
 
-	float cam_x = (float)v.position.x;
-	float cam_y = (float)v.position.y;
-	float half_vw = (float)(screen.width / 2.0 / v.scale);
-	float half_vh = (float)(screen.height / 2.0 / v.scale);
+	/* Slow ambient drift — sinusoidal wander with incommensurate frequencies */
+	float drift_x = sinf(bg_time * 0.017f) * 400.0f
+		+ sinf(bg_time * 0.031f) * 250.0f;
+	float drift_y = cosf(bg_time * 0.013f) * 350.0f
+		+ cosf(bg_time * 0.029f) * 200.0f;
+
+	/* Dampen zoom for parallax depth — background zooms at half rate */
+	float default_zoom = 0.5f;
+	float ratio = (float)v.scale / default_zoom;
+	float bg_scale = default_zoom * powf(ratio, 0.5f);
+
+	/* Build view matrix with dampened scale + ambient drift */
+	double vx = (screen.width / 2.0) - ((v.position.x + drift_x) * bg_scale);
+	double vy = (screen.height / 2.0) - ((v.position.y + drift_y) * bg_scale);
+	vx = floor(vx + 0.5);
+	vy = floor(vy + 0.5);
+	Mat4 t = Mat4_translate((float)vx, (float)vy, 0.0f);
+	Mat4 s = Mat4_scale(bg_scale, bg_scale, 1.0f);
+	Mat4 base_view = Mat4_multiply(&t, &s);
+
+	float cam_x = (float)v.position.x + drift_x;
+	float cam_y = (float)v.position.y + drift_y;
+	float half_vw = (float)(screen.width / 2.0 / bg_scale);
+	float half_vh = (float)(screen.height / 2.0 / bg_scale);
 
 	for (int l = 0; l < NUM_LAYERS; l++) {
 		Layer *layer = &layers[l];

@@ -54,10 +54,7 @@ Enemies drop **pills** (small collectibles) when destroyed. Collecting pills fro
 
 - Kill 100 mines → unlock sub_mine (0% to 100% progression)
 - Each enemy type has its own subroutine and kill-count threshold
-- A **subroutine catalog** window (planned) will show:
-  - All known/discovered subroutines with progress meters
-  - Obfuscated entries for undiscovered subroutines
-  - Serves as both inventory and progression tracker
+- The **Catalog Window** (P key) shows progression and allows equipping — see Catalog Window section below
 
 ### World Design
 
@@ -86,8 +83,83 @@ Enemies drop **pills** (small collectibles) when destroyed. Collecting pills fro
 
 ### HUD
 
-- **Subroutine Slots** (bottom): 10 slots for equipped subroutines, activated by number keys
+- **Skill Bar** (bottom): 10 slots, shared between gameplay and god mode (see Unified Skill Bar below)
 - **Minimap** (bottom-right): 200×200 radar showing nearby geometry with fog of war
+
+### Unified Skill Bar
+
+The 10-slot skill bar at the bottom of the screen is the central interaction mechanism for both gameplay and god mode. It maintains two independent loadouts that swap when toggling modes:
+
+- **Gameplay loadout**: Equipped subroutines. Activate a slot (click or number key) then use with the input appropriate to its type.
+- **God mode loadout**: Equipped placeables. Activate a slot (click or number key) then LMB to place in the world.
+
+**Skill activation by type** (gameplay mode):
+
+| Skill Type | Activation Input |
+|------------|-----------------|
+| Projectile | LMB (fires toward cursor) |
+| Movement | Shift (triggers dash/burst) |
+| Shield | Slot key (toggles on/off) |
+| Healing | Slot key (triggers effect) |
+| Deployable | LMB (places at position) |
+
+**Placeable activation** (god mode): Activate slot, LMB to place at cursor with grid snapping.
+
+Only one subroutine of each type can be active at a time. Activating a sub deactivates any other of the same type. This type-exclusivity system is inspired by Guild Wars (ArenaNet), where limited skill slots and type restrictions make loadout choices meaningful.
+
+### Catalog Window (P key)
+
+A modal window for browsing and equipping skills or placeables, context-sensitive to the current mode.
+
+**Layout**:
+- **Left side**: Vertical tabs filtering by category
+  - Gameplay mode tabs: Projectile, Movement, Shield, Healing, Deployable (more to come)
+  - God mode tabs: Map Cells, Enemies, Portals, Decorations (more to come)
+- **Right side**: Vertical scrollable list of items matching the active tab
+  - Each entry: square icon (sized to match a skill bar slot) on the left, name + description + metadata on the right
+  - Progression info shown for skills (e.g., "73/100 mines killed")
+  - Obfuscated entries for undiscovered skills
+
+**Equipping**: Drag an item from the catalog list and drop it onto a skill bar slot. The slot now holds that item.
+
+**Future**: In gameplay mode, skill changes will be location-restricted — the catalog can only be opened at safe structures (spawn point, save stations). God mode has no such restriction.
+
+### God Mode
+
+God mode is the in-game level editor. Toggle with **G** key. God mode and gameplay mode are mutually exclusive — skills cannot be used in god mode, and placeables cannot be used in gameplay.
+
+**When entering god mode**:
+- Skill bar swaps to the god mode placeable loadout
+- Camera becomes free (unrestricted pan/zoom)
+- Ship collision and death disabled
+- Catalog window (P) switches to showing placeables
+
+**When exiting god mode** (press G again):
+- Skill bar swaps back to the gameplay skill loadout
+- Normal gameplay resumes immediately with existing skill configuration
+- Camera returns to following the ship
+
+**Editing workflow**:
+1. Open catalog (P), browse placeable tabs (Map Cells, Enemies, Portals, etc.)
+2. Drag a placeable onto a skill bar slot
+3. Activate the slot (click or number key)
+4. LMB to place at cursor position (grid-snapped for map cells)
+5. Each edit persists immediately to the zone file
+
+**Grid snapping**: Map cells snap to the 100-unit cell grid. Other placeables (enemy spawn points, portals) can be placed freely or snapped depending on type.
+
+**Undo**: Stepwise undo (Ctrl+Z) reverts edits one at a time, updating the zone file with each undo.
+
+**Placeable types** (initial):
+
+| Type | Tab | Description |
+|------|-----|-------------|
+| Solid cell | Map Cells | Purple solid wall — blocks movement |
+| Circuit cell | Map Cells | Blue circuit pattern wall — blocks movement |
+| Mine spawn | Enemies | Mine spawn point marker |
+| Portal | Portals | Zone transition point (future) |
+
+More types will be added as new cell types, enemy types, and world features are implemented.
 
 ## Current Implementation State
 
@@ -102,29 +174,40 @@ Enemies drop **pills** (small collectibles) when destroyed. Collecting pills fro
 - Mine idle blink (100ms red flash at 1Hz, randomized per mine)
 - Map cell rendering with zoom-scaled outlines
 - Grid rendering
-- View/camera with zoom
+- View/camera with zoom and pixel-snapped translation
 - Main menu (New / Load / Exit)
-- HUD skill bar and minimap placeholders (visual only)
+- HUD skill bar (visual placeholder) and minimap (live map cell display + player blip)
 - Cursor (red dot + white crosshair)
 - 7 gameplay music tracks (random selection) + menu music
 - OpenGL 3.3 Core Profile rendering pipeline
+- FBO post-process bloom (foreground entity glow + background diffuse clouds)
+- Motion trails (ship boost ghost triangles, sub_pea thick line trail)
+- Background parallax cloud system (3 layers, tiled, pulsing, drifting)
+- Background zoom parallax (half-rate zoom for depth perception)
+- Vertex reuse rendering (flush_keep/redraw for tiled geometry)
+- Rebirth sequence (death → zoom out → slow crawl → zoom in → respawn)
 
 ### Not Yet Implemented
+- Unified skill bar (two-loadout system, slot activation, type exclusivity)
+- Catalog window (P key — tabbed browser, drag-and-drop equipping)
+- God mode (G toggle — level editor with placeable palette)
+- Zone data file format and loader (data-driven zones replacing hardcoded spawns)
+- Zone persistent editing and undo system
 - Subroutine equip/activation system (slot selection, type exclusivity)
 - Sub_egress (movement dash)
 - Sub_mine (deployable mine)
 - Enemy pill drops and collection
 - Subroutine progression/unlock system
-- Subroutine catalog UI
 - Active security programs (hunting enemies)
 - Boss encounters
-- Minimap fog of war and rendering
+- Minimap fog of war
 - Full map view
 - Save/Load system
 - Intro mode
 - Virus mechanics (player tools against the system)
 - Spatial partitioning for collision (grid buckets — see Technical Architecture)
 - Zone/area design beyond current test layout
+- Custom key mapping
 
 ## Audio
 
@@ -148,8 +231,165 @@ Enemies drop **pills** (small collectibles) when destroyed. Collecting pills fro
 - **Graphics**: SDL2 + OpenGL 3.3 Core Profile
 - **Audio**: SDL2_mixer
 - **Text**: stb_truetype bitmap font rendering
-- **Pattern**: Component-based Entity System (ECS-like) — see `spec_000_ecs_refactor.md` for audit findings and refactoring roadmap
-- **Rendering**: Batched vertices, two-pass (world + UI), three shader-supported primitive types (triangles, lines, points)
+- **Pattern**: Custom ECS (Entity Component System)
+- **UI**: Custom immediate-mode GUI (imgui)
+
+### Abstraction Layers
+
+The codebase is structured with platform abstraction in mind, enabling future ports to other rendering backends and platforms.
+
+**Rendering abstraction** (`render.h` / `render.c`):
+- All game entities call `Render_*` functions — never OpenGL directly
+- Entity files (ship.c, mine.c, sub_pea.c, map.c) have zero GL includes
+- The `Render_*` API provides: `Render_point`, `Render_triangle`, `Render_quad`, `Render_line_segment`, `Render_thick_line`, `Render_filled_circle`, `Render_quad_absolute`, `Render_flush`, `Render_flush_keep`, `Render_redraw`, `Render_clear`
+- Swapping OpenGL for Vulkan/Metal/WebGPU requires only reimplementing render.c, batch.c, shader.c, and bloom.c — entity code is untouched
+
+**Windowing and input abstraction**:
+- `Input` struct (`input.h`) abstracts all player input into a platform-neutral struct (mouse position, buttons, keyboard state)
+- SDL2 event polling translates platform events into the `Input` struct in the main loop
+- All game systems receive `const Input*` — they never call SDL directly
+- `Screen` struct (`graphics.h`) abstracts window dimensions
+- Porting to another windowing system (GLFW, native platform) requires only changing the SDL calls in `graphics.c` and the main event loop
+
+### Entity Component System (ECS)
+
+Custom ECS with pointer-based components and static singleton pattern. See `spec_000_ecs_refactor.md` for detailed audit and refactoring roadmap.
+
+**Entity** (`entity.h`): A container holding optional pointers to components and a void* state:
+```c
+typedef struct {
+    bool empty, disabled;
+    void *state;                        // Entity-specific data (MineState, ShipState, etc.)
+    PlaceableComponent *placeable;      // Position + heading (per-instance)
+    RenderableComponent *renderable;    // Render function pointer (shared singleton)
+    CollidableComponent *collidable;    // Bounding box + collide/resolve functions (shared singleton)
+    DynamicsComponent *dynamics;        // Physics (unused, reserved)
+    UserUpdatableComponent *userUpdatable;  // Input-driven update (ship only)
+    AIUpdatableComponent *aiUpdatable;      // Autonomous update (mines, etc.)
+} Entity;
+```
+
+**Component types**:
+
+| Component | Data | Function Pointers | Purpose |
+|-----------|------|-------------------|---------|
+| PlaceableComponent | position, heading | — | Spatial transform (per-instance) |
+| RenderableComponent | — | render(state, placeable) | Draw the entity |
+| CollidableComponent | boundingBox, collidesWithOthers | collide(state, placeable, bbox), resolve(state, collision) | Collision detection and response |
+| UserUpdatableComponent | — | update(input, ticks, placeable) | Player input handling |
+| AIUpdatableComponent | — | update(state, placeable, ticks) | Autonomous behavior |
+| DynamicsComponent | mass | — | Physics (reserved, unused) |
+
+**Static singleton pattern**: Components that contain only function pointers (Renderable, Updatable) are declared as `static` singletons shared by all instances of an entity type. Per-instance data lives in separate arrays (state[], placeables[]).
+
+**System loops** (`entity.c`): Iterate all non-empty entities and call component functions:
+- `Entity_render_system()` — calls renderable->render for each entity
+- `Entity_user_update_system(input, ticks)` — calls userUpdatable->update
+- `Entity_ai_update_system(ticks)` — calls aiUpdatable->update
+- `Entity_collision_system()` — O(n^2) pairwise collision, queues resolve commands
+
+**Creating a new entity type** (convention):
+1. Define a state struct (e.g., `MineState`) with entity-specific data
+2. Declare static singleton components for shared behavior (renderable, collidable, updatable)
+3. Declare static arrays for per-instance data (states[], placeables[])
+4. Write a factory function that calls `Entity_initialize_entity()`, wires up all component pointers, and calls `Entity_add_entity()`
+5. Implement component callback functions (render, collide, resolve, update)
+
+**Entity pool**: Fixed array of 1024 entities. Slots are reused when marked empty.
+
+### Immediate-Mode GUI (imgui)
+
+Custom lightweight immediate-mode UI system (`imgui.h` / `imgui.c`). Currently provides button widgets used in the main menu.
+
+**Pattern**: Each frame, UI state is recomputed from input. No persistent widget tree — the caller owns the state.
+
+**ButtonState** struct:
+```c
+typedef struct {
+    Position position;
+    int width, height;
+    bool hover, active, disabled;
+    char* text;
+} ButtonState;
+```
+
+**Usage**: Call `imgui_update_button(input, &state, on_click)` each frame. Returns updated state with hover/active resolved. Fires `on_click` callback on mouse release within bounds.
+
+**Future**: The catalog window, skill bar interaction, drag-and-drop, and god mode UI will all extend this imgui pattern. Widgets needed: scrollable lists, tabs, draggable icons, tooltips.
+
+### Rendering Pipeline
+
+**Batch renderer** (`batch.h` / `batch.c`):
+- Accumulates vertices in CPU-side arrays (65,536 max per primitive type)
+- Three primitive batches: triangles, lines, points
+- `Batch_flush` uploads to VBO via `glBufferData` and draws with `glDrawArrays`
+- Flush order: lines → triangles → points (opaque fills cover grid lines, points on top)
+
+**Shader programs** (`shader.h` / `shader.c`):
+- Two programs: color shader (points/lines/triangles) and text shader (textured quads)
+- GLSL 330 core, embedded as string literals in source
+- Uniforms: projection matrix, view matrix
+
+**Render passes per frame**:
+1. **Background bloom pass**: Render background blobs into bg_bloom FBO → gaussian blur → additive composite
+2. **World pass**: Grid, map cells, entities (ship, mines, projectiles) with world projection + view transform
+3. **Foreground bloom pass**: Re-render emissive elements into bloom FBO → gaussian blur → additive composite
+4. **UI pass**: HUD, minimap, skill bar, text with UI projection + identity view
+
+**Vertex reuse** (`Render_flush_keep` / `Render_redraw`):
+- For tiled geometry (background clouds), vertices are pushed once per tile pattern
+- `Render_flush_keep` uploads and draws but preserves the vertex data in the VBO
+- `Render_redraw` sets new uniforms (offset view matrix) and redraws without re-uploading
+- `Render_clear` resets batch counts after all tiles are drawn
+- This makes vertex count O(blobs_per_layer) instead of O(blobs × tiles) — the 65k vertex cap is no longer a constraint regardless of zoom level
+
+### FBO Post-Process Bloom
+
+Two-instance bloom system replacing the old geometry-based glow (which hit vertex budget limits with 10 concentric shapes per object).
+
+**Architecture** (`bloom.h` / `bloom.c`):
+- 3 FBOs per instance (source, ping, pong) with `GL_RGB16F` textures
+- Configurable `divisor` (FBO resolution = drawable / divisor), `intensity`, `blur_passes`
+- Embedded GLSL 330 core shaders: fullscreen vertex, 9-tap separable gaussian blur, additive composite
+- Fullscreen quad VAO/VBO for post-process passes
+
+**Two bloom instances** (initialized in `graphics.c`):
+
+| Instance | Purpose | Divisor | Intensity | Blur Passes |
+|----------|---------|---------|-----------|-------------|
+| bloom (foreground) | Neon halos on entities | 2 (half-res) | 2.0 | 5 |
+| bg_bloom (background) | Diffuse ethereal clouds | 8 (eighth-res) | 1.5 | 10 |
+
+**Bloom sources**: Map cells, ship, ship death spark, sub_pea projectiles + sparks, mine blink/explosion. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
+
+**Key design decision**: Background renders ONLY through the bg_bloom FBO (no raw polygon render). Additive bloom on top of sharp polygons doesn't hide edges — rendering exclusively through blur produces the desired diffuse cloud effect.
+
+**Bloom API**:
+- `Bloom_begin_source(bloom)` — bind source FBO, set reduced viewport, clear
+- `Bloom_end_source(bloom, draw_w, draw_h)` — unbind, restore viewport
+- `Bloom_blur(bloom)` — ping-pong gaussian blur passes
+- `Bloom_composite(bloom, draw_w, draw_h)` — fullscreen quad with additive blend, restore viewport and blend mode
+
+### Motion Trails
+
+**Ship boost trail** (shift key): 20 ghost triangles stretched back along movement vector. Trail length = 4x frame delta. Ghost alpha fades from 0.4 to 0 along the trail. Rendered in both normal and bloom source passes.
+
+**Sub_pea trail**: Thick line (3px) from previous position to current position at 0.6 alpha. Rendered in both normal and bloom source passes.
+
+### Background System
+
+**Tiled parallax clouds** (`background.c`):
+- 3 layers with different tile sizes (14k, 17k, 21k) so repeats never align
+- Each layer has parallax movement (0.05, 0.15, 0.30) relative to camera
+- Blobs are irregular 12-segment polygons with per-vertex radius variation, smoothed
+- Slow drift, sinusoidal pulse animation on radius
+- Purple hue palette (4 colors)
+
+**Zoom parallax**: Background zooms at half the rate of the foreground (in log space), anchored at default gameplay zoom (0.5). Formula: `bg_scale = 0.5 * pow(view_scale / 0.5, 0.5)`. Creates depth perception — background feels "further away" when zooming.
+
+**Ambient drift**: Slow sinusoidal wander using incommensurate frequencies, independent of player movement. The background gently moves even when the player is still.
+
+**Animation speed**: Background animation runs at 3x real time (pulse, drift, wander) for a dynamic "breathing" feel.
 
 ### Spatial Partitioning (Planned)
 
@@ -180,30 +420,40 @@ As enemy counts grow, brute-force collision checks (every projectile × every en
 
 **When to implement**: Before adding the second enemy type or whenever mine count exceeds ~100
 
-### Zone Data Files (Planned)
+### Zone Data Files
 
-The current zone is hand-built in code (`mode_gameplay.c` spawns 32 mines at hardcoded positions, `map.c` places wall cells via `set_map_cell` calls). This will be replaced with a data-driven zone system where each zone is defined by a single file.
+The current zone is hand-built in code (`mode_gameplay.c` spawns 32 mines at hardcoded positions, `map.c` places wall cells via `set_map_cell` calls). This will be replaced with a data-driven zone system where each zone is defined by a single file. Zone files are the primary output of God Mode editing.
 
 **Design**:
-- One file per zone, 1:1 mapping (e.g., `resources/zones/zone_01.dat`)
+- One file per zone, 1:1 mapping (e.g., `resources/zones/zone_01.zone`)
 - A zone file contains all data needed to fully load that zone:
-  - **Map cells / walls**: Position, cell type, colors
-  - **Enemy spawn points**: Position, enemy type, count
-  - **Portals**: Position, destination zone ID, destination coordinates
+  - **Map cells / walls**: Grid position, cell type (solid, circuit, etc.), colors
+  - **Enemy spawn points**: World position, enemy type, count/behavior params
+  - **Portals**: World position, destination zone ID, destination coordinates
   - **Future data**: Boss triggers, environmental hazards, scripted events, loot tables
 - A zone loader reads the file and populates the map grid, spawns entities, and registers portals
 - The current hardcoded zone becomes the first zone file, serving as the reference format
+
+**Persistent editing**:
+- Every God Mode edit (place, remove, modify) writes to the zone file immediately
+- The zone file is the single source of truth — the in-memory world state is always a reflection of the file
+- Stepwise undo modifies both in-memory state and the zone file in lockstep
+- Undo history is maintained per editing session (not persisted across sessions)
 
 **Benefits**:
 - Zones can be authored, tested, and iterated independently
 - Adding a new zone requires no code changes — just a new data file
 - Zone transitions (portals) become simple: unload current zone, load target zone file
-- Enables future tooling (zone editor) without touching game code
+- God Mode is the zone editor — no external tooling needed
+- Toggle G to instantly playtest what you just built
 
 **Implementation Plan**:
-- New files: `zone.h` / `zone.c` — zone loading, unloading, and management
-- Define a simple binary or text format for zone data (text is easier to hand-edit early on)
+- New files: `zone.h` / `zone.c` — zone loading, unloading, editing, and persistence
+- Define a text-based format for zone data (human-readable, easy to diff/debug)
 - `Zone_load(const char *path)` — parse file, populate map, spawn enemies, register portals
 - `Zone_unload()` — clear map, destroy zone entities, reset state
+- `Zone_place(type, position, params)` — add an element, persist to file
+- `Zone_remove(position)` — remove an element, persist to file
+- `Zone_undo()` — revert last edit, persist to file
 - `mode_gameplay.c` initialization calls `Zone_load()` instead of inline spawning code
 - Zone directory: `resources/zones/`

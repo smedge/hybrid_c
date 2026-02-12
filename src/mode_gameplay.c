@@ -234,7 +234,7 @@ void Mode_Gameplay_cleanup(void)
 
 void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
-	Background_update(ticks);
+	Background_update(ticks * 3);
 
 	if (gameplayState == GAMEPLAY_REBIRTH) {
 		rebirthTimer += ticks;
