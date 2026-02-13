@@ -428,6 +428,9 @@ void Catalog_update(const Input *input, const unsigned int ticks)
 						Skillbar_clear_slot(existing);
 					Skillbar_equip(target_slot, drag.source_id);
 				}
+			} else if (drag.from_slot) {
+				/* Dragged off the bar — unequip */
+				Skillbar_clear_slot(drag.source_slot);
 			}
 		}
 		memset(&drag, 0, sizeof(drag));
@@ -511,7 +514,7 @@ void Catalog_render(const Screen *screen)
 		if (tab_has_new(t)) {
 			Position dot_pos = {
 				tab_x + TAB_WIDTH - 8.0f,
-				tab_y + 8.0f
+				tab_y + TAB_HEIGHT * 0.5f
 			};
 			ColorFloat magenta = {1.0f, 0.0f, 1.0f, 0.9f};
 			Render_point(&dot_pos, 6.0f, &magenta);
@@ -687,14 +690,23 @@ void Catalog_render(const Screen *screen)
 		char tbuf[128];
 
 		if (unlocked) {
-			/* Name — leave room for [Slot N] if equipped */
+			/* Name — leave room for ELITE tag and [Slot N] if equipped */
+			bool elite = Skillbar_is_elite(i);
+			float elite_w = elite ? text_width(tr, " ELITE") : 0.0f;
 			float name_budget = equipped_slot >= 0
-				? max_text_w - 90.0f : max_text_w;
+				? max_text_w - 90.0f - elite_w : max_text_w - elite_w;
 			truncate_text(tr, Skillbar_get_sub_name(i),
 				name_budget, tbuf, sizeof(tbuf));
 			Text_render(tr, shaders, &proj, &ident,
 				tbuf, name_x, name_y,
 				0.9f, 0.9f, 1.0f, 0.95f);
+
+			if (elite) {
+				float after_name = name_x + text_width(tr, tbuf);
+				Text_render(tr, shaders, &proj, &ident,
+					" ELITE", after_name, name_y,
+					1.0f, 0.84f, 0.0f, 0.95f);
+			}
 
 			marquee_text(tr, Skillbar_get_sub_description(i),
 				max_text_w, marqueeTimer, tbuf, sizeof(tbuf));

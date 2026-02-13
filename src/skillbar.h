@@ -24,6 +24,7 @@ void Skillbar_update(const Input *input, const unsigned int ticks);
 void Skillbar_render(const Screen *screen);
 
 bool Skillbar_is_active(SubroutineId id);
+bool Skillbar_consumed_click(void);
 void Skillbar_auto_equip(SubroutineId id);
 void Skillbar_equip(int slot, SubroutineId id);
 void Skillbar_clear_slot(int slot);

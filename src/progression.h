@@ -7,7 +7,9 @@
 typedef enum {
 	SUB_ID_PEA = 0,
 	SUB_ID_MINE,
-	/* SUB_ID_EGRESS, SUB_ID_PLASMA, etc. — add here as new enemies arrive */
+	SUB_ID_BOOST,
+	SUB_ID_EGRESS,
+	/* SUB_ID_PLASMA, etc. — add here as new enemies arrive */
 	SUB_ID_COUNT
 } SubroutineId;
 

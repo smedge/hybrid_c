@@ -5,6 +5,8 @@
 #include "graphics.h"
 #include "sub_pea.h"
 #include "sub_mine.h"
+#include "sub_boost.h"
+#include "sub_egress.h"
 
 #include <math.h>
 
@@ -24,14 +26,20 @@ typedef struct {
 } SubroutineInfo;
 
 static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
-	[SUB_ID_PEA]  = { SUB_ID_PEA,  SUB_TYPE_PROJECTILE, "sub_pea",  "PEA",
+	[SUB_ID_PEA]    = { SUB_ID_PEA,    SUB_TYPE_PROJECTILE, "sub_pea",    "PEA",
 		"Basic projectile. Fires toward cursor.", false },
-	[SUB_ID_MINE] = { SUB_ID_MINE, SUB_TYPE_DEPLOYABLE, "sub_mine", "MINE",
+	[SUB_ID_MINE]   = { SUB_ID_MINE,   SUB_TYPE_DEPLOYABLE, "sub_mine",   "MINE",
 		"Deployable mine. Detonates after 2 seconds.", false },
+	[SUB_ID_BOOST]  = { SUB_ID_BOOST,  SUB_TYPE_MOVEMENT,   "sub_boost",  "BOOST",
+		"Hold shift to boost speed. Overheats with sustained use.", true },
+	[SUB_ID_EGRESS] = { SUB_ID_EGRESS, SUB_TYPE_MOVEMENT,   "sub_egress", "EGRESS",
+		"Shift-tap dash burst. Quick escape with cooldown.", false },
 };
 
 static int slots[SKILLBAR_SLOTS];
 static int active_sub[SUB_TYPE_COUNT];
+static bool mouseWasDown;
+static bool clickConsumed;
 
 static void render_icon(SubroutineId id, float cx, float cy, float alpha);
 static float get_cooldown_fraction(SubroutineId id);
@@ -43,6 +51,9 @@ void Skillbar_initialize(void)
 
 	for (int i = 0; i < SUB_TYPE_COUNT; i++)
 		active_sub[i] = SUB_NONE;
+
+	mouseWasDown = false;
+	clickConsumed = false;
 
 	/* Auto-equip anything already unlocked (e.g. sub_pea with threshold=0) */
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
@@ -59,6 +70,9 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 {
 	(void)ticks;
 
+	clickConsumed = false;
+
+	/* Number key activation */
 	if (input->keySlot >= 0 && input->keySlot < SKILLBAR_SLOTS) {
 		int slot = input->keySlot;
 		int id = slots[slot];
@@ -70,6 +84,28 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 				active_sub[type] = id;
 		}
 	}
+
+	/* Mouse click activation — consume for entire press duration */
+	if (input->mouseLeft) {
+		Screen screen = Graphics_get_screen();
+		int slot = Skillbar_slot_at_position(
+			(float)input->mouseX, (float)input->mouseY, &screen);
+		if (slot >= 0) {
+			clickConsumed = true;
+			/* Toggle on edge only */
+			if (!mouseWasDown) {
+				int id = slots[slot];
+				if (id != SUB_NONE) {
+					SubroutineType type = sub_registry[id].type;
+					if (active_sub[type] == id)
+						active_sub[type] = SUB_NONE;
+					else
+						active_sub[type] = id;
+				}
+			}
+		}
+	}
+	mouseWasDown = input->mouseLeft;
 }
 
 void Skillbar_render(const Screen *screen)
@@ -98,14 +134,25 @@ void Skillbar_render(const Screen *screen)
 			bool is_active = (active_sub[type] == id);
 			float cooldown = get_cooldown_fraction(id);
 
-			/* Border */
+			/* Border — gold for elite, white for normal */
 			float br, bg, bb, ba;
 			float thickness;
+			bool elite = sub_registry[id].elite;
 			if (is_active) {
-				br = 1.0f; bg = 1.0f; bb = 1.0f; ba = 0.9f;
+				if (elite) {
+					br = 1.0f; bg = 0.84f; bb = 0.0f;
+				} else {
+					br = 1.0f; bg = 1.0f; bb = 1.0f;
+				}
+				ba = 0.9f;
 				thickness = 2.0f;
 			} else {
-				br = 0.3f; bg = 0.3f; bb = 0.3f; ba = 0.6f;
+				if (elite) {
+					br = 0.5f; bg = 0.42f; bb = 0.0f;
+				} else {
+					br = 0.3f; bg = 0.3f; bb = 0.3f;
+				}
+				ba = 0.6f;
 				thickness = 1.0f;
 			}
 
@@ -151,6 +198,11 @@ bool Skillbar_is_active(SubroutineId id)
 		return false;
 	SubroutineType type = sub_registry[id].type;
 	return active_sub[type] == id;
+}
+
+bool Skillbar_consumed_click(void)
+{
+	return clickConsumed;
 }
 
 void Skillbar_auto_equip(SubroutineId id)
@@ -224,6 +276,29 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Render_quad(&p, 45.0, dot, &red);
 		break;
 	}
+	case SUB_ID_BOOST: {
+		/* Double chevron (>>) — speed lines, centered on cx,cy */
+		float sz = 6.0f;
+		float t = 1.5f;
+		/* Left chevron: tip at cx+1, extends left to cx-5 */
+		Render_thick_line(cx - 5, cy - sz, cx + 1, cy, t, 1.0f, 0.8f, 0.0f, alpha);
+		Render_thick_line(cx + 1, cy, cx - 5, cy + sz, t, 1.0f, 0.8f, 0.0f, alpha);
+		/* Right chevron: tip at cx+5, extends left to cx-1 */
+		Render_thick_line(cx - 1, cy - sz, cx + 5, cy, t, 1.0f, 0.8f, 0.0f, alpha);
+		Render_thick_line(cx + 5, cy, cx - 1, cy + sz, t, 1.0f, 0.8f, 0.0f, alpha);
+		break;
+	}
+	case SUB_ID_EGRESS: {
+		/* Starburst — 4 lines radiating from center (thick_line = triangles) */
+		float sz = 8.0f;
+		float t = 1.5f;
+		Render_thick_line(cx, cy - sz, cx, cy + sz, t, 0.4f, 1.0f, 1.0f, alpha);
+		Render_thick_line(cx - sz, cy, cx + sz, cy, t, 0.4f, 1.0f, 1.0f, alpha);
+		float d = sz * 0.7f;
+		Render_thick_line(cx - d, cy - d, cx + d, cy + d, t, 0.4f, 1.0f, 1.0f, alpha);
+		Render_thick_line(cx + d, cy - d, cx - d, cy + d, t, 0.4f, 1.0f, 1.0f, alpha);
+		break;
+	}
 	default:
 		break;
 	}
@@ -233,7 +308,9 @@ static float get_cooldown_fraction(SubroutineId id)
 {
 	switch (id) {
 	case SUB_ID_PEA:  return Sub_Pea_get_cooldown_fraction();
-	case SUB_ID_MINE: return Sub_Mine_get_cooldown_fraction();
+	case SUB_ID_MINE:   return Sub_Mine_get_cooldown_fraction();
+	case SUB_ID_BOOST:  return Sub_Boost_get_cooldown_fraction();
+	case SUB_ID_EGRESS: return Sub_Egress_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

@@ -16,6 +16,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 void Ship_render(const void *state, const PlaceableComponent *placeable);
 void Ship_render_bloom_source(void);
 Position Ship_get_position(void);
+double Ship_get_heading(void);
 void Ship_force_spawn(Position pos);
 void Ship_set_god_mode(bool enabled);
 

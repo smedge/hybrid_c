@@ -152,20 +152,18 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		Catalog_update(input, ticks);
 	}
 
-	/* Gameplay runs fully regardless of catalog state.
-	   Mouse clicks go to catalog, not gameplay (no shooting through the window). */
-	const Input *gameplay_input = input;
-	Input no_mouse;
-	if (Catalog_is_open()) {
-		no_mouse = *input;
-		no_mouse.mouseLeft = false;
-		no_mouse.mouseRight = false;
-		no_mouse.mouseMiddle = false;
-		gameplay_input = &no_mouse;
-	}
+	/* UI gets raw input; gameplay gets mouse stripped when UI consumes it */
 	cursor_update(input);
-	Skillbar_update(gameplay_input, ticks);
-	Entity_user_update_system(gameplay_input, ticks);
+	Skillbar_update(input, ticks);
+
+	bool ui_wants_mouse = Catalog_is_open() || Skillbar_consumed_click();
+	Input filtered = *input;
+	if (ui_wants_mouse) {
+		filtered.mouseLeft = false;
+		filtered.mouseRight = false;
+		filtered.mouseMiddle = false;
+	}
+	Entity_user_update_system(&filtered, ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
 	Fragment_update(ticks);

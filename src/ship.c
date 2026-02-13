@@ -3,6 +3,8 @@
 #include "render.h"
 #include "sub_pea.h"
 #include "sub_mine.h"
+#include "sub_boost.h"
+#include "sub_egress.h"
 #include "color.h"
 #include "shipstate.h"
 #include "audio.h"
@@ -73,12 +75,16 @@ void Ship_initialize()
 
 	Sub_Pea_initialize(liveEntity);
 	Sub_Mine_initialize();
+	Sub_Boost_initialize();
+	Sub_Egress_initialize();
 }
 
 void Ship_cleanup()
 {
 	Sub_Pea_cleanup();
 	Sub_Mine_cleanup();
+	Sub_Boost_cleanup();
+	Sub_Egress_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -142,55 +148,70 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			vel_x = 0.0;
 			vel_y = 0.0;
 			prevPosition = placeable->position;
+			Sub_Boost_initialize();
+			Sub_Egress_initialize();
 
 			Audio_play_sample(&sample01);
 		}
 	}
 	else {
-		isBoosting = userInput->keyLShift;
+		/* Update movement subs */
+		Sub_Boost_update(userInput, ticks);
+		Sub_Egress_update(userInput, ticks);
 
-		double maxSpeed;
-		if (userInput->keyLShift)
-			maxSpeed = FAST_VELOCITY;
-		else if (userInput->keyLControl)
-			maxSpeed = SLOW_VELOCITY;
-		else
-			maxSpeed = NORMAL_VELOCITY;
+		isBoosting = Sub_Boost_is_boosting() || Sub_Egress_is_dashing();
 
-		/* Target velocity from input */
-		double target_vx = 0.0, target_vy = 0.0;
-		if (userInput->keyW) target_vy += 1.0;
-		if (userInput->keyS) target_vy -= 1.0;
-		if (userInput->keyD) target_vx += 1.0;
-		if (userInput->keyA) target_vx -= 1.0;
+		if (Sub_Egress_is_dashing()) {
+			/* Dash overrides normal movement — fixed velocity in dash direction */
+			vel_x = Sub_Egress_get_dash_vx();
+			vel_y = Sub_Egress_get_dash_vy();
 
-		/* Normalize diagonal so it doesn't go faster */
-		if (target_vx != 0.0 && target_vy != 0.0) {
-			target_vx *= 0.7071;
-			target_vy *= 0.7071;
-		}
+			placeable->position.x += vel_x * ticksNormalized;
+			placeable->position.y += vel_y * ticksNormalized;
+		} else {
+			double maxSpeed;
+			if (Sub_Boost_is_boosting())
+				maxSpeed = FAST_VELOCITY;
+			else if (userInput->keyLControl)
+				maxSpeed = SLOW_VELOCITY;
+			else
+				maxSpeed = NORMAL_VELOCITY;
 
-		target_vx *= maxSpeed;
-		target_vy *= maxSpeed;
+			/* Target velocity from input */
+			double target_vx = 0.0, target_vy = 0.0;
+			if (userInput->keyW) target_vy += 1.0;
+			if (userInput->keyS) target_vy -= 1.0;
+			if (userInput->keyD) target_vx += 1.0;
+			if (userInput->keyA) target_vx -= 1.0;
 
-		/* Lerp toward target (acceleration) or toward zero (friction) */
-		int hasInput = userInput->keyW || userInput->keyA ||
-			userInput->keyS || userInput->keyD;
+			/* Normalize diagonal so it doesn't go faster */
+			if (target_vx != 0.0 && target_vy != 0.0) {
+				target_vx *= 0.7071;
+				target_vy *= 0.7071;
+			}
 
-		double rate = hasInput ? ACCEL_RATE : FRICTION;
-		double blend = rate * ticksNormalized;
-		if (blend > 1.0) blend = 1.0;
+			target_vx *= maxSpeed;
+			target_vy *= maxSpeed;
 
-		vel_x += (target_vx - vel_x) * blend;
-		vel_y += (target_vy - vel_y) * blend;
+			/* Lerp toward target (acceleration) or toward zero (friction) */
+			int hasInput = userInput->keyW || userInput->keyA ||
+				userInput->keyS || userInput->keyD;
 
-		/* Apply velocity */
-		placeable->position.x += vel_x * ticksNormalized;
-		placeable->position.y += vel_y * ticksNormalized;
+			double rate = hasInput ? ACCEL_RATE : FRICTION;
+			double blend = rate * ticksNormalized;
+			if (blend > 1.0) blend = 1.0;
 
-		if (hasInput) {
-			placeable->heading = get_heading(userInput->keyW, userInput->keyS,
-											userInput->keyD, userInput->keyA);
+			vel_x += (target_vx - vel_x) * blend;
+			vel_y += (target_vy - vel_y) * blend;
+
+			/* Apply velocity */
+			placeable->position.x += vel_x * ticksNormalized;
+			placeable->position.y += vel_y * ticksNormalized;
+
+			if (hasInput) {
+				placeable->heading = get_heading(userInput->keyW, userInput->keyS,
+												userInput->keyD, userInput->keyA);
+			}
 		}
 	}
 
@@ -278,6 +299,11 @@ void Ship_render_bloom_source(void)
 Position Ship_get_position()
 {
 	return placeable.position;
+}
+
+double Ship_get_heading()
+{
+	return placeable.heading;
 }
 
 void Ship_force_spawn(Position pos)

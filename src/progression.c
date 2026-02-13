@@ -23,8 +23,10 @@ typedef struct {
 } ProgressionEntry;
 
 static ProgressionEntry entries[SUB_ID_COUNT] = {
-	[SUB_ID_PEA]  = { "PEA",   "sub_pea",  FRAG_TYPE_MINE, 0, false },
-	[SUB_ID_MINE] = { "MINES", "sub_mine", FRAG_TYPE_MINE, 5, false },
+	[SUB_ID_PEA]    = { "PEA",    "sub_pea",    FRAG_TYPE_MINE, 0, false },
+	[SUB_ID_MINE]   = { "MINES",  "sub_mine",   FRAG_TYPE_MINE, 5, false },
+	[SUB_ID_BOOST]  = { "BOOST",  "sub_boost",  FRAG_TYPE_MINE, 0, false },
+	[SUB_ID_EGRESS] = { "EGRESS", "sub_egress", FRAG_TYPE_MINE, 0, false },
 };
 
 /* Notification state */
