@@ -282,7 +282,8 @@ void Catalog_toggle(void)
 {
 	catalogOpen = !catalogOpen;
 	if (catalogOpen) {
-		selectedTab = first_valid_tab();
+		if (!tab_has_content(selectedTab))
+			selectedTab = first_valid_tab();
 		scrollOffset = 0.0f;
 		marqueeTimer = 0;
 		memset(&drag, 0, sizeof(drag));
@@ -770,5 +771,5 @@ void Catalog_render(const Screen *screen)
 	Text_render(tr, shaders, &proj, &ident,
 		"[P] Close    [Right-click slot] Unequip    [Drag] Equip/Swap",
 		px + 10.0f, py + ph + 15.0f,
-		0.8f, 0.8f, 0.85f, 0.9f);
+		0.6f, 0.6f, 0.65f, 0.9f);
 }
