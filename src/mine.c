@@ -208,8 +208,8 @@ void Mine_render(const void *state, const PlaceableComponent *placeable)
 		Render_quad(&placeable->position, 45.0, rectangle, &colorDark);
 
 	float dh = 3.0f;
-	if (view.scale > 0.001f && 1.0f / (float)view.scale > dh)
-		dh = 1.0f / (float)view.scale;
+	if (view.scale > 0.001f && 0.5f / (float)view.scale > dh)
+		dh = 0.5f / (float)view.scale;
 	Rectangle dot = {-dh, dh, dh, -dh};
 	if (mineState->active)
 		Render_quad(&placeable->position, 45.0, dot, &colorActive);

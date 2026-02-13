@@ -134,8 +134,8 @@ void Sub_Mine_render(void)
 			if (view.scale > 0.09)
 				Render_quad(&m->position, 45.0, rect, &colorDark);
 			float dh = 3.0f;
-			if (view.scale > 0.001f && 1.0f / (float)view.scale > dh)
-				dh = 1.0f / (float)view.scale;
+			if (view.scale > 0.001f && 0.5f / (float)view.scale > dh)
+				dh = 0.5f / (float)view.scale;
 			Rectangle dot = {-dh, dh, dh, -dh};
 			Render_quad(&m->position, 45.0, dot, &colorActive);
 			break;
@@ -166,8 +166,8 @@ void Sub_Mine_render_bloom_source(void)
 		case MINE_ARMED: {
 			View view = View_get_view();
 			float dh = 3.0f;
-			if (view.scale > 0.001f && 1.0f / (float)view.scale > dh)
-				dh = 1.0f / (float)view.scale;
+			if (view.scale > 0.001f && 0.5f / (float)view.scale > dh)
+				dh = 0.5f / (float)view.scale;
 			Rectangle dot = {-dh, dh, dh, -dh};
 			Render_quad(&m->position, 45.0, dot, &colorActive);
 			break;
