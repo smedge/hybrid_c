@@ -1,6 +1,7 @@
 #include "mine.h"
 #include "sub_pea.h"
 #include "fragment.h"
+#include "progression.h"
 #include "view.h"
 #include "render.h"
 #include "color.h"
@@ -163,7 +164,7 @@ void Mine_update(const void *state, const PlaceableComponent *placeable, const u
 			mineState->exploding = false;
 			mineState->destroyed = true;
 			mineState->ticksDestroyed = 0;
-			if (mineState->killedByPlayer)
+			if (mineState->killedByPlayer && !Progression_is_unlocked(SUB_ID_MINE))
 				Fragment_spawn(placeable->position, FRAG_TYPE_MINE);
 		}
 		return;

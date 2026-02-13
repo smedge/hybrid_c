@@ -64,6 +64,7 @@ void Mode_Gameplay_initialize(void)
 	Map_initialize();
 	Ship_initialize();
 	Fragment_initialize();
+	Progression_initialize();
 	Zone_load("./resources/zones/zone_001.zone");
 
 	godModeActive = false;
@@ -80,6 +81,7 @@ void Mode_Gameplay_initialize(void)
 
 void Mode_Gameplay_cleanup(void)
 {
+	Progression_cleanup();
 	Fragment_cleanup();
 	Zone_unload();
 	Ship_cleanup();
@@ -108,6 +110,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		/* AI still runs so the world feels alive */
 		Entity_ai_update_system(ticks);
 		Fragment_update(ticks);
+		Progression_update(ticks);
 
 		/* Camera stays centered on spawn point */
 		Position origin = {0.0, 0.0};
@@ -136,6 +139,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
 	Fragment_update(ticks);
+	Progression_update(ticks);
 	View_update(input, ticks);
 
 	View_set_position(Ship_get_position());
@@ -193,6 +197,7 @@ void Mode_Gameplay_render(void)
 	Mat4 ui_proj = Graphics_get_ui_projection();
 	Mat4 identity = Mat4_identity();
 	Hud_render(&screen);
+	Progression_render(&screen);
 	Fragment_render_text(&screen);
 	if (godModeActive)
 		god_mode_render_hud(&screen);
@@ -286,6 +291,7 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 	/* AI still runs so the world feels alive */
 	Entity_ai_update_system(ticks);
 	Fragment_update(ticks);
+	Progression_update(ticks);
 }
 
 static void god_mode_render_cursor(void)
