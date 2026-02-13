@@ -25,12 +25,13 @@ typedef struct {
 static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_PEA]    = { "PEA",    "sub_pea",    FRAG_TYPE_MINE, 0, false },
 	[SUB_ID_MINE]   = { "MINES",  "sub_mine",   FRAG_TYPE_MINE, 5, false },
-	[SUB_ID_BOOST]  = { "BOOST",  "sub_boost",  FRAG_TYPE_MINE, 0, false },
+	[SUB_ID_BOOST]  = { "BOOST",  "sub_boost",  FRAG_TYPE_ELITE, 1, false },
 	[SUB_ID_EGRESS] = { "EGRESS", "sub_egress", FRAG_TYPE_MINE, 0, false },
 };
 
 /* Notification state */
 static bool notifyActive = false;
+static bool notifyElite = false;
 static unsigned int notifyTimer = 0;
 static char notifyText[64];
 
@@ -56,6 +57,7 @@ void Progression_initialize(void)
 	}
 
 	notifyActive = false;
+	notifyElite = false;
 	notifyTimer = 0;
 
 	Audio_load_sample(&unlockSample, "resources/sounds/statue_rise.wav");
@@ -77,6 +79,7 @@ void Progression_update(unsigned int ticks)
 		/* First fragment — discovery notification */
 		if (!entries[i].discovered && count >= 1) {
 			entries[i].discovered = true;
+			notifyElite = false;
 
 			const char *type_names[] = {
 				"Projectile", "Deployable", "Movement", "Shield", "Healing"
@@ -91,8 +94,13 @@ void Progression_update(unsigned int ticks)
 		if (count >= entries[i].threshold) {
 			entries[i].unlocked = true;
 
-			snprintf(notifyText, sizeof(notifyText),
-				">> %s UNLOCKED <<", entries[i].sub_name);
+			notifyElite = Skillbar_is_elite(i);
+			if (notifyElite)
+				snprintf(notifyText, sizeof(notifyText),
+					">> %s ", entries[i].sub_name);
+			else
+				snprintf(notifyText, sizeof(notifyText),
+					">> %s UNLOCKED <<", entries[i].sub_name);
 			notifyActive = true;
 			notifyTimer = 0;
 
@@ -123,12 +131,25 @@ void Progression_render(const Screen *screen)
 			alpha = (float)remaining / NOTIFY_FADE_MS;
 
 		float tw = text_width(tr, notifyText);
+		if (notifyElite)
+			tw += text_width(tr, "ELITE ") + text_width(tr, "UNLOCKED <<");
 		float nx = (float)screen->width * 0.5f - tw * 0.5f;
 		float ny = (float)screen->height * 0.3f;
 
 		Text_render(tr, shaders, &proj, &ident,
 			notifyText, nx, ny,
 			1.0f, 0.0f, 1.0f, alpha);
+
+		if (notifyElite) {
+			float cx = nx + text_width(tr, notifyText);
+			Text_render(tr, shaders, &proj, &ident,
+				"ELITE ", cx, ny,
+				1.0f, 0.84f, 0.0f, alpha);
+			cx += text_width(tr, "ELITE ");
+			Text_render(tr, shaders, &proj, &ident,
+				"UNLOCKED <<", cx, ny,
+				1.0f, 0.0f, 1.0f, alpha);
+		}
 	}
 }
 

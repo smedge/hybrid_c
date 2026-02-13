@@ -7,6 +7,12 @@
 #define ZONE_MAX_CELL_TYPES 32
 #define ZONE_MAX_SPAWNS 256
 #define ZONE_MAX_UNDO 512
+#define ZONE_MAX_DESTRUCTIBLES 32
+
+typedef struct {
+	int grid_x, grid_y;
+	char drop_sub[32];
+} ZoneDestructible;
 
 typedef struct {
 	char id[32];
@@ -32,6 +38,9 @@ typedef struct {
 
 	ZoneSpawn spawns[ZONE_MAX_SPAWNS];
 	int spawn_count;
+
+	ZoneDestructible destructibles[ZONE_MAX_DESTRUCTIBLES];
+	int destructible_count;
 } Zone;
 
 void Zone_load(const char *path);
@@ -45,5 +54,7 @@ void Zone_remove_cell(int grid_x, int grid_y);
 void Zone_place_spawn(const char *enemy_type, double world_x, double world_y);
 void Zone_remove_spawn(int index);
 void Zone_undo(void);
+
+const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y);
 
 #endif

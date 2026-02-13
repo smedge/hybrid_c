@@ -85,10 +85,21 @@ void Zone_load(const char *path)
 		else if (strncmp(line, "cell ", 5) == 0) {
 			int gx, gy;
 			char type_id[32];
-			if (sscanf(line + 5, "%d %d %31s", &gx, &gy, type_id) == 3) {
+			char drop[64] = "";
+			int n = sscanf(line + 5, "%d %d %31s %63s", &gx, &gy, type_id, drop);
+			if (n >= 3) {
 				int idx = find_cell_type(type_id);
-				if (idx >= 0 && gx >= 0 && gx < MAP_SIZE && gy >= 0 && gy < MAP_SIZE)
+				if (idx >= 0 && gx >= 0 && gx < MAP_SIZE && gy >= 0 && gy < MAP_SIZE) {
 					zone.cell_grid[gx][gy] = idx;
+					if (n >= 4 && strncmp(drop, "drop:", 5) == 0 &&
+					    zone.destructible_count < ZONE_MAX_DESTRUCTIBLES) {
+						ZoneDestructible *d = &zone.destructibles[zone.destructible_count++];
+						d->grid_x = gx;
+						d->grid_y = gy;
+						strncpy(d->drop_sub, drop + 5, sizeof(d->drop_sub) - 1);
+						d->drop_sub[sizeof(d->drop_sub) - 1] = '\0';
+					}
+				}
 			}
 		}
 		else if (strncmp(line, "spawn ", 6) == 0) {
@@ -156,7 +167,12 @@ void Zone_save(void)
 		for (int y = 0; y < MAP_SIZE; y++) {
 			if (zone.cell_grid[x][y] >= 0) {
 				int idx = zone.cell_grid[x][y];
-				fprintf(f, "cell %d %d %s\n", x, y, zone.cell_types[idx].id);
+				const ZoneDestructible *d = Zone_get_destructible(x, y);
+				if (d)
+					fprintf(f, "cell %d %d %s drop:%s\n", x, y,
+						zone.cell_types[idx].id, d->drop_sub);
+				else
+					fprintf(f, "cell %d %d %s\n", x, y, zone.cell_types[idx].id);
 			}
 		}
 	}
@@ -301,6 +317,16 @@ void Zone_undo(void)
 	}
 
 	Zone_save();
+}
+
+const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y)
+{
+	for (int i = 0; i < zone.destructible_count; i++) {
+		if (zone.destructibles[i].grid_x == grid_x &&
+		    zone.destructibles[i].grid_y == grid_y)
+			return &zone.destructibles[i];
+	}
+	return NULL;
 }
 
 /* --- Internal --- */

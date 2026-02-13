@@ -39,7 +39,7 @@ cell 505 520 solid
 cell 505 521 solid
 cell 510 510 solid
 cell 510 513 solid
-cell 513 510 circuit
+cell 513 510 circuit drop:sub_boost
 cell 513 513 solid
 cell 518 502 solid
 cell 518 503 circuit

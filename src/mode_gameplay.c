@@ -7,6 +7,7 @@
 #include "background.h"
 #include "skillbar.h"
 #include "catalog.h"
+#include "destructible.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -72,6 +73,7 @@ void Mode_Gameplay_initialize(void)
 	Skillbar_initialize();
 	Catalog_initialize();
 	Zone_load("./resources/zones/zone_001.zone");
+	Destructible_initialize();
 
 	godModeActive = false;
 	godModeSelectedType = 0;
@@ -118,6 +120,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 
 		/* AI still runs so the world feels alive */
 		Entity_ai_update_system(ticks);
+		Destructible_update(ticks);
 		Fragment_update(ticks);
 		Progression_update(ticks);
 
@@ -166,6 +169,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	Entity_user_update_system(&filtered, ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
+	Destructible_update(ticks);
 	Fragment_update(ticks);
 	Progression_update(ticks);
 	View_update(input, ticks);
@@ -321,6 +325,7 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 
 	/* AI still runs so the world feels alive */
 	Entity_ai_update_system(ticks);
+	Destructible_update(ticks);
 	Fragment_update(ticks);
 	Progression_update(ticks);
 }
