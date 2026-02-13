@@ -78,3 +78,7 @@ make compile
 ## Project Status
 
 This is an active work-in-progress. Core systems are functional — ship movement, combat, progression, skill management, zone editing, bloom rendering, and the full subroutine equip pipeline. See `PRD.md` for the complete vision and detailed feature status.
+
+## License
+
+Copyright (c) 2026 Jason Zahn. All rights reserved. See [LICENSE](LICENSE) for details.
