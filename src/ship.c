@@ -2,6 +2,7 @@
 #include "view.h"
 #include "render.h"
 #include "sub_pea.h"
+#include "sub_mine.h"
 #include "color.h"
 #include "shipstate.h"
 #include "audio.h"
@@ -71,11 +72,13 @@ void Ship_initialize()
 	Audio_load_sample(&sample03, "resources/sounds/bomb_explode.wav");
 
 	Sub_Pea_initialize(liveEntity);
+	Sub_Mine_initialize();
 }
 
-void Ship_cleanup() 
+void Ship_cleanup()
 {
 	Sub_Pea_cleanup();
+	Sub_Mine_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -198,6 +201,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	}
 
 	Sub_Pea_update(userInput, ticks, placeable);
+	Sub_Mine_update(userInput, ticks);
 }
 
 void Ship_render(const void *state, const PlaceableComponent *placeable)
@@ -237,6 +241,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	}
 
 	Sub_Pea_render();
+	Sub_Mine_render();
 }
 
 void Ship_render_bloom_source(void)
@@ -267,6 +272,7 @@ void Ship_render_bloom_source(void)
 	}
 
 	Sub_Pea_render_bloom_source();
+	Sub_Mine_render_bloom_source();
 }
 
 Position Ship_get_position()

@@ -94,6 +94,7 @@ static void reset_input(Input *input)
 	input->keyG = false;
 	input->keyZ = false;
 	input->keyTab = false;
+	input->keySpace = false;
 }
 
 static void quit_callback(void) 
@@ -413,6 +414,10 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 
 	case SDLK_TAB:
 		input->keyTab = true;
+		break;
+
+	case SDLK_SPACE:
+		input->keySpace = true;
 		break;
 
 	case SDLK_F10:

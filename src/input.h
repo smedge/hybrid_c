@@ -24,6 +24,7 @@ typedef struct {
 	bool keyG;
 	bool keyZ;
 	bool keyTab;
+	bool keySpace;
 } Input;
 
 void input_initialize(Input *input);
