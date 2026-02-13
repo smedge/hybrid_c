@@ -326,7 +326,7 @@ static void god_mode_render_hud(const Screen *screen)
 
 	/* "GOD MODE" top-center */
 	float cx = (float)screen->width * 0.5f - 40.0f;
-	float ty = (float)screen->height - 20.0f;
+	float ty = 20.0f;
 	Text_render(tr, shaders, &proj, &ident,
 		"GOD MODE", cx, ty,
 		1.0f, 0.3f, 0.3f, 1.0f);
@@ -337,7 +337,7 @@ static void god_mode_render_hud(const Screen *screen)
 		char buf[64];
 		snprintf(buf, sizeof(buf), "Type: %s", z->cell_types[godModeSelectedType].id);
 		Text_render(tr, shaders, &proj, &ident,
-			buf, cx - 10.0f, ty - 20.0f,
+			buf, cx - 10.0f, ty + 20.0f,
 			1.0f, 1.0f, 1.0f, 0.8f);
 	}
 }

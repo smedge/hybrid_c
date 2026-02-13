@@ -24,12 +24,29 @@ typedef struct {
 	Blob blobs[BLOBS_PER_CLOUD];
 } Cloud;
 
+/* Directional drift constants */
+#define DRIFT_SPEED 60.0f       /* world units per second */
+#define DRIFT_CHANGE_MIN 20.0f  /* min seconds before direction change */
+#define DRIFT_CHANGE_MAX 45.0f  /* max seconds before direction change */
+#define DRIFT_TURN_TIME 3.0f    /* seconds to smoothly transition direction */
+
+typedef struct {
+	float accum_x, accum_y;
+	float dir_x, dir_y;
+	float target_x, target_y;
+	float turn_t;
+	float timer;
+	float next_change;
+	unsigned int rng;
+} LayerDrift;
+
 typedef struct {
 	Cloud clouds[MAX_CLOUDS];
 	int cloud_count;
 	float tile_size;
 	float parallax;
 	float alpha_mult;
+	LayerDrift drift;
 } Layer;
 
 static Layer layers[NUM_LAYERS];
@@ -59,6 +76,22 @@ static float bg_rand_range(unsigned int *state, float min, float max)
 	return min + (float)(r % 10000) / 10000.0f * (max - min);
 }
 
+static void pick_drift_direction(LayerDrift *d)
+{
+	static const float dirs[8][2] = {
+		{ 0.0f,  1.0f}, { 0.707f,  0.707f}, { 1.0f, 0.0f}, { 0.707f, -0.707f},
+		{ 0.0f, -1.0f}, {-0.707f, -0.707f}, {-1.0f, 0.0f}, {-0.707f,  0.707f},
+	};
+	int idx = bg_xorshift(&d->rng) % 8;
+	d->target_x = dirs[idx][0];
+	d->target_y = dirs[idx][1];
+	d->turn_t = 0.0f;
+	d->next_change = DRIFT_CHANGE_MIN +
+		(float)(bg_xorshift(&d->rng) % 10000) / 10000.0f *
+		(DRIFT_CHANGE_MAX - DRIFT_CHANGE_MIN);
+	d->timer = 0.0f;
+}
+
 void Background_initialize(void)
 {
 	/* Different tile sizes per layer so repeats never align */
@@ -74,6 +107,17 @@ void Background_initialize(void)
 		layers[l].cloud_count = cloud_counts[l];
 		layers[l].parallax = parallax_values[l];
 		layers[l].alpha_mult = alpha_mults[l];
+
+		/* Per-layer directional drift */
+		LayerDrift *d = &layers[l].drift;
+		d->rng = (unsigned int)rand() * 2654435761u + (unsigned int)(l + 1);
+		if (d->rng == 0) d->rng = 1;
+		d->accum_x = 0.0f;
+		d->accum_y = 0.0f;
+		pick_drift_direction(d);
+		d->dir_x = d->target_x;
+		d->dir_y = d->target_y;
+		d->turn_t = 1.0f;
 
 		float ts = tile_sizes[l];
 
@@ -121,7 +165,30 @@ void Background_initialize(void)
 
 void Background_update(unsigned int ticks)
 {
-	bg_time += (float)ticks / 1000.0f;
+	float dt = (float)ticks / 1000.0f;
+	bg_time += dt;
+
+	for (int l = 0; l < NUM_LAYERS; l++) {
+		LayerDrift *d = &layers[l].drift;
+
+		/* Smooth turn toward target direction */
+		if (d->turn_t < 1.0f) {
+			d->turn_t += dt / DRIFT_TURN_TIME;
+			if (d->turn_t > 1.0f) d->turn_t = 1.0f;
+			float t = d->turn_t * d->turn_t * (3.0f - 2.0f * d->turn_t);
+			d->dir_x += t * (d->target_x - d->dir_x);
+			d->dir_y += t * (d->target_y - d->dir_y);
+		}
+
+		/* Accumulate positional drift */
+		d->accum_x += d->dir_x * DRIFT_SPEED * dt;
+		d->accum_y += d->dir_y * DRIFT_SPEED * dt;
+
+		/* Occasionally change direction */
+		d->timer += dt;
+		if (d->timer >= d->next_change)
+			pick_drift_direction(d);
+	}
 }
 
 static void render_blob(Blob *blob, float wx, float wy, float rad, float alpha)
@@ -150,36 +217,40 @@ void Background_render(void)
 	Screen screen = Graphics_get_screen();
 	Mat4 proj = Graphics_get_world_projection();
 
-	/* Slow ambient drift — sinusoidal wander with incommensurate frequencies */
-	float drift_x = sinf(bg_time * 0.017f) * 400.0f
+	/* Slow ambient drift — sinusoidal wander (directional slide applied per-layer) */
+	float breath_x = sinf(bg_time * 0.017f) * 400.0f
 		+ sinf(bg_time * 0.031f) * 250.0f;
-	float drift_y = cosf(bg_time * 0.013f) * 350.0f
+	float breath_y = cosf(bg_time * 0.013f) * 350.0f
 		+ cosf(bg_time * 0.029f) * 200.0f;
 
 	/* Dampen zoom for parallax depth — background zooms at half rate */
 	float default_zoom = 0.5f;
 	float ratio = (float)v.scale / default_zoom;
 	float bg_scale = default_zoom * powf(ratio, 0.5f);
-
-	/* Build view matrix with dampened scale + ambient drift */
-	double vx = (screen.width / 2.0) - ((v.position.x + drift_x) * bg_scale);
-	double vy = (screen.height / 2.0) - ((v.position.y + drift_y) * bg_scale);
-	vx = floor(vx + 0.5);
-	vy = floor(vy + 0.5);
-	Mat4 t = Mat4_translate((float)vx, (float)vy, 0.0f);
 	Mat4 s = Mat4_scale(bg_scale, bg_scale, 1.0f);
-	Mat4 base_view = Mat4_multiply(&t, &s);
-
-	float cam_x = (float)v.position.x + drift_x;
-	float cam_y = (float)v.position.y + drift_y;
-	float half_vw = (float)(screen.width / 2.0 / bg_scale);
-	float half_vh = (float)(screen.height / 2.0 / bg_scale);
 
 	for (int l = 0; l < NUM_LAYERS; l++) {
 		Layer *layer = &layers[l];
 		float p = layer->parallax;
 		float am = layer->alpha_mult;
 		float ts = layer->tile_size;
+
+		/* Per-layer drift = shared breathing + layer's own directional slide */
+		float drift_x = breath_x + layer->drift.accum_x;
+		float drift_y = breath_y + layer->drift.accum_y;
+
+		/* Build view matrix with this layer's drift */
+		double vx = (screen.width / 2.0) - ((v.position.x + drift_x) * bg_scale);
+		double vy = (screen.height / 2.0) - ((v.position.y + drift_y) * bg_scale);
+		vx = floor(vx + 0.5);
+		vy = floor(vy + 0.5);
+		Mat4 t = Mat4_translate((float)vx, (float)vy, 0.0f);
+		Mat4 base_view = Mat4_multiply(&t, &s);
+
+		float cam_x = (float)v.position.x + drift_x;
+		float cam_y = (float)v.position.y + drift_y;
+		float half_vw = (float)(screen.width / 2.0 / bg_scale);
+		float half_vh = (float)(screen.height / 2.0 / bg_scale);
 
 		/* Push all blobs once at base tile position (no tile offset) */
 		for (int c = 0; c < layer->cloud_count; c++) {
@@ -198,13 +269,14 @@ void Background_render(void)
 			}
 		}
 
-		/* Compute visible tile range */
+		/* Compute visible tile range (margin accounts for blob radius + bloom bleed) */
+		float margin = 2000.0f;
 		float eff_cx = cam_x * p;
 		float eff_cy = cam_y * p;
-		int tile_min_x = (int)floorf((eff_cx - half_vw) / ts);
-		int tile_max_x = (int)floorf((eff_cx + half_vw) / ts);
-		int tile_min_y = (int)floorf((eff_cy - half_vh) / ts);
-		int tile_max_y = (int)floorf((eff_cy + half_vh) / ts);
+		int tile_min_x = (int)floorf((eff_cx - half_vw - margin) / ts);
+		int tile_max_x = (int)floorf((eff_cx + half_vw + margin) / ts);
+		int tile_min_y = (int)floorf((eff_cy - half_vh - margin) / ts);
+		int tile_max_y = (int)floorf((eff_cy + half_vh + margin) / ts);
 
 		/* Upload geometry once, redraw per tile with offset view */
 		int first = 1;

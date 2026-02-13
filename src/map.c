@@ -524,8 +524,12 @@ static void render_cell(int x, int y, float outlineThickness)
 	float bx = ax + MAP_CELL_SIZE;
 	float by = ay + MAP_CELL_SIZE;
 
-	MapCell *nPtr = map[x][y+1], *ePtr = map[x+1][y];
-	MapCell *sPtr = map[x][y-1], *wPtr = map[x-1][y];
+	int xp = (x + 1 < MAP_SIZE) ? x + 1 : x;
+	int xm = (x - 1 >= 0) ? x - 1 : x;
+	int yp = (y + 1 < MAP_SIZE) ? y + 1 : y;
+	int ym = (y - 1 >= 0) ? y - 1 : y;
+	MapCell *nPtr = map[x][yp], *ePtr = map[xp][y];
+	MapCell *sPtr = map[x][ym], *wPtr = map[xm][y];
 
 	/* Chamfer NE and SW corners of circuit cells when both edges face empty */
 	float chamf = MAP_CELL_SIZE * 0.17f;
@@ -625,22 +629,22 @@ static void render_cell(int x, int y, float outlineThickness)
 	MapCell *me = map[x][y];
 	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
 		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
-		map[x+1][y+1]->empty)
+		map[xp][yp]->empty)
 		Render_quad_absolute(bx - t, by - t, bx, by, or_, og, ob, oa);
 
 	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
 		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
-		map[x-1][y+1]->empty)
+		map[xm][yp]->empty)
 		Render_quad_absolute(ax, by - t, ax + t, by, or_, og, ob, oa);
 
 	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
 		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
-		map[x+1][y-1]->empty)
+		map[xp][ym]->empty)
 		Render_quad_absolute(bx - t, ay, bx, ay + t, or_, og, ob, oa);
 
 	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
 		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
-		map[x-1][y-1]->empty)
+		map[xm][ym]->empty)
 		Render_quad_absolute(ax, ay, ax + t, ay + t, or_, og, ob, oa);
 
 #undef EDGE_DRAW

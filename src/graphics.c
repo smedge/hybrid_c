@@ -186,8 +186,8 @@ static void initialize_gl(void)
 	Bloom_initialize(&bloom, draw_w, draw_h);
 	Bloom_initialize(&bg_bloom, draw_w, draw_h);
 	bg_bloom.divisor = 8;
-	bg_bloom.intensity = 1.5f;
-	bg_bloom.blur_passes = 10;
+	bg_bloom.intensity = 2.5f;
+	bg_bloom.blur_passes = 20;
 	Bloom_resize(&bg_bloom, draw_w, draw_h);
 }
 
