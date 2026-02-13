@@ -542,7 +542,7 @@ void Catalog_render(const Screen *screen)
 
 		bool unlocked = Progression_is_unlocked(i);
 
-		float ibg = unlocked ? 0.12f : 0.08f;
+		float ibg = 0.12f;
 		Render_quad_absolute(item_area_x, iy,
 			item_area_x + item_area_w, iy + ITEM_HEIGHT,
 			ibg, ibg, ibg + 0.02f, 0.9f);
@@ -580,6 +580,23 @@ void Catalog_render(const Screen *screen)
 		}
 
 		if (!unlocked) {
+			/* Grey icon border for unknown sub */
+			float icon_cx = item_area_x + ITEM_ICON_SIZE * 0.5f + 10.0f;
+			float icon_cy = iy + ITEM_HEIGHT * 0.5f;
+			float half = ITEM_ICON_SIZE * 0.5f;
+			Render_thick_line(icon_cx - half, icon_cy - half,
+				icon_cx + half, icon_cy - half,
+				1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
+			Render_thick_line(icon_cx - half, icon_cy + half,
+				icon_cx + half, icon_cy + half,
+				1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
+			Render_thick_line(icon_cx - half, icon_cy - half,
+				icon_cx - half, icon_cy + half,
+				1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
+			Render_thick_line(icon_cx + half, icon_cy - half,
+				icon_cx + half, icon_cy + half,
+				1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
+
 			float name_x = item_area_x + ITEM_ICON_SIZE + 25.0f;
 			float desc_y = iy + 22.0f + 18.0f;
 			float bar_x = name_x;
@@ -647,7 +664,7 @@ void Catalog_render(const Screen *screen)
 
 	/* Title */
 	Text_render(tr, shaders, &proj, &ident,
-		"SUBROUTINE CATALOG", px + pw * 0.5f - 80.0f, py - 5.0f,
+		"SUBROUTINE REGISTRY", px + pw * 0.5f - 80.0f, py - 5.0f,
 		0.7f, 0.7f, 1.0f, 0.9f);
 
 	/* Tab labels */
@@ -753,5 +770,5 @@ void Catalog_render(const Screen *screen)
 	Text_render(tr, shaders, &proj, &ident,
 		"[P] Close    [Right-click slot] Unequip    [Drag] Equip/Swap",
 		px + 10.0f, py + ph + 15.0f,
-		0.4f, 0.4f, 0.5f, 0.6f);
+		0.8f, 0.8f, 0.85f, 0.9f);
 }

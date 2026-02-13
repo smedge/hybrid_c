@@ -51,4 +51,14 @@ static void render_radar(const Screen *screen)
 	Render_quad_absolute(cx - 2.0f, cy - 2.0f, cx + 2.0f, cy + 2.0f,
 		1.0f, 0.3f, 0.3f, 1.0f);
 
+	/* Border */
+	float brc = 0.3f;
+	Render_thick_line(rx, ry, rx + RADAR_SIZE, ry,
+		1.0f, brc, brc, brc, 0.8f);
+	Render_thick_line(rx, ry + RADAR_SIZE, rx + RADAR_SIZE, ry + RADAR_SIZE,
+		1.0f, brc, brc, brc, 0.8f);
+	Render_thick_line(rx, ry, rx, ry + RADAR_SIZE,
+		1.0f, brc, brc, brc, 0.8f);
+	Render_thick_line(rx + RADAR_SIZE, ry, rx + RADAR_SIZE, ry + RADAR_SIZE,
+		1.0f, brc, brc, brc, 0.8f);
 }

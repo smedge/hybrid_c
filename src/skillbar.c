@@ -129,6 +129,19 @@ void Skillbar_render(const Screen *screen)
 		Render_quad_absolute(bx, by, bx + SLOT_SIZE, by + SLOT_SIZE,
 			0.1f, 0.1f, 0.1f, 0.8f);
 
+		if (id == SUB_NONE) {
+			/* Empty slot border */
+			float brc = 0.3f;
+			Render_thick_line(bx, by, bx + SLOT_SIZE, by,
+				1.0f, brc, brc, brc, 0.8f);
+			Render_thick_line(bx, by + SLOT_SIZE, bx + SLOT_SIZE, by + SLOT_SIZE,
+				1.0f, brc, brc, brc, 0.8f);
+			Render_thick_line(bx, by, bx, by + SLOT_SIZE,
+				1.0f, brc, brc, brc, 0.8f);
+			Render_thick_line(bx + SLOT_SIZE, by, bx + SLOT_SIZE, by + SLOT_SIZE,
+				1.0f, brc, brc, brc, 0.8f);
+		}
+
 		if (id != SUB_NONE) {
 			SubroutineType type = sub_registry[id].type;
 			bool is_active = (active_sub[type] == id);
