@@ -193,6 +193,32 @@ void Render_filled_circle(float cx, float cy, float radius, int segments,
 	}
 }
 
+void Render_cooldown_pie(float cx, float cy, float radius, float fraction,
+	int segments, float r, float g, float b, float a)
+{
+	if (fraction <= 0.0f) return;
+	if (fraction > 1.0f) fraction = 1.0f;
+
+	BatchRenderer *batch = Graphics_get_batch();
+	float total_angle = fraction * 2.0f * (float)M_PI;
+	float step = total_angle / (float)segments;
+
+	/* Start at 12 o'clock (-PI/2), sweep clockwise from the uncovered edge.
+	   The dark pie covers the REMAINING cooldown portion, starting where
+	   the revealed section ends and going clockwise back to 12 o'clock. */
+	float start = -((float)M_PI * 0.5f) + (1.0f - fraction) * 2.0f * (float)M_PI;
+
+	for (int i = 0; i < segments; i++) {
+		float a0 = start + (float)i * step;
+		float a1 = start + (float)(i + 1) * step;
+		Batch_push_triangle_vertices(batch,
+			cx, cy,
+			cx + radius * cosf(a0), cy + radius * sinf(a0),
+			cx + radius * cosf(a1), cy + radius * sinf(a1),
+			r, g, b, a);
+	}
+}
+
 void Render_flush(const Mat4 *projection, const Mat4 *view)
 {
 	BatchRenderer *batch = Graphics_get_batch();

@@ -14,5 +14,6 @@ void Sub_Pea_render_bloom_source(void);
 
 bool Sub_Pea_check_hit(Rectangle target);
 void Sub_Pea_deactivate_all(void);
+float Sub_Pea_get_cooldown_fraction(void);
 
 #endif

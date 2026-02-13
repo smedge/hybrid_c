@@ -95,6 +95,7 @@ static void reset_input(Input *input)
 	input->keyZ = false;
 	input->keyTab = false;
 	input->keySpace = false;
+	input->keySlot = -1;
 }
 
 static void quit_callback(void) 
@@ -419,6 +420,17 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 	case SDLK_SPACE:
 		input->keySpace = true;
 		break;
+
+	case SDLK_1: input->keySlot = 0; break;
+	case SDLK_2: input->keySlot = 1; break;
+	case SDLK_3: input->keySlot = 2; break;
+	case SDLK_4: input->keySlot = 3; break;
+	case SDLK_5: input->keySlot = 4; break;
+	case SDLK_6: input->keySlot = 5; break;
+	case SDLK_7: input->keySlot = 6; break;
+	case SDLK_8: input->keySlot = 7; break;
+	case SDLK_9: input->keySlot = 8; break;
+	case SDLK_0: input->keySlot = 9; break;
 
 	case SDLK_F10:
 		// graphics_toggle_multisampling();

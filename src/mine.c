@@ -207,10 +207,14 @@ void Mine_render(const void *state, const PlaceableComponent *placeable)
 	if (view.scale > 0.09)
 		Render_quad(&placeable->position, 45.0, rectangle, &colorDark);
 
+	float dh = 3.0f;
+	if (view.scale > 0.001f && 1.0f / (float)view.scale > dh)
+		dh = 1.0f / (float)view.scale;
+	Rectangle dot = {-dh, dh, dh, -dh};
 	if (mineState->active)
-		Render_point(&placeable->position, 3.0, &colorActive);
+		Render_quad(&placeable->position, 45.0, dot, &colorActive);
 	else if (mineState->blinkTimer < 100)
-		Render_point(&placeable->position, 3.0, &colorActive);
+		Render_quad(&placeable->position, 45.0, dot, &colorActive);
 
 	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 }
@@ -231,7 +235,12 @@ void Mine_render_bloom_source(void)
 			continue;
 		}
 
+		View view = View_get_view();
+		float dh = 3.0f;
+		if (view.scale > 0.001f && 1.0f / (float)view.scale > dh)
+			dh = 1.0f / (float)view.scale;
+		Rectangle dot = {-dh, dh, dh, -dh};
 		if (ms->active || ms->blinkTimer < 100)
-			Render_point(&pl->position, 3.0, &colorActive);
+			Render_quad(&pl->position, 45.0, dot, &colorActive);
 	}
 }

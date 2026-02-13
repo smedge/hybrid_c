@@ -7,6 +7,7 @@
 #include "render.h"
 #include "view.h"
 #include "shipstate.h"
+#include "skillbar.h"
 
 #include <math.h>
 #include <SDL2/SDL_mixer.h>
@@ -67,7 +68,8 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 	if (cooldownTimer > 0)
 		cooldownTimer -= ticks;
 
-	if (userInput->mouseLeft && cooldownTimer <= 0 && !state->destroyed) {
+	if (userInput->mouseLeft && cooldownTimer <= 0 && !state->destroyed
+			&& Skillbar_is_active(SUB_ID_PEA)) {
 		cooldownTimer = FIRE_COOLDOWN;
 
 		/* Find an inactive slot */
@@ -222,6 +224,12 @@ void Sub_Pea_deactivate_all(void)
 {
 	for (int i = 0; i < MAX_PROJECTILES; i++)
 		projectiles[i].active = false;
+}
+
+float Sub_Pea_get_cooldown_fraction(void)
+{
+	if (cooldownTimer <= 0) return 0.0f;
+	return (float)cooldownTimer / FIRE_COOLDOWN;
 }
 
 static double get_radians(double degrees)

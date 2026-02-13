@@ -5,6 +5,7 @@
 #include "mat4.h"
 #include "text.h"
 #include "background.h"
+#include "skillbar.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -65,6 +66,7 @@ void Mode_Gameplay_initialize(void)
 	Ship_initialize();
 	Fragment_initialize();
 	Progression_initialize();
+	Skillbar_initialize();
 	Zone_load("./resources/zones/zone_001.zone");
 
 	godModeActive = false;
@@ -81,6 +83,7 @@ void Mode_Gameplay_initialize(void)
 
 void Mode_Gameplay_cleanup(void)
 {
+	Skillbar_cleanup();
 	Progression_cleanup();
 	Fragment_cleanup();
 	Zone_unload();
@@ -135,6 +138,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 
 	/* Normal gameplay */
 	cursor_update(input);
+	Skillbar_update(input, ticks);
 	Entity_user_update_system(input, ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();

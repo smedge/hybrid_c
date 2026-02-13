@@ -25,6 +25,7 @@ typedef struct {
 	bool keyZ;
 	bool keyTab;
 	bool keySpace;
+	int keySlot;  /* -1 = none, 0-9 = skill bar slot pressed */
 } Input;
 
 void input_initialize(Input *input);

@@ -5,6 +5,7 @@
 #include "text.h"
 #include "mat4.h"
 #include "audio.h"
+#include "skillbar.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -21,6 +22,7 @@ typedef struct {
 } ProgressionEntry;
 
 static ProgressionEntry entries[SUB_ID_COUNT] = {
+	[SUB_ID_PEA]  = { "PEA",   "sub_pea",  FRAG_TYPE_MINE, 0, false },
 	[SUB_ID_MINE] = { "MINES", "sub_mine", FRAG_TYPE_MINE, 5, false },
 };
 
@@ -45,8 +47,9 @@ static float text_width(TextRenderer *tr, const char *text)
 
 void Progression_initialize(void)
 {
-	for (int i = 0; i < SUB_ID_COUNT; i++)
-		entries[i].unlocked = false;
+	for (int i = 0; i < SUB_ID_COUNT; i++) {
+		entries[i].unlocked = (entries[i].threshold == 0);
+	}
 
 	notifyActive = false;
 	notifyTimer = 0;
@@ -75,6 +78,7 @@ void Progression_update(unsigned int ticks)
 			notifyTimer = 0;
 
 			Audio_play_sample(&unlockSample);
+			Skillbar_auto_equip(i);
 		}
 	}
 

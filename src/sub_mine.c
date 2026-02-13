@@ -7,6 +7,7 @@
 #include "shipstate.h"
 #include "color.h"
 #include "view.h"
+#include "skillbar.h"
 
 #include <SDL2/SDL_mixer.h>
 
@@ -69,7 +70,7 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 		cooldownTimer -= ticks;
 
 	if (userInput->keySpace && cooldownTimer <= 0
-			&& Progression_is_unlocked(SUB_ID_MINE)) {
+			&& Skillbar_is_active(SUB_ID_MINE)) {
 		/* Only place if there's a free slot — 3 max, no overwriting */
 		int slot = -1;
 		for (int i = 0; i < MAX_PLAYER_MINES; i++) {
@@ -132,7 +133,11 @@ void Sub_Mine_render(void)
 			View view = View_get_view();
 			if (view.scale > 0.09)
 				Render_quad(&m->position, 45.0, rect, &colorDark);
-			Render_point(&m->position, 3.0, &colorActive);
+			float dh = 3.0f;
+			if (view.scale > 0.001f && 1.0f / (float)view.scale > dh)
+				dh = 1.0f / (float)view.scale;
+			Rectangle dot = {-dh, dh, dh, -dh};
+			Render_quad(&m->position, 45.0, dot, &colorActive);
 			break;
 		}
 
@@ -158,9 +163,15 @@ void Sub_Mine_render_bloom_source(void)
 			continue;
 
 		switch (m->phase) {
-		case MINE_ARMED:
-			Render_point(&m->position, 3.0, &colorActive);
+		case MINE_ARMED: {
+			View view = View_get_view();
+			float dh = 3.0f;
+			if (view.scale > 0.001f && 1.0f / (float)view.scale > dh)
+				dh = 1.0f / (float)view.scale;
+			Rectangle dot = {-dh, dh, dh, -dh};
+			Render_quad(&m->position, 45.0, dot, &colorActive);
 			break;
+		}
 
 		case MINE_EXPLODING: {
 			Rectangle explosion = {-EXPLOSION_SIZE, EXPLOSION_SIZE,
@@ -180,6 +191,22 @@ void Sub_Mine_deactivate_all(void)
 {
 	for (int i = 0; i < MAX_PLAYER_MINES; i++)
 		mines[i].active = false;
+}
+
+float Sub_Mine_get_cooldown_fraction(void)
+{
+	/* All slots occupied — show fully disabled until one frees up */
+	bool has_free_slot = false;
+	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
+		if (!mines[i].active) {
+			has_free_slot = true;
+			break;
+		}
+	}
+	if (!has_free_slot) return 1.0f;
+
+	if (cooldownTimer <= 0) return 0.0f;
+	return (float)cooldownTimer / PLACE_COOLDOWN;
 }
 
 bool Sub_Mine_check_hit(Rectangle target)
