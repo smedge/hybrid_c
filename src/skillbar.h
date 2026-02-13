@@ -28,4 +28,14 @@ void Skillbar_auto_equip(SubroutineId id);
 void Skillbar_equip(int slot, SubroutineId id);
 void Skillbar_clear_slot(int slot);
 
+const char *Skillbar_get_sub_name(SubroutineId id);
+const char *Skillbar_get_sub_description(SubroutineId id);
+SubroutineType Skillbar_get_sub_type(SubroutineId id);
+int Skillbar_get_slot_sub(int slot);
+int Skillbar_find_equipped_slot(SubroutineId id);
+void Skillbar_swap_slots(int a, int b);
+int Skillbar_slot_at_position(float x, float y, const Screen *screen);
+void Skillbar_render_icon_at(SubroutineId id, float cx, float cy, float alpha);
+bool Skillbar_is_elite(SubroutineId id);
+
 #endif

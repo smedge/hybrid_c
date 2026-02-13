@@ -45,7 +45,7 @@ Subroutines are abilities the Hybrid AI can execute to interact with digital spa
 |------------|------|-------------|--------|
 | sub_pea | projectile | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. | Implemented |
 | sub_egress | movement | Quick burst movement for limited duration. Escape/dash ability. | Stub only (empty DEV file) |
-| sub_mine | deployable | Drop a mine behind the player to kill pursuing enemies or destroy objects/walls. Unlocked by killing 100 mines. | Not started |
+| sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. Unlocked by collecting 5 mine fragments. | Implemented |
 
 **Many more subroutines planned** — each enemy type will have a corresponding subroutine unlocked by defeating enough of that enemy.
 
@@ -179,16 +179,24 @@ More types will be added as new cell types, enemy types, and world features are 
 - Ship movement (WASD + speed modifiers)
 - Ship-wall collision (death + spark + sound)
 - Ship-mine collision (triggers mine arming → explosion)
-- Sub_pea projectile system (pooled, 8 max, 500ms cooldown, swept collision)
+- Sub_pea projectile system (pooled, 8 max, 500ms cooldown, swept collision, gated by skill bar activation)
 - Sub_pea wall collision (spark effect at intersection point)
 - Sub_pea mine collision (direct hit on mine body causes immediate explosion)
+- Sub_mine deployable mine (3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light)
 - Mine state machine (idle → armed → exploding → destroyed → respawn)
 - Mine idle blink (100ms red flash at 1Hz, randomized per mine)
+- Fragment drops and collection (magenta binary glyphs, attract to player when nearby)
+- Subroutine progression/unlock system (fragment counting, thresholds, unlock notifications)
+- Zone data file format and loader (line-based .zone files with cell types, placements, spawns)
+- Zone persistent editing and undo system (Ctrl+Z, auto-save on edit)
+- God mode (G toggle — free camera, cell placement/removal, Tab to cycle types)
+- Skill bar Phase 1 (10 slots, number key activation, type exclusivity, geometric icons, cooldown pie sweep)
+- Catalog window Phase 2 (P key — tabbed sub browser, drag-and-drop equipping, slot swapping, right-click unequip)
 - Map cell rendering with zoom-scaled outlines
 - Grid rendering
 - View/camera with zoom and pixel-snapped translation
 - Main menu (New / Load / Exit)
-- HUD skill bar (visual placeholder) and minimap (live map cell display + player blip)
+- HUD skill bar and minimap (live map cell display + player blip)
 - Cursor (red dot + white crosshair)
 - 7 gameplay music tracks (random selection) + menu music
 - OpenGL 3.3 Core Profile rendering pipeline
@@ -200,16 +208,9 @@ More types will be added as new cell types, enemy types, and world features are 
 - Rebirth sequence (death → zoom out → slow crawl → zoom in → respawn)
 
 ### Not Yet Implemented
-- Unified skill bar (two-loadout system, slot activation, type exclusivity)
-- Catalog window (P key — tabbed browser, drag-and-drop equipping)
-- God mode (G toggle — level editor with placeable palette)
-- Zone data file format and loader (data-driven zones replacing hardcoded spawns)
-- Zone persistent editing and undo system
-- Subroutine equip/activation system (slot selection, type exclusivity)
+- Unified skill bar Phase 3 (two-loadout system for gameplay/god mode)
+- God mode placeable catalog (cell types, enemy spawns, portals via catalog drag-and-drop)
 - Sub_egress (movement dash)
-- Sub_mine (deployable mine)
-- Enemy pill drops and collection
-- Subroutine progression/unlock system
 - Active security programs (hunting enemies)
 - Boss encounters
 - Minimap fog of war

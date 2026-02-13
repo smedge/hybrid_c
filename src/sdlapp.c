@@ -93,8 +93,10 @@ static void reset_input(Input *input)
 	input->mouseWheelDown = false;
 	input->keyG = false;
 	input->keyZ = false;
+	input->keyP = false;
 	input->keyTab = false;
 	input->keySpace = false;
+	input->keyEsc = false;
 	input->keySlot = -1;
 }
 
@@ -146,7 +148,7 @@ static void change_mode(const Mode mode)
 	initialize_mode();
 }
 
-static void update(const Input* const input, const unsigned int ticks) 
+static void update(const Input* const input, const unsigned int ticks)
 {
 	switch (sdlApp.mode) {
 	case INTRO:
@@ -156,6 +158,8 @@ static void update(const Input* const input, const unsigned int ticks)
 		break;
 	case GAMEPLAY:
 		Mode_Gameplay_update(input, ticks);
+		if (input->keyEsc && !Mode_Gameplay_consumed_esc())
+			change_mode(MAINMENU);
 		break;
 	};
 }
@@ -413,6 +417,10 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 		input->keyG = true;
 		break;
 
+	case SDLK_p:
+		input->keyP = true;
+		break;
+
 	case SDLK_TAB:
 		input->keyTab = true;
 		break;
@@ -451,7 +459,7 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 		break;
 
 	case SDLK_ESCAPE:
-		change_mode(MAINMENU);
+		input->keyEsc = true;
 		break;
 			
 	default:

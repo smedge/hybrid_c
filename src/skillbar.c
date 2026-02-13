@@ -19,11 +19,15 @@ typedef struct {
 	SubroutineType type;
 	const char *name;
 	const char *short_name;
+	const char *description;
+	bool elite;
 } SubroutineInfo;
 
 static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
-	[SUB_ID_PEA]  = { SUB_ID_PEA,  SUB_TYPE_PROJECTILE, "sub_pea",  "PEA"  },
-	[SUB_ID_MINE] = { SUB_ID_MINE, SUB_TYPE_DEPLOYABLE, "sub_mine", "MINE" },
+	[SUB_ID_PEA]  = { SUB_ID_PEA,  SUB_TYPE_PROJECTILE, "sub_pea",  "PEA",
+		"Basic projectile. Fires toward cursor.", false },
+	[SUB_ID_MINE] = { SUB_ID_MINE, SUB_TYPE_DEPLOYABLE, "sub_mine", "MINE",
+		"Deployable mine. Detonates after 2 seconds.", false },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -60,7 +64,10 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 		int id = slots[slot];
 		if (id != SUB_NONE) {
 			SubroutineType type = sub_registry[id].type;
-			active_sub[type] = id;
+			if (active_sub[type] == id)
+				active_sub[type] = SUB_NONE;
+			else
+				active_sub[type] = id;
 		}
 	}
 }
@@ -229,4 +236,76 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_MINE: return Sub_Mine_get_cooldown_fraction();
 	default: return 0.0f;
 	}
+}
+
+const char *Skillbar_get_sub_name(SubroutineId id)
+{
+	if (id >= 0 && id < SUB_ID_COUNT)
+		return sub_registry[id].name;
+	return "";
+}
+
+const char *Skillbar_get_sub_description(SubroutineId id)
+{
+	if (id >= 0 && id < SUB_ID_COUNT)
+		return sub_registry[id].description;
+	return "";
+}
+
+SubroutineType Skillbar_get_sub_type(SubroutineId id)
+{
+	if (id >= 0 && id < SUB_ID_COUNT)
+		return sub_registry[id].type;
+	return SUB_TYPE_PROJECTILE;
+}
+
+int Skillbar_get_slot_sub(int slot)
+{
+	if (slot >= 0 && slot < SKILLBAR_SLOTS)
+		return slots[slot];
+	return SUB_NONE;
+}
+
+int Skillbar_find_equipped_slot(SubroutineId id)
+{
+	for (int i = 0; i < SKILLBAR_SLOTS; i++) {
+		if (slots[i] == id)
+			return i;
+	}
+	return -1;
+}
+
+void Skillbar_swap_slots(int a, int b)
+{
+	if (a < 0 || a >= SKILLBAR_SLOTS) return;
+	if (b < 0 || b >= SKILLBAR_SLOTS) return;
+	int tmp = slots[a];
+	slots[a] = slots[b];
+	slots[b] = tmp;
+}
+
+int Skillbar_slot_at_position(float x, float y, const Screen *screen)
+{
+	float base_x = SLOT_MARGIN;
+	float base_y = (float)screen->height - SLOT_SIZE - SLOT_MARGIN;
+
+	for (int i = 0; i < SKILLBAR_SLOTS; i++) {
+		float bx = base_x + i * SLOT_SPACING;
+		float by = base_y;
+		if (x >= bx && x <= bx + SLOT_SIZE && y >= by && y <= by + SLOT_SIZE)
+			return i;
+	}
+	return -1;
+}
+
+void Skillbar_render_icon_at(SubroutineId id, float cx, float cy, float alpha)
+{
+	render_icon(id, cx, cy, alpha);
+}
+
+bool Skillbar_is_elite(SubroutineId id)
+{
+	if (id >= 0 && id < SUB_ID_COUNT)
+		return sub_registry[id].elite;
+	return false;
 }

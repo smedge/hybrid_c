@@ -23,8 +23,10 @@ typedef struct {
 
 	bool keyG;
 	bool keyZ;
+	bool keyP;
 	bool keyTab;
 	bool keySpace;
+	bool keyEsc;
 	int keySlot;  /* -1 = none, 0-9 = skill bar slot pressed */
 } Input;
 

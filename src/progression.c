@@ -19,6 +19,7 @@ typedef struct {
 	FragmentType frag_type;
 	int threshold;
 	bool unlocked;
+	bool discovered;
 } ProgressionEntry;
 
 static ProgressionEntry entries[SUB_ID_COUNT] = {
@@ -49,6 +50,7 @@ void Progression_initialize(void)
 {
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
 		entries[i].unlocked = (entries[i].threshold == 0);
+		entries[i].discovered = entries[i].unlocked;
 	}
 
 	notifyActive = false;
@@ -69,6 +71,21 @@ void Progression_update(unsigned int ticks)
 			continue;
 
 		int count = Fragment_get_count(entries[i].frag_type);
+
+		/* First fragment — discovery notification */
+		if (!entries[i].discovered && count >= 1) {
+			entries[i].discovered = true;
+
+			const char *type_names[] = {
+				"Projectile", "Deployable", "Movement", "Shield", "Healing"
+			};
+			SubroutineType type = Skillbar_get_sub_type(i);
+			snprintf(notifyText, sizeof(notifyText),
+				">> New %s skill discovered <<", type_names[type]);
+			notifyActive = true;
+			notifyTimer = 0;
+		}
+
 		if (count >= entries[i].threshold) {
 			entries[i].unlocked = true;
 
@@ -96,32 +113,6 @@ void Progression_render(const Screen *screen)
 	Mat4 proj = Graphics_get_ui_projection();
 	Mat4 ident = Mat4_identity();
 
-	/* Upper-left progress counter for each entry */
-	float x = 10.0f;
-	float y = 40.0f;
-
-	for (int i = 0; i < SUB_ID_COUNT; i++) {
-		char buf[64];
-		if (entries[i].unlocked)
-			snprintf(buf, sizeof(buf), "%s: UNLOCKED", entries[i].name);
-		else
-			snprintf(buf, sizeof(buf), "%s: %d/%d",
-				entries[i].name,
-				Fragment_get_count(entries[i].frag_type),
-				entries[i].threshold);
-
-		/* Magenta for unlocked, white for in-progress */
-		float r = entries[i].unlocked ? 1.0f : 1.0f;
-		float g = entries[i].unlocked ? 0.0f : 1.0f;
-		float b = entries[i].unlocked ? 1.0f : 1.0f;
-
-		Text_render(tr, shaders, &proj, &ident,
-			buf, x, y,
-			r, g, b, 0.9f);
-
-		y += 20.0f;
-	}
-
 	/* Centered fading unlock notification */
 	if (notifyActive) {
 		float alpha = 1.0f;
@@ -143,6 +134,19 @@ bool Progression_is_unlocked(SubroutineId id)
 {
 	if (id >= 0 && id < SUB_ID_COUNT)
 		return entries[id].unlocked;
+	return false;
+}
+
+bool Progression_is_discovered(SubroutineId id)
+{
+	if (id < 0 || id >= SUB_ID_COUNT)
+		return false;
+	if (entries[id].unlocked)
+		return true;
+	if (entries[id].threshold == 0)
+		return true;
+	if (Fragment_get_count(entries[id].frag_type) >= 1)
+		return true;
 	return false;
 }
 

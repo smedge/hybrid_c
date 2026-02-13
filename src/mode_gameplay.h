@@ -1,6 +1,8 @@
 #ifndef MODE_GAMEPLAY_H
 #define MODE_GAMEPLAY_H
 
+#include <stdbool.h>
+
 #define GAMEPLAY_MUSIC_01_PATH "./resources/music/deadmau5_GG.mp3"
 #define GAMEPLAY_MUSIC_02_PATH "./resources/music/deadmau5_Snowcone.mp3"
 #define GAMEPLAY_MUSIC_03_PATH "./resources/music/deadmau5_ArcadiaRemasteredAgain.mp3"
@@ -26,5 +28,6 @@ void Mode_Gameplay_initialize(void);
 void Mode_Gameplay_cleanup(void);
 void Mode_Gameplay_update(const Input *input, const unsigned int ticks);
 void Mode_Gameplay_render(void);
+bool Mode_Gameplay_consumed_esc(void);
 
 #endif

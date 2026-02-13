@@ -6,6 +6,7 @@
 #include "text.h"
 #include "background.h"
 #include "skillbar.h"
+#include "catalog.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -45,6 +46,8 @@ static int godModeCursorY = 0;
 static bool godModeCursorValid = false;
 #define GOD_CAM_SPEED 800.0
 
+static bool escConsumed = false;
+
 static double ease_in_out_cubic(double t);
 static void start_zone_bgm(void);
 static void complete_rebirth(void);
@@ -67,6 +70,7 @@ void Mode_Gameplay_initialize(void)
 	Fragment_initialize();
 	Progression_initialize();
 	Skillbar_initialize();
+	Catalog_initialize();
 	Zone_load("./resources/zones/zone_001.zone");
 
 	godModeActive = false;
@@ -83,6 +87,7 @@ void Mode_Gameplay_initialize(void)
 
 void Mode_Gameplay_cleanup(void)
 {
+	Catalog_cleanup();
 	Skillbar_cleanup();
 	Progression_cleanup();
 	Fragment_cleanup();
@@ -97,6 +102,7 @@ void Mode_Gameplay_cleanup(void)
 
 void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
+	escConsumed = false;
 	Background_update(ticks * 3);
 
 	if (gameplayState == GAMEPLAY_REBIRTH) {
@@ -136,10 +142,30 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		return;
 	}
 
-	/* Normal gameplay */
+	/* Toggle catalog */
+	if (input->keyP && !godModeActive)
+		Catalog_toggle();
+
+	if (Catalog_is_open()) {
+		if (input->keyEsc)
+			escConsumed = true;
+		Catalog_update(input, ticks);
+	}
+
+	/* Gameplay runs fully regardless of catalog state.
+	   Mouse clicks go to catalog, not gameplay (no shooting through the window). */
+	const Input *gameplay_input = input;
+	Input no_mouse;
+	if (Catalog_is_open()) {
+		no_mouse = *input;
+		no_mouse.mouseLeft = false;
+		no_mouse.mouseRight = false;
+		no_mouse.mouseMiddle = false;
+		gameplay_input = &no_mouse;
+	}
 	cursor_update(input);
-	Skillbar_update(input, ticks);
-	Entity_user_update_system(input, ticks);
+	Skillbar_update(gameplay_input, ticks);
+	Entity_user_update_system(gameplay_input, ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
 	Fragment_update(ticks);
@@ -203,8 +229,11 @@ void Mode_Gameplay_render(void)
 	Hud_render(&screen);
 	Progression_render(&screen);
 	Fragment_render_text(&screen);
+	Catalog_render(&screen);
 	if (godModeActive)
 		god_mode_render_hud(&screen);
+	/* Flush everything so far, then render cursor on top */
+	Render_flush(&ui_proj, &identity);
 	if (gameplayState == GAMEPLAY_ACTIVE && !godModeActive)
 		cursor_render();
 	Render_flush(&ui_proj, &identity);
@@ -350,6 +379,11 @@ static void god_mode_render_hud(const Screen *screen)
 			buf, cx - 10.0f, ty + 20.0f,
 			1.0f, 1.0f, 1.0f, 0.8f);
 	}
+}
+
+bool Mode_Gameplay_consumed_esc(void)
+{
+	return escConsumed;
 }
 
 static double ease_in_out_cubic(double t)
