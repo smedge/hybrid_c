@@ -38,6 +38,7 @@ static int timeSinceLastFeedback; /* ms since last feedback added */
 static bool dead;
 
 static int flashTicksLeft;
+static unsigned int feedbackFlashTimer; /* running timer for 4Hz feedback-full blink */
 static Mix_Chunk *sampleHurt = 0;
 
 void PlayerStats_initialize(void)
@@ -48,6 +49,7 @@ void PlayerStats_initialize(void)
 	timeSinceLastFeedback = FEEDBACK_GRACE_MS;
 	dead = false;
 	flashTicksLeft = 0;
+	feedbackFlashTimer = 0;
 
 	Audio_load_sample(&sampleHurt, "resources/sounds/samus_hurt.wav");
 }
@@ -71,6 +73,12 @@ void PlayerStats_update(unsigned int ticks)
 	/* Flash decay */
 	if (flashTicksLeft > 0)
 		flashTicksLeft -= ticks;
+
+	/* Feedback full blink timer (4Hz = 250ms period) */
+	if (feedback >= FEEDBACK_MAX)
+		feedbackFlashTimer += ticks;
+	else
+		feedbackFlashTimer = 0;
 
 	/* Feedback decay after grace period */
 	if (timeSinceLastFeedback >= FEEDBACK_GRACE_MS) {
@@ -197,7 +205,9 @@ void PlayerStats_render(const Screen *screen)
 		fb = 0.8f * t;
 	}
 	float fbFillWidth = BAR_WIDTH * fbFrac;
-	if (fbFillWidth > 0.0f) {
+	/* 4Hz blink when feedback is full: 250ms period, visible first 125ms */
+	bool fbFillVisible = (feedback < FEEDBACK_MAX) || ((feedbackFlashTimer % 250) < 125);
+	if (fbFillWidth > 0.0f && fbFillVisible) {
 		Render_quad_absolute(barX, fy, barX + fbFillWidth, fy + BAR_HEIGHT,
 			fr, fg, fb, 0.9f);
 	}
@@ -272,4 +282,5 @@ void PlayerStats_reset(void)
 	timeSinceLastFeedback = FEEDBACK_GRACE_MS;
 	dead = false;
 	flashTicksLeft = 0;
+	feedbackFlashTimer = 0;
 }

@@ -91,7 +91,6 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 			m->phaseTicks = 0;
 
 			Audio_play_sample(&samplePlace);
-			PlayerStats_add_feedback(15.0);
 		}
 	}
 
@@ -108,6 +107,7 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 				m->phase = MINE_EXPLODING;
 				m->phaseTicks = 0;
 				Audio_play_sample(&sampleExplode);
+				PlayerStats_add_feedback(15.0);
 			}
 			break;
 

@@ -34,7 +34,7 @@ The ship's structural health. Starts at 100, regens at 5/sec after 2 seconds wit
 
 #### Feedback (Overload Meter)
 
-Feedback accumulates from subroutine usage and represents system strain. Decays at 15/sec after a 500ms grace period. When feedback is full (100) and a subroutine is used, the excess feedback spills over as direct Integrity damage — the damage equals the feedback the action would have added. This creates a resource management layer: sustained combat has consequences, and players must pace their ability usage.
+Feedback accumulates from subroutine usage and represents connection strain. Decays at 15/sec after a 500ms grace period. When feedback is full (100) and a subroutine is used, the excess feedback spills over as direct Integrity damage — the damage equals the feedback the action would have added. This creates a resource management layer: sustained combat has consequences, and players must pace their ability usage.
 
 **Feedback costs per subroutine**:
 
@@ -77,9 +77,9 @@ Subroutines are abilities the Hybrid AI can execute to interact with digital spa
 
 ### Progression System
 
-Enemies drop **fragments** (small magenta binary glyph collectibles) when destroyed. Fragments last 10 seconds (fade begins at 8s), and are collectible for their full lifetime. Collecting fragments from a specific enemy type progresses the player toward unlocking the subroutine associated with that enemy.
+Enemies drop **fragments** (small colored binary glyph collectibles) when destroyed. Fragments last 10 seconds (fade begins at 8s), and are collectible for their full lifetime. Collecting fragments from a specific enemy type progresses the player toward unlocking the subroutine associated with that enemy. Fragments are different colors based on their type and **elite** fragments are golden.
 
-- Kill 100 mines → unlock sub_mine (0% to 100% progression)
+- Kill 5 mines → unlock sub_mine (0% to 100% progression)
 - Each enemy type has its own subroutine and kill-count threshold
 - The **Catalog Window** (P key) shows progression and allows equipping — see Catalog Window section below
 
