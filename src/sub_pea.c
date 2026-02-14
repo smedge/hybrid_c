@@ -8,6 +8,7 @@
 #include "view.h"
 #include "shipstate.h"
 #include "skillbar.h"
+#include "player_stats.h"
 
 #include <math.h>
 #include <SDL2/SDL_mixer.h>
@@ -100,6 +101,7 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 		p->headingCos = cos(rad);
 
 		Audio_play_sample(&sample01);
+		PlayerStats_add_feedback(1.0);
 	}
 
 	for (int i = 0; i < MAX_PROJECTILES; i++) {

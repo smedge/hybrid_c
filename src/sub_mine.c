@@ -8,6 +8,7 @@
 #include "color.h"
 #include "view.h"
 #include "skillbar.h"
+#include "player_stats.h"
 
 #include <SDL2/SDL_mixer.h>
 
@@ -90,6 +91,7 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 			m->phaseTicks = 0;
 
 			Audio_play_sample(&samplePlace);
+			PlayerStats_add_feedback(15.0);
 		}
 	}
 

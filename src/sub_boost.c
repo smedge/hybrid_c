@@ -16,7 +16,6 @@ void Sub_Boost_cleanup(void)
 
 void Sub_Boost_update(const Input *input, unsigned int ticks)
 {
-	(void)ticks;
 	boosting = input->keyLShift && Skillbar_is_active(SUB_ID_BOOST);
 }
 

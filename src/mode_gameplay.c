@@ -8,6 +8,7 @@
 #include "skillbar.h"
 #include "catalog.h"
 #include "destructible.h"
+#include "player_stats.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -68,6 +69,7 @@ void Mode_Gameplay_initialize(void)
 	Grid_initialize();
 	Map_initialize();
 	Ship_initialize();
+	PlayerStats_initialize();
 	Fragment_initialize();
 	Progression_initialize();
 	Skillbar_initialize();
@@ -95,6 +97,7 @@ void Mode_Gameplay_cleanup(void)
 	Fragment_cleanup();
 	Zone_unload();
 	Ship_cleanup();
+	PlayerStats_cleanup();
 	Entity_destroy_all();
 	Hud_cleanup();
 	Audio_stop_music();
@@ -167,6 +170,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		filtered.mouseMiddle = false;
 	}
 	Entity_user_update_system(&filtered, ticks);
+	PlayerStats_update(ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
 	Destructible_update(ticks);
@@ -229,6 +233,7 @@ void Mode_Gameplay_render(void)
 	Mat4 ui_proj = Graphics_get_ui_projection();
 	Mat4 identity = Mat4_identity();
 	Hud_render(&screen);
+	PlayerStats_render(&screen);
 	Progression_render(&screen);
 	Fragment_render_text(&screen);
 	Catalog_render(&screen);

@@ -3,6 +3,7 @@
 #include "skillbar.h"
 #include "progression.h"
 #include "ship.h"
+#include "player_stats.h"
 
 #include <math.h>
 
@@ -67,6 +68,7 @@ void Sub_Egress_update(const Input *input, unsigned int ticks)
 
 			state = EGRESS_DASHING;
 			dashTimeLeft = DASH_DURATION;
+			PlayerStats_add_feedback(25.0);
 		}
 		break;
 

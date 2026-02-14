@@ -8,6 +8,7 @@
 #include "color.h"
 #include "shipstate.h"
 #include "audio.h"
+#include "player_stats.h"
 
 #include <SDL2/SDL_mixer.h>
 
@@ -150,11 +151,22 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			prevPosition = placeable->position;
 			Sub_Boost_initialize();
 			Sub_Egress_initialize();
+			PlayerStats_reset();
 
 			Audio_play_sample(&sample01);
 		}
 	}
 	else {
+		/* Overload death check */
+		if (!godMode && PlayerStats_is_dead()) {
+			sparkActive = true;
+			sparkPosition = placeable->position;
+			sparkTicksLeft = SPARK_DURATION;
+			shipState.destroyed = true;
+			Audio_play_sample(&sample02);
+			Audio_play_sample(&sample03);
+		}
+
 		/* Update movement subs */
 		Sub_Boost_update(userInput, ticks);
 		Sub_Egress_update(userInput, ticks);
@@ -314,6 +326,7 @@ void Ship_force_spawn(Position pos)
 	placeable.heading = 0.0;
 	vel_x = 0.0;
 	vel_y = 0.0;
+	PlayerStats_reset();
 	Audio_play_sample(&sample01);
 }
 
