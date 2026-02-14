@@ -87,9 +87,10 @@ void PlayerStats_update(unsigned int ticks)
 			feedback = 0.0;
 	}
 
-	/* Integrity regen after delay */
+	/* Integrity regen after delay — 2x rate when feedback is empty */
 	if (timeSinceLastDamage >= REGEN_DELAY_MS && integrity < INTEGRITY_MAX) {
-		integrity += INTEGRITY_REGEN * dt;
+		double rate = (feedback <= 0.0) ? INTEGRITY_REGEN * 2.0 : INTEGRITY_REGEN;
+		integrity += rate * dt;
 		if (integrity > INTEGRITY_MAX)
 			integrity = INTEGRITY_MAX;
 	}
@@ -266,6 +267,14 @@ void PlayerStats_damage(double amount)
 	integrity -= amount;
 	if (integrity < 0.0)
 		integrity = 0.0;
+	timeSinceLastDamage = 0;
+	flashTicksLeft = FLASH_DURATION;
+	Audio_play_sample(&sampleHurt);
+}
+
+void PlayerStats_force_kill(void)
+{
+	integrity = 0.0;
 	timeSinceLastDamage = 0;
 }
 

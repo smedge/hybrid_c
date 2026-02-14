@@ -101,7 +101,7 @@ void Sub_Mgun_update(const Input *userInput, const unsigned int ticks, Placeable
 		p->headingCos = cos(rad);
 
 		Audio_play_sample(&sample01);
-		PlayerStats_add_feedback(1.0);
+		PlayerStats_add_feedback(2.0);
 	}
 
 	for (int i = 0; i < MAX_PROJECTILES; i++) {
@@ -218,6 +218,21 @@ bool Sub_Mgun_check_hit(Rectangle target)
 			p->active = false;
 			return true;
 		}
+	}
+	return false;
+}
+
+bool Sub_Mgun_check_nearby(Position pos, double radius)
+{
+	double r2 = radius * radius;
+	for (int i = 0; i < MAX_PROJECTILES; i++) {
+		Projectile *p = &projectiles[i];
+		if (!p->active)
+			continue;
+		double dx = p->position.x - pos.x;
+		double dy = p->position.y - pos.y;
+		if (dx * dx + dy * dy < r2)
+			return true;
 	}
 	return false;
 }

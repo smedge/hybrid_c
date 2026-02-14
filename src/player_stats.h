@@ -10,6 +10,7 @@ void PlayerStats_update(unsigned int ticks);
 void PlayerStats_render(const Screen *screen);
 void PlayerStats_add_feedback(double amount);
 void PlayerStats_damage(double amount);
+void PlayerStats_force_kill(void);
 bool PlayerStats_is_dead(void);
 void PlayerStats_reset(void);
 

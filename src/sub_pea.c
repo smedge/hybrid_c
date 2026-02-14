@@ -222,6 +222,21 @@ bool Sub_Pea_check_hit(Rectangle target)
 	return false;
 }
 
+bool Sub_Pea_check_nearby(Position pos, double radius)
+{
+	double r2 = radius * radius;
+	for (int i = 0; i < MAX_PROJECTILES; i++) {
+		Projectile *p = &projectiles[i];
+		if (!p->active)
+			continue;
+		double dx = p->position.x - pos.x;
+		double dy = p->position.y - pos.y;
+		if (dx * dx + dy * dy < r2)
+			return true;
+	}
+	return false;
+}
+
 void Sub_Pea_deactivate_all(void)
 {
 	for (int i = 0; i < MAX_PROJECTILES; i++)

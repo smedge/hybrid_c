@@ -223,6 +223,9 @@ spawn mine -2400.0 800.0
 spawn mine -2400.0 -800.0
 spawn mine 2400.0 800.0
 spawn mine 2400.0 -800.0
+spawn hunter 800.0 800.0
+spawn hunter -800.0 -800.0
+spawn hunter 2400.0 0.0
 
 portal 576 512 east_gate ./resources/zones/zone_002.zone west_gate
 

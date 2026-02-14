@@ -12,6 +12,7 @@
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
+#include "hunter.h"
 #include "savepoint.h"
 #include "portal.h"
 #include "fragment.h"
@@ -392,6 +393,7 @@ void Mode_Gameplay_render(void)
 		Map_render();
 		Ship_render_bloom_source();
 		Mine_render_bloom_source();
+		Hunter_render_bloom_source();
 		Portal_render_bloom_source();
 		Savepoint_render_bloom_source();
 		Fragment_render_bloom_source();

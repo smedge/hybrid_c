@@ -10,6 +10,7 @@
 #include "shipstate.h"
 #include "audio.h"
 #include "player_stats.h"
+#include "hunter.h"
 #include "savepoint.h"
 #include "zone.h"
 #include "fragment.h"
@@ -131,12 +132,7 @@ void Ship_resolve(const void *state, const Collision collision)
 
 	if (collision.solid)
 	{
-		sparkActive = true;
-		sparkPosition = placeable.position;
-		sparkTicksLeft = SPARK_DURATION;
-		shipState.destroyed = true;
-		Audio_play_sample(&sample02);
-		Audio_play_sample(&sample03);
+		PlayerStats_force_kill();
 	}
 }
 
@@ -191,7 +187,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		}
 	}
 	else {
-		/* Overload death check */
+		/* Death check — all damage sources funnel through integrity */
 		if (!godMode && PlayerStats_is_dead()) {
 			sparkActive = true;
 			sparkPosition = placeable->position;
@@ -199,6 +195,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			shipState.destroyed = true;
 			Audio_play_sample(&sample02);
 			Audio_play_sample(&sample03);
+			Hunter_deaggro_all();
 		}
 
 		/* Update movement subs */

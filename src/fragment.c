@@ -49,8 +49,9 @@ typedef struct {
 } FragmentTypeInfo;
 
 static const FragmentTypeInfo typeInfo[FRAG_TYPE_COUNT] = {
-	[FRAG_TYPE_MINE]  = {{1.0f, 0.0f, 1.0f, 1.0f}},
-	[FRAG_TYPE_ELITE] = {{1.0f, 0.84f, 0.0f, 1.0f}}
+	[FRAG_TYPE_MINE]   = {{1.0f, 0.0f, 1.0f, 1.0f}},
+	[FRAG_TYPE_ELITE]  = {{1.0f, 0.84f, 0.0f, 1.0f}},
+	[FRAG_TYPE_HUNTER] = {{1.0f, 0.4f, 0.0f, 1.0f}}
 };
 
 static Fragment fragments[MAX_FRAGMENTS];
