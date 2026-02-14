@@ -12,7 +12,6 @@
 #include <stdio.h>
 
 #define DWELL_THRESHOLD_MS 1000
-#define ARRIVAL_SUPPRESS_MS 1500
 #define NUM_PARTICLES 8
 #define DIAMOND_SIZE 60.0
 
@@ -31,7 +30,7 @@ typedef struct {
 	unsigned int dwell_timer;
 	unsigned int anim_timer;
 	bool ship_inside;
-	unsigned int suppress_timer;  /* arrival suppression countdown */
+	bool deactivated;  /* must leave and re-enter to reactivate */
 } PortalState;
 
 static PortalState portals[PORTAL_COUNT];
@@ -75,7 +74,7 @@ void Portal_initialize(Position position, const char *id,
 	p->dwell_timer = 0;
 	p->anim_timer = 0;
 	p->ship_inside = false;
-	p->suppress_timer = 0;
+	p->deactivated = false;
 
 	placeables[portalCount].position = position;
 	placeables[portalCount].heading = 0.0;
@@ -106,14 +105,6 @@ void Portal_update_all(unsigned int ticks)
 
 		p->anim_timer += ticks;
 
-		/* Arrival suppression countdown */
-		if (p->suppress_timer > 0) {
-			if (ticks >= p->suppress_timer)
-				p->suppress_timer = 0;
-			else
-				p->suppress_timer -= ticks;
-		}
-
 		/* Point-in-AABB test for ship center */
 		double dx = ship_pos.x - p->position.x;
 		double dy = ship_pos.y - p->position.y;
@@ -123,8 +114,8 @@ void Portal_update_all(unsigned int ticks)
 		if (inside && !Ship_is_destroyed()) {
 			p->ship_inside = true;
 
-			/* Don't charge while suppressed */
-			if (p->suppress_timer > 0) continue;
+			/* Don't charge while deactivated — must leave first */
+			if (p->deactivated) continue;
 
 			p->dwell_timer += ticks;
 
@@ -147,6 +138,9 @@ void Portal_update_all(unsigned int ticks)
 					p->dest_zone, p->dest_portal_id);
 			}
 		} else {
+			/* Ship left — reactivate if deactivated */
+			if (p->deactivated && !inside)
+				p->deactivated = false;
 			p->ship_inside = false;
 			p->dwell_timer = 0;
 		}
@@ -160,7 +154,7 @@ void Portal_render(const void *state, const PlaceableComponent *placeable)
 
 	float t = p->anim_timer / 1000.0f;
 	float charge = 0.0f;
-	if (p->ship_inside && p->suppress_timer == 0)
+	if (p->ship_inside && !p->deactivated)
 		charge = (float)p->dwell_timer / DWELL_THRESHOLD_MS;
 	if (charge > 1.0f) charge = 1.0f;
 
@@ -181,7 +175,7 @@ void Portal_render_bloom_source(void)
 
 		float t = p->anim_timer / 1000.0f;
 		float charge = 0.0f;
-		if (p->ship_inside && p->suppress_timer == 0)
+		if (p->ship_inside && !p->deactivated)
 			charge = (float)p->dwell_timer / DWELL_THRESHOLD_MS;
 		if (charge > 1.0f) charge = 1.0f;
 
@@ -260,7 +254,7 @@ void Portal_suppress_arrival(const char *portal_id)
 {
 	for (int i = 0; i < portalCount; i++) {
 		if (portals[i].active && strcmp(portals[i].id, portal_id) == 0) {
-			portals[i].suppress_timer = ARRIVAL_SUPPRESS_MS;
+			portals[i].deactivated = true;
 			portals[i].dwell_timer = 0;
 			portals[i].ship_inside = false;
 			return;

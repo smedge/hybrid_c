@@ -9,6 +9,13 @@
 #include "shipstate.h"
 #include "audio.h"
 #include "player_stats.h"
+#include "savepoint.h"
+#include "zone.h"
+#include "fragment.h"
+#include "progression.h"
+#include "skillbar.h"
+
+#include <string.h>
 
 #include <SDL2/SDL_mixer.h>
 
@@ -143,8 +150,32 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		if (shipState.ticksDestroyed >= DEATH_TIMER) {
 			shipState.destroyed = false;
 			shipState.ticksDestroyed = 0;
-			placeable->position.x = 0.0;
-			placeable->position.y = 0.0;
+
+			/* Respawn at checkpoint if valid and in current zone */
+			const SaveCheckpoint *ckpt = Savepoint_get_checkpoint();
+			const Zone *z = Zone_get();
+			if (ckpt->valid && strcmp(ckpt->zone_path, z->filepath) == 0) {
+				placeable->position = ckpt->position;
+				Savepoint_suppress_by_id(ckpt->savepoint_id);
+				for (int i = 0; i < FRAG_TYPE_COUNT; i++)
+					Fragment_set_count(i, ckpt->fragment_counts[i]);
+				Progression_restore(ckpt->unlocked, ckpt->discovered);
+				Skillbar_restore(ckpt->skillbar);
+			} else if (ckpt->valid) {
+				/* Cross-zone respawn — flag for mode_gameplay to handle */
+				Ship_set_pending_cross_zone_respawn(true);
+				placeable->position.x = 0.0;
+				placeable->position.y = 0.0;
+			} else {
+				/* No checkpoint — reset to default state */
+				placeable->position.x = 0.0;
+				placeable->position.y = 0.0;
+				for (int i = 0; i < FRAG_TYPE_COUNT; i++)
+					Fragment_set_count(i, 0);
+				Progression_initialize();
+				Skillbar_initialize();
+			}
+
 			placeable->heading = 0.0;
 			vel_x = 0.0;
 			vel_y = 0.0;
@@ -343,6 +374,18 @@ void Ship_set_god_mode(bool enabled)
 bool Ship_is_destroyed(void)
 {
 	return shipState.destroyed;
+}
+
+static bool pendingCrossZoneRespawn = false;
+
+void Ship_set_pending_cross_zone_respawn(bool pending)
+{
+	pendingCrossZoneRespawn = pending;
+}
+
+bool Ship_has_pending_cross_zone_respawn(void)
+{
+	return pendingCrossZoneRespawn;
 }
 
 static double get_heading(const bool n, const bool s,

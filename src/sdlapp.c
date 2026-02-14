@@ -8,6 +8,7 @@
 #include "timer.h"
 #include "mode_mainmenu.h"
 #include "mode_gameplay.h"
+#include "savepoint.h"
 
 static const unsigned int DELAY = 1;
 
@@ -34,6 +35,7 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event);
 
 static void quit_callback(void);
 static void gameplay_mode_callback(void);
+static void load_game_callback(void);
 
 void Sdlapp_run(void)
 {
@@ -58,8 +60,11 @@ static void initialize(void)
 
 	srand(time(NULL));
 
-	Mode_Mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
-	
+	/* Load checkpoint from disk at startup */
+	Savepoint_load_from_disk();
+
+	Mode_Mainmenu_initialize(&quit_callback, &gameplay_mode_callback, &load_game_callback);
+
 	sdlApp.mode = MAINMENU;
 }
 
@@ -106,8 +111,18 @@ static void quit_callback(void)
 	sdlApp.quit = true;
 }
 
+static bool sdlAppLoadFromSave = false;
+
 static void gameplay_mode_callback(void)
 {
+	Savepoint_delete_save_file();
+	sdlAppLoadFromSave = false;
+	change_mode(GAMEPLAY);
+}
+
+static void load_game_callback(void)
+{
+	sdlAppLoadFromSave = true;
 	change_mode(GAMEPLAY);
 }
 
@@ -117,10 +132,13 @@ static void initialize_mode(void)
 	case INTRO:
 		break;
 	case MAINMENU:
-		Mode_Mainmenu_initialize(&quit_callback, &gameplay_mode_callback);
+		Mode_Mainmenu_initialize(&quit_callback, &gameplay_mode_callback, &load_game_callback);
 		break;
 	case GAMEPLAY:
-		Mode_Gameplay_initialize();
+		if (sdlAppLoadFromSave)
+			Mode_Gameplay_initialize_from_save();
+		else
+			Mode_Gameplay_initialize();
 		break;
 	};
 }

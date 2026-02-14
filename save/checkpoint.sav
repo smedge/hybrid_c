@@ -1,0 +1,7 @@
+zone ./resources/zones/zone_001.zone
+savepoint origin_save
+position -6400.0 0.0
+unlocked sub_pea sub_mine sub_boost sub_egress
+discovered sub_pea sub_mine sub_boost sub_egress
+fragments mine:5 elite:1
+skillbar 0:sub_boost 1:sub_pea 2:sub_mine

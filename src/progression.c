@@ -153,6 +153,14 @@ void Progression_render(const Screen *screen)
 	}
 }
 
+void Progression_restore(const bool *unlocked, const bool *discovered)
+{
+	for (int i = 0; i < SUB_ID_COUNT; i++) {
+		entries[i].unlocked = unlocked[i];
+		entries[i].discovered = discovered[i];
+	}
+}
+
 bool Progression_is_unlocked(SubroutineId id)
 {
 	if (id >= 0 && id < SUB_ID_COUNT)

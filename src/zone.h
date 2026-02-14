@@ -9,6 +9,7 @@
 #define ZONE_MAX_UNDO 512
 #define ZONE_MAX_DESTRUCTIBLES 32
 #define ZONE_MAX_PORTALS 16
+#define ZONE_MAX_SAVEPOINTS 16
 
 typedef struct {
 	int grid_x, grid_y;
@@ -52,6 +53,12 @@ typedef struct {
 
 	ZonePortal portals[ZONE_MAX_PORTALS];
 	int portal_count;
+
+	struct {
+		int grid_x, grid_y;
+		char id[32];
+	} savepoints[ZONE_MAX_SAVEPOINTS];
+	int savepoint_count;
 } Zone;
 
 void Zone_load(const char *path);

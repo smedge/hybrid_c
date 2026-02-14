@@ -19,7 +19,8 @@
 
 void Mode_Mainmenu_initialize(
 	void (*quit)(void),
-	void (*gameplay_mode)(void));
+	void (*gameplay_mode)(void),
+	void (*load_game)(void));
 void Mode_Mainmenu_cleanup(void);
 void Mode_Mainmenu_update(
 	const Input *input,

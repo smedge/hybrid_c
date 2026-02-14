@@ -20,6 +20,7 @@ void Progression_render(const Screen *screen);
 
 bool Progression_is_unlocked(SubroutineId id);
 bool Progression_is_discovered(SubroutineId id);
+void Progression_restore(const bool *unlocked, const bool *discovered);
 int  Progression_get_current(SubroutineId id);
 int  Progression_get_threshold(SubroutineId id);
 float Progression_get_progress(SubroutineId id);

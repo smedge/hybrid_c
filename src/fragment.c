@@ -287,3 +287,9 @@ int Fragment_get_count(FragmentType type)
 		return collectionCounts[type];
 	return 0;
 }
+
+void Fragment_set_count(FragmentType type, int count)
+{
+	if (type >= 0 && type < FRAG_TYPE_COUNT)
+		collectionCounts[type] = count;
+}

@@ -4,6 +4,7 @@
 
 **Hybrid** takes place in a digital world where a human brain has been interfaced with a computer system for the first time. The player character is the "Hybrid" — a fusion of human mind and AI consciousness navigating cyberspace.
 
+- **Rebirth**: The game begins with a "rebirth" sequence — what was once a human is being reborn as a brain connected to a network, with the structure of that network projected into its consciousness. This is the player's first moment of awareness in cyberspace.
 - **The Grid**: Represents the fabric of cyberspace. Movement across it shows traversal through digital space.
 - **Map Cells / Walls**: Give the system topography — structural geometry the player must navigate around. The architecture of the digital system.
 - **Mines**: Security intrusion detection devices. Part of the system's defenses against the Hybrid.

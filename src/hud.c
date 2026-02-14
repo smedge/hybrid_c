@@ -2,13 +2,27 @@
 #include "render.h"
 #include "text.h"
 #include "graphics.h"
+#include "mat4.h"
 #include "map.h"
 #include "ship.h"
 #include "skillbar.h"
 #include "portal.h"
+#include "savepoint.h"
+#include "zone.h"
 
 #define RADAR_SIZE 200.0f
 #define RADAR_RANGE 15000.0f
+
+static float measure_text(TextRenderer *tr, const char *text)
+{
+	float w = 0.0f;
+	for (int i = 0; text[i]; i++) {
+		int ch = (unsigned char)text[i];
+		if (ch >= 32 && ch <= 127)
+			w += tr->char_data[ch - 32][6];
+	}
+	return w;
+}
 
 static void render_radar(const Screen *screen);
 
@@ -50,11 +64,38 @@ static void render_radar(const Screen *screen)
 	Portal_render_minimap((float)ship_pos.x, (float)ship_pos.y,
 		rx, ry, RADAR_SIZE, RADAR_RANGE);
 
+	/* Save point blips */
+	Savepoint_render_minimap((float)ship_pos.x, (float)ship_pos.y,
+		rx, ry, RADAR_SIZE, RADAR_RANGE);
+
 	/* Player blip (center) */
 	float cx = rx + RADAR_SIZE * 0.5f;
 	float cy = ry + RADAR_SIZE * 0.5f;
 	Render_quad_absolute(cx - 2.0f, cy - 2.0f, cx + 2.0f, cy + 2.0f,
 		1.0f, 0.3f, 0.3f, 1.0f);
+
+	/* Zone name — right-justified above minimap */
+	{
+		const Zone *z = Zone_get();
+		if (z && z->name[0]) {
+			TextRenderer *tr = Graphics_get_text_renderer();
+			Shaders *shaders = Graphics_get_shaders();
+			Mat4 proj = Graphics_get_ui_projection();
+			Mat4 ident = Mat4_identity();
+
+			float right_edge = rx + RADAR_SIZE;
+			float tw = measure_text(tr, z->name);
+			float tx = right_edge - tw;
+			float ty = ry - 4.0f;
+
+			/* Flush geometry before text so quads don't cover it */
+			Render_flush(&proj, &ident);
+
+			Text_render(tr, shaders, &proj, &ident,
+				z->name, tx, ty,
+				0.5f, 0.5f, 0.5f, 0.8f);
+		}
+	}
 
 	/* Border */
 	float brc = 0.3f;

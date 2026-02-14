@@ -1,6 +1,7 @@
 #include "zone.h"
 #include "mine.h"
 #include "portal.h"
+#include "savepoint.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,7 +60,7 @@ void Zone_load(const char *path)
 		if (len > 0 && line[len - 1] == '\r') line[--len] = '\0';
 
 		/* Skip empty lines and comments */
-		if (len == 0 || line[0] == '#')
+		if (len == 0 || (len >= 2 && line[0] == '/' && line[1] == '/'))
 			continue;
 
 		if (strncmp(line, "name ", 5) == 0) {
@@ -118,14 +119,27 @@ void Zone_load(const char *path)
 				&p->grid_x, &p->grid_y, p->id, p->dest_zone, p->dest_portal_id) == 5)
 				zone.portal_count++;
 		}
+		else if (strncmp(line, "savepoint ", 10) == 0) {
+			if (zone.savepoint_count >= ZONE_MAX_SAVEPOINTS) continue;
+
+			int gx, gy;
+			char sid[32];
+			if (sscanf(line + 10, "%d %d %31s", &gx, &gy, sid) == 3) {
+				zone.savepoints[zone.savepoint_count].grid_x = gx;
+				zone.savepoints[zone.savepoint_count].grid_y = gy;
+				strncpy(zone.savepoints[zone.savepoint_count].id, sid, 31);
+				zone.savepoints[zone.savepoint_count].id[31] = '\0';
+				zone.savepoint_count++;
+			}
+		}
 	}
 
 	fclose(f);
 
 	apply_zone_to_world();
 
-	printf("Zone_load: loaded '%s' (%d cell types, %d spawns, %d portals)\n",
-		zone.name, zone.cell_type_count, zone.spawn_count, zone.portal_count);
+	printf("Zone_load: loaded '%s' (%d cell types, %d spawns, %d portals, %d savepoints)\n",
+		zone.name, zone.cell_type_count, zone.spawn_count, zone.portal_count, zone.savepoint_count);
 }
 
 void Zone_unload(void)
@@ -133,6 +147,7 @@ void Zone_unload(void)
 	Map_clear();
 	Mine_cleanup();
 	Portal_cleanup();
+	Savepoint_cleanup();
 	memset(&zone, 0, sizeof(zone));
 	undoCount = 0;
 }
@@ -201,6 +216,15 @@ void Zone_save(void)
 		ZonePortal *p = &zone.portals[i];
 		fprintf(f, "portal %d %d %s %s %s\n",
 			p->grid_x, p->grid_y, p->id, p->dest_zone, p->dest_portal_id);
+	}
+
+	/* Save points */
+	if (zone.savepoint_count > 0)
+		fprintf(f, "\n");
+	for (int i = 0; i < zone.savepoint_count; i++) {
+		fprintf(f, "savepoint %d %d %s\n",
+			zone.savepoints[i].grid_x, zone.savepoints[i].grid_y,
+			zone.savepoints[i].id);
 	}
 
 	fclose(f);
@@ -364,6 +388,7 @@ static void apply_zone_to_world(void)
 	Map_clear();
 	Mine_cleanup();
 	Portal_cleanup();
+	Savepoint_cleanup();
 
 	/* Place cells */
 	for (int x = 0; x < MAP_SIZE; x++) {
@@ -395,6 +420,14 @@ static void apply_zone_to_world(void)
 		double wy = (p->grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
 		Position pos = {wx, wy};
 		Portal_initialize(pos, p->id, p->dest_zone, p->dest_portal_id);
+	}
+
+	/* Spawn save points */
+	for (int i = 0; i < zone.savepoint_count; i++) {
+		double wx = (zone.savepoints[i].grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		double wy = (zone.savepoints[i].grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		Position pos = {wx, wy};
+		Savepoint_initialize(pos, zone.savepoints[i].id);
 	}
 }
 

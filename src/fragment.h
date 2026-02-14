@@ -19,5 +19,6 @@ void Fragment_render_text(const Screen *screen);
 void Fragment_render_bloom_source(void);
 void Fragment_deactivate_all(void);
 int  Fragment_get_count(FragmentType type);
+void Fragment_set_count(FragmentType type, int count);
 
 #endif

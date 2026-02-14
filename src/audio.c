@@ -64,6 +64,11 @@ int Audio_play_sample_on_channel(Mix_Chunk **sample, int channel)
 	return Mix_PlayChannel(channel, *sample, 0);
 }
 
+int Audio_loop_sample_on_channel(Mix_Chunk **sample, int channel)
+{
+	return Mix_PlayChannel(channel, *sample, -1);
+}
+
 void Audio_fade_out_channel(int channel, int ms)
 {
 	Mix_FadeOutChannel(channel, ms);

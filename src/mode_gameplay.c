@@ -11,6 +11,8 @@
 #include "player_stats.h"
 #include "sub_pea.h"
 #include "sub_mine.h"
+#include "savepoint.h"
+#include "fragment.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -82,6 +84,11 @@ static bool godModeCursorValid = false;
 
 static bool escConsumed = false;
 
+/* Load-from-save state */
+static bool loadFromSave = false;
+static Position loadSpawnPos = {0.0, 0.0};
+
+
 /* FPS counter */
 static bool fpsVisible = false;
 static double fpsValue = 0.0;
@@ -121,6 +128,55 @@ void Mode_Gameplay_initialize(void)
 
 	godModeActive = false;
 	godModeSelectedType = 0;
+
+	/* Start rebirth sequence */
+	gameplayState = GAMEPLAY_REBIRTH;
+	rebirthTimer = 0;
+	View_set_scale(REBIRTH_MIN_ZOOM);
+
+	Audio_load_sample(&rebirthSample, REBIRTH_MUSIC_PATH);
+	Audio_play_sample_on_channel(&rebirthSample, REBIRTH_CHANNEL);
+}
+
+void Mode_Gameplay_initialize_from_save(void)
+{
+	const SaveCheckpoint *ckpt = Savepoint_get_checkpoint();
+	if (!ckpt->valid) {
+		/* Fallback to normal init */
+		Mode_Gameplay_initialize();
+		return;
+	}
+
+	Entity_destroy_all();
+
+	selectedBgm = rand() % 7;
+
+	View_initialize();
+	Hud_initialize();
+	Background_initialize();
+	Grid_initialize();
+	Map_initialize();
+	Ship_initialize();
+	PlayerStats_initialize();
+	Fragment_initialize();
+	Progression_initialize();
+	Skillbar_initialize();
+	Catalog_initialize();
+	Zone_load(ckpt->zone_path);
+	Destructible_initialize();
+
+	/* Restore progression + skillbar + fragment counts from checkpoint */
+	for (int i = 0; i < FRAG_TYPE_COUNT; i++)
+		Fragment_set_count(i, ckpt->fragment_counts[i]);
+	Progression_restore(ckpt->unlocked, ckpt->discovered);
+	Skillbar_restore(ckpt->skillbar);
+
+	godModeActive = false;
+	godModeSelectedType = 0;
+	loadFromSave = true;
+	loadSpawnPos = ckpt->position;
+
+	Savepoint_suppress_by_id(ckpt->savepoint_id);
 
 	/* Start rebirth sequence */
 	gameplayState = GAMEPLAY_REBIRTH;
@@ -182,8 +238,12 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		Progression_update(ticks);
 
 		/* Camera stays centered on spawn point */
-		Position origin = {0.0, 0.0};
-		View_set_position(origin);
+		if (loadFromSave)
+			View_set_position(loadSpawnPos);
+		else {
+			Position origin = {0.0, 0.0};
+			View_set_position(origin);
+		}
 
 		if (rebirthTimer >= REBIRTH_DURATION)
 			complete_rebirth();
@@ -234,6 +294,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
 	Portal_update_all(ticks);
+	Savepoint_update_all(ticks);
 	Destructible_update(ticks);
 	Fragment_update(ticks);
 	Progression_update(ticks);
@@ -244,6 +305,39 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	/* Check for portal transition trigger */
 	if (Portal_has_pending_transition()) {
 		begin_warp();
+	}
+
+	/* Check for cross-zone death respawn */
+	if (Ship_has_pending_cross_zone_respawn()) {
+		Ship_set_pending_cross_zone_respawn(false);
+
+		const SaveCheckpoint *ckpt = Savepoint_get_checkpoint();
+		if (ckpt->valid) {
+			SkillbarSnapshot skillSnap = ckpt->skillbar;
+
+			/* Zone swap (no cinematic) */
+			Sub_Pea_cleanup();
+			Sub_Mine_cleanup();
+			Fragment_deactivate_all();
+			Zone_unload();
+			Entity_destroy_all();
+			Grid_initialize();
+			Map_initialize();
+			Ship_initialize();
+			Zone_load(ckpt->zone_path);
+			Destructible_initialize();
+
+			Ship_force_spawn(ckpt->position);
+
+			/* Restore progression + fragment counts */
+			for (int i = 0; i < FRAG_TYPE_COUNT; i++)
+				Fragment_set_count(i, ckpt->fragment_counts[i]);
+			Progression_restore(ckpt->unlocked, ckpt->discovered);
+			Skillbar_restore(skillSnap);
+
+			selectedBgm = rand() % 7;
+			start_zone_bgm();
+		}
 	}
 }
 
@@ -277,9 +371,11 @@ void Mode_Gameplay_render(void)
 		god_mode_render_cursor();
 	Render_flush(&world_proj, &view);
 
-	/* God mode portal labels (world-space text) */
-	if (godModeActive)
+	/* God mode labels (world-space text) */
+	if (godModeActive) {
 		Portal_render_god_labels();
+		Savepoint_render_god_labels();
+	}
 
 	/* FBO bloom pass */
 	{
@@ -292,6 +388,7 @@ void Mode_Gameplay_render(void)
 		Ship_render_bloom_source();
 		Mine_render_bloom_source();
 		Portal_render_bloom_source();
+		Savepoint_render_bloom_source();
 		Fragment_render_bloom_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bloom, draw_w, draw_h);
@@ -306,6 +403,7 @@ void Mode_Gameplay_render(void)
 	Hud_render(&screen);
 	PlayerStats_render(&screen);
 	Progression_render(&screen);
+	Savepoint_render_notification(&screen);
 	Fragment_render_text(&screen);
 	Catalog_render(&screen);
 	if (godModeActive)
@@ -340,9 +438,13 @@ static void complete_rebirth(void)
 {
 	gameplayState = GAMEPLAY_ACTIVE;
 
-	/* Spawn ship */
-	Position origin = {0.0, 0.0};
-	Ship_force_spawn(origin);
+	/* Spawn ship — at checkpoint if loading, otherwise origin */
+	Position spawn = {0.0, 0.0};
+	if (loadFromSave) {
+		spawn = loadSpawnPos;
+		loadFromSave = false;
+	}
+	Ship_force_spawn(spawn);
 
 	/* Start zone BGM */
 	start_zone_bgm();

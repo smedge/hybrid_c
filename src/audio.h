@@ -17,6 +17,7 @@ void Audio_load_sample(Mix_Chunk **sample, char *path);
 void Audio_unload_sample(Mix_Chunk **sample);
 void Audio_play_sample(Mix_Chunk **sample);
 int Audio_play_sample_on_channel(Mix_Chunk **sample, int channel);
+int Audio_loop_sample_on_channel(Mix_Chunk **sample, int channel);
 void Audio_fade_out_channel(int channel, int ms);
 
 #endif

@@ -1,4 +1,4 @@
-# Zone: Data Nexus
+// Zone: Data Nexus
 name Data Nexus
 size 1024
 
@@ -56,3 +56,5 @@ cell 521 512 blue_circuit
 
 
 portal 512 512 west_gate ./resources/zones/zone_001.zone east_gate
+
+// savepoint 520 512 nexus_save
