@@ -9,6 +9,8 @@
 #include "catalog.h"
 #include "destructible.h"
 #include "player_stats.h"
+#include "sub_pea.h"
+#include "sub_mine.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -16,7 +18,12 @@
 
 typedef enum {
 	GAMEPLAY_REBIRTH,
-	GAMEPLAY_ACTIVE
+	GAMEPLAY_ACTIVE,
+	WARP_PULL,
+	WARP_ACCEL,
+	WARP_FLASH,
+	WARP_ARRIVE,
+	WARP_RESUME
 } GameplayState;
 
 #define REBIRTH_DURATION 13000
@@ -25,10 +32,35 @@ typedef enum {
 #define REBIRTH_DEFAULT_ZOOM 0.5
 #define REBIRTH_CHANNEL 1
 
+/* Warp timing (ms) */
+#define WARP_PULL_MS    600
+#define WARP_ACCEL_MS   400
+#define WARP_FLASH_MS   200
+#define WARP_ARRIVE_MS  600
+#define WARP_RESUME_MS  200
+
 static GameplayState gameplayState;
 static int rebirthTimer;
 static Mix_Chunk *rebirthSample = 0;
 static int selectedBgm;
+
+/* Warp transition state */
+static int warpTimer;
+static Position warpPortalPos;      /* portal center being warped to */
+static Position warpShipStartPos;   /* ship position when warp began */
+static char warpDestZone[256];
+static char warpDestPortalId[32];
+static PlayerStatsSnapshot warpStatsSnap;
+static SkillbarSnapshot warpSkillSnap;
+static double warpStartZoom;
+
+/* Data stream effect */
+#define WARP_STREAM_COUNT 32
+static struct {
+	float angle;
+	float speed;
+	float length;
+} warpStreams[WARP_STREAM_COUNT];
 
 static const char *bgm_paths[] = {
 	GAMEPLAY_MUSIC_01_PATH,
@@ -50,12 +82,22 @@ static bool godModeCursorValid = false;
 
 static bool escConsumed = false;
 
+/* FPS counter */
+static bool fpsVisible = false;
+static double fpsValue = 0.0;
+static unsigned int fpsAccum = 0;
+static int fpsFrames = 0;
+
 static double ease_in_out_cubic(double t);
 static void start_zone_bgm(void);
 static void complete_rebirth(void);
 static void god_mode_update(const Input *input, const unsigned int ticks);
 static void god_mode_render_cursor(void);
 static void god_mode_render_hud(const Screen *screen);
+static void begin_warp(void);
+static void warp_update(unsigned int ticks);
+static void warp_do_zone_swap(void);
+static void warp_render_effects(const Screen *screen);
 
 void Mode_Gameplay_initialize(void)
 {
@@ -108,6 +150,18 @@ void Mode_Gameplay_cleanup(void)
 void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 {
 	escConsumed = false;
+
+	/* FPS counter */
+	if (input->keyL)
+		fpsVisible = !fpsVisible;
+	fpsAccum += ticks;
+	fpsFrames++;
+	if (fpsAccum >= 500) {
+		fpsValue = (double)fpsFrames / (fpsAccum / 1000.0);
+		fpsFrames = 0;
+		fpsAccum = 0;
+	}
+
 	Background_update(ticks * 3);
 
 	if (gameplayState == GAMEPLAY_REBIRTH) {
@@ -134,6 +188,12 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		if (rebirthTimer >= REBIRTH_DURATION)
 			complete_rebirth();
 
+		return;
+	}
+
+	/* Handle warp transition states */
+	if (gameplayState >= WARP_PULL && gameplayState <= WARP_RESUME) {
+		warp_update(ticks);
 		return;
 	}
 
@@ -173,12 +233,18 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	PlayerStats_update(ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
+	Portal_update_all(ticks);
 	Destructible_update(ticks);
 	Fragment_update(ticks);
 	Progression_update(ticks);
 	View_update(input, ticks);
 
 	View_set_position(Ship_get_position());
+
+	/* Check for portal transition trigger */
+	if (Portal_has_pending_transition()) {
+		begin_warp();
+	}
 }
 
 void Mode_Gameplay_render(void)
@@ -211,6 +277,10 @@ void Mode_Gameplay_render(void)
 		god_mode_render_cursor();
 	Render_flush(&world_proj, &view);
 
+	/* God mode portal labels (world-space text) */
+	if (godModeActive)
+		Portal_render_god_labels();
+
 	/* FBO bloom pass */
 	{
 		int draw_w, draw_h;
@@ -221,6 +291,7 @@ void Mode_Gameplay_render(void)
 		Map_render();
 		Ship_render_bloom_source();
 		Mine_render_bloom_source();
+		Portal_render_bloom_source();
 		Fragment_render_bloom_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bloom, draw_w, draw_h);
@@ -239,6 +310,23 @@ void Mode_Gameplay_render(void)
 	Catalog_render(&screen);
 	if (godModeActive)
 		god_mode_render_hud(&screen);
+
+	/* FPS counter */
+	if (fpsVisible) {
+		char fpsBuf[32];
+		snprintf(fpsBuf, sizeof(fpsBuf), "FPS: %.1f", fpsValue);
+		TextRenderer *tr = Graphics_get_text_renderer();
+		Shaders *shaders = Graphics_get_shaders();
+		Render_flush(&ui_proj, &identity);
+		Text_render(tr, shaders, &ui_proj, &identity,
+			fpsBuf, screen.width - 100.0f, 15.0f,
+			0.0f, 1.0f, 1.0f, 0.8f);
+	}
+
+	/* Warp visual effects overlay */
+	if (gameplayState >= WARP_PULL && gameplayState <= WARP_RESUME)
+		warp_render_effects(&screen);
+
 	/* Flush everything so far, then render cursor on top */
 	Render_flush(&ui_proj, &identity);
 	if (gameplayState == GAMEPLAY_ACTIVE && !godModeActive)
@@ -386,6 +474,231 @@ static void god_mode_render_hud(const Screen *screen)
 		Text_render(tr, shaders, &proj, &ident,
 			buf, cx - 10.0f, ty + 20.0f,
 			1.0f, 1.0f, 1.0f, 0.8f);
+	}
+}
+
+/* --- Warp transition --- */
+
+static void begin_warp(void)
+{
+	strncpy(warpDestZone, Portal_get_pending_dest_zone(), sizeof(warpDestZone) - 1);
+	warpDestZone[sizeof(warpDestZone) - 1] = '\0';
+	strncpy(warpDestPortalId, Portal_get_pending_dest_portal_id(), sizeof(warpDestPortalId) - 1);
+	warpDestPortalId[sizeof(warpDestPortalId) - 1] = '\0';
+	Portal_clear_pending_transition();
+
+	/* Snapshot player state */
+	warpStatsSnap = PlayerStats_snapshot();
+	warpSkillSnap = Skillbar_snapshot();
+
+	/* Record ship start position and portal position */
+	warpShipStartPos = Ship_get_position();
+	/* Use ship position as portal center (ship is standing on it) */
+	warpPortalPos = warpShipStartPos;
+	warpStartZoom = View_get_view().scale;
+
+	/* Init data stream effects */
+	for (int i = 0; i < WARP_STREAM_COUNT; i++) {
+		warpStreams[i].angle = (float)i * (360.0f / WARP_STREAM_COUNT) +
+			((float)(rand() % 100) / 100.0f) * 10.0f;
+		warpStreams[i].speed = 0.5f + (float)(rand() % 100) / 100.0f;
+		warpStreams[i].length = 30.0f + (float)(rand() % 50);
+	}
+
+	gameplayState = WARP_PULL;
+	warpTimer = 0;
+
+	printf("Warp: begin -> %s @ %s\n", warpDestZone, warpDestPortalId);
+}
+
+static void warp_update(unsigned int ticks)
+{
+	warpTimer += ticks;
+	Background_update(ticks * 3);
+
+	switch (gameplayState) {
+	case WARP_PULL: {
+		/* Check if ship died during pull */
+		if (Ship_is_destroyed()) {
+			gameplayState = GAMEPLAY_ACTIVE;
+			return;
+		}
+
+		/* Ship interpolates toward portal center, input disabled */
+		float t = (float)warpTimer / WARP_PULL_MS;
+		if (t > 1.0f) t = 1.0f;
+		float eased = t * t; /* ease-in */
+
+		Position pos;
+		pos.x = warpShipStartPos.x + (warpPortalPos.x - warpShipStartPos.x) * eased;
+		pos.y = warpShipStartPos.y + (warpPortalPos.y - warpShipStartPos.y) * eased;
+		Ship_set_position(pos);
+		View_set_position(pos);
+
+		if (warpTimer >= WARP_PULL_MS) {
+			gameplayState = WARP_ACCEL;
+			warpTimer = 0;
+		}
+		break;
+	}
+	case WARP_ACCEL: {
+		/* Camera zooms in rapidly */
+		float t = (float)warpTimer / WARP_ACCEL_MS;
+		if (t > 1.0f) t = 1.0f;
+
+		double zoom = warpStartZoom + (2.0 - warpStartZoom) * t * t;
+		View_set_scale(zoom);
+		View_set_position(warpPortalPos);
+
+		if (warpTimer >= WARP_ACCEL_MS) {
+			gameplayState = WARP_FLASH;
+			warpTimer = 0;
+			/* Zone swap happens at start of flash */
+			warp_do_zone_swap();
+		}
+		break;
+	}
+	case WARP_FLASH:
+		/* Full white screen, zone already swapped */
+		if (warpTimer >= WARP_FLASH_MS) {
+			gameplayState = WARP_ARRIVE;
+			warpTimer = 0;
+		}
+		break;
+	case WARP_ARRIVE: {
+		/* Camera zooms back out to normal */
+		float t = (float)warpTimer / WARP_ARRIVE_MS;
+		if (t > 1.0f) t = 1.0f;
+		float eased = 1.0f - (1.0f - t) * (1.0f - t); /* ease-out */
+
+		double zoom = 2.0 + (REBIRTH_DEFAULT_ZOOM - 2.0) * eased;
+		View_set_scale(zoom);
+		View_set_position(Ship_get_position());
+
+		Entity_ai_update_system(ticks);
+
+		if (warpTimer >= WARP_ARRIVE_MS) {
+			gameplayState = WARP_RESUME;
+			warpTimer = 0;
+		}
+		break;
+	}
+	case WARP_RESUME:
+		/* Brief pause before returning control */
+		View_set_scale(REBIRTH_DEFAULT_ZOOM);
+		View_set_position(Ship_get_position());
+
+		if (warpTimer >= WARP_RESUME_MS) {
+			gameplayState = GAMEPLAY_ACTIVE;
+			printf("Warp: complete\n");
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+static void warp_do_zone_swap(void)
+{
+	/* 1. Cleanup active subs and fragments */
+	Sub_Pea_cleanup();
+	Sub_Mine_cleanup();
+	Fragment_deactivate_all();
+
+	/* 2. Unload current zone (clears map, mines, portals) */
+	Zone_unload();
+
+	/* 3. Destroy all entities */
+	Entity_destroy_all();
+
+	/* 4. Re-initialize base systems */
+	Grid_initialize();
+	Map_initialize();
+	Ship_initialize();
+
+	/* 5. Load destination zone */
+	Zone_load(warpDestZone);
+	Destructible_initialize();
+
+	/* 6. Find destination portal and spawn ship there */
+	Position arrival = {0.0, 0.0};
+	if (!Portal_get_position_by_id(warpDestPortalId, &arrival)) {
+		printf("Warp: destination portal '%s' not found, spawning at origin\n",
+			warpDestPortalId);
+	}
+	Ship_force_spawn(arrival);
+
+	/* 7. Restore player state */
+	PlayerStats_restore(warpStatsSnap);
+	Skillbar_restore(warpSkillSnap);
+
+	/* 8. Suppress re-trigger at arrival portal */
+	Portal_suppress_arrival(warpDestPortalId);
+
+	/* 9. New BGM */
+	selectedBgm = rand() % 7;
+	start_zone_bgm();
+
+	printf("Warp: zone swap complete, arrived at (%.0f, %.0f)\n",
+		arrival.x, arrival.y);
+}
+
+static void warp_render_effects(const Screen *screen)
+{
+	float sw = (float)screen->width;
+	float sh = (float)screen->height;
+
+	switch (gameplayState) {
+	case WARP_PULL: {
+		/* Gentle fade to white over pull duration */
+		float t = (float)warpTimer / WARP_PULL_MS;
+		float alpha = t * 0.2f;
+		Render_quad_absolute(0, 0, sw, sh, 1.0f, 1.0f, 1.0f, alpha);
+		break;
+	}
+	case WARP_ACCEL: {
+		/* Continue fade to white */
+		float t = (float)warpTimer / WARP_ACCEL_MS;
+		float alpha = 0.2f + t * 0.8f;
+		Render_quad_absolute(0, 0, sw, sh, 1.0f, 1.0f, 1.0f, alpha);
+		break;
+	}
+	case WARP_FLASH:
+		/* Full white screen */
+		Render_quad_absolute(0, 0, sw, sh, 1.0f, 1.0f, 1.0f, 1.0f);
+		break;
+	case WARP_ARRIVE: {
+		/* White flash fading out + converging data streams */
+		float t = (float)warpTimer / WARP_ARRIVE_MS;
+		float flashAlpha = 1.0f - t;
+		if (flashAlpha > 0.0f)
+			Render_quad_absolute(0, 0, sw, sh, 1.0f, 1.0f, 1.0f, flashAlpha);
+
+		/* Converging streams (reverse of accel) */
+		float cx = sw * 0.5f;
+		float cy = sh * 0.5f;
+		float streamAlpha = (1.0f - t) * 0.6f;
+		if (streamAlpha > 0.0f) {
+			for (int i = 0; i < WARP_STREAM_COUNT; i++) {
+				float angle = warpStreams[i].angle * M_PI / 180.0f;
+				float outerR = 400.0f * (1.0f - t);
+				float innerR = outerR - warpStreams[i].length * (1.0f - t);
+				if (innerR < 0.0f) innerR = 0.0f;
+				float x0 = cx + cosf(angle) * innerR;
+				float y0 = cy + sinf(angle) * innerR;
+				float x1 = cx + cosf(angle) * outerR;
+				float y1 = cy + sinf(angle) * outerR;
+				Render_thick_line(x0, y0, x1, y1,
+					1.5f, 0.7f, 0.9f, 1.0f, streamAlpha);
+			}
+		}
+		break;
+	}
+	case WARP_RESUME:
+		/* Nothing — just a brief pause */
+		break;
+	default:
+		break;
 	}
 }
 

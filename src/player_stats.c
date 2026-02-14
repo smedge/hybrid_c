@@ -284,3 +284,22 @@ void PlayerStats_reset(void)
 	flashTicksLeft = 0;
 	feedbackFlashTimer = 0;
 }
+
+PlayerStatsSnapshot PlayerStats_snapshot(void)
+{
+	PlayerStatsSnapshot snap;
+	snap.integrity = integrity;
+	snap.feedback = feedback;
+	return snap;
+}
+
+void PlayerStats_restore(PlayerStatsSnapshot snap)
+{
+	integrity = snap.integrity;
+	feedback = snap.feedback;
+	timeSinceLastDamage = REGEN_DELAY_MS;
+	timeSinceLastFeedback = FEEDBACK_GRACE_MS;
+	dead = false;
+	flashTicksLeft = 0;
+	feedbackFlashTimer = 0;
+}

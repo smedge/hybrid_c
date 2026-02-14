@@ -39,4 +39,13 @@ int Skillbar_slot_at_position(float x, float y, const Screen *screen);
 void Skillbar_render_icon_at(SubroutineId id, float cx, float cy, float alpha);
 bool Skillbar_is_elite(SubroutineId id);
 
+/* Snapshot/restore for zone transitions */
+typedef struct {
+	int slots[SKILLBAR_SLOTS];
+	int active_sub[SUB_TYPE_COUNT];
+} SkillbarSnapshot;
+
+SkillbarSnapshot Skillbar_snapshot(void);
+void Skillbar_restore(SkillbarSnapshot snap);
+
 #endif

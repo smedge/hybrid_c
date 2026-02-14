@@ -8,6 +8,7 @@
 #define ZONE_MAX_SPAWNS 256
 #define ZONE_MAX_UNDO 512
 #define ZONE_MAX_DESTRUCTIBLES 32
+#define ZONE_MAX_PORTALS 16
 
 typedef struct {
 	int grid_x, grid_y;
@@ -27,6 +28,13 @@ typedef struct {
 } ZoneSpawn;
 
 typedef struct {
+	int grid_x, grid_y;
+	char id[32];
+	char dest_zone[256];
+	char dest_portal_id[32];
+} ZonePortal;
+
+typedef struct {
 	char name[64];
 	int size;
 	char filepath[256];
@@ -41,6 +49,9 @@ typedef struct {
 
 	ZoneDestructible destructibles[ZONE_MAX_DESTRUCTIBLES];
 	int destructible_count;
+
+	ZonePortal portals[ZONE_MAX_PORTALS];
+	int portal_count;
 } Zone;
 
 void Zone_load(const char *path);

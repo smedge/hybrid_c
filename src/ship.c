@@ -330,9 +330,19 @@ void Ship_force_spawn(Position pos)
 	Audio_play_sample(&sample01);
 }
 
+void Ship_set_position(Position pos)
+{
+	placeable.position = pos;
+}
+
 void Ship_set_god_mode(bool enabled)
 {
 	godMode = enabled;
+}
+
+bool Ship_is_destroyed(void)
+{
+	return shipState.destroyed;
 }
 
 static double get_heading(const bool n, const bool s,

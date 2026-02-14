@@ -21,7 +21,7 @@ static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false,
 
 static void initialize_map_entity(void);
 static void render_cell(int x, int y, float outlineThickness);
-static int correctTruncation(int i);
+static int correctTruncation(double v);
 
 void Map_initialize(void)
 {
@@ -102,12 +102,12 @@ Collision Map_collide(const void *state, const PlaceableComponent *placeable, co
 	return collision;
 }
 
-static int correctTruncation(int i)
+static int correctTruncation(double v)
 {
-	if (i < 0)
-		return --i;
-	else
-		return i;
+	int i = (int)v;
+	if (v < 0.0 && v != (double)i)
+		return i - 1;
+	return i;
 }
 
 bool Map_line_test_hit(double x0, double y0, double x1, double y1,
@@ -118,10 +118,10 @@ bool Map_line_test_hit(double x0, double y0, double x1, double y1,
 	double minY = y0 < y1 ? y0 : y1;
 	double maxY = y0 > y1 ? y0 : y1;
 
-	int cellMinX = correctTruncation((int)(minX / MAP_CELL_SIZE));
-	int cellMaxX = correctTruncation((int)(maxX / MAP_CELL_SIZE));
-	int cellMinY = correctTruncation((int)(minY / MAP_CELL_SIZE));
-	int cellMaxY = correctTruncation((int)(maxY / MAP_CELL_SIZE));
+	int cellMinX = correctTruncation(minX / MAP_CELL_SIZE);
+	int cellMaxX = correctTruncation(maxX / MAP_CELL_SIZE);
+	int cellMinY = correctTruncation(minY / MAP_CELL_SIZE);
+	int cellMaxY = correctTruncation(maxY / MAP_CELL_SIZE);
 
 	double best_t = 2.0;
 	bool hit = false;
@@ -167,9 +167,25 @@ void Map_render()
 	float outlineThickness = 2.0f / (float)view.scale;
 	if (outlineThickness < 2.0f) outlineThickness = 2.0f;
 
-	unsigned int x = 0, y = 0;
-	for (x = 0; x < MAP_SIZE; x++)
-		for (y = 0; y < MAP_SIZE; y++)
+	/* View frustum culling — only render cells visible on screen */
+	Screen screen = Graphics_get_screen();
+	float half_w = (float)screen.width * 0.5f / (float)view.scale;
+	float half_h = (float)screen.height * 0.5f / (float)view.scale;
+	float cx = (float)view.position.x;
+	float cy = (float)view.position.y;
+
+	int minX = correctTruncation((cx - half_w) / MAP_CELL_SIZE) + HALF_MAP_SIZE - 1;
+	int maxX = correctTruncation((cx + half_w) / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
+	int minY = correctTruncation((cy - half_h) / MAP_CELL_SIZE) + HALF_MAP_SIZE - 1;
+	int maxY = correctTruncation((cy + half_h) / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
+
+	if (minX < 0) minX = 0;
+	if (minY < 0) minY = 0;
+	if (maxX >= MAP_SIZE) maxX = MAP_SIZE - 1;
+	if (maxY >= MAP_SIZE) maxY = MAP_SIZE - 1;
+
+	for (int x = minX; x <= maxX; x++)
+		for (int y = minY; y <= maxY; y++)
 			render_cell(x, y, outlineThickness);
 }
 

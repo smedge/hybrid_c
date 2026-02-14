@@ -1,5 +1,6 @@
 #include "zone.h"
 #include "mine.h"
+#include "portal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -109,20 +110,29 @@ void Zone_load(const char *path)
 			if (sscanf(line + 6, "%15s %lf %lf", sp->enemy_type, &sp->world_x, &sp->world_y) == 3)
 				zone.spawn_count++;
 		}
+		else if (strncmp(line, "portal ", 7) == 0) {
+			if (zone.portal_count >= ZONE_MAX_PORTALS) continue;
+
+			ZonePortal *p = &zone.portals[zone.portal_count];
+			if (sscanf(line + 7, "%d %d %31s %255s %31s",
+				&p->grid_x, &p->grid_y, p->id, p->dest_zone, p->dest_portal_id) == 5)
+				zone.portal_count++;
+		}
 	}
 
 	fclose(f);
 
 	apply_zone_to_world();
 
-	printf("Zone_load: loaded '%s' (%d cell types, %d spawns)\n",
-		zone.name, zone.cell_type_count, zone.spawn_count);
+	printf("Zone_load: loaded '%s' (%d cell types, %d spawns, %d portals)\n",
+		zone.name, zone.cell_type_count, zone.spawn_count, zone.portal_count);
 }
 
 void Zone_unload(void)
 {
 	Map_clear();
 	Mine_cleanup();
+	Portal_cleanup();
 	memset(&zone, 0, sizeof(zone));
 	undoCount = 0;
 }
@@ -182,6 +192,15 @@ void Zone_save(void)
 	for (int i = 0; i < zone.spawn_count; i++) {
 		ZoneSpawn *sp = &zone.spawns[i];
 		fprintf(f, "spawn %s %.1f %.1f\n", sp->enemy_type, sp->world_x, sp->world_y);
+	}
+
+	/* Portals */
+	if (zone.portal_count > 0)
+		fprintf(f, "\n");
+	for (int i = 0; i < zone.portal_count; i++) {
+		ZonePortal *p = &zone.portals[i];
+		fprintf(f, "portal %d %d %s %s %s\n",
+			p->grid_x, p->grid_y, p->id, p->dest_zone, p->dest_portal_id);
 	}
 
 	fclose(f);
@@ -344,6 +363,7 @@ static void apply_zone_to_world(void)
 {
 	Map_clear();
 	Mine_cleanup();
+	Portal_cleanup();
 
 	/* Place cells */
 	for (int x = 0; x < MAP_SIZE; x++) {
@@ -365,6 +385,16 @@ static void apply_zone_to_world(void)
 			Position pos = {sp->world_x, sp->world_y};
 			Mine_initialize(pos);
 		}
+	}
+
+	/* Spawn portals */
+	for (int i = 0; i < zone.portal_count; i++) {
+		ZonePortal *p = &zone.portals[i];
+		/* Convert grid coords to world position */
+		double wx = (p->grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		double wy = (p->grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		Position pos = {wx, wy};
+		Portal_initialize(pos, p->id, p->dest_zone, p->dest_portal_id);
 	}
 }
 

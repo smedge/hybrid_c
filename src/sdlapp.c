@@ -92,6 +92,7 @@ static void reset_input(Input *input)
 	input->mouseWheelUp = false;
 	input->mouseWheelDown = false;
 	input->keyG = false;
+	input->keyL = false;
 	input->keyZ = false;
 	input->keyP = false;
 	input->keyTab = false;
@@ -415,6 +416,10 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 			
 	case SDLK_g:
 		input->keyG = true;
+		break;
+
+	case SDLK_l:
+		input->keyL = true;
 		break;
 
 	case SDLK_p:

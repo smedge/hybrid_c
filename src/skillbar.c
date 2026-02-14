@@ -402,3 +402,21 @@ bool Skillbar_is_elite(SubroutineId id)
 		return sub_registry[id].elite;
 	return false;
 }
+
+SkillbarSnapshot Skillbar_snapshot(void)
+{
+	SkillbarSnapshot snap;
+	for (int i = 0; i < SKILLBAR_SLOTS; i++)
+		snap.slots[i] = slots[i];
+	for (int i = 0; i < SUB_TYPE_COUNT; i++)
+		snap.active_sub[i] = active_sub[i];
+	return snap;
+}
+
+void Skillbar_restore(SkillbarSnapshot snap)
+{
+	for (int i = 0; i < SKILLBAR_SLOTS; i++)
+		slots[i] = snap.slots[i];
+	for (int i = 0; i < SUB_TYPE_COUNT; i++)
+		active_sub[i] = snap.active_sub[i];
+}

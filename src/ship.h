@@ -18,6 +18,8 @@ void Ship_render_bloom_source(void);
 Position Ship_get_position(void);
 double Ship_get_heading(void);
 void Ship_force_spawn(Position pos);
+void Ship_set_position(Position pos);
 void Ship_set_god_mode(bool enabled);
+bool Ship_is_destroyed(void);
 
 #endif

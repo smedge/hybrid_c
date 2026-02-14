@@ -13,4 +13,13 @@ void PlayerStats_damage(double amount);
 bool PlayerStats_is_dead(void);
 void PlayerStats_reset(void);
 
+/* Snapshot/restore for zone transitions */
+typedef struct {
+	double integrity;
+	double feedback;
+} PlayerStatsSnapshot;
+
+PlayerStatsSnapshot PlayerStats_snapshot(void);
+void PlayerStats_restore(PlayerStatsSnapshot snap);
+
 #endif

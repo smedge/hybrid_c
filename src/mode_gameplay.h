@@ -23,6 +23,7 @@
 #include "mine.h"
 #include "fragment.h"
 #include "progression.h"
+#include "portal.h"
 
 void Mode_Gameplay_initialize(void);
 void Mode_Gameplay_cleanup(void);

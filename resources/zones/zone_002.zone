@@ -1,0 +1,58 @@
+# Zone: Data Nexus
+name Data Nexus
+size 1024
+
+celltype blue_solid 10 10 40 255 60 60 200 255 none
+celltype blue_circuit 5 15 30 255 40 80 180 255 circuit
+
+cell 502 511 blue_circuit
+cell 502 512 blue_circuit
+cell 503 510 blue_solid
+cell 503 511 blue_circuit
+cell 503 512 blue_circuit
+cell 503 513 blue_solid
+cell 504 510 blue_solid
+cell 504 511 blue_circuit
+cell 504 512 blue_circuit
+cell 504 513 blue_solid
+cell 505 510 blue_solid
+cell 505 513 blue_solid
+cell 510 503 blue_solid
+cell 510 504 blue_solid
+cell 510 505 blue_solid
+cell 510 518 blue_solid
+cell 510 519 blue_solid
+cell 510 520 blue_solid
+cell 511 502 blue_circuit
+cell 511 503 blue_circuit
+cell 511 504 blue_circuit
+cell 511 519 blue_circuit
+cell 511 520 blue_circuit
+cell 511 521 blue_circuit
+cell 512 502 blue_circuit
+cell 512 503 blue_circuit
+cell 512 504 blue_circuit
+cell 512 519 blue_circuit
+cell 512 520 blue_circuit
+cell 512 521 blue_circuit
+cell 513 503 blue_solid
+cell 513 504 blue_solid
+cell 513 505 blue_solid
+cell 513 518 blue_solid
+cell 513 519 blue_solid
+cell 513 520 blue_solid
+cell 518 510 blue_solid
+cell 518 513 blue_solid
+cell 519 510 blue_solid
+cell 519 511 blue_circuit
+cell 519 512 blue_circuit
+cell 519 513 blue_solid
+cell 520 510 blue_solid
+cell 520 511 blue_circuit
+cell 520 512 blue_circuit
+cell 520 513 blue_solid
+cell 521 511 blue_circuit
+cell 521 512 blue_circuit
+
+
+portal 512 512 west_gate ./resources/zones/zone_001.zone east_gate

@@ -34,27 +34,13 @@ Entity* Entity_add_entity(const Entity entity)
 
 	entities[entityId].empty = false;
 	entities[entityId].disabled = entity.disabled;
-
-	if (entity.state)
-		entities[entityId].state = entity.state;
-
-	if (entity.placeable)
-		entities[entityId].placeable = entity.placeable;
-	
-	if (entity.renderable)
-		entities[entityId].renderable = entity.renderable;
-
-	if (entity.collidable)
-		entities[entityId].collidable = entity.collidable;
-
-	if (entity.dynamics)
-		entities[entityId].dynamics = entity.dynamics;
-
-	if (entity.userUpdatable)
-		entities[entityId].userUpdatable = entity.userUpdatable;
-
-	if (entity.aiUpdatable)
-		entities[entityId].aiUpdatable = entity.aiUpdatable;
+	entities[entityId].state = entity.state;
+	entities[entityId].placeable = entity.placeable;
+	entities[entityId].renderable = entity.renderable;
+	entities[entityId].collidable = entity.collidable;
+	entities[entityId].dynamics = entity.dynamics;
+	entities[entityId].userUpdatable = entity.userUpdatable;
+	entities[entityId].aiUpdatable = entity.aiUpdatable;
 
 	return &entities[entityId];
 }

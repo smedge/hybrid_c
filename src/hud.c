@@ -5,6 +5,7 @@
 #include "map.h"
 #include "ship.h"
 #include "skillbar.h"
+#include "portal.h"
 
 #define RADAR_SIZE 200.0f
 #define RADAR_RANGE 15000.0f
@@ -43,6 +44,10 @@ static void render_radar(const Screen *screen)
 	/* Map cells */
 	Position ship_pos = Ship_get_position();
 	Map_render_minimap((float)ship_pos.x, (float)ship_pos.y,
+		rx, ry, RADAR_SIZE, RADAR_RANGE);
+
+	/* Portal blips */
+	Portal_render_minimap((float)ship_pos.x, (float)ship_pos.y,
 		rx, ry, RADAR_SIZE, RADAR_RANGE);
 
 	/* Player blip (center) */
