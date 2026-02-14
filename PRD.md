@@ -41,7 +41,7 @@ Feedback accumulates from subroutine usage and represents connection strain. Dec
 | Subroutine | Feedback Cost |
 |------------|--------------|
 | sub_pea | 1 per shot |
-| sub_mine | 15 per mine placed |
+| sub_mine | 15 per mine explosion |
 | sub_egress | 25 per dash |
 | sub_boost | None |
 
@@ -51,7 +51,7 @@ Feedback accumulates from subroutine usage and represents connection strain. Dec
 
 **HUD**: Two horizontal bars in the top-left corner, with labels and numeric values to the left of each bar:
 - **Integrity bar**: Green at full → yellow when low → red when critical
-- **Feedback bar**: Cyan when low → yellow at mid → magenta when high
+- **Feedback bar**: Cyan when low → yellow at mid → magenta when high. Flashes at 4Hz when full to warn of impending spillover damage.
 
 ### Subroutines (sub_ system)
 
@@ -71,7 +71,7 @@ Subroutines are abilities the Hybrid AI can execute to interact with digital spa
 | sub_pea | projectile | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. 1 feedback per shot. | Implemented |
 | sub_egress | movement | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | Implemented |
 | sub_boost | movement (elite) | Hold shift for unlimited speed boost. No cooldown, no feedback cost. Elite subroutine (gold border). | Implemented |
-| sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback per mine placed. Unlocked by collecting 5 mine fragments. | Implemented |
+| sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback on explosion. Unlocked by collecting 5 mine fragments. | Implemented |
 
 **Many more subroutines planned** — each enemy type will have a corresponding subroutine unlocked by defeating enough of that enemy.
 
@@ -86,7 +86,7 @@ Enemies drop **fragments** (small colored binary glyph collectibles) when destro
 ### World Design
 
 **Structure**:
-- Each zone is a complete map — grid size varies by zone (default 128×128, 100-unit cells)
+- Each zone is a complete map — grid size varies by zone (up to 1024×1024, 100-unit cells)
 - Zones are always accessible (no hard locks) except the **final zone** which requires all normal bosses defeated
 - Zones are **difficulty-gated**: without the right subroutines, areas are effectively impossible to survive
 - This creates natural metroidvania progression — unlock abilities, access harder zones, unlock more abilities
@@ -106,6 +106,34 @@ Enemies drop **fragments** (small colored binary glyph collectibles) when destro
 - Boss encounters drive major progression milestones
 
 **Cell types per zone**: Each zone defines its own visual theme through custom cell type definitions. The engine provides global defaults (solid, circuit) but zones can override colors, patterns, and define zone-specific types (fire walls, ice barriers, poison pools, etc.).
+
+### Procedural Level Generation
+
+Zones use a **hybrid approach** to level generation: the designer hand-authors a zone's identity (landmark rooms, anchor walls, ability gates), and the algorithm procedurally generates the connective terrain between those landmarks (corridors, combat rooms, open battlefields, enemy placements). Every generation run is **seed-deterministic** — same zone + same seed = identical world. This is foundational for multiplayer, shared seeds, and reproducible runs.
+
+**Detailed spec**: `plans/spec_procedural_generation.md`
+
+**Key concepts**:
+
+- **Hotspot system**: The designer places generic candidate positions (hotspots) throughout a zone. The generator assigns landmark types (boss arena, portal, safe zone) to hotspots per seed. Players know a zone *has* a boss — they have to explore to find it. Prevents memorizable layouts. Landmarks can also be hand-placed at fixed positions when explicit control is needed.
+
+- **Two generation modes** per region:
+  - **Structured mode**: Chunk-based coarse grid with solution path guarantee (inspired by Spelunky). Variable chunk sizes (8×8 to 64×64) mix within a single region. For corridors, labyrinths, and dense navigational areas.
+  - **Open mode**: Scatter-based placement of walls, obstacle blocks, and enemies across open space. For expansive battlefields, arenas, and sparse cyberspace. No chunks or solution path — traversability is trivially guaranteed by low density.
+
+- **Chunk templates**: Reusable room/corridor building blocks authored by the designer. Each chunk has exit configurations (which sides have openings), probabilistic cells, obstacle zones, and enemy spawn slots. One authored template produces thousands of variations through probabilistic resolution and mirroring.
+
+- **Regions**: Rectangular areas of the zone designated for procedural generation. Multiple rectangles with the same ID union into composite shapes (L-shapes, T-shapes). Each region specifies generation mode, style (linear/labyrinthine/branching for structured; sparse/scattered/clustered for open), difficulty, density, and pacing.
+
+- **Solution path first**: In structured mode, the algorithm builds a guaranteed traversable path from entry to exit before filling around it. Reachability by construction, not validation.
+
+- **Content investment**: ~50-100 chunk templates + ~15-30 obstacle blocks across all biomes. Each template multiplies through procedural assembly, probabilistic variation, and mirroring. A fraction of hand-coding every room across 12+ zones at 1024×1024 scale.
+
+**Prerequisites** (implement before procgen):
+1. God mode editing tools for procgen content authoring (separate spec)
+2. Portals and zone transitions
+3. Diagonal walls (new cell types)
+4. At least one active enemy type
 
 ### Map & Navigation
 
@@ -243,6 +271,9 @@ More types will be added as new cell types, enemy types, and world features are 
 - God mode placeable catalog (cell types, enemy spawns, portals via catalog drag-and-drop)
 - Active security programs (hunting enemies)
 - Boss encounters
+- Portals and zone transitions
+- Diagonal walls (new cell types with angled geometry + collision)
+- Procedural level generation (hybrid approach — see spec at `plans/spec_procedural_generation.md`)
 - Minimap fog of war
 - Full map view
 - Save/Load system
