@@ -158,11 +158,11 @@ void Portal_render(const void *state, const PlaceableComponent *placeable)
 		charge = (float)p->dwell_timer / DWELL_THRESHOLD_MS;
 	if (charge > 1.0f) charge = 1.0f;
 
-	/* Diamond is white, intensifies with charge */
-	float pulse = 1.0f + 0.1f * sinf(t * 3.0f + charge * 8.0f);
+	/* Diamond is white, intensifies with charge, dims when deactivated */
+	float pulse = p->deactivated ? 1.0f : 1.0f + 0.1f * sinf(t * 3.0f + charge * 8.0f);
 	float ds = DIAMOND_SIZE * pulse;
 	Rectangle diamond = {-ds, ds, ds, -ds};
-	float innerAlpha = 0.6f + 0.3f * charge;
+	float innerAlpha = p->deactivated ? 0.25f : 0.6f + 0.3f * charge;
 	ColorFloat innerColor = {1.0f, 1.0f, 1.0f, innerAlpha};
 	Render_quad(&p->position, 45.0, diamond, &innerColor);
 }
@@ -179,7 +179,8 @@ void Portal_render_bloom_source(void)
 			charge = (float)p->dwell_timer / DWELL_THRESHOLD_MS;
 		if (charge > 1.0f) charge = 1.0f;
 
-		/* White diamond bloom */
+		/* White diamond bloom — suppressed when deactivated */
+		if (p->deactivated) continue;
 		float pulse = 1.0f + 0.15f * sinf(t * 3.0f + charge * 8.0f);
 		float ds = (DIAMOND_SIZE + 5.0f) * pulse;
 		Rectangle diamond = {-ds, ds, ds, -ds};

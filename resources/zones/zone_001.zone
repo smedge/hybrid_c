@@ -1,4 +1,4 @@
-// Zone: Starting Zone
+# Zone: The Origin
 name The Origin
 size 1024
 
@@ -69,10 +69,37 @@ cell 457 518 circuit
 cell 457 519 circuit
 cell 457 520 circuit
 cell 457 521 circuit
+cell 499 456 circuit
+cell 499 457 solid
+cell 499 458 solid
+cell 500 454 circuit
+cell 500 455 circuit
+cell 500 456 circuit
+cell 500 457 circuit
+cell 500 458 solid
+cell 500 459 solid
+cell 501 455 circuit
+cell 501 456 solid
+cell 501 457 circuit
+cell 501 458 circuit
+cell 501 459 circuit
+cell 502 456 solid
+cell 502 457 solid
+cell 502 458 solid
+cell 502 459 circuit
 cell 510 510 solid
 cell 510 513 solid
 cell 513 510 circuit drop:sub_boost
 cell 513 513 solid
+cell 528 464 circuit
+cell 529 464 circuit
+cell 529 465 solid
+cell 529 466 solid
+cell 530 464 solid
+cell 530 465 solid
+cell 530 466 solid
+cell 531 464 solid
+cell 531 465 circuit
 cell 533 562 solid
 cell 533 563 solid
 cell 534 562 circuit

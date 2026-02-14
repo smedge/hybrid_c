@@ -14,7 +14,7 @@
 
 /* Confirmation dialog layout */
 #define DIALOG_WIDTH 500.0f
-#define DIALOG_HEIGHT 120.0f
+#define DIALOG_HEIGHT 110.0f
 
 static double menu_cam_dx, menu_cam_dy;
 static double menu_cam_x, menu_cam_y;
@@ -177,16 +177,36 @@ static void render_dialog(const Screen *screen)
 	Mat4 ident = Mat4_identity();
 	Render_flush(&proj, &ident);
 
-	/* Warning text */
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
+	float center_x = dx + DIALOG_WIDTH * 0.5f;
 
+	/*
+	 * Vertical layout (all in screen coords):
+	 *   dy + 25  = WARNING! baseline (scaled 1.4x)
+	 *   dy + 50  = message baseline
+	 *   dy + DIALOG_HEIGHT - 15 = button baseline
+	 */
+
+	/* WARNING! (slightly larger via scaled projection) */
+	float scale = 1.4f;
+	const char *warn = "WARNING!";
+	float ww = measure_text(tr, warn) * scale;
+	Mat4 s = Mat4_scale(scale, scale, 1.0f);
+	Mat4 scaled_proj = Mat4_multiply(&proj, &s);
+	Text_render(tr, shaders, &scaled_proj, &ident,
+		warn,
+		(center_x - ww * 0.5f) / scale,
+		(dy + 25.0f) / scale,
+		1.0f, 0.0f, 0.0f, 1.0f);
+
+	/* Message text */
 	const char *msg = "This will erase previously saved data.";
 	float tw = measure_text(tr, msg);
-	float tx = dx + DIALOG_WIDTH * 0.5f - tw * 0.5f;
-	float ty = dy + 40.0f;
 	Text_render(tr, shaders, &proj, &ident,
-		msg, tx, ty,
+		msg,
+		center_x - tw * 0.5f,
+		dy + 50.0f,
 		1.0f, 1.0f, 1.0f, 0.9f);
 
 	/* OK / Cancel buttons */
