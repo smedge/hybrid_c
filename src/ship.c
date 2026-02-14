@@ -2,6 +2,7 @@
 #include "view.h"
 #include "render.h"
 #include "sub_pea.h"
+#include "sub_mgun.h"
 #include "sub_mine.h"
 #include "sub_boost.h"
 #include "sub_egress.h"
@@ -82,6 +83,7 @@ void Ship_initialize()
 	Audio_load_sample(&sample03, "resources/sounds/bomb_explode.wav");
 
 	Sub_Pea_initialize(liveEntity);
+	Sub_Mgun_initialize(liveEntity);
 	Sub_Mine_initialize();
 	Sub_Boost_initialize();
 	Sub_Egress_initialize();
@@ -90,6 +92,7 @@ void Ship_initialize()
 void Ship_cleanup()
 {
 	Sub_Pea_cleanup();
+	Sub_Mgun_cleanup();
 	Sub_Mine_cleanup();
 	Sub_Boost_cleanup();
 	Sub_Egress_cleanup();
@@ -265,6 +268,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	}
 
 	Sub_Pea_update(userInput, ticks, placeable);
+	Sub_Mgun_update(userInput, ticks, placeable);
 	Sub_Mine_update(userInput, ticks);
 }
 
@@ -305,6 +309,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	}
 
 	Sub_Pea_render();
+	Sub_Mgun_render();
 	Sub_Mine_render();
 }
 
@@ -336,6 +341,7 @@ void Ship_render_bloom_source(void)
 	}
 
 	Sub_Pea_render_bloom_source();
+	Sub_Mgun_render_bloom_source();
 	Sub_Mine_render_bloom_source();
 }
 

@@ -4,7 +4,6 @@
 #include "graphics.h"
 #include "text.h"
 #include "mat4.h"
-#include "audio.h"
 #include "skillbar.h"
 
 #include <stdio.h>
@@ -27,6 +26,7 @@ static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_MINE]   = { "MINES",  "sub_mine",   FRAG_TYPE_MINE, 5, false },
 	[SUB_ID_BOOST]  = { "BOOST",  "sub_boost",  FRAG_TYPE_ELITE, 1, false },
 	[SUB_ID_EGRESS] = { "EGRESS", "sub_egress", FRAG_TYPE_MINE, 0, false },
+	[SUB_ID_MGUN]   = { "MGUN",   "sub_mgun",   FRAG_TYPE_MINE, 0, false },
 };
 
 /* Notification state */
@@ -35,7 +35,6 @@ static bool notifyElite = false;
 static unsigned int notifyTimer = 0;
 static char notifyText[64];
 
-static Mix_Chunk *unlockSample = 0;
 
 static float text_width(TextRenderer *tr, const char *text)
 {
@@ -60,12 +59,10 @@ void Progression_initialize(void)
 	notifyElite = false;
 	notifyTimer = 0;
 
-	Audio_load_sample(&unlockSample, "resources/sounds/statue_rise.wav");
 }
 
 void Progression_cleanup(void)
 {
-	Audio_unload_sample(&unlockSample);
 }
 
 void Progression_update(unsigned int ticks)
@@ -104,7 +101,6 @@ void Progression_update(unsigned int ticks)
 			notifyActive = true;
 			notifyTimer = 0;
 
-			Audio_play_sample(&unlockSample);
 			Skillbar_auto_equip(i);
 		}
 	}
@@ -212,4 +208,17 @@ const char *Progression_get_name(SubroutineId id)
 	if (id >= 0 && id < SUB_ID_COUNT)
 		return entries[id].name;
 	return "";
+}
+
+bool Progression_would_complete(FragmentType frag_type, int new_count)
+{
+	for (int i = 0; i < SUB_ID_COUNT; i++) {
+		if (entries[i].unlocked)
+			continue;
+		if (entries[i].frag_type == frag_type &&
+		    entries[i].threshold > 0 &&
+		    new_count >= entries[i].threshold)
+			return true;
+	}
+	return false;
 }

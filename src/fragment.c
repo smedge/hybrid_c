@@ -7,6 +7,7 @@
 #include "text.h"
 #include "mat4.h"
 #include "audio.h"
+#include "progression.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -55,6 +56,7 @@ static const FragmentTypeInfo typeInfo[FRAG_TYPE_COUNT] = {
 static Fragment fragments[MAX_FRAGMENTS];
 static int collectionCounts[FRAG_TYPE_COUNT];
 static Mix_Chunk *collectSample = 0;
+static Mix_Chunk *unlockSample = 0;
 
 static void generate_binary_string(char *out)
 {
@@ -71,6 +73,7 @@ void Fragment_initialize(void)
 	memset(collectionCounts, 0, sizeof(collectionCounts));
 
 	Audio_load_sample(&collectSample, "resources/sounds/samus_pickup.wav");
+	Audio_load_sample(&unlockSample, "resources/sounds/samus_pickup2.wav");
 }
 
 void Fragment_cleanup(void)
@@ -79,6 +82,7 @@ void Fragment_cleanup(void)
 		fragments[i].active = false;
 
 	Audio_unload_sample(&collectSample);
+	Audio_unload_sample(&unlockSample);
 }
 
 void Fragment_spawn(Position position, FragmentType type)
@@ -187,8 +191,12 @@ void Fragment_update(unsigned int ticks)
 
 			if (dist < COLLECT_RADIUS) {
 				f->active = false;
-				collectionCounts[f->type]++;
-				Audio_play_sample(&collectSample);
+				int newCount = collectionCounts[f->type] + 1;
+				collectionCounts[f->type] = newCount;
+				if (Progression_would_complete(f->type, newCount))
+					Audio_play_sample(&unlockSample);
+				else
+					Audio_play_sample(&collectSample);
 			}
 		}
 	}

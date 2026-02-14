@@ -3,12 +3,14 @@
 
 #include <stdbool.h>
 #include "screen.h"
+#include "fragment.h"
 
 typedef enum {
 	SUB_ID_PEA = 0,
 	SUB_ID_MINE,
 	SUB_ID_BOOST,
 	SUB_ID_EGRESS,
+	SUB_ID_MGUN,
 	/* SUB_ID_PLASMA, etc. — add here as new enemies arrive */
 	SUB_ID_COUNT
 } SubroutineId;
@@ -25,5 +27,6 @@ int  Progression_get_current(SubroutineId id);
 int  Progression_get_threshold(SubroutineId id);
 float Progression_get_progress(SubroutineId id);
 const char *Progression_get_name(SubroutineId id);
+bool Progression_would_complete(FragmentType frag_type, int new_count);
 
 #endif

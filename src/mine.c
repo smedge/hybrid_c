@@ -1,5 +1,6 @@
 #include "mine.h"
 #include "sub_pea.h"
+#include "sub_mgun.h"
 #include "sub_mine.h"
 #include "fragment.h"
 #include "progression.h"
@@ -138,7 +139,7 @@ void Mine_update(const void *state, const PlaceableComponent *placeable, const u
 	if (!mineState->destroyed && !mineState->exploding) {
 		Rectangle body = {-10.0, 10.0, 10.0, -10.0};
 		Rectangle mineBody = Collision_transform_bounding_box(placeable->position, body);
-		if (Sub_Pea_check_hit(mineBody) || Sub_Mine_check_hit(mineBody)) {
+		if (Sub_Pea_check_hit(mineBody) || Sub_Mgun_check_hit(mineBody) || Sub_Mine_check_hit(mineBody)) {
 			Audio_play_sample(&sample02);
 			mineState->active = false;
 			mineState->exploding = true;

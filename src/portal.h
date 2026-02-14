@@ -14,6 +14,7 @@ void Portal_initialize(Position position, const char *id,
 void Portal_cleanup(void);
 void Portal_update_all(unsigned int ticks);
 void Portal_render(const void *state, const PlaceableComponent *placeable);
+void Portal_render_deactivated(void);
 void Portal_render_bloom_source(void);
 void Portal_render_god_labels(void);
 

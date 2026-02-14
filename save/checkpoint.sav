@@ -1,7 +1,7 @@
 zone ./resources/zones/zone_001.zone
 savepoint origin_save
 position -6400.0 0.0
-unlocked sub_pea sub_mine sub_boost sub_egress
-discovered sub_pea sub_mine sub_boost sub_egress
+unlocked sub_pea sub_mine sub_boost sub_egress sub_mgun
+discovered sub_pea sub_mine sub_boost sub_egress sub_mgun
 fragments mine:5 elite:1
-skillbar 0:sub_boost 1:sub_pea 2:sub_mine
+skillbar 0:sub_pea 1:sub_mgun 2:sub_mine 3:sub_boost

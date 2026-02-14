@@ -4,6 +4,7 @@
 #include "text.h"
 #include "graphics.h"
 #include "sub_pea.h"
+#include "sub_mgun.h"
 #include "sub_mine.h"
 #include "sub_boost.h"
 #include "sub_egress.h"
@@ -34,6 +35,8 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Hold shift to boost speed. Overheats with sustained use.", true },
 	[SUB_ID_EGRESS] = { SUB_ID_EGRESS, SUB_TYPE_MOVEMENT,   "sub_egress", "EGRESS",
 		"Shift-tap dash burst. Quick escape with cooldown.", false },
+	[SUB_ID_MGUN]   = { SUB_ID_MGUN,   SUB_TYPE_PROJECTILE, "sub_mgun",   "MGUN",
+		"Machine gun. Rapid-fire projectiles at 5 shots/sec.", false },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -315,6 +318,17 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Render_thick_line(cx + d, cy - d, cx - d, cy + d, t, 0.4f, 1.0f, 1.0f, alpha);
 		break;
 	}
+	case SUB_ID_MGUN: {
+		/* Three dots in a spray pattern — suggests rapid fire */
+		Position p1 = {cx - 4, cy - 4};
+		Position p2 = {cx, cy};
+		Position p3 = {cx + 4, cy + 4};
+		ColorFloat c = {1.0f, 1.0f, 1.0f, alpha};
+		Render_point(&p1, 5.0, &c);
+		Render_point(&p2, 5.0, &c);
+		Render_point(&p3, 5.0, &c);
+		break;
+	}
 	default:
 		break;
 	}
@@ -327,6 +341,7 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_MINE:   return Sub_Mine_get_cooldown_fraction();
 	case SUB_ID_BOOST:  return Sub_Boost_get_cooldown_fraction();
 	case SUB_ID_EGRESS: return Sub_Egress_get_cooldown_fraction();
+	case SUB_ID_MGUN:   return Sub_Mgun_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

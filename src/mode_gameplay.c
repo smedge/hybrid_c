@@ -10,8 +10,10 @@
 #include "destructible.h"
 #include "player_stats.h"
 #include "sub_pea.h"
+#include "sub_mgun.h"
 #include "sub_mine.h"
 #include "savepoint.h"
+#include "portal.h"
 #include "fragment.h"
 
 #include <math.h>
@@ -317,6 +319,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 
 			/* Zone swap (no cinematic) */
 			Sub_Pea_cleanup();
+			Sub_Mgun_cleanup();
 			Sub_Mine_cleanup();
 			Fragment_deactivate_all();
 			Zone_unload();
@@ -328,6 +331,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 			Destructible_initialize();
 
 			Ship_force_spawn(ckpt->position);
+			Savepoint_suppress_by_id(ckpt->savepoint_id);
 
 			/* Restore progression + fragment counts */
 			for (int i = 0; i < FRAG_TYPE_COUNT; i++)
@@ -365,6 +369,7 @@ void Mode_Gameplay_render(void)
 		Bloom_composite(bg_bloom, draw_w, draw_h);
 	}
 
+	Portal_render_deactivated();
 	Entity_render_system();
 	Fragment_render();
 	if (godModeActive)
@@ -704,6 +709,7 @@ static void warp_do_zone_swap(void)
 {
 	/* 1. Cleanup active subs and fragments */
 	Sub_Pea_cleanup();
+	Sub_Mgun_cleanup();
 	Sub_Mine_cleanup();
 	Fragment_deactivate_all();
 

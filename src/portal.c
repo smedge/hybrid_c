@@ -150,21 +150,34 @@ void Portal_update_all(unsigned int ticks)
 void Portal_render(const void *state, const PlaceableComponent *placeable)
 {
 	const PortalState *p = (const PortalState *)state;
-	if (!p->active) return;
+	if (!p->active || p->deactivated) return;
 
 	float t = p->anim_timer / 1000.0f;
 	float charge = 0.0f;
-	if (p->ship_inside && !p->deactivated)
+	if (p->ship_inside)
 		charge = (float)p->dwell_timer / DWELL_THRESHOLD_MS;
 	if (charge > 1.0f) charge = 1.0f;
 
-	/* Diamond is white, intensifies with charge, dims when deactivated */
-	float pulse = p->deactivated ? 1.0f : 1.0f + 0.1f * sinf(t * 3.0f + charge * 8.0f);
+	/* Diamond is white, intensifies with charge */
+	float pulse = 1.0f + 0.1f * sinf(t * 3.0f + charge * 8.0f);
 	float ds = DIAMOND_SIZE * pulse;
 	Rectangle diamond = {-ds, ds, ds, -ds};
-	float innerAlpha = p->deactivated ? 0.25f : 0.6f + 0.3f * charge;
+	float innerAlpha = 0.6f + 0.3f * charge;
 	ColorFloat innerColor = {1.0f, 1.0f, 1.0f, innerAlpha};
 	Render_quad(&p->position, 45.0, diamond, &innerColor);
+}
+
+void Portal_render_deactivated(void)
+{
+	for (int i = 0; i < portalCount; i++) {
+		PortalState *p = &portals[i];
+		if (!p->active || !p->deactivated) continue;
+
+		float ds = DIAMOND_SIZE;
+		Rectangle diamond = {-ds, ds, ds, -ds};
+		ColorFloat color = {1.0f, 1.0f, 1.0f, 0.25f};
+		Render_quad(&p->position, 45.0, diamond, &color);
+	}
 }
 
 void Portal_render_bloom_source(void)
