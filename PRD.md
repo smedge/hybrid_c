@@ -25,8 +25,33 @@ Bullet hell shooter × Metroidvania
 The player's representation in cyberspace. A red triangle that moves with WASD, aims with mouse.
 
 - **Movement**: WASD directional, with speed modifiers (Shift = fast, Ctrl = warp)
-- **Death**: Destroyed on contact with solid threats (mines, walls). Respawns at origin after 3 seconds.
+- **Death**: Destroyed on contact with solid threats (mines, walls), or when Integrity reaches 0. Respawns at origin after 3 seconds.
 - **Death FX**: White diamond spark flash + explosion sound
+
+#### Integrity (Health)
+
+The ship's structural health. Starts at 100, regens at 5/sec after 2 seconds without taking damage. At 0, the ship is destroyed (same death sequence as wall collision). Damaged by feedback spillover and future enemy attacks.
+
+#### Feedback (Overload Meter)
+
+Feedback accumulates from subroutine usage and represents system strain. Decays at 15/sec after a 500ms grace period. When feedback is full (100) and a subroutine is used, the excess feedback spills over as direct Integrity damage — the damage equals the feedback the action would have added. This creates a resource management layer: sustained combat has consequences, and players must pace their ability usage.
+
+**Feedback costs per subroutine**:
+
+| Subroutine | Feedback Cost |
+|------------|--------------|
+| sub_pea | 1 per shot |
+| sub_mine | 15 per mine placed |
+| sub_egress | 25 per dash |
+| sub_boost | None |
+
+**Spillover example**: Feedback is at 95, sub_mine adds 15. Feedback caps at 100, the remaining 10 spills over as 10 Integrity damage.
+
+**Damage feedback**: When spillover damage occurs, a bright red border flashes around the screen (fades over 200ms) and the samus_hurt sound plays. This gives clear visual/audio feedback that you're burning health.
+
+**HUD**: Two horizontal bars in the top-left corner, with labels and numeric values to the left of each bar:
+- **Integrity bar**: Green at full → yellow when low → red when critical
+- **Feedback bar**: Cyan when low → yellow at mid → magenta when high
 
 ### Subroutines (sub_ system)
 
@@ -43,15 +68,16 @@ Subroutines are abilities the Hybrid AI can execute to interact with digital spa
 
 | Subroutine | Type | Description | Status |
 |------------|------|-------------|--------|
-| sub_pea | projectile | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. | Implemented |
-| sub_egress | movement | Quick burst movement for limited duration. Escape/dash ability. | Stub only (empty DEV file) |
-| sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. Unlocked by collecting 5 mine fragments. | Implemented |
+| sub_pea | projectile | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. 1 feedback per shot. | Implemented |
+| sub_egress | movement | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | Implemented |
+| sub_boost | movement (elite) | Hold shift for unlimited speed boost. No cooldown, no feedback cost. Elite subroutine (gold border). | Implemented |
+| sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback per mine placed. Unlocked by collecting 5 mine fragments. | Implemented |
 
 **Many more subroutines planned** — each enemy type will have a corresponding subroutine unlocked by defeating enough of that enemy.
 
 ### Progression System
 
-Enemies drop **pills** (small collectibles) when destroyed. Collecting pills from a specific enemy type progresses the player toward unlocking the subroutine associated with that enemy.
+Enemies drop **fragments** (small magenta binary glyph collectibles) when destroyed. Fragments last 10 seconds (fade begins at 8s), and are collectible for their full lifetime. Collecting fragments from a specific enemy type progresses the player toward unlocking the subroutine associated with that enemy.
 
 - Kill 100 mines → unlock sub_mine (0% to 100% progression)
 - Each enemy type has its own subroutine and kill-count threshold
@@ -95,6 +121,7 @@ Enemies drop **pills** (small collectibles) when destroyed. Collecting pills fro
 
 ### HUD
 
+- **Stat Bars** (top-left): Integrity and Feedback bars with labels and numeric values
 - **Skill Bar** (bottom): 10 slots, shared between gameplay and god mode (see Unified Skill Bar below)
 - **Minimap** (bottom-right): 200×200 radar showing nearby geometry with fog of war
 
@@ -102,8 +129,9 @@ Enemies drop **pills** (small collectibles) when destroyed. Collecting pills fro
 
 The 10-slot skill bar at the bottom of the screen is the central interaction mechanism for both gameplay and god mode. It maintains two independent loadouts that swap when toggling modes:
 
-- **Gameplay loadout**: Equipped subroutines. Activate a slot (click or number key) then use with the input appropriate to its type.
+- **Gameplay loadout**: Equipped subroutines. Activate a slot (click-release or number key) then use with the input appropriate to its type. Click activates on mouse-up to prevent accidental firing.
 - **God mode loadout**: Equipped placeables. Activate a slot (click or number key) then LMB to place in the world.
+- **Slot rearranging**: Drag skills between slots via the Catalog window (P). Drag-to-swap only works while the catalog is open — the skill bar is locked during gameplay.
 
 **Skill activation by type** (gameplay mode):
 
@@ -183,9 +211,12 @@ More types will be added as new cell types, enemy types, and world features are 
 - Sub_pea wall collision (spark effect at intersection point)
 - Sub_pea mine collision (direct hit on mine body causes immediate explosion)
 - Sub_mine deployable mine (3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light)
+- Sub_boost elite movement (hold shift for unlimited speed boost, no cooldown)
+- Sub_egress dash burst (shift-tap, 150ms at 5x speed, 2s cooldown)
+- Player stats system (Integrity + Feedback bars, spillover damage, regen, damage flash + sound)
 - Mine state machine (idle → armed → exploding → destroyed → respawn)
 - Mine idle blink (100ms red flash at 1Hz, randomized per mine)
-- Fragment drops and collection (magenta binary glyphs, attract to player when nearby)
+- Fragment drops and collection (magenta binary glyphs, attract to player when nearby, 10s lifetime with 2s fade starting at 8s)
 - Subroutine progression/unlock system (fragment counting, thresholds, unlock notifications)
 - Zone data file format and loader (line-based .zone files with cell types, placements, spawns)
 - Zone persistent editing and undo system (Ctrl+Z, auto-save on edit)
@@ -210,7 +241,6 @@ More types will be added as new cell types, enemy types, and world features are 
 ### Not Yet Implemented
 - Unified skill bar Phase 3 (two-loadout system for gameplay/god mode)
 - God mode placeable catalog (cell types, enemy spawns, portals via catalog drag-and-drop)
-- Sub_egress (movement dash)
 - Active security programs (hunting enemies)
 - Boss encounters
 - Minimap fog of war
@@ -235,6 +265,8 @@ More types will be added as new cell types, enemy types, and world features are 
 | bomb_set.wav | Mine armed |
 | door.wav | Mine respawn/recycle |
 | samus_die.wav | Ship death |
+| samus_hurt.wav | Feedback spillover damage |
+| samus_pickup.wav | (reserved) |
 
 **Music**: 7 deadmau5 tracks for gameplay (random), 1 for menu
 

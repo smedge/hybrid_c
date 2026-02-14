@@ -13,7 +13,7 @@
 #include <string.h>
 
 #define MAX_FRAGMENTS 128
-#define LIFETIME_MS 15000
+#define LIFETIME_MS 10000
 #define FADE_MS 2000
 #define ATTRACT_RADIUS 300.0
 #define COLLECT_RADIUS 25.0

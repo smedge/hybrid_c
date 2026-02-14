@@ -40,9 +40,26 @@ static int slots[SKILLBAR_SLOTS];
 static int active_sub[SUB_TYPE_COUNT];
 static bool mouseWasDown;
 static bool clickConsumed;
+static int pressedSlot;  /* slot pressed on mouse-down, -1 if none */
 
 static void render_icon(SubroutineId id, float cx, float cy, float alpha);
 static float get_cooldown_fraction(SubroutineId id);
+static void toggle_slot(int slot);
+
+static void toggle_slot(int slot)
+{
+	int id = slots[slot];
+	if (id == SUB_NONE) return;
+	SubroutineType type = sub_registry[id].type;
+	active_sub[type] = (active_sub[type] == id) ? SUB_NONE : id;
+}
+
+static int slot_under_mouse(const Input *input)
+{
+	Screen screen = Graphics_get_screen();
+	return Skillbar_slot_at_position(
+		(float)input->mouseX, (float)input->mouseY, &screen);
+}
 
 void Skillbar_initialize(void)
 {
@@ -54,6 +71,7 @@ void Skillbar_initialize(void)
 
 	mouseWasDown = false;
 	clickConsumed = false;
+	pressedSlot = -1;
 
 	/* Auto-equip anything already unlocked (e.g. sub_pea with threshold=0) */
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
@@ -73,38 +91,23 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 	clickConsumed = false;
 
 	/* Number key activation */
-	if (input->keySlot >= 0 && input->keySlot < SKILLBAR_SLOTS) {
-		int slot = input->keySlot;
-		int id = slots[slot];
-		if (id != SUB_NONE) {
-			SubroutineType type = sub_registry[id].type;
-			if (active_sub[type] == id)
-				active_sub[type] = SUB_NONE;
-			else
-				active_sub[type] = id;
-		}
+	if (input->keySlot >= 0 && input->keySlot < SKILLBAR_SLOTS)
+		toggle_slot(input->keySlot);
+
+	/* Mouse click activation — activate on mouse-up */
+	int hover = slot_under_mouse(input);
+
+	if (input->mouseLeft && hover >= 0) {
+		clickConsumed = true;
+		if (!mouseWasDown)
+			pressedSlot = hover;
+	} else if (!input->mouseLeft && mouseWasDown && hover == pressedSlot && pressedSlot >= 0) {
+		toggle_slot(pressedSlot);
+		pressedSlot = -1;
+	} else if (!input->mouseLeft) {
+		pressedSlot = -1;
 	}
 
-	/* Mouse click activation — consume for entire press duration */
-	if (input->mouseLeft) {
-		Screen screen = Graphics_get_screen();
-		int slot = Skillbar_slot_at_position(
-			(float)input->mouseX, (float)input->mouseY, &screen);
-		if (slot >= 0) {
-			clickConsumed = true;
-			/* Toggle on edge only */
-			if (!mouseWasDown) {
-				int id = slots[slot];
-				if (id != SUB_NONE) {
-					SubroutineType type = sub_registry[id].type;
-					if (active_sub[type] == id)
-						active_sub[type] = SUB_NONE;
-					else
-						active_sub[type] = id;
-				}
-			}
-		}
-	}
 	mouseWasDown = input->mouseLeft;
 }
 
