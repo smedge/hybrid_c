@@ -2,6 +2,7 @@
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
+#include "defender.h"
 #include "fragment.h"
 #include "progression.h"
 #include "player_stats.h"
@@ -117,6 +118,7 @@ static int highestUsedIndex = 0;
 
 /* Death spark */
 static bool sparkActive = false;
+static bool sparkShielded = false;
 static Position sparkPosition;
 static int sparkTicksLeft = 0;
 #define SPARK_DURATION 80
@@ -128,6 +130,7 @@ static Mix_Chunk *sampleDash = 0;
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
+static Mix_Chunk *sampleShieldHit = 0;
 
 /* Helpers */
 static double distance_between(Position a, Position b)
@@ -229,6 +232,7 @@ void Seeker_initialize(Position position)
 	Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 	Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 	Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
+	Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
 }
 
 void Seeker_cleanup(void)
@@ -241,6 +245,7 @@ void Seeker_cleanup(void)
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
+	Audio_unload_sample(&sampleShieldHit);
 }
 
 Collision Seeker_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -283,24 +288,26 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 		Rectangle hitBox = Collision_transform_bounding_box(pl->position, body);
 
 		bool hit = false;
+		bool shielded = Defender_is_protecting(pl->position);
 		if (Sub_Pea_check_hit(hitBox)) {
-			s->hp -= 50.0;
+			if (!shielded) s->hp -= 50.0;
 			hit = true;
 		}
 		if (Sub_Mgun_check_hit(hitBox)) {
-			s->hp -= 20.0;
+			if (!shielded) s->hp -= 20.0;
 			hit = true;
 		}
 		if (Sub_Mine_check_hit(hitBox)) {
-			s->hp -= 100.0;
+			if (!shielded) s->hp -= 100.0;
 			hit = true;
 		}
 
 		if (hit) {
 			sparkActive = true;
+			sparkShielded = shielded;
 			sparkPosition = pl->position;
 			sparkTicksLeft = SPARK_DURATION;
-			Audio_play_sample(&sampleHit);
+			Audio_play_sample(shielded ? &sampleShieldHit : &sampleHit);
 
 			/* Getting shot immediately aggroes */
 			if (s->aiState == SEEKER_IDLE) {
@@ -639,7 +646,9 @@ void Seeker_render(const void *state, const PlaceableComponent *placeable)
 	int idx = (int)((SeekerState *)state - seekers);
 	if (idx == 0 && sparkActive) {
 		float fade = (float)sparkTicksLeft / SPARK_DURATION;
-		ColorFloat sparkColor = {0.0f, 1.0f, 0.2f, fade};
+		ColorFloat sparkColor = sparkShielded
+			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
+			: (ColorFloat){0.0f, 1.0f, 0.2f, fade};
 		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
 		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
 		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
@@ -703,7 +712,9 @@ void Seeker_render_bloom_source(void)
 	/* Spark bloom */
 	if (sparkActive) {
 		float fade = (float)sparkTicksLeft / SPARK_DURATION;
-		ColorFloat sparkColor = {0.0f, 1.0f, 0.2f, fade};
+		ColorFloat sparkColor = sparkShielded
+			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
+			: (ColorFloat){0.0f, 1.0f, 0.2f, fade};
 		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
 		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
 		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
@@ -741,4 +752,74 @@ void Seeker_reset_all(void)
 		pick_wander_target(s);
 	}
 	sparkActive = false;
+}
+
+bool Seeker_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index)
+{
+	double bestDamage = 0.0;
+	int bestIdx = -1;
+
+	for (int i = 0; i < highestUsedIndex; i++) {
+		SeekerState *s = &seekers[i];
+		if (!s->alive || s->aiState == SEEKER_DYING || s->aiState == SEEKER_DEAD)
+			continue;
+		if (s->hp >= hp_threshold)
+			continue;
+		double missing = SEEKER_HP - s->hp;
+		if (missing <= 0.0)
+			continue;
+		double dist = distance_between(from, placeables[i].position);
+		if (dist > range)
+			continue;
+		if (missing > bestDamage) {
+			bestDamage = missing;
+			bestIdx = i;
+		}
+	}
+
+	if (bestIdx >= 0) {
+		*out_pos = placeables[bestIdx].position;
+		*out_index = bestIdx;
+		return true;
+	}
+	return false;
+}
+
+bool Seeker_find_aggro(Position from, double range, Position *out_pos)
+{
+	double bestDist = range + 1.0;
+	int bestIdx = -1;
+
+	for (int i = 0; i < highestUsedIndex; i++) {
+		SeekerState *s = &seekers[i];
+		if (!s->alive)
+			continue;
+		if (s->aiState == SEEKER_IDLE || s->aiState == SEEKER_DYING || s->aiState == SEEKER_DEAD)
+			continue;
+		double dist = distance_between(from, placeables[i].position);
+		if (dist > range)
+			continue;
+		if (dist < bestDist) {
+			bestDist = dist;
+			bestIdx = i;
+		}
+	}
+
+	if (bestIdx >= 0) {
+		*out_pos = placeables[bestIdx].position;
+		return true;
+	}
+	return false;
+}
+
+void Seeker_heal(int index, double amount)
+{
+	if (index < 0 || index >= highestUsedIndex)
+		return;
+	SeekerState *s = &seekers[index];
+	if (!s->alive)
+		return;
+	s->hp += amount;
+	if (s->hp > SEEKER_HP)
+		s->hp = SEEKER_HP;
 }

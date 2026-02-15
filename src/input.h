@@ -21,11 +21,15 @@ typedef struct {
 	bool keyLShift;
 	bool keyLControl;
 
+	bool keyF;
 	bool keyG;
 	bool keyL;
+	bool keyO;
 	bool keyZ;
 	bool keyP;
 	bool keyTab;
+	bool keyE;
+	bool keyQ;
 	bool keySpace;
 	bool keyEsc;
 	int keySlot;  /* -1 = none, 0-9 = skill bar slot pressed */

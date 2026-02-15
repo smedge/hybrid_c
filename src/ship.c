@@ -6,12 +6,15 @@
 #include "sub_mine.h"
 #include "sub_boost.h"
 #include "sub_egress.h"
+#include "sub_mend.h"
+#include "sub_aegis.h"
 #include "color.h"
 #include "shipstate.h"
 #include "audio.h"
 #include "player_stats.h"
 #include "hunter.h"
 #include "seeker.h"
+#include "defender.h"
 #include "mine.h"
 #include "savepoint.h"
 #include "zone.h"
@@ -90,6 +93,8 @@ void Ship_initialize()
 	Sub_Mine_initialize();
 	Sub_Boost_initialize();
 	Sub_Egress_initialize();
+	Sub_Mend_initialize();
+	Sub_Aegis_initialize();
 }
 
 void Ship_cleanup()
@@ -99,6 +104,8 @@ void Ship_cleanup()
 	Sub_Mine_cleanup();
 	Sub_Boost_cleanup();
 	Sub_Egress_cleanup();
+	Sub_Mend_cleanup();
+	Sub_Aegis_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -183,9 +190,12 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			prevPosition = placeable->position;
 			Sub_Boost_initialize();
 			Sub_Egress_initialize();
+			Sub_Mend_initialize();
+			Sub_Aegis_initialize();
 			PlayerStats_reset();
 			Hunter_reset_all();
 			Seeker_reset_all();
+			Defender_reset_all();
 			Mine_reset_all();
 
 			Audio_play_sample(&sample01);
@@ -202,6 +212,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Audio_play_sample(&sample03);
 			Hunter_deaggro_all();
 			Seeker_deaggro_all();
+			Defender_deaggro_all();
 		}
 
 		/* Update movement subs */
@@ -273,6 +284,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	Sub_Pea_update(userInput, ticks, placeable);
 	Sub_Mgun_update(userInput, ticks, placeable);
 	Sub_Mine_update(userInput, ticks);
+	Sub_Mend_update(userInput, ticks);
+	Sub_Aegis_update(userInput, ticks);
 }
 
 void Ship_render(const void *state, const PlaceableComponent *placeable)
@@ -314,6 +327,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Pea_render();
 	Sub_Mgun_render();
 	Sub_Mine_render();
+	Sub_Aegis_render();
 }
 
 void Ship_render_bloom_source(void)

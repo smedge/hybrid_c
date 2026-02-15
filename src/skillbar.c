@@ -8,6 +8,8 @@
 #include "sub_mine.h"
 #include "sub_boost.h"
 #include "sub_egress.h"
+#include "sub_mend.h"
+#include "sub_aegis.h"
 
 #include <math.h>
 
@@ -37,6 +39,10 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Shift-tap dash burst. Quick escape with cooldown.", false },
 	[SUB_ID_MGUN]   = { SUB_ID_MGUN,   SUB_TYPE_PROJECTILE, "sub_mgun",   "MGUN",
 		"Machine gun. Rapid-fire projectiles at 5 shots/sec.", false },
+	[SUB_ID_MEND]   = { SUB_ID_MEND,   SUB_TYPE_HEALING,    "sub_mend",   "MEND",
+		"Instant heal. Restores 50 integrity.", false },
+	[SUB_ID_AEGIS]  = { SUB_ID_AEGIS,  SUB_TYPE_SHIELD,     "sub_aegis",  "AEGIS",
+		"Damage shield. Invulnerable for 10 seconds.", false },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -329,6 +335,27 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Render_point(&p3, 5.0, &c);
 		break;
 	}
+	case SUB_ID_MEND: {
+		/* Plus/cross — healing symbol */
+		float sz = 7.0f;
+		float t = 2.0f;
+		Render_thick_line(cx, cy - sz, cx, cy + sz, t, 0.3f, 0.7f, 1.0f, alpha);
+		Render_thick_line(cx - sz, cy, cx + sz, cy, t, 0.3f, 0.7f, 1.0f, alpha);
+		break;
+	}
+	case SUB_ID_AEGIS: {
+		/* Hexagon outline — shield/defense */
+		float r = 8.0f;
+		float t = 1.5f;
+		for (int i = 0; i < 6; i++) {
+			float a0 = i * 60.0f * 3.14159f / 180.0f;
+			float a1 = (i + 1) * 60.0f * 3.14159f / 180.0f;
+			Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
+				cx + cosf(a1) * r, cy + sinf(a1) * r,
+				t, 0.6f, 0.9f, 1.0f, alpha);
+		}
+		break;
+	}
 	default:
 		break;
 	}
@@ -342,6 +369,8 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_BOOST:  return Sub_Boost_get_cooldown_fraction();
 	case SUB_ID_EGRESS: return Sub_Egress_get_cooldown_fraction();
 	case SUB_ID_MGUN:   return Sub_Mgun_get_cooldown_fraction();
+	case SUB_ID_MEND:   return Sub_Mend_get_cooldown_fraction();
+	case SUB_ID_AEGIS:  return Sub_Aegis_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

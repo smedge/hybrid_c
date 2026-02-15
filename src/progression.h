@@ -11,7 +11,8 @@ typedef enum {
 	SUB_ID_BOOST,
 	SUB_ID_EGRESS,
 	SUB_ID_MGUN,
-	/* SUB_ID_PLASMA, etc. — add here as new enemies arrive */
+	SUB_ID_MEND,
+	SUB_ID_AEGIS,
 	SUB_ID_COUNT
 } SubroutineId;
 

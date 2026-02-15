@@ -13,5 +13,8 @@ Collision Seeker_collide(const void *state, const PlaceableComponent *placeable,
 void Seeker_resolve(const void *state, const Collision collision);
 void Seeker_deaggro_all(void);
 void Seeker_reset_all(void);
+bool Seeker_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index);
+bool Seeker_find_aggro(Position from, double range, Position *out_pos);
+void Seeker_heal(int index, double amount);
 
 #endif

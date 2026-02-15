@@ -19,10 +19,14 @@ void input_initialize(Input *input)
 	input->keyLShift = false;
 	input->keyLControl = false;
 
+	input->keyF = false;
 	input->keyG = false;
+	input->keyO = false;
 	input->keyZ = false;
 	input->keyP = false;
 	input->keyTab = false;
+	input->keyE = false;
+	input->keyQ = false;
 	input->keySpace = false;
 	input->keyEsc = false;
 	input->keySlot = -1;

@@ -2,6 +2,7 @@
 #include "mine.h"
 #include "hunter.h"
 #include "seeker.h"
+#include "defender.h"
 #include "portal.h"
 #include "savepoint.h"
 
@@ -150,6 +151,7 @@ void Zone_unload(void)
 	Mine_cleanup();
 	Hunter_cleanup();
 	Seeker_cleanup();
+	Defender_cleanup();
 	Portal_cleanup();
 	Savepoint_cleanup();
 	memset(&zone, 0, sizeof(zone));
@@ -304,6 +306,9 @@ void Zone_place_spawn(const char *enemy_type, double world_x, double world_y)
 	} else if (strcmp(enemy_type, "seeker") == 0) {
 		Position pos = {world_x, world_y};
 		Seeker_initialize(pos);
+	} else if (strcmp(enemy_type, "defender") == 0) {
+		Position pos = {world_x, world_y};
+		Defender_initialize(pos);
 	}
 
 	Zone_save();
@@ -399,6 +404,7 @@ static void apply_zone_to_world(void)
 	Mine_cleanup();
 	Hunter_cleanup();
 	Seeker_cleanup();
+	Defender_cleanup();
 	Portal_cleanup();
 	Savepoint_cleanup();
 
@@ -427,6 +433,9 @@ static void apply_zone_to_world(void)
 		} else if (strcmp(sp->enemy_type, "seeker") == 0) {
 			Position pos = {sp->world_x, sp->world_y};
 			Seeker_initialize(pos);
+		} else if (strcmp(sp->enemy_type, "defender") == 0) {
+			Position pos = {sp->world_x, sp->world_y};
+			Defender_initialize(pos);
 		}
 	}
 

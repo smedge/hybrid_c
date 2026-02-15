@@ -138,7 +138,7 @@ static void do_save(SavepointState *sp)
 
 	fprintf(f, "fragments");
 	{
-		static const char *frag_names[] = {"mine", "elite", "hunter", "seeker"};
+		static const char *frag_names[] = {"mine", "elite", "hunter", "seeker", "mend", "aegis"};
 		for (int i = 0; i < FRAG_TYPE_COUNT; i++) {
 			if (checkpoint.fragment_counts[i] > 0)
 				fprintf(f, " %s:%d", frag_names[i], checkpoint.fragment_counts[i]);
@@ -540,7 +540,7 @@ bool Savepoint_load_from_disk(void)
 			}
 		}
 		else if (strncmp(line, "fragments ", 10) == 0) {
-			static const char *frag_names[] = {"mine", "elite", "hunter", "seeker"};
+			static const char *frag_names[] = {"mine", "elite", "hunter", "seeker", "mend", "aegis"};
 			char *tok = strtok(line + 10, " ");
 			while (tok) {
 				char name[32];

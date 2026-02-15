@@ -14,6 +14,8 @@
 #include "sub_mine.h"
 #include "hunter.h"
 #include "seeker.h"
+#include "defender.h"
+#include "sub_aegis.h"
 #include "savepoint.h"
 #include "portal.h"
 #include "fragment.h"
@@ -262,7 +264,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	}
 
 	/* Toggle god mode */
-	if (input->keyG) {
+	if (input->keyO) {
 		godModeActive = !godModeActive;
 		Ship_set_god_mode(godModeActive);
 	}
@@ -396,6 +398,8 @@ void Mode_Gameplay_render(void)
 		Mine_render_bloom_source();
 		Hunter_render_bloom_source();
 		Seeker_render_bloom_source();
+		Defender_render_bloom_source();
+		Sub_Aegis_render_bloom_source();
 		Portal_render_bloom_source();
 		Savepoint_render_bloom_source();
 		Fragment_render_bloom_source();

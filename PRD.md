@@ -9,7 +9,8 @@
 - **Map Cells / Walls**: Give the system topography — structural geometry the player must navigate around. The architecture of the digital system.
 - **Mines**: Security intrusion detection devices. Part of the system's defenses against the Hybrid.
 - **Hunters**: Active security programs that patrol, chase, and fire machine-gun bursts at the player. Orange triangles.
-- **Seekers**: Predatory security programs that stalk the player and use high-speed dashes to close in for a one-shot kill. Green needles. (Planned — see `plans/spec_seeker.md`)
+- **Seekers**: Predatory security programs that stalk the player, orbit at dash range, then execute high-speed charge attacks. Green needles.
+- **Defenders**: Support security programs that heal wounded hunters/seekers and shield themselves with aegis when threatened. Light blue hexagons.
 - **Viruses**: Planned as tools the player eventually uses *against* the system.
 - **The Alien Entity**: The ultimate antagonist — a foreign alien intelligence projecting into human Earth cyberspace via a network connection. Its presence warps the final zone into something alien and unrecognizable.
 
@@ -29,7 +30,7 @@ The player's representation in cyberspace. A red triangle that moves with WASD, 
 - **Movement**: WASD directional, with speed modifiers (Shift = fast, Ctrl = warp)
 - **Death**: All damage funnels through Integrity. Walls and mines instantly zero Integrity via `PlayerStats_force_kill()`. Enemy projectiles reduce Integrity via `PlayerStats_damage()`. When Integrity reaches 0, the ship is destroyed. Respawns at last save point (or origin) after 3 seconds.
 - **Death FX**: White diamond spark flash + explosion sound
-- **On respawn**: All enemies (hunters, mines, etc.) silently reset to full health at their spawn points. This is seamless — the player doesn't see the reset happen.
+- **On respawn**: All enemies (hunters, seekers, defenders, mines) silently reset to full health at their spawn points. This is seamless — the player doesn't see the reset happen.
 
 #### Integrity (Health)
 
@@ -47,6 +48,8 @@ Feedback accumulates from subroutine usage and represents connection strain. Dec
 | sub_mgun | 2 per shot |
 | sub_mine | 15 per mine explosion |
 | sub_egress | 25 per dash |
+| sub_mend | 20 per heal |
+| sub_aegis | 30 per activation |
 | sub_boost | None |
 
 **Spillover example**: Feedback is at 95, sub_mine adds 15. Feedback caps at 100, the remaining 10 spills over as 10 Integrity damage.
@@ -74,9 +77,11 @@ Subroutines are abilities the Hybrid AI can execute to interact with digital spa
 |------------|------|-------------|-------------|--------|
 | sub_pea | projectile | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. 50 damage per shot, 1 feedback per shot. | Default | Implemented |
 | sub_mgun | projectile | Machine gun. Fires white dots toward cursor. 200ms cooldown, 1000ms TTL, up to 8 simultaneous. 20 damage per shot, 2 feedback per shot. Same DPS as sub_pea but easier to aim, burns feedback 5x faster. | 3 hunter kills | Implemented |
-| sub_egress | movement | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | 3 seeker kills (planned) | Implemented |
+| sub_egress | movement | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | 3 seeker kills | Implemented |
 | sub_boost | movement (elite) | Hold shift for unlimited speed boost. No cooldown, no feedback cost. Elite subroutine (gold border). | Elite fragment | Implemented |
 | sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback on explosion. | 5 mine kills | Implemented |
+| sub_mend | healing | Instant heal. Restores 50 integrity. 10s cooldown. 20 feedback. Activated with E key. | 5 defender kills (mend fragments) | Implemented |
+| sub_aegis | shield | Damage shield. Invulnerable to all damage for 10 seconds. 30s cooldown. 30 feedback. Activated with Q key. Cyan ring visual. | 5 defender kills (aegis fragments) | Implemented |
 
 **Each enemy type has a corresponding subroutine** unlocked by defeating enough of that enemy. This creates a progression loop: encounter enemy → learn its patterns → kill it → gain its ability.
 
@@ -88,7 +93,9 @@ Enemies drop **fragments** (small colored binary glyph collectibles) when destro
 |---------------|-------|--------|---------|-----------|
 | Mine | Magenta | Mine kills | sub_mine | 5 |
 | Hunter | Red-orange | Hunter kills | sub_mgun | 3 |
-| Seeker | Green | Seeker kills (planned) | sub_egress | 3 |
+| Seeker | Green | Seeker kills | sub_egress | 3 |
+| Mend | Light blue | Defender kills (50% drop) | sub_mend | 5 |
+| Aegis | Light cyan | Defender kills (50% drop) | sub_aegis | 5 |
 | Elite | Gold | Special encounters | sub_boost | 1 |
 
 - The **Catalog Window** (P key) shows progression and allows equipping — see Catalog Window section below
@@ -121,8 +128,8 @@ Active ranged combatants. Orange triangles that patrol, chase, and shoot.
 | Property | Value |
 |---|---|
 | Speed | 400 u/s (half player speed) |
-| Aggro range | 1200 units (12 cells), requires LOS |
-| De-aggro range | 1800 units (1.5x hysteresis) |
+| Aggro range | 1600 units (16 cells), requires LOS |
+| De-aggro range | 3200 units (32 cells, 2 major grid squares) |
 | Wander radius | 400 units around spawn |
 | HP | 100 |
 | Attack | 3-shot burst (100ms between shots), 1.5s cooldown between bursts |
@@ -136,15 +143,53 @@ Active ranged combatants. Orange triangles that patrol, chase, and shoot.
 
 **Damage to kill**: 2 sub_pea shots (50 each) or 5 sub_mgun shots (20 each) or 1 sub_mine
 
-#### Seekers (Planned)
+#### Seekers
 
-Predatory dash-kill enemies. Green elongated diamonds (needles). See `plans/spec_seeker.md` for full spec.
+Predatory dash-kill enemies. Green elongated diamonds (needles).
 
 | Property | Value |
 |---|---|
+| Speed (stalking) | 300 u/s |
+| Speed (orbit) | 500 u/s |
+| Aggro range | 1000 units, requires LOS |
+| De-aggro range | 3200 units |
 | HP | 60 (glass cannon) |
+| Orbit radius | 750 units (matches dash range) |
+| Dash speed | 5000 u/s |
+| Dash duration | 150ms |
 | Dash damage | 80 (near-lethal) |
-| Behavior | Stalk → orbit → telegraph → dash |
+| Respawn | 30 seconds |
+| Drops | Seeker fragments (green) |
+
+**State machine**: IDLE (random drift) → STALKING (approach player) → ORBITING (circle at dash range) → WINDING_UP (300ms telegraph, red glow) → DASHING (150ms charge through player) → RECOVERING (500ms pause) → DYING (200ms flash) → DEAD (30s respawn)
+
+**Damage to kill**: 2 sub_pea shots (50 each) or 3 sub_mgun shots (20 each) or 1 sub_mine
+
+#### Defenders
+
+Support security programs. Light blue hexagons that heal wounded hunters/seekers and shield themselves.
+
+| Property | Value |
+|---|---|
+| Speed (normal) | 250 u/s |
+| Speed (fleeing) | 400 u/s |
+| Aggro range | 1200 units, requires LOS |
+| De-aggro range | 3200 units |
+| Heal range | 800 units |
+| Heal amount | 50 HP per heal |
+| Heal cooldown | 4 seconds |
+| HP | 80 |
+| Aegis (self-shield) | 10s duration, 30s cooldown, absorbs all damage |
+| Respawn | 30 seconds |
+| Drops | Mend OR Aegis fragments (random 50/50) |
+
+**State machine**: IDLE (random drift) → SUPPORTING (heal allies, stay near them) → FLEEING (run from player if within 400 units) → DYING (200ms flash) → DEAD (30s respawn)
+
+**Aegis shield**: Activated when taking damage or player gets close. All incoming damage absorbed for 10 seconds. Bright pulsing hexagon ring visual. Creates a timing puzzle — wait for shield to expire, or kill allies first.
+
+**Heal beam**: Brief light-blue line connecting defender to healed target. Heals the most wounded alive hunter or seeker within range every 4 seconds.
+
+**Damage to kill**: 2 sub_pea shots, 4 sub_mgun shots, or 1 sub_mine (when not shielded)
 
 ### Damage Model
 
@@ -153,7 +198,7 @@ Predatory dash-kill enemies. Green elongated diamonds (needles). See `plans/spec
 | sub_pea | 50 | 2/sec (500ms) | 100 |
 | sub_mgun | 20 | 5/sec (200ms) | 100 |
 | Hunter burst shot | 15 | 3-shot burst, 1.5s between | ~30 avg |
-| Seeker dash (planned) | 80 | ~every 4s | ~20 avg |
+| Seeker dash | 80 | ~every 4s | ~20 avg |
 
 ### World Design
 
@@ -312,8 +357,12 @@ More types will be added as new cell types, enemy types, and world features are 
 - Sub_mine deployable mine (3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light)
 - Sub_boost elite movement (hold shift for unlimited speed boost, no cooldown)
 - Sub_egress dash burst (shift-tap, 150ms at 5x speed, 2s cooldown)
-- Player stats system (Integrity + Feedback bars, spillover damage, regen with 2x rate at 0 feedback, damage flash + sound)
+- Sub_mend instant heal (E key, 50 integrity, 10s cooldown, 20 feedback)
+- Sub_aegis damage shield (Q key, 10s invulnerability, 30s cooldown, 30 feedback, cyan ring visual)
+- Player stats system (Integrity + Feedback bars, spillover damage, regen with 2x rate at 0 feedback, damage flash + sound, shield state)
 - Hunter enemy (patrol, chase, 3-shot burst, LOS requirement, near-miss aggro, deaggro on player death)
+- Seeker enemy (stalk, orbit, telegraph, dash-charge, 60HP glass cannon)
+- Defender enemy (support healer, heals hunters/seekers, aegis self-shield, flees player, random mend/aegis fragment drops)
 - Mine state machine (idle → armed → exploding → destroyed → respawn)
 - Fragment drops and collection (typed colored binary glyphs, attract to player, 10s lifetime)
 - Subroutine progression/unlock system (fragment counting, per-enemy thresholds, discovery + unlock notifications)
@@ -340,7 +389,6 @@ More types will be added as new cell types, enemy types, and world features are 
 - Rebirth sequence (zoom-in cinematic on game start / zone load)
 
 ### Not Yet Implemented
-- Seeker enemy (dash-kill predator — spec at `plans/spec_seeker.md`)
 - Unified skill bar Phase 3 (two-loadout system for gameplay/god mode)
 - God mode placeable catalog (cell types, enemy spawns, portals via catalog drag-and-drop)
 - Boss encounters
@@ -360,14 +408,15 @@ More types will be added as new cell types, enemy types, and world features are 
 
 | Sound | Used For |
 |-------|----------|
-| statue_rise.wav | Ship respawn |
-| bomb_explode.wav | Ship death, mine explosion, hunter death |
+| statue_rise.wav | Ship respawn, aegis activation (player + defender) |
+| bomb_explode.wav | Ship death, mine explosion, hunter/seeker/defender death |
 | long_beam.wav | Sub_pea fire, sub_mgun fire, hunter shots |
-| ricochet.wav | Projectile wall hit (pea, mgun) |
+| ricochet.wav | Projectile wall hit (pea, mgun), shielded defender hit |
 | bomb_set.wav | Mine armed |
-| door.wav | Mine respawn, hunter respawn |
+| door.wav | Mine/hunter/seeker/defender respawn, aegis deactivation |
 | samus_die.wav | Ship death |
-| samus_hurt.wav | Integrity damage (spillover, enemy hits, hunter hit feedback) |
+| samus_hurt.wav | Integrity damage (spillover, enemy hits, hit feedback) |
+| refill_start.wav | Defender heal beam |
 | samus_pickup.wav | Fragment collection |
 | samus_pickup2.wav | Subroutine unlock |
 
@@ -508,7 +557,7 @@ Two-instance bloom system replacing the old geometry-based glow (which hit verte
 | bloom (foreground) | Neon halos on entities | 2 (half-res) | 2.0 | 5 |
 | bg_bloom (background) | Diffuse ethereal clouds | 8 (eighth-res) | 1.5 | 10 |
 
-**Bloom sources**: Map cells, ship, ship death spark, sub_pea/sub_mgun projectiles + sparks, mine blink/explosion, hunter body + projectiles, portals, save points, fragments. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
+**Bloom sources**: Map cells, ship, ship death spark, sub_pea/sub_mgun projectiles + sparks, sub_aegis shield ring, mine blink/explosion, hunter body + projectiles, seeker body + dash trail, defender body + aegis ring + heal beams, portals, save points, fragments. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
 
 **Key design decision**: Background renders ONLY through the bg_bloom FBO (no raw polygon render). Additive bloom on top of sharp polygons doesn't hide edges — rendering exclusively through blur produces the desired diffuse cloud effect.
 

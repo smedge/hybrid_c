@@ -2,6 +2,7 @@
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
+#include "defender.h"
 #include "fragment.h"
 #include "progression.h"
 #include "player_stats.h"
@@ -109,6 +110,7 @@ static HunterProjectile projectiles[PROJ_COUNT];
 
 /* Sparks */
 static bool sparkActive = false;
+static bool sparkShielded = false;
 static Position sparkPosition;
 static int sparkTicksLeft = 0;
 
@@ -117,6 +119,7 @@ static Mix_Chunk *sampleShoot = 0;
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
+static Mix_Chunk *sampleShieldHit = 0;
 
 /* Helpers */
 static double get_radians(double degrees)
@@ -242,6 +245,7 @@ void Hunter_initialize(Position position)
 	Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 	Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 	Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
+	Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
 }
 
 void Hunter_cleanup(void)
@@ -256,6 +260,7 @@ void Hunter_cleanup(void)
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
+	Audio_unload_sample(&sampleShieldHit);
 }
 
 Collision Hunter_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -300,24 +305,26 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 
 		/* Check all player weapon types */
 		bool hit = false;
+		bool shielded = Defender_is_protecting(pl->position);
 		if (Sub_Pea_check_hit(hitBox)) {
-			h->hp -= 50.0;  /* sub_pea = 50 damage */
+			if (!shielded) h->hp -= 50.0;
 			hit = true;
 		}
 		if (Sub_Mgun_check_hit(hitBox)) {
-			h->hp -= 20.0;  /* sub_mgun = 20 damage */
+			if (!shielded) h->hp -= 20.0;
 			hit = true;
 		}
 		if (Sub_Mine_check_hit(hitBox)) {
-			h->hp -= 100.0; /* sub_mine = instant kill */
+			if (!shielded) h->hp -= 100.0;
 			hit = true;
 		}
 
 		if (hit) {
 			sparkActive = true;
+			sparkShielded = shielded;
 			sparkPosition = pl->position;
 			sparkTicksLeft = PROJ_SPARK_DURATION;
-			Audio_play_sample(&sampleHit);
+			Audio_play_sample(shielded ? &sampleShieldHit : &sampleHit);
 
 			/* Getting shot immediately aggroes */
 			if (h->aiState == HUNTER_IDLE) {
@@ -571,7 +578,9 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 		/* Wall hit spark */
 		if (sparkActive) {
 			float fade = (float)sparkTicksLeft / PROJ_SPARK_DURATION;
-			ColorFloat sparkColor = {1.0f, 0.5f, 0.1f, fade};
+			ColorFloat sparkColor = sparkShielded
+			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
+			: (ColorFloat){1.0f, 0.5f, 0.1f, fade};
 			Rectangle sparkRect = {-PROJ_SPARK_SIZE, PROJ_SPARK_SIZE, PROJ_SPARK_SIZE, -PROJ_SPARK_SIZE};
 			Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
 			Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
@@ -627,7 +636,9 @@ void Hunter_render_bloom_source(void)
 	/* Spark bloom */
 	if (sparkActive) {
 		float fade = (float)sparkTicksLeft / PROJ_SPARK_DURATION;
-		ColorFloat sparkColor = {1.0f, 0.5f, 0.1f, fade};
+		ColorFloat sparkColor = sparkShielded
+			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
+			: (ColorFloat){1.0f, 0.5f, 0.1f, fade};
 		Rectangle sparkRect = {-PROJ_SPARK_SIZE, PROJ_SPARK_SIZE, PROJ_SPARK_SIZE, -PROJ_SPARK_SIZE};
 		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
 		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
@@ -671,4 +682,74 @@ void Hunter_reset_all(void)
 	for (int i = 0; i < PROJ_COUNT; i++)
 		projectiles[i].active = false;
 	sparkActive = false;
+}
+
+bool Hunter_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index)
+{
+	double bestDamage = 0.0;
+	int bestIdx = -1;
+
+	for (int i = 0; i < highestUsedIndex; i++) {
+		HunterState *h = &hunters[i];
+		if (!h->alive || h->aiState == HUNTER_DYING || h->aiState == HUNTER_DEAD)
+			continue;
+		if (h->hp >= hp_threshold)
+			continue;
+		double missing = HUNTER_HP - h->hp;
+		if (missing <= 0.0)
+			continue;
+		double dist = distance_between(from, placeables[i].position);
+		if (dist > range)
+			continue;
+		if (missing > bestDamage) {
+			bestDamage = missing;
+			bestIdx = i;
+		}
+	}
+
+	if (bestIdx >= 0) {
+		*out_pos = placeables[bestIdx].position;
+		*out_index = bestIdx;
+		return true;
+	}
+	return false;
+}
+
+bool Hunter_find_aggro(Position from, double range, Position *out_pos)
+{
+	double bestDist = range + 1.0;
+	int bestIdx = -1;
+
+	for (int i = 0; i < highestUsedIndex; i++) {
+		HunterState *h = &hunters[i];
+		if (!h->alive)
+			continue;
+		if (h->aiState != HUNTER_CHASING && h->aiState != HUNTER_SHOOTING)
+			continue;
+		double dist = distance_between(from, placeables[i].position);
+		if (dist > range)
+			continue;
+		if (dist < bestDist) {
+			bestDist = dist;
+			bestIdx = i;
+		}
+	}
+
+	if (bestIdx >= 0) {
+		*out_pos = placeables[bestIdx].position;
+		return true;
+	}
+	return false;
+}
+
+void Hunter_heal(int index, double amount)
+{
+	if (index < 0 || index >= highestUsedIndex)
+		return;
+	HunterState *h = &hunters[index];
+	if (!h->alive)
+		return;
+	h->hp += amount;
+	if (h->hp > HUNTER_HP)
+		h->hp = HUNTER_HP;
 }

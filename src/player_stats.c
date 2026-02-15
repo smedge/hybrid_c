@@ -39,6 +39,8 @@ static bool dead;
 
 static int flashTicksLeft;
 static unsigned int feedbackFlashTimer; /* running timer for 4Hz feedback-full blink */
+static bool shielded;
+static int shieldBreakGrace;
 static Mix_Chunk *sampleHurt = 0;
 
 void PlayerStats_initialize(void)
@@ -50,6 +52,8 @@ void PlayerStats_initialize(void)
 	dead = false;
 	flashTicksLeft = 0;
 	feedbackFlashTimer = 0;
+	shielded = false;
+	shieldBreakGrace = 0;
 
 	Audio_load_sample(&sampleHurt, "resources/sounds/samus_hurt.wav");
 }
@@ -69,6 +73,10 @@ void PlayerStats_update(unsigned int ticks)
 	/* Advance timers */
 	timeSinceLastDamage += ticks;
 	timeSinceLastFeedback += ticks;
+
+	/* Shield break grace decay */
+	if (shieldBreakGrace > 0)
+		shieldBreakGrace -= ticks;
 
 	/* Flash decay */
 	if (flashTicksLeft > 0)
@@ -264,6 +272,8 @@ void PlayerStats_add_feedback(double amount)
 
 void PlayerStats_damage(double amount)
 {
+	if (shielded)
+		return;
 	integrity -= amount;
 	if (integrity < 0.0)
 		integrity = 0.0;
@@ -274,8 +284,32 @@ void PlayerStats_damage(double amount)
 
 void PlayerStats_force_kill(void)
 {
+	if (shielded) {
+		shielded = false;  /* Mine breaks shield, no damage */
+		shieldBreakGrace = 200; /* Outlasts mine explosion (100ms) */
+		return;
+	}
+	if (shieldBreakGrace > 0)
+		return; /* Still invulnerable from recent shield break */
 	integrity = 0.0;
 	timeSinceLastDamage = 0;
+}
+
+void PlayerStats_heal(double amount)
+{
+	integrity += amount;
+	if (integrity > INTEGRITY_MAX)
+		integrity = INTEGRITY_MAX;
+}
+
+bool PlayerStats_is_shielded(void)
+{
+	return shielded;
+}
+
+void PlayerStats_set_shielded(bool value)
+{
+	shielded = value;
 }
 
 bool PlayerStats_is_dead(void)
@@ -292,6 +326,8 @@ void PlayerStats_reset(void)
 	dead = false;
 	flashTicksLeft = 0;
 	feedbackFlashTimer = 0;
+	shielded = false;
+	shieldBreakGrace = 0;
 }
 
 PlayerStatsSnapshot PlayerStats_snapshot(void)
@@ -311,4 +347,6 @@ void PlayerStats_restore(PlayerStatsSnapshot snap)
 	dead = false;
 	flashTicksLeft = 0;
 	feedbackFlashTimer = 0;
+	shielded = false;
+	shieldBreakGrace = 0;
 }

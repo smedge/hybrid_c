@@ -27,6 +27,8 @@ static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_BOOST]  = { "BOOST",  "sub_boost",  FRAG_TYPE_ELITE, 1, false },
 	[SUB_ID_EGRESS] = { "EGRESS", "sub_egress", FRAG_TYPE_SEEKER, 3, false },
 	[SUB_ID_MGUN]   = { "MGUN",   "sub_mgun",   FRAG_TYPE_HUNTER, 3, false },
+	[SUB_ID_MEND]   = { "MEND",   "sub_mend",   FRAG_TYPE_MEND,   5, false },
+	[SUB_ID_AEGIS]  = { "AEGIS",  "sub_aegis",  FRAG_TYPE_AEGIS,  5, false },
 };
 
 /* Notification state */

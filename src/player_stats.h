@@ -11,7 +11,10 @@ void PlayerStats_render(const Screen *screen);
 void PlayerStats_add_feedback(double amount);
 void PlayerStats_damage(double amount);
 void PlayerStats_force_kill(void);
+void PlayerStats_heal(double amount);
 bool PlayerStats_is_dead(void);
+bool PlayerStats_is_shielded(void);
+void PlayerStats_set_shielded(bool shielded);
 void PlayerStats_reset(void);
 
 /* Snapshot/restore for zone transitions */
