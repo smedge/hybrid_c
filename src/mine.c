@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define MINE_COUNT 64
+#define MINE_COUNT 128
 #define MINE_ROTATION 0.0
 #define TICKS_ACTIVE 500
 #define TICKS_EXPLODING 100
@@ -82,14 +82,17 @@ void Mine_initialize(Position position)
 	
 	highestUsedIndex++;
 
-	Audio_load_sample(&sample01, "resources/sounds/bomb_set.wav");
-	Audio_load_sample(&sample02, "resources/sounds/bomb_explode.wav");
-	Audio_load_sample(&sample03, "resources/sounds/door.wav");
+	/* Load audio and colors once, not per-entity */
+	if (!sample01) {
+		Audio_load_sample(&sample01, "resources/sounds/bomb_set.wav");
+		Audio_load_sample(&sample02, "resources/sounds/bomb_explode.wav");
+		Audio_load_sample(&sample03, "resources/sounds/door.wav");
 
-	color = Color_rgb_to_float(&COLOR);
-	colorDark = Color_rgb_to_float(&COLOR_DARK);
-	colorActive = Color_rgb_to_float(&COLOR_ACTIVE);
-	colorWhite = Color_rgb_to_float(&COLOR_WHITE);
+		color = Color_rgb_to_float(&COLOR);
+		colorDark = Color_rgb_to_float(&COLOR_DARK);
+		colorActive = Color_rgb_to_float(&COLOR_ACTIVE);
+		colorWhite = Color_rgb_to_float(&COLOR_WHITE);
+	}
 }
 
 void Mine_cleanup()

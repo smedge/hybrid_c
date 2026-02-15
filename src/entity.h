@@ -6,8 +6,8 @@
 #include "collision.h"
 #include "component.h"
 
-#define ENTITY_COUNT 1024
-#define COLLISION_COUNT 64
+#define ENTITY_COUNT 2048
+#define COLLISION_COUNT 512
 
 typedef struct {
 	bool empty;

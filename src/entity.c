@@ -1,5 +1,7 @@
 #include "entity.h"
 
+#include <stdio.h>
+
 static unsigned int highestIndex = 0;
 static Entity entities[ENTITY_COUNT];
 static unsigned int highestCollisionIndex = 0;
@@ -20,13 +22,18 @@ Entity Entity_initialize_entity()
 	return entity;
 }
 
-Entity* Entity_add_entity(const Entity entity) 
+Entity* Entity_add_entity(const Entity entity)
 {
 	unsigned int entityId;
 	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
 	{
 		if(entities[entityId].empty)
 			break;
+	}
+
+	if (entityId >= ENTITY_COUNT) {
+		printf("WARNING: Entity pool full (%d)\n", ENTITY_COUNT);
+		return NULL;
 	}
 
 	if (highestIndex < entityId)
@@ -147,6 +154,10 @@ void Entity_collision_system(void)
 void Entity_create_collision_command(void (*resolve)(const void *state, const Collision collision),
 	void *state, Collision collision)
 {
+	if (highestCollisionIndex >= COLLISION_COUNT) {
+		printf("WARNING: Collision command buffer full (%d)\n", COLLISION_COUNT);
+		return;
+	}
 	collisions[highestCollisionIndex].resolve = resolve;
 	collisions[highestCollisionIndex].state = state;
 	collisions[highestCollisionIndex].collision = collision;

@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define HUNTER_COUNT 64
+#define HUNTER_COUNT 128
 #define HUNTER_SPEED 400.0
 #define HUNTER_HP 100.0
 #define AGGRO_RANGE 1600.0
@@ -34,7 +34,7 @@
 #define DEATH_FLASH_MS 200
 #define RESPAWN_MS 30000
 
-#define PROJ_COUNT 32
+#define PROJ_COUNT 64
 #define PROJ_VELOCITY 2000.0
 #define PROJ_TTL 800
 #define PROJ_DAMAGE 15.0
