@@ -23,6 +23,8 @@ void Map_clear(void);
 void Map_set_cell(int grid_x, int grid_y, const MapCell *cell);
 void Map_clear_cell(int grid_x, int grid_y);
 const MapCell *Map_get_cell(int grid_x, int grid_y);
+void Map_set_boundary_cell(const MapCell *cell);
+void Map_clear_boundary_cell(void);
 Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Map_render();
 void Map_render_minimap(float center_x, float center_y,

@@ -8,6 +8,7 @@
 static MapCell *map[MAP_SIZE][MAP_SIZE];
 
 static MapCell emptyCell = {true, false, {0,0,0,0}, {0,0,0,0}};
+static MapCell boundaryCell = {true, false, {0,0,0,0}, {0,0,0,0}};
 
 /* Pool of dynamically-set cells for zone loader */
 #define CELL_POOL_SIZE (MAP_SIZE * MAP_SIZE)
@@ -60,8 +61,19 @@ void Map_clear_cell(int grid_x, int grid_y)
 const MapCell *Map_get_cell(int grid_x, int grid_y)
 {
 	if (grid_x < 0 || grid_x >= MAP_SIZE || grid_y < 0 || grid_y >= MAP_SIZE)
-		return &emptyCell;
+		return &boundaryCell;
 	return map[grid_x][grid_y];
+}
+
+void Map_set_boundary_cell(const MapCell *cell)
+{
+	boundaryCell = *cell;
+	boundaryCell.empty = false;
+}
+
+void Map_clear_boundary_cell(void)
+{
+	boundaryCell = (MapCell){true, false, {0,0,0,0}, {0,0,0,0}};
 }
 
 static void initialize_map_entity(void)
@@ -95,6 +107,8 @@ Collision Map_collide(const void *state, const PlaceableComponent *placeable, co
 				if (!map[x][y]->empty) {
 					collision.collisionDetected = true;
 				}
+			} else if (!boundaryCell.empty) {
+				collision.collisionDetected = true;
 			}
 		}
 	}
@@ -130,10 +144,12 @@ bool Map_line_test_hit(double x0, double y0, double x1, double y1,
 		for (int cy = cellMinY; cy <= cellMaxY; cy++) {
 			int mx = cx + HALF_MAP_SIZE;
 			int my = cy + HALF_MAP_SIZE;
-			if (mx < 0 || mx >= MAP_SIZE || my < 0 || my >= MAP_SIZE)
+			if (mx < 0 || mx >= MAP_SIZE || my < 0 || my >= MAP_SIZE) {
+				if (boundaryCell.empty)
+					continue;
+			} else if (map[mx][my]->empty) {
 				continue;
-			if (map[mx][my]->empty)
-				continue;
+			}
 
 			Rectangle cellRect = {
 				cx * MAP_CELL_SIZE,
@@ -161,6 +177,13 @@ done:
 	return hit;
 }
 
+static bool cells_match_visual(const MapCell *a, const MapCell *b)
+{
+	return a->circuitPattern == b->circuitPattern &&
+		memcmp(&a->primaryColor, &b->primaryColor, sizeof(ColorRGB)) == 0 &&
+		memcmp(&a->outlineColor, &b->outlineColor, sizeof(ColorRGB)) == 0;
+}
+
 void Map_render()
 {
 	View view = View_get_view();
@@ -174,11 +197,141 @@ void Map_render()
 	float cx = (float)view.position.x;
 	float cy = (float)view.position.y;
 
+	/* Visible cell range (unclamped) */
 	int minX = correctTruncation((cx - half_w) / MAP_CELL_SIZE) + HALF_MAP_SIZE - 1;
 	int maxX = correctTruncation((cx + half_w) / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
 	int minY = correctTruncation((cy - half_h) / MAP_CELL_SIZE) + HALF_MAP_SIZE - 1;
 	int maxY = correctTruncation((cy + half_h) / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
 
+	/* Render boundary fill and edge outlines for out-of-bounds area */
+	if (!boundaryCell.empty) {
+		float map_left = (float)(-HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		float map_right = (float)(MAP_SIZE - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		float map_bottom = map_left;
+		float map_top = map_right;
+
+		float vl = cx - half_w, vr = cx + half_w;
+		float vb = cy - half_h, vt = cy + half_h;
+
+		ColorFloat bc = Color_rgb_to_float(&boundaryCell.primaryColor);
+		float br = bc.red, bg = bc.green, bb = bc.blue, ba = bc.alpha;
+
+		/* Fill quads — 4 strips framing the map */
+		if (vt > map_top)
+			Render_quad_absolute(vl, map_top > vb ? map_top : vb,
+				vr, vt, br, bg, bb, ba);
+		if (vb < map_bottom)
+			Render_quad_absolute(vl, vb,
+				vr, map_bottom < vt ? map_bottom : vt, br, bg, bb, ba);
+		if (vl < map_left) {
+			float y0 = vb > map_bottom ? vb : map_bottom;
+			float y1 = vt < map_top ? vt : map_top;
+			if (y1 > y0)
+				Render_quad_absolute(vl, y0, map_left, y1, br, bg, bb, ba);
+		}
+		if (vr > map_right) {
+			float y0 = vb > map_bottom ? vb : map_bottom;
+			float y1 = vt < map_top ? vt : map_top;
+			if (y1 > y0)
+				Render_quad_absolute(map_right, y0, vr, y1, br, bg, bb, ba);
+		}
+
+		/* Edge outlines — boundary's inner border facing empty/non-matching cells */
+		ColorFloat boc = Color_rgb_to_float(&boundaryCell.outlineColor);
+		float bor = boc.red, bog = boc.green, bob = boc.blue, boa = boc.alpha;
+		float t = outlineThickness;
+
+		int eyMin = minY < 0 ? 0 : minY;
+		int eyMax = maxY >= MAP_SIZE ? MAP_SIZE - 1 : maxY;
+		int exMin = minX < 0 ? 0 : minX;
+		int exMax = maxX >= MAP_SIZE ? MAP_SIZE - 1 : maxX;
+
+		#define BOUNDARY_OUTLINE(gx, gy) \
+			(map[gx][gy]->empty || !cells_match_visual(map[gx][gy], &boundaryCell))
+
+		if (maxX >= MAP_SIZE) {
+			for (int y = eyMin; y <= eyMax; y++) {
+				if (BOUNDARY_OUTLINE(MAP_SIZE - 1, y)) {
+					float ay = (float)(y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+					Render_quad_absolute(map_right, ay,
+						map_right + t, ay + MAP_CELL_SIZE, bor, bog, bob, boa);
+					if (y > 0 && !BOUNDARY_OUTLINE(MAP_SIZE - 1, y - 1))
+						Render_quad_absolute(map_right, ay - t,
+							map_right + t, ay, bor, bog, bob, boa);
+					if (y < MAP_SIZE - 1 && !BOUNDARY_OUTLINE(MAP_SIZE - 1, y + 1))
+						Render_quad_absolute(map_right, ay + MAP_CELL_SIZE,
+							map_right + t, ay + MAP_CELL_SIZE + t, bor, bog, bob, boa);
+				}
+			}
+		}
+		if (minX < 0) {
+			for (int y = eyMin; y <= eyMax; y++) {
+				if (BOUNDARY_OUTLINE(0, y)) {
+					float ay = (float)(y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+					Render_quad_absolute(map_left - t, ay,
+						map_left, ay + MAP_CELL_SIZE, bor, bog, bob, boa);
+					if (y > 0 && !BOUNDARY_OUTLINE(0, y - 1))
+						Render_quad_absolute(map_left - t, ay - t,
+							map_left, ay, bor, bog, bob, boa);
+					if (y < MAP_SIZE - 1 && !BOUNDARY_OUTLINE(0, y + 1))
+						Render_quad_absolute(map_left - t, ay + MAP_CELL_SIZE,
+							map_left, ay + MAP_CELL_SIZE + t, bor, bog, bob, boa);
+				}
+			}
+		}
+		if (maxY >= MAP_SIZE) {
+			for (int x = exMin; x <= exMax; x++) {
+				if (BOUNDARY_OUTLINE(x, MAP_SIZE - 1)) {
+					float ax = (float)(x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+					Render_quad_absolute(ax, map_top,
+						ax + MAP_CELL_SIZE, map_top + t, bor, bog, bob, boa);
+					if (x > 0 && !BOUNDARY_OUTLINE(x - 1, MAP_SIZE - 1))
+						Render_quad_absolute(ax - t, map_top,
+							ax, map_top + t, bor, bog, bob, boa);
+					if (x < MAP_SIZE - 1 && !BOUNDARY_OUTLINE(x + 1, MAP_SIZE - 1))
+						Render_quad_absolute(ax + MAP_CELL_SIZE, map_top,
+							ax + MAP_CELL_SIZE + t, map_top + t, bor, bog, bob, boa);
+				}
+			}
+		}
+		if (minY < 0) {
+			for (int x = exMin; x <= exMax; x++) {
+				if (BOUNDARY_OUTLINE(x, 0)) {
+					float ax = (float)(x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+					Render_quad_absolute(ax, map_bottom - t,
+						ax + MAP_CELL_SIZE, map_bottom, bor, bog, bob, boa);
+					if (x > 0 && !BOUNDARY_OUTLINE(x - 1, 0))
+						Render_quad_absolute(ax - t, map_bottom - t,
+							ax, map_bottom, bor, bog, bob, boa);
+					if (x < MAP_SIZE - 1 && !BOUNDARY_OUTLINE(x + 1, 0))
+						Render_quad_absolute(ax + MAP_CELL_SIZE, map_bottom - t,
+							ax + MAP_CELL_SIZE + t, map_bottom, bor, bog, bob, boa);
+				}
+			}
+		}
+
+		/* Corner fills — patch t*t gaps where perpendicular outlines meet */
+		if (maxX >= MAP_SIZE && maxY >= MAP_SIZE &&
+			BOUNDARY_OUTLINE(MAP_SIZE - 1, MAP_SIZE - 1))
+			Render_quad_absolute(map_right, map_top,
+				map_right + t, map_top + t, bor, bog, bob, boa);
+		if (minX < 0 && maxY >= MAP_SIZE &&
+			BOUNDARY_OUTLINE(0, MAP_SIZE - 1))
+			Render_quad_absolute(map_left - t, map_top,
+				map_left, map_top + t, bor, bog, bob, boa);
+		if (maxX >= MAP_SIZE && minY < 0 &&
+			BOUNDARY_OUTLINE(MAP_SIZE - 1, 0))
+			Render_quad_absolute(map_right, map_bottom - t,
+				map_right + t, map_bottom, bor, bog, bob, boa);
+		if (minX < 0 && minY < 0 &&
+			BOUNDARY_OUTLINE(0, 0))
+			Render_quad_absolute(map_left - t, map_bottom - t,
+				map_left, map_bottom, bor, bog, bob, boa);
+
+		#undef BOUNDARY_OUTLINE
+	}
+
+	/* Clamp to map bounds for per-cell iteration */
 	if (minX < 0) minX = 0;
 	if (minY < 0) minY = 0;
 	if (maxX >= MAP_SIZE) maxX = MAP_SIZE - 1;
@@ -531,7 +684,8 @@ static void render_circuit_pattern(int cellX, int cellY, float ax, float ay,
 
 static void render_cell(int x, int y, float outlineThickness)
 {
-	MapCell mapCell = *map[x][y];
+	const MapCell *me = Map_get_cell(x, y);
+	MapCell mapCell = *me;
 	if (mapCell.empty)
 		return;
 
@@ -540,12 +694,10 @@ static void render_cell(int x, int y, float outlineThickness)
 	float bx = ax + MAP_CELL_SIZE;
 	float by = ay + MAP_CELL_SIZE;
 
-	int xp = (x + 1 < MAP_SIZE) ? x + 1 : x;
-	int xm = (x - 1 >= 0) ? x - 1 : x;
-	int yp = (y + 1 < MAP_SIZE) ? y + 1 : y;
-	int ym = (y - 1 >= 0) ? y - 1 : y;
-	MapCell *nPtr = map[x][yp], *ePtr = map[xp][y];
-	MapCell *sPtr = map[x][ym], *wPtr = map[xm][y];
+	const MapCell *nPtr = Map_get_cell(x, y + 1);
+	const MapCell *ePtr = Map_get_cell(x + 1, y);
+	const MapCell *sPtr = Map_get_cell(x, y - 1);
+	const MapCell *wPtr = Map_get_cell(x - 1, y);
 
 	/* Chamfer NE and SW corners of circuit cells when both edges face empty */
 	float chamf = MAP_CELL_SIZE * 0.17f;
@@ -624,7 +776,7 @@ static void render_cell(int x, int y, float outlineThickness)
 #define EDGE_DRAW(ptr, QAX, QAY, QBX, QBY) \
 	if ((ptr)->empty) { \
 		Render_quad_absolute(QAX, QAY, QBX, QBY, or_, og, ob, oa); \
-	} else if (!CELLS_MATCH(ptr, map[x][y])) { \
+	} else if (!CELLS_MATCH(ptr, me)) { \
 		if (!mapCell.circuitPattern || (ptr)->circuitPattern) { \
 			Render_quad_absolute(QAX, QAY, QBX, QBY, or_, og, ob, oa); \
 		} \
@@ -640,29 +792,28 @@ static void render_cell(int x, int y, float outlineThickness)
 	   diagonal cell is empty or (for non-circuit cells) a different type.
 	   Circuit cells skip borders against solids, so they only need fills
 	   when the diagonal is truly empty. */
-	MapCell *me = map[x][y];
 
 #define CORNER_GAP(diag) \
 	((diag)->empty || (!mapCell.circuitPattern && !CELLS_MATCH((diag), me)))
 
 	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
 		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
-		CORNER_GAP(map[xp][yp]))
+		CORNER_GAP(Map_get_cell(x + 1, y + 1)))
 		Render_quad_absolute(bx - t, by - t, bx, by, or_, og, ob, oa);
 
 	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
 		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
-		CORNER_GAP(map[xm][yp]))
+		CORNER_GAP(Map_get_cell(x - 1, y + 1)))
 		Render_quad_absolute(ax, by - t, ax + t, by, or_, og, ob, oa);
 
 	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
 		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
-		CORNER_GAP(map[xp][ym]))
+		CORNER_GAP(Map_get_cell(x + 1, y - 1)))
 		Render_quad_absolute(bx - t, ay, bx, ay + t, or_, og, ob, oa);
 
 	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
 		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
-		CORNER_GAP(map[xm][ym]))
+		CORNER_GAP(Map_get_cell(x - 1, y - 1)))
 		Render_quad_absolute(ax, ay, ax + t, ay + t, or_, og, ob, oa);
 
 #undef CORNER_GAP

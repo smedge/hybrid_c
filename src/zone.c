@@ -176,6 +176,7 @@ void Zone_load(const char *path)
 void Zone_unload(void)
 {
 	Map_clear();
+	Map_clear_boundary_cell();
 	Mine_cleanup();
 	Hunter_cleanup();
 	Seeker_cleanup();
@@ -728,6 +729,13 @@ static void apply_zone_to_world(void)
 		double wy = (zone.savepoints[i].grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
 		Position pos = {wx, wy};
 		Savepoint_initialize(pos, zone.savepoints[i].id);
+	}
+
+	/* Set boundary cell from first cell type (solid walls) */
+	if (zone.cell_type_count > 0) {
+		ZoneCellType *ct = &zone.cell_types[0];
+		MapCell boundary = {false, false, ct->primaryColor, ct->outlineColor};
+		Map_set_boundary_cell(&boundary);
 	}
 }
 
