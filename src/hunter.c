@@ -650,3 +650,25 @@ void Hunter_deaggro_all(void)
 	for (int i = 0; i < PROJ_COUNT; i++)
 		projectiles[i].active = false;
 }
+
+void Hunter_reset_all(void)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		HunterState *h = &hunters[i];
+		h->alive = true;
+		h->hp = HUNTER_HP;
+		h->aiState = HUNTER_IDLE;
+		h->killedByPlayer = false;
+		h->cooldownTimer = 0;
+		h->burstShotsFired = 0;
+		h->burstTimer = 0;
+		h->deathTimer = 0;
+		h->respawnTimer = 0;
+		placeables[i].position = h->spawnPoint;
+		pick_wander_target(h);
+	}
+
+	for (int i = 0; i < PROJ_COUNT; i++)
+		projectiles[i].active = false;
+	sparkActive = false;
+}

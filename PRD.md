@@ -8,7 +8,8 @@
 - **The Grid**: Represents the fabric of cyberspace. Movement across it shows traversal through digital space.
 - **Map Cells / Walls**: Give the system topography — structural geometry the player must navigate around. The architecture of the digital system.
 - **Mines**: Security intrusion detection devices. Part of the system's defenses against the Hybrid.
-- **Future Enemies**: Security programs that actively hunt and try to kill the player.
+- **Hunters**: Active security programs that patrol, chase, and fire machine-gun bursts at the player. Orange triangles.
+- **Seekers**: Predatory security programs that stalk the player and use high-speed dashes to close in for a one-shot kill. Green needles. (Planned — see `plans/spec_seeker.md`)
 - **Viruses**: Planned as tools the player eventually uses *against* the system.
 - **The Alien Entity**: The ultimate antagonist — a foreign alien intelligence projecting into human Earth cyberspace via a network connection. Its presence warps the final zone into something alien and unrecognizable.
 
@@ -26,12 +27,13 @@ Bullet hell shooter × Metroidvania
 The player's representation in cyberspace. A red triangle that moves with WASD, aims with mouse.
 
 - **Movement**: WASD directional, with speed modifiers (Shift = fast, Ctrl = warp)
-- **Death**: Destroyed on contact with solid threats (mines, walls), or when Integrity reaches 0. Respawns at origin after 3 seconds.
+- **Death**: All damage funnels through Integrity. Walls and mines instantly zero Integrity via `PlayerStats_force_kill()`. Enemy projectiles reduce Integrity via `PlayerStats_damage()`. When Integrity reaches 0, the ship is destroyed. Respawns at last save point (or origin) after 3 seconds.
 - **Death FX**: White diamond spark flash + explosion sound
+- **On respawn**: All enemies (hunters, mines, etc.) silently reset to full health at their spawn points. This is seamless — the player doesn't see the reset happen.
 
 #### Integrity (Health)
 
-The ship's structural health. Starts at 100, regens at 5/sec after 2 seconds without taking damage. At 0, the ship is destroyed (same death sequence as wall collision). Damaged by feedback spillover and future enemy attacks.
+The ship's structural health. Starts at 100, regens at 5/sec after 2 seconds without taking damage (10/sec when Feedback is at 0 — rewards discipline). At 0, the ship is destroyed. Damaged by feedback spillover, enemy projectiles, and environmental hazards (walls, mines). All damage sources funnel through the Integrity system — there is one unified death path.
 
 #### Feedback (Overload Meter)
 
@@ -42,6 +44,7 @@ Feedback accumulates from subroutine usage and represents connection strain. Dec
 | Subroutine | Feedback Cost |
 |------------|--------------|
 | sub_pea | 1 per shot |
+| sub_mgun | 2 per shot |
 | sub_mine | 15 per mine explosion |
 | sub_egress | 25 per dash |
 | sub_boost | None |
@@ -67,22 +70,90 @@ Subroutines are abilities the Hybrid AI can execute to interact with digital spa
 
 **Known Subroutines**:
 
-| Subroutine | Type | Description | Status |
-|------------|------|-------------|--------|
-| sub_pea | projectile | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. 1 feedback per shot. | Implemented |
-| sub_egress | movement | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | Implemented |
-| sub_boost | movement (elite) | Hold shift for unlimited speed boost. No cooldown, no feedback cost. Elite subroutine (gold border). | Implemented |
-| sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback on explosion. Unlocked by collecting 5 mine fragments. | Implemented |
+| Subroutine | Type | Description | Unlocked By | Status |
+|------------|------|-------------|-------------|--------|
+| sub_pea | projectile | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. 50 damage per shot, 1 feedback per shot. | Default | Implemented |
+| sub_mgun | projectile | Machine gun. Fires white dots toward cursor. 200ms cooldown, 1000ms TTL, up to 8 simultaneous. 20 damage per shot, 2 feedback per shot. Same DPS as sub_pea but easier to aim, burns feedback 5x faster. | 3 hunter kills | Implemented |
+| sub_egress | movement | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | 3 seeker kills (planned) | Implemented |
+| sub_boost | movement (elite) | Hold shift for unlimited speed boost. No cooldown, no feedback cost. Elite subroutine (gold border). | Elite fragment | Implemented |
+| sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback on explosion. | 5 mine kills | Implemented |
 
-**Many more subroutines planned** — each enemy type will have a corresponding subroutine unlocked by defeating enough of that enemy.
+**Each enemy type has a corresponding subroutine** unlocked by defeating enough of that enemy. This creates a progression loop: encounter enemy → learn its patterns → kill it → gain its ability.
 
 ### Progression System
 
-Enemies drop **fragments** (small colored binary glyph collectibles) when destroyed. Fragments last 10 seconds (fade begins at 8s), and are collectible for their full lifetime. Collecting fragments from a specific enemy type progresses the player toward unlocking the subroutine associated with that enemy. Fragments are different colors based on their type and **elite** fragments are golden.
+Enemies drop **fragments** (small colored binary glyph collectibles) when destroyed by the player (only if the associated subroutine isn't already unlocked). Fragments last 10 seconds (fade begins at 8s), attract toward the player when nearby, and are collectible for their full lifetime. Collecting fragments from a specific enemy type progresses toward unlocking the subroutine associated with that enemy. Fragment colors match their enemy type.
 
-- Kill 5 mines → unlock sub_mine (0% to 100% progression)
-- Each enemy type has its own subroutine and kill-count threshold
+| Fragment Type | Color | Source | Unlocks | Threshold |
+|---------------|-------|--------|---------|-----------|
+| Mine | Magenta | Mine kills | sub_mine | 5 |
+| Hunter | Red-orange | Hunter kills | sub_mgun | 3 |
+| Seeker | Green | Seeker kills (planned) | sub_egress | 3 |
+| Elite | Gold | Special encounters | sub_boost | 1 |
+
 - The **Catalog Window** (P key) shows progression and allows equipping — see Catalog Window section below
+
+### Security Programs (Enemies)
+
+All security programs share common behaviors:
+- **Line of sight**: Enemies require unobstructed LOS through map cells to detect the player. Walls block vision.
+- **Near-miss aggro**: Player projectiles passing within 200 units of an idle enemy will trigger aggro, even without a direct hit.
+- **De-aggro on player death**: All active enemies immediately return to idle when the player dies. Their in-flight projectiles are cleared.
+- **Reset on player respawn**: All enemies (except bosses) silently reset to full health at their original spawn points when the player respawns. This happens during the death timer so it's invisible to the player.
+- **Hit feedback**: Player projectiles hitting an enemy produce a spark + samus_hurt sound for clear damage confirmation.
+
+#### Mines (Intrusion Detection Devices)
+
+Passive proximity threats. Dark squares with a blinking red dot.
+
+| Property | Value |
+|---|---|
+| Behavior | Passive — arms on player proximity, explodes after 2s fuse |
+| HP | N/A (destroyed by any player projectile hit) |
+| Damage | Instant kill (contact during explosion) |
+| Respawn | 10 seconds |
+| Drops | Mine fragments (magenta) |
+
+#### Hunters
+
+Active ranged combatants. Orange triangles that patrol, chase, and shoot.
+
+| Property | Value |
+|---|---|
+| Speed | 400 u/s (half player speed) |
+| Aggro range | 1200 units (12 cells), requires LOS |
+| De-aggro range | 1800 units (1.5x hysteresis) |
+| Wander radius | 400 units around spawn |
+| HP | 100 |
+| Attack | 3-shot burst (100ms between shots), 1.5s cooldown between bursts |
+| Projectile speed | 2000 u/s |
+| Projectile damage | 15 per shot (45 per burst) |
+| Projectile TTL | 800ms |
+| Respawn | 30 seconds |
+| Drops | Hunter fragments (red-orange) |
+
+**State machine**: IDLE (random drift) → CHASING (move toward player) → SHOOTING (stop, fire burst, resume chase) → DYING (200ms flash) → DEAD (30s respawn)
+
+**Damage to kill**: 2 sub_pea shots (50 each) or 5 sub_mgun shots (20 each) or 1 sub_mine
+
+#### Seekers (Planned)
+
+Predatory dash-kill enemies. Green elongated diamonds (needles). See `plans/spec_seeker.md` for full spec.
+
+| Property | Value |
+|---|---|
+| HP | 60 (glass cannon) |
+| Dash damage | 80 (near-lethal) |
+| Behavior | Stalk → orbit → telegraph → dash |
+
+### Damage Model
+
+| Weapon | Damage/Shot | Fire Rate | DPS |
+|---|---|---|---|
+| sub_pea | 50 | 2/sec (500ms) | 100 |
+| sub_mgun | 20 | 5/sec (200ms) | 100 |
+| Hunter burst shot | 15 | 3-shot burst, 1.5s between | ~30 avg |
+| Seeker dash (planned) | 80 | ~every 4s | ~20 avg |
 
 ### World Design
 
@@ -131,10 +202,10 @@ Zones use a **hybrid approach** to level generation: the designer hand-authors a
 - **Content investment**: ~50-100 chunk templates + ~15-30 obstacle blocks across all biomes. Each template multiplies through procedural assembly, probabilistic variation, and mirroring. A fraction of hand-coding every room across 12+ zones at 1024×1024 scale.
 
 **Prerequisites** (implement before procgen):
-1. God mode editing tools for procgen content authoring (separate spec)
-2. Portals and zone transitions
+1. ~~God mode editing tools for procgen content authoring~~ (done)
+2. ~~Portals and zone transitions~~ (done)
 3. Diagonal walls (new cell types)
-4. At least one active enemy type
+4. ~~At least one active enemy type~~ (done — hunters)
 
 ### Map & Navigation
 
@@ -234,24 +305,25 @@ More types will be added as new cell types, enemy types, and world features are 
 
 ### Working
 - Ship movement (WASD + speed modifiers)
-- Ship-wall collision (death + spark + sound)
-- Ship-mine collision (triggers mine arming → explosion)
-- Sub_pea projectile system (pooled, 8 max, 500ms cooldown, swept collision, gated by skill bar activation)
-- Sub_pea wall collision (spark effect at intersection point)
-- Sub_pea mine collision (direct hit on mine body causes immediate explosion)
+- Unified death system (all damage → Integrity → death check in one place)
+- Enemy reset on player respawn (all enemies silently return to spawn at full health)
+- Sub_pea projectile system (pooled, 8 max, 500ms cooldown, swept collision, 50 damage)
+- Sub_mgun machine gun (pooled, 8 max, 200ms cooldown, swept collision, 20 damage, 2 feedback/shot)
 - Sub_mine deployable mine (3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light)
 - Sub_boost elite movement (hold shift for unlimited speed boost, no cooldown)
 - Sub_egress dash burst (shift-tap, 150ms at 5x speed, 2s cooldown)
-- Player stats system (Integrity + Feedback bars, spillover damage, regen, damage flash + sound)
+- Player stats system (Integrity + Feedback bars, spillover damage, regen with 2x rate at 0 feedback, damage flash + sound)
+- Hunter enemy (patrol, chase, 3-shot burst, LOS requirement, near-miss aggro, deaggro on player death)
 - Mine state machine (idle → armed → exploding → destroyed → respawn)
-- Mine idle blink (100ms red flash at 1Hz, randomized per mine)
-- Fragment drops and collection (magenta binary glyphs, attract to player when nearby, 10s lifetime with 2s fade starting at 8s)
-- Subroutine progression/unlock system (fragment counting, thresholds, unlock notifications)
-- Zone data file format and loader (line-based .zone files with cell types, placements, spawns)
+- Fragment drops and collection (typed colored binary glyphs, attract to player, 10s lifetime)
+- Subroutine progression/unlock system (fragment counting, per-enemy thresholds, discovery + unlock notifications)
+- Zone data file format and loader (line-based .zone files with cell types, placements, spawns, portals, save points)
 - Zone persistent editing and undo system (Ctrl+Z, auto-save on edit)
+- Portals and zone transitions (warp pull → acceleration → flash → arrive cinematic)
+- Save point system (checkpoint persistence, cross-zone respawn)
 - God mode (G toggle — free camera, cell placement/removal, Tab to cycle types)
-- Skill bar Phase 1 (10 slots, number key activation, type exclusivity, geometric icons, cooldown pie sweep)
-- Catalog window Phase 2 (P key — tabbed sub browser, drag-and-drop equipping, slot swapping, right-click unequip)
+- Skill bar (10 slots, number key activation, type exclusivity, geometric icons, cooldown pie sweep)
+- Catalog window (P key — tabbed sub browser, drag-and-drop equipping, slot swapping, right-click unequip, notification dots)
 - Map cell rendering with zoom-scaled outlines
 - Grid rendering
 - View/camera with zoom and pixel-snapped translation
@@ -261,23 +333,21 @@ More types will be added as new cell types, enemy types, and world features are 
 - 7 gameplay music tracks (random selection) + menu music
 - OpenGL 3.3 Core Profile rendering pipeline
 - FBO post-process bloom (foreground entity glow + background diffuse clouds)
-- Motion trails (ship boost ghost triangles, sub_pea thick line trail)
+- Motion trails (ship boost ghost triangles, projectile thick line trails)
 - Background parallax cloud system (3 layers, tiled, pulsing, drifting)
 - Background zoom parallax (half-rate zoom for depth perception)
 - Vertex reuse rendering (flush_keep/redraw for tiled geometry)
-- Rebirth sequence (death → zoom out → slow crawl → zoom in → respawn)
+- Rebirth sequence (zoom-in cinematic on game start / zone load)
 
 ### Not Yet Implemented
+- Seeker enemy (dash-kill predator — spec at `plans/spec_seeker.md`)
 - Unified skill bar Phase 3 (two-loadout system for gameplay/god mode)
 - God mode placeable catalog (cell types, enemy spawns, portals via catalog drag-and-drop)
-- Active security programs (hunting enemies)
 - Boss encounters
-- Portals and zone transitions
 - Diagonal walls (new cell types with angled geometry + collision)
 - Procedural level generation (hybrid approach — see spec at `plans/spec_procedural_generation.md`)
 - Minimap fog of war
 - Full map view
-- Save/Load system
 - Intro mode
 - Virus mechanics (player tools against the system)
 - Spatial partitioning for collision (grid buckets — see Technical Architecture)
@@ -291,14 +361,15 @@ More types will be added as new cell types, enemy types, and world features are 
 | Sound | Used For |
 |-------|----------|
 | statue_rise.wav | Ship respawn |
-| bomb_explode.wav | Ship death, mine explosion |
-| long_beam.wav | Sub_pea fire |
-| ricochet.wav | Sub_pea wall hit |
+| bomb_explode.wav | Ship death, mine explosion, hunter death |
+| long_beam.wav | Sub_pea fire, sub_mgun fire, hunter shots |
+| ricochet.wav | Projectile wall hit (pea, mgun) |
 | bomb_set.wav | Mine armed |
-| door.wav | Mine respawn/recycle |
+| door.wav | Mine respawn, hunter respawn |
 | samus_die.wav | Ship death |
-| samus_hurt.wav | Feedback spillover damage |
-| samus_pickup.wav | (reserved) |
+| samus_hurt.wav | Integrity damage (spillover, enemy hits, hunter hit feedback) |
+| samus_pickup.wav | Fragment collection |
+| samus_pickup2.wav | Subroutine unlock |
 
 **Music**: 7 deadmau5 tracks for gameplay (random), 1 for menu
 
@@ -437,7 +508,7 @@ Two-instance bloom system replacing the old geometry-based glow (which hit verte
 | bloom (foreground) | Neon halos on entities | 2 (half-res) | 2.0 | 5 |
 | bg_bloom (background) | Diffuse ethereal clouds | 8 (eighth-res) | 1.5 | 10 |
 
-**Bloom sources**: Map cells, ship, ship death spark, sub_pea projectiles + sparks, mine blink/explosion. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
+**Bloom sources**: Map cells, ship, ship death spark, sub_pea/sub_mgun projectiles + sparks, mine blink/explosion, hunter body + projectiles, portals, save points, fragments. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
 
 **Key design decision**: Background renders ONLY through the bg_bloom FBO (no raw polygon render). Additive bloom on top of sharp polygons doesn't hide edges — rendering exclusively through blur produces the desired diffuse cloud effect.
 
@@ -499,7 +570,7 @@ As enemy counts grow, brute-force collision checks (every projectile × every en
 
 ### Zone Data Files
 
-The current zone is hand-built in code (`mode_gameplay.c` spawns 32 mines at hardcoded positions, `map.c` places wall cells via `set_map_cell` calls). This will be replaced with a data-driven zone system where each zone is defined by a single file. Zone files are the primary output of God Mode editing.
+Zones are fully data-driven — each zone is defined by a single `.zone` file. Zone files are the primary output of God Mode editing. Two zones currently exist: zone_001 (The Origin) and zone_002, connected by portals.
 
 **Design**:
 - One file per zone, 1:1 mapping (e.g., `resources/zones/zone_001.zone`)
@@ -530,6 +601,7 @@ cell 72 73 circuit
 # spawn <enemy_type> <world_x> <world_y>
 spawn mine 1600.0 1600.0
 spawn mine -1600.0 1600.0
+spawn hunter 800.0 800.0
 
 # Portals (grid coordinates + destination)
 # portal <grid_x> <grid_y> <dest_zone> <dest_x> <dest_y>

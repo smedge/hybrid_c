@@ -11,6 +11,7 @@
 #include "audio.h"
 #include "player_stats.h"
 #include "hunter.h"
+#include "mine.h"
 #include "savepoint.h"
 #include "zone.h"
 #include "fragment.h"
@@ -182,6 +183,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Boost_initialize();
 			Sub_Egress_initialize();
 			PlayerStats_reset();
+			Hunter_reset_all();
+			Mine_reset_all();
 
 			Audio_play_sample(&sample01);
 		}

@@ -245,3 +245,17 @@ void Mine_render_bloom_source(void)
 			Render_quad(&pl->position, 45.0, dot, &colorActive);
 	}
 }
+
+void Mine_reset_all(void)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		mines[i].active = false;
+		mines[i].exploding = false;
+		mines[i].destroyed = false;
+		mines[i].ticksActive = 0;
+		mines[i].ticksExploding = 0;
+		mines[i].ticksDestroyed = 0;
+		mines[i].blinkTimer = rand() % 1000;
+		mines[i].killedByPlayer = false;
+	}
+}

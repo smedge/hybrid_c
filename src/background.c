@@ -270,7 +270,7 @@ void Background_render(void)
 		}
 
 		/* Compute visible tile range (margin accounts for blob radius + bloom bleed) */
-		float margin = 2000.0f;
+		float margin = 5000.0f;
 		float eff_cx = cam_x * p;
 		float eff_cy = cam_y * p;
 		int tile_min_x = (int)floorf((eff_cx - half_vw - margin) / ts);

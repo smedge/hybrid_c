@@ -12,5 +12,6 @@ void Hunter_render_bloom_source(void);
 Collision Hunter_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Hunter_resolve(const void *state, const Collision collision);
 void Hunter_deaggro_all(void);
+void Hunter_reset_all(void);
 
 #endif
