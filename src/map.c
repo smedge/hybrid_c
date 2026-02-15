@@ -612,9 +612,9 @@ static void render_cell(int x, int y, float outlineThickness)
 	float w_ay = chamfer_sw ? ay + chamf : ay;
 
 	/* Draw outline on empty-adjacent edges (own color).
-	   On edges adjacent to a different non-empty type, only the
-	   circuitPattern cell draws (using the non-circuit cell's color).
-	   This keeps corners covered within one cell and avoids double-draw. */
+	   Each cell draws its own border in its own color.
+	   Circuit cells skip borders on edges touching solid cells
+	   (the solid cell draws its own border on that edge instead). */
 
 #define CELLS_MATCH(a, b) \
 	((a)->circuitPattern == (b)->circuitPattern && \
@@ -625,11 +625,7 @@ static void render_cell(int x, int y, float outlineThickness)
 	if ((ptr)->empty) { \
 		Render_quad_absolute(QAX, QAY, QBX, QBY, or_, og, ob, oa); \
 	} else if (!CELLS_MATCH(ptr, map[x][y])) { \
-		if (mapCell.circuitPattern) { \
-			ColorFloat bc = Color_rgb_to_float(&(ptr)->outlineColor); \
-			Render_quad_absolute(QAX, QAY, QBX, QBY, \
-				bc.red, bc.green, bc.blue, bc.alpha); \
-		} else if (!(ptr)->circuitPattern) { \
+		if (!mapCell.circuitPattern || (ptr)->circuitPattern) { \
 			Render_quad_absolute(QAX, QAY, QBX, QBY, or_, og, ob, oa); \
 		} \
 	}
