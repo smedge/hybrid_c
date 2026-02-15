@@ -14,7 +14,7 @@
 #define FEEDBACK_COST 30.0
 #define COOLDOWN_MS 30000
 #define RING_RADIUS 35.0f
-#define RING_SEGMENTS 12
+#define RING_SEGMENTS 6
 #define PULSE_SPEED 6.0f
 
 typedef enum {

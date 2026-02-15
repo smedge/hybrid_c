@@ -1,4 +1,5 @@
 #include "seeker.h"
+#include "enemy_util.h"
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
@@ -44,8 +45,6 @@
 #define BODY_WIDTH 8.0
 #define WALL_CHECK_DIST 50.0
 #define NEAR_MISS_RADIUS 200.0
-
-#define PI 3.14159265358979323846
 
 typedef enum {
 	SEEKER_IDLE,
@@ -133,52 +132,10 @@ static Mix_Chunk *sampleHit = 0;
 static Mix_Chunk *sampleShieldHit = 0;
 
 /* Helpers */
-static double distance_between(Position a, Position b)
-{
-	double dx = b.x - a.x;
-	double dy = b.y - a.y;
-	return sqrt(dx * dx + dy * dy);
-}
-
 static void pick_wander_target(SeekerState *s)
 {
-	double angle = (rand() % 360) * PI / 180.0;
-	double dist = (rand() % (int)IDLE_DRIFT_RADIUS);
-	s->wanderTarget.x = s->spawnPoint.x + cos(angle) * dist;
-	s->wanderTarget.y = s->spawnPoint.y + sin(angle) * dist;
-	s->wanderTimer = IDLE_WANDER_INTERVAL + (rand() % 1000);
-}
-
-static bool has_line_of_sight(Position from, Position to)
-{
-	double hx, hy;
-	return !Map_line_test_hit(from.x, from.y, to.x, to.y, &hx, &hy);
-}
-
-static void move_toward(PlaceableComponent *pl, Position target, double speed, double dt)
-{
-	double dx = target.x - pl->position.x;
-	double dy = target.y - pl->position.y;
-	double dist = sqrt(dx * dx + dy * dy);
-	if (dist < 1.0)
-		return;
-
-	double nx = dx / dist;
-	double ny = dy / dist;
-
-	/* Wall avoidance */
-	double checkX = pl->position.x + nx * WALL_CHECK_DIST;
-	double checkY = pl->position.y + ny * WALL_CHECK_DIST;
-	double hx, hy;
-	if (Map_line_test_hit(pl->position.x, pl->position.y, checkX, checkY, &hx, &hy))
-		return;
-
-	double move = speed * dt;
-	if (move > dist)
-		move = dist;
-
-	pl->position.x += nx * move;
-	pl->position.y += ny * move;
+	Enemy_pick_wander_target(s->spawnPoint, IDLE_DRIFT_RADIUS, IDLE_WANDER_INTERVAL,
+		&s->wanderTarget, &s->wanderTimer);
 }
 
 /* ---- Public API ---- */
@@ -242,6 +199,7 @@ void Seeker_cleanup(void)
 {
 	highestUsedIndex = 0;
 	sparkActive = false;
+	sparkShielded = false;
 
 	Audio_unload_sample(&sampleWindup);
 	Audio_unload_sample(&sampleDash);
@@ -330,7 +288,7 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 	/* --- State machine --- */
 	switch (s->aiState) {
 	case SEEKER_IDLE: {
-		move_toward(pl, s->wanderTarget, IDLE_DRIFT_SPEED, dt);
+		Enemy_move_toward(pl, s->wanderTarget, IDLE_DRIFT_SPEED, dt, WALL_CHECK_DIST);
 
 		s->wanderTimer -= ticks;
 		if (s->wanderTimer <= 0)
@@ -338,11 +296,11 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 
 		/* Check aggro */
 		Position shipPos = Ship_get_position();
-		double dist = distance_between(pl->position, shipPos);
+		double dist = Enemy_distance_between(pl->position, shipPos);
 		bool nearbyShot = Sub_Pea_check_nearby(pl->position, NEAR_MISS_RADIUS)
 						|| Sub_Mgun_check_nearby(pl->position, NEAR_MISS_RADIUS);
 		if (!Ship_is_destroyed() &&
-			((dist < AGGRO_RANGE && has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
+			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			s->aiState = SEEKER_STALKING;
 		}
 
@@ -351,8 +309,8 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 	}
 	case SEEKER_STALKING: {
 		Position shipPos = Ship_get_position();
-		double dist = distance_between(pl->position, shipPos);
-		bool los = has_line_of_sight(pl->position, shipPos);
+		double dist = Enemy_distance_between(pl->position, shipPos);
+		bool los = Enemy_has_line_of_sight(pl->position, shipPos);
 
 		/* De-aggro */
 		if (Ship_is_destroyed() || dist > DEAGGRO_RANGE || !los) {
@@ -362,7 +320,7 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 		}
 
 		/* Move toward player */
-		move_toward(pl, shipPos, STALK_SPEED, dt);
+		Enemy_move_toward(pl, shipPos, STALK_SPEED, dt, WALL_CHECK_DIST);
 		s->facing = Position_get_heading(pl->position, shipPos);
 
 		/* Transition to orbiting when in strike range */
@@ -379,11 +337,11 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 	}
 	case SEEKER_ORBITING: {
 		Position shipPos = Ship_get_position();
-		double dist = distance_between(pl->position, shipPos);
+		double dist = Enemy_distance_between(pl->position, shipPos);
 
 		/* De-aggro */
 		if (Ship_is_destroyed() || dist > DEAGGRO_RANGE ||
-			!has_line_of_sight(pl->position, shipPos)) {
+			!Enemy_has_line_of_sight(pl->position, shipPos)) {
 			s->aiState = SEEKER_IDLE;
 			pick_wander_target(s);
 			break;
@@ -398,7 +356,7 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 		target.y = shipPos.y + cos(s->orbitAngle) * ORBIT_RADIUS;
 
 		/* Move toward orbit position */
-		move_toward(pl, target, ORBIT_SPEED, dt);
+		Enemy_move_toward(pl, target, ORBIT_SPEED, dt, WALL_CHECK_DIST);
 		s->facing = Position_get_heading(pl->position, shipPos);
 
 		s->orbitTimer -= ticks;
@@ -508,8 +466,8 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 			/* Back to stalking if player still in range, otherwise idle */
 			if (!Ship_is_destroyed()) {
 				Position shipPos = Ship_get_position();
-				double dist = distance_between(pl->position, shipPos);
-				if (dist < DEAGGRO_RANGE && has_line_of_sight(pl->position, shipPos)) {
+				double dist = Enemy_distance_between(pl->position, shipPos);
+				if (dist < DEAGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) {
 					s->aiState = SEEKER_STALKING;
 					break;
 				}
@@ -777,7 +735,7 @@ bool Seeker_find_wounded(Position from, double range, double hp_threshold, Posit
 		double missing = SEEKER_HP - s->hp;
 		if (missing <= 0.0)
 			continue;
-		double dist = distance_between(from, placeables[i].position);
+		double dist = Enemy_distance_between(from, placeables[i].position);
 		if (dist > range)
 			continue;
 		if (missing > bestDamage) {
@@ -805,7 +763,7 @@ bool Seeker_find_aggro(Position from, double range, Position *out_pos)
 			continue;
 		if (s->aiState == SEEKER_IDLE || s->aiState == SEEKER_DYING || s->aiState == SEEKER_DEAD)
 			continue;
-		double dist = distance_between(from, placeables[i].position);
+		double dist = Enemy_distance_between(from, placeables[i].position);
 		if (dist > range)
 			continue;
 		if (dist < bestDist) {

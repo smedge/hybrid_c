@@ -1,4 +1,5 @@
 #include "defender.h"
+#include "enemy_util.h"
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
@@ -47,8 +48,6 @@
 #define HEAL_BEAM_DURATION_MS 200
 #define BOOST_TRAIL_GHOSTS 12
 #define BOOST_TRAIL_LENGTH 3.0
-
-#define PI 3.14159265358979323846
 
 typedef enum {
 	DEFENDER_IDLE,
@@ -132,78 +131,10 @@ static Mix_Chunk *sampleHit = 0;
 static Mix_Chunk *sampleShieldHit = 0;
 
 /* Helpers */
-static double distance_between(Position a, Position b)
-{
-	double dx = b.x - a.x;
-	double dy = b.y - a.y;
-	return sqrt(dx * dx + dy * dy);
-}
-
 static void pick_wander_target(DefenderState *d)
 {
-	double angle = (rand() % 360) * PI / 180.0;
-	double dist = (rand() % (int)IDLE_DRIFT_RADIUS);
-	d->wanderTarget.x = d->spawnPoint.x + cos(angle) * dist;
-	d->wanderTarget.y = d->spawnPoint.y + sin(angle) * dist;
-	d->wanderTimer = IDLE_WANDER_INTERVAL + (rand() % 1000);
-}
-
-static bool has_line_of_sight(Position from, Position to)
-{
-	double hx, hy;
-	return !Map_line_test_hit(from.x, from.y, to.x, to.y, &hx, &hy);
-}
-
-static void move_toward(PlaceableComponent *pl, Position target, double speed, double dt)
-{
-	double dx = target.x - pl->position.x;
-	double dy = target.y - pl->position.y;
-	double dist = sqrt(dx * dx + dy * dy);
-	if (dist < 1.0)
-		return;
-
-	double nx = dx / dist;
-	double ny = dy / dist;
-
-	/* Wall avoidance */
-	double checkX = pl->position.x + nx * WALL_CHECK_DIST;
-	double checkY = pl->position.y + ny * WALL_CHECK_DIST;
-	double hx, hy;
-	if (Map_line_test_hit(pl->position.x, pl->position.y, checkX, checkY, &hx, &hy))
-		return;
-
-	double move = speed * dt;
-	if (move > dist)
-		move = dist;
-
-	pl->position.x += nx * move;
-	pl->position.y += ny * move;
-}
-
-static void move_away_from(PlaceableComponent *pl, Position threat, double speed, double dt)
-{
-	double dx = pl->position.x - threat.x;
-	double dy = pl->position.y - threat.y;
-	double dist = sqrt(dx * dx + dy * dy);
-	if (dist < 1.0) {
-		/* Pick random direction if on top of threat */
-		dx = 1.0;
-		dy = 0.0;
-		dist = 1.0;
-	}
-
-	double nx = dx / dist;
-	double ny = dy / dist;
-
-	/* Wall avoidance */
-	double checkX = pl->position.x + nx * WALL_CHECK_DIST;
-	double checkY = pl->position.y + ny * WALL_CHECK_DIST;
-	double hx, hy;
-	if (Map_line_test_hit(pl->position.x, pl->position.y, checkX, checkY, &hx, &hy))
-		return;
-
-	pl->position.x += nx * speed * dt;
-	pl->position.y += ny * speed * dt;
+	Enemy_pick_wander_target(d->spawnPoint, IDLE_DRIFT_RADIUS, IDLE_WANDER_INTERVAL,
+		&d->wanderTarget, &d->wanderTimer);
 }
 
 static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
@@ -226,8 +157,8 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 
 	/* Check seekers — pick whichever is closer */
 	if (Seeker_find_wounded(pl->position, HEAL_RANGE, 50.0, &healPos, &healIdx)) {
-		double distH = bestType >= 0 ? distance_between(pl->position, bestPos) : 99999.0;
-		double distS = distance_between(pl->position, healPos);
+		double distH = bestType >= 0 ? Enemy_distance_between(pl->position, bestPos) : 99999.0;
+		double distS = Enemy_distance_between(pl->position, healPos);
 		if (bestType < 0 || distS < distH) {
 			bestType = 1;
 			bestPos = healPos;
@@ -451,7 +382,7 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 	switch (d->aiState) {
 	case DEFENDER_IDLE: {
 		/* Wander */
-		move_toward(pl, d->wanderTarget, IDLE_DRIFT_SPEED, dt);
+		Enemy_move_toward(pl, d->wanderTarget, IDLE_DRIFT_SPEED, dt, WALL_CHECK_DIST);
 		d->wanderTimer -= ticks;
 		if (d->wanderTimer <= 0)
 			pick_wander_target(d);
@@ -475,11 +406,11 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 
 		/* Check aggro — player proximity triggers awareness */
 		Position shipPos = Ship_get_position();
-		double dist = distance_between(pl->position, shipPos);
+		double dist = Enemy_distance_between(pl->position, shipPos);
 		bool nearbyShot = Sub_Pea_check_nearby(pl->position, 200.0)
 						|| Sub_Mgun_check_nearby(pl->position, 200.0);
 		if (!Ship_is_destroyed() &&
-			((dist < AGGRO_RANGE && has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
+			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			d->aiState = DEFENDER_SUPPORTING;
 		}
 
@@ -488,7 +419,7 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 	}
 	case DEFENDER_SUPPORTING: {
 		Position shipPos = Ship_get_position();
-		double shipDist = distance_between(pl->position, shipPos);
+		double shipDist = Enemy_distance_between(pl->position, shipPos);
 
 		/* De-aggro check */
 		if (Ship_is_destroyed() || shipDist > DEAGGRO_RANGE) {
@@ -522,15 +453,15 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 			/* When aegis is active, chase faster to stay glued to ally */
 			double chaseSpeed = d->aegisActive ? SHIELD_CHASE_SPEED : NORMAL_SPEED * BOOST_MULTIPLIER;
 			d->boosting = true;
-			move_toward(pl, allyPos, chaseSpeed, dt);
+			Enemy_move_toward(pl, allyPos, chaseSpeed, dt, WALL_CHECK_DIST);
 			d->facing = Position_get_heading(pl->position, allyPos);
 
 			/* Close enough to protect — pop aegis */
-			if (distance_between(pl->position, allyPos) < PROTECT_RADIUS)
+			if (Enemy_distance_between(pl->position, allyPos) < PROTECT_RADIUS)
 				activate_aegis(d);
 		} else {
 			/* No allies in need — drift around spawn but stay aware */
-			move_toward(pl, d->wanderTarget, IDLE_DRIFT_SPEED, dt);
+			Enemy_move_toward(pl, d->wanderTarget, IDLE_DRIFT_SPEED, dt, WALL_CHECK_DIST);
 			d->wanderTimer -= ticks;
 			if (d->wanderTimer <= 0)
 				pick_wander_target(d);
@@ -540,7 +471,7 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 	}
 	case DEFENDER_FLEEING: {
 		Position shipPos = Ship_get_position();
-		double shipDist = distance_between(pl->position, shipPos);
+		double shipDist = Enemy_distance_between(pl->position, shipPos);
 
 		/* De-aggro */
 		if (Ship_is_destroyed() || shipDist > DEAGGRO_RANGE) {
@@ -550,7 +481,7 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 		}
 
 		/* Run away from player */
-		move_away_from(pl, shipPos, FLEE_SPEED, dt);
+		Enemy_move_away_from(pl, shipPos, FLEE_SPEED, dt, WALL_CHECK_DIST);
 		d->facing = Position_get_heading(pl->position, shipPos);
 
 		/* Still try to heal allies while fleeing */
@@ -795,7 +726,7 @@ bool Defender_is_protecting(Position pos)
 		/* Protected if aegis was active this frame OR in post-break grace */
 		if (!d->aegisWasActive && d->shieldBreakGrace <= 0)
 			continue;
-		double dist = distance_between(placeables[i].position, pos);
+		double dist = Enemy_distance_between(placeables[i].position, pos);
 		if (dist < PROTECT_RADIUS)
 			return true;
 	}

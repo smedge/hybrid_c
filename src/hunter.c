@@ -1,4 +1,5 @@
 #include "hunter.h"
+#include "enemy_util.h"
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
@@ -43,8 +44,6 @@
 
 #define BODY_SIZE 12.0
 #define WALL_CHECK_DIST 50.0
-
-#define PI 3.14159265358979323846
 
 typedef enum {
 	HUNTER_IDLE,
@@ -127,52 +126,10 @@ static double get_radians(double degrees)
 	return degrees * PI / 180.0;
 }
 
-static double distance_between(Position a, Position b)
-{
-	double dx = b.x - a.x;
-	double dy = b.y - a.y;
-	return sqrt(dx * dx + dy * dy);
-}
-
 static void pick_wander_target(HunterState *h)
 {
-	double angle = (rand() % 360) * PI / 180.0;
-	double dist = (rand() % (int)IDLE_DRIFT_RADIUS);
-	h->wanderTarget.x = h->spawnPoint.x + cos(angle) * dist;
-	h->wanderTarget.y = h->spawnPoint.y + sin(angle) * dist;
-	h->wanderTimer = IDLE_WANDER_INTERVAL + (rand() % 1000);
-}
-
-static bool has_line_of_sight(Position from, Position to)
-{
-	double hx, hy;
-	return !Map_line_test_hit(from.x, from.y, to.x, to.y, &hx, &hy);
-}
-
-static void move_toward(PlaceableComponent *pl, Position target, double speed, double dt)
-{
-	double dx = target.x - pl->position.x;
-	double dy = target.y - pl->position.y;
-	double dist = sqrt(dx * dx + dy * dy);
-	if (dist < 1.0)
-		return;
-
-	double nx = dx / dist;
-	double ny = dy / dist;
-
-	/* Wall avoidance: check ahead */
-	double checkX = pl->position.x + nx * WALL_CHECK_DIST;
-	double checkY = pl->position.y + ny * WALL_CHECK_DIST;
-	double hx, hy;
-	if (Map_line_test_hit(pl->position.x, pl->position.y, checkX, checkY, &hx, &hy))
-		return; /* don't move into wall */
-
-	double move = speed * dt;
-	if (move > dist)
-		move = dist;
-
-	pl->position.x += nx * move;
-	pl->position.y += ny * move;
+	Enemy_pick_wander_target(h->spawnPoint, IDLE_DRIFT_RADIUS, IDLE_WANDER_INTERVAL,
+		&h->wanderTarget, &h->wanderTimer);
 }
 
 static void fire_projectile(Position origin, Position target)
@@ -349,7 +306,7 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 	switch (h->aiState) {
 	case HUNTER_IDLE: {
 		/* Wander toward target */
-		move_toward(pl, h->wanderTarget, IDLE_DRIFT_SPEED, dt);
+		Enemy_move_toward(pl, h->wanderTarget, IDLE_DRIFT_SPEED, dt, WALL_CHECK_DIST);
 
 		h->wanderTimer -= ticks;
 		if (h->wanderTimer <= 0)
@@ -357,11 +314,11 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 
 		/* Check aggro — requires line of sight and ship alive */
 		Position shipPos = Ship_get_position();
-		double dist = distance_between(pl->position, shipPos);
+		double dist = Enemy_distance_between(pl->position, shipPos);
 		bool nearbyShot = Sub_Pea_check_nearby(pl->position, 200.0)
 						|| Sub_Mgun_check_nearby(pl->position, 200.0);
 		if (!Ship_is_destroyed() &&
-			((dist < AGGRO_RANGE && has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
+			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			h->aiState = HUNTER_CHASING;
 			h->cooldownTimer = 0;
 		}
@@ -372,8 +329,8 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 	}
 	case HUNTER_CHASING: {
 		Position shipPos = Ship_get_position();
-		double dist = distance_between(pl->position, shipPos);
-		bool los = has_line_of_sight(pl->position, shipPos);
+		double dist = Enemy_distance_between(pl->position, shipPos);
+		bool los = Enemy_has_line_of_sight(pl->position, shipPos);
 
 		/* De-aggro: out of range, lost line of sight, or ship dead */
 		if (Ship_is_destroyed() || dist > DEAGGRO_RANGE || !los) {
@@ -383,7 +340,7 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 		}
 
 		/* Move toward player */
-		move_toward(pl, shipPos, HUNTER_SPEED, dt);
+		Enemy_move_toward(pl, shipPos, HUNTER_SPEED, dt, WALL_CHECK_DIST);
 		h->facing = Position_get_heading(pl->position, shipPos);
 
 		/* Cooldown tick */
@@ -416,8 +373,8 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 		}
 
 		/* De-aggro: out of range, lost line of sight, or ship dead */
-		double dist = distance_between(pl->position, shipPos);
-		if (Ship_is_destroyed() || dist > DEAGGRO_RANGE || !has_line_of_sight(pl->position, shipPos)) {
+		double dist = Enemy_distance_between(pl->position, shipPos);
+		if (Ship_is_destroyed() || dist > DEAGGRO_RANGE || !Enemy_has_line_of_sight(pl->position, shipPos)) {
 			h->aiState = HUNTER_IDLE;
 			pick_wander_target(h);
 		}
@@ -701,7 +658,7 @@ bool Hunter_find_wounded(Position from, double range, double hp_threshold, Posit
 		double missing = HUNTER_HP - h->hp;
 		if (missing <= 0.0)
 			continue;
-		double dist = distance_between(from, placeables[i].position);
+		double dist = Enemy_distance_between(from, placeables[i].position);
 		if (dist > range)
 			continue;
 		if (missing > bestDamage) {
@@ -729,7 +686,7 @@ bool Hunter_find_aggro(Position from, double range, Position *out_pos)
 			continue;
 		if (h->aiState != HUNTER_CHASING && h->aiState != HUNTER_SHOOTING)
 			continue;
-		double dist = distance_between(from, placeables[i].position);
+		double dist = Enemy_distance_between(from, placeables[i].position);
 		if (dist > range)
 			continue;
 		if (dist < bestDist) {
