@@ -15,12 +15,6 @@
 #define NUM_PARTICLES 8
 #define DIAMOND_SIZE 60.0
 
-/* Colors */
-static const ColorRGB COLOR_CYAN = {0, 220, 220, 255};
-static const ColorRGB COLOR_WHITE = {255, 255, 255, 255};
-static ColorFloat colorCyan, colorWhite;
-static bool colorsInitialized = false;
-
 typedef struct {
 	bool active;
 	Position position;
@@ -45,14 +39,6 @@ static bool pendingTransition = false;
 static char pendingDestZone[256];
 static char pendingDestPortalId[32];
 
-static void init_colors(void)
-{
-	if (colorsInitialized) return;
-	colorCyan = Color_rgb_to_float(&COLOR_CYAN);
-	colorWhite = Color_rgb_to_float(&COLOR_WHITE);
-	colorsInitialized = true;
-}
-
 void Portal_initialize(Position position, const char *id,
 	const char *dest_zone, const char *dest_portal_id)
 {
@@ -60,8 +46,6 @@ void Portal_initialize(Position position, const char *id,
 		printf("Portal_initialize: max portals reached\n");
 		return;
 	}
-
-	init_colors();
 
 	PortalState *p = &portals[portalCount];
 	p->active = true;

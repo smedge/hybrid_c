@@ -1,9 +1,11 @@
 #ifndef BLOOM_H
 #define BLOOM_H
 
+#include <stdbool.h>
 #include <OpenGL/gl3.h>
 
 typedef struct {
+	bool valid;
 	GLuint source_fbo, source_tex;
 	GLuint ping_fbo, ping_tex;
 	GLuint pong_fbo, pong_tex;

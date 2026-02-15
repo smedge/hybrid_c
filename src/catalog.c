@@ -128,31 +128,18 @@ static int first_valid_tab(void)
 	return 0;
 }
 
-/* Helper: measure text width in pixels */
-static float text_width(TextRenderer *tr, const char *text)
-{
-	float w = 0.0f;
-	for (int i = 0; text[i]; i++) {
-		int ch = (unsigned char)text[i];
-		if (ch < 32 || ch > 127)
-			continue;
-		w += tr->char_data[ch - 32][6];
-	}
-	return w;
-}
-
 /* Helper: truncate text with "..." to fit within max_width pixels.
    Writes result into buf (must be at least buf_size). */
 static void truncate_text(TextRenderer *tr, const char *text,
 	float max_width, char *buf, int buf_size)
 {
-	float w = text_width(tr, text);
+	float w = Text_measure_width(tr, text);
 	if (w <= max_width) {
 		snprintf(buf, buf_size, "%s", text);
 		return;
 	}
 
-	float ellipsis_w = text_width(tr, "...");
+	float ellipsis_w = Text_measure_width(tr, "...");
 	float budget = max_width - ellipsis_w;
 	float accum = 0.0f;
 	int fit = 0;
@@ -181,14 +168,14 @@ static void truncate_text(TextRenderer *tr, const char *text,
 static void marquee_text(TextRenderer *tr, const char *text,
 	float max_width, unsigned int timer, char *buf, int buf_size)
 {
-	float full_w = text_width(tr, text);
+	float full_w = Text_measure_width(tr, text);
 	if (full_w <= max_width) {
 		snprintf(buf, buf_size, "%s", text);
 		return;
 	}
 
 	int len = (int)strlen(text);
-	float ellipsis_w = text_width(tr, "...");
+	float ellipsis_w = Text_measure_width(tr, "...");
 
 	/* Count how many chars we can skip before the end is visible */
 	int max_skip = 0;
@@ -710,7 +697,7 @@ void Catalog_render(const Screen *screen)
 		if (unlocked) {
 			/* Name — leave room for ELITE tag and [Slot N] if equipped */
 			bool elite = Skillbar_is_elite(i);
-			float elite_w = elite ? text_width(tr, " ELITE") : 0.0f;
+			float elite_w = elite ? Text_measure_width(tr, " ELITE") : 0.0f;
 			float name_budget = equipped_slot >= 0
 				? max_text_w - 90.0f - elite_w : max_text_w - elite_w;
 			truncate_text(tr, Skillbar_get_sub_name(i),
@@ -720,7 +707,7 @@ void Catalog_render(const Screen *screen)
 				0.9f, 0.9f, 1.0f, 0.95f);
 
 			if (elite) {
-				float after_name = name_x + text_width(tr, tbuf);
+				float after_name = name_x + Text_measure_width(tr, tbuf);
 				Text_render(tr, shaders, &proj, &ident,
 					" ELITE", after_name, name_y,
 					1.0f, 0.84f, 0.0f, 0.95f);
@@ -735,7 +722,7 @@ void Catalog_render(const Screen *screen)
 			if (equipped_slot >= 0) {
 				char slotbuf[32];
 				snprintf(slotbuf, sizeof(slotbuf), "[Slot %d]", equipped_slot + 1);
-				float slot_w = text_width(tr, slotbuf);
+				float slot_w = Text_measure_width(tr, slotbuf);
 				Text_render(tr, shaders, &proj, &ident,
 					slotbuf, right_edge - slot_w, name_y,
 					0.3f, 1.0f, 0.3f, 0.7f);

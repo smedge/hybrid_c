@@ -83,10 +83,14 @@ static void load_audio(void)
 	if (audioLoaded) return;
 	Audio_load_sample(&chargeLoopSample, "resources/sounds/refill_loop.wav");
 	Audio_load_sample(&flashSample, "resources/sounds/refill_start.wav");
-	boost_sample(chargeLoopSample, 4.0f);
-	boost_sample(flashSample, 4.0f);
-	Mix_VolumeChunk(chargeLoopSample, MIX_MAX_VOLUME);
-	Mix_VolumeChunk(flashSample, MIX_MAX_VOLUME);
+	if (chargeLoopSample) {
+		boost_sample(chargeLoopSample, 4.0f);
+		Mix_VolumeChunk(chargeLoopSample, MIX_MAX_VOLUME);
+	}
+	if (flashSample) {
+		boost_sample(flashSample, 4.0f);
+		Mix_VolumeChunk(flashSample, MIX_MAX_VOLUME);
+	}
 	audioLoaded = true;
 }
 
@@ -111,7 +115,11 @@ static void do_save(SavepointState *sp)
 
 	/* Write to disk */
 	/* Create save directory if needed */
+#ifdef _WIN32
+	_mkdir("./save");
+#else
 	mkdir("./save", 0755);
+#endif
 
 	FILE *f = fopen(SAVE_FILE_PATH, "w");
 	if (!f) {
@@ -169,18 +177,6 @@ static int find_sub_by_name(const char *name)
 			return i;
 	}
 	return -1;
-}
-
-static float text_width(TextRenderer *tr, const char *text)
-{
-	float w = 0.0f;
-	for (int i = 0; text[i]; i++) {
-		int ch = (unsigned char)text[i];
-		if (ch < 32 || ch > 127)
-			continue;
-		w += tr->char_data[ch - 32][6];
-	}
-	return w;
 }
 
 void Savepoint_initialize(Position position, const char *id)
@@ -471,7 +467,7 @@ void Savepoint_render_notification(const Screen *screen)
 		alpha = (float)remaining / NOTIFY_FADE_MS;
 
 	const char *msg = ">> State Saved Successfully <<";
-	float tw = text_width(tr, msg);
+	float tw = Text_measure_width(tr, msg);
 	float nx = (float)screen->width * 0.5f - tw * 0.5f;
 	float ny = (float)screen->height * 0.3f;
 

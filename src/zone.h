@@ -74,6 +74,7 @@ typedef struct {
 void Zone_load(const char *path);
 void Zone_unload(void);
 void Zone_save(void);
+void Zone_save_if_dirty(void);
 const Zone *Zone_get(void);
 
 /* Editing API (for God Mode) */

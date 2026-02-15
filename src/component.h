@@ -19,8 +19,8 @@ typedef struct {
 	bool collidesWithOthers;
 	unsigned int layer;
 	unsigned int mask;
-	Collision (*collide)(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
-	void (*resolve)(const void *state, const Collision collision);
+	Collision (*collide)(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
+	void (*resolve)(void *state, const Collision collision);
 } CollidableComponent;
 
 typedef struct {
@@ -32,7 +32,7 @@ typedef struct {
 } UserUpdatableComponent;
 
 typedef struct {
-	void (*update)(const void *state, const PlaceableComponent *placeable, const unsigned int ticks);
+	void (*update)(void *state, const PlaceableComponent *placeable, const unsigned int ticks);
 } AIUpdatableComponent;
 
 #endif

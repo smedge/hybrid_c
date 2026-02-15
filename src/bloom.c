@@ -119,7 +119,7 @@ static void create_quad(Bloom *bloom)
 
 /* ---- FBO helpers ---- */
 
-static void create_fbo(GLuint *fbo, GLuint *tex, int w, int h)
+static bool create_fbo(GLuint *fbo, GLuint *tex, int w, int h)
 {
 	glGenFramebuffers(1, fbo);
 	glGenTextures(1, tex);
@@ -137,10 +137,14 @@ static void create_fbo(GLuint *fbo, GLuint *tex, int w, int h)
 		GL_TEXTURE_2D, *tex, 0);
 
 	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	if (status != GL_FRAMEBUFFER_COMPLETE)
+	if (status != GL_FRAMEBUFFER_COMPLETE) {
 		fprintf(stderr, "Bloom FBO incomplete: 0x%x\n", status);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		return false;
+	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	return true;
 }
 
 static void destroy_fbo(GLuint *fbo, GLuint *tex)
@@ -162,12 +166,18 @@ void Bloom_initialize(Bloom *bloom, int draw_w, int draw_h)
 	bloom->width = draw_w / bloom->divisor;
 	bloom->height = draw_h / bloom->divisor;
 
-	create_fbo(&bloom->source_fbo, &bloom->source_tex,
-		bloom->width, bloom->height);
-	create_fbo(&bloom->ping_fbo, &bloom->ping_tex,
-		bloom->width, bloom->height);
-	create_fbo(&bloom->pong_fbo, &bloom->pong_tex,
-		bloom->width, bloom->height);
+	bool ok = true;
+	if (!create_fbo(&bloom->source_fbo, &bloom->source_tex,
+		bloom->width, bloom->height))
+		ok = false;
+	if (!create_fbo(&bloom->ping_fbo, &bloom->ping_tex,
+		bloom->width, bloom->height))
+		ok = false;
+	if (!create_fbo(&bloom->pong_fbo, &bloom->pong_tex,
+		bloom->width, bloom->height))
+		ok = false;
+
+	bloom->valid = ok;
 
 	create_quad(bloom);
 
@@ -210,16 +220,22 @@ void Bloom_resize(Bloom *bloom, int draw_w, int draw_h)
 	bloom->width = draw_w / bloom->divisor;
 	bloom->height = draw_h / bloom->divisor;
 
-	create_fbo(&bloom->source_fbo, &bloom->source_tex,
-		bloom->width, bloom->height);
-	create_fbo(&bloom->ping_fbo, &bloom->ping_tex,
-		bloom->width, bloom->height);
-	create_fbo(&bloom->pong_fbo, &bloom->pong_tex,
-		bloom->width, bloom->height);
+	bool ok = true;
+	if (!create_fbo(&bloom->source_fbo, &bloom->source_tex,
+		bloom->width, bloom->height))
+		ok = false;
+	if (!create_fbo(&bloom->ping_fbo, &bloom->ping_tex,
+		bloom->width, bloom->height))
+		ok = false;
+	if (!create_fbo(&bloom->pong_fbo, &bloom->pong_tex,
+		bloom->width, bloom->height))
+		ok = false;
+	bloom->valid = ok;
 }
 
 void Bloom_begin_source(Bloom *bloom)
 {
+	if (!bloom->valid) return;
 	glBindFramebuffer(GL_FRAMEBUFFER, bloom->source_fbo);
 	glViewport(0, 0, bloom->width, bloom->height);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -233,6 +249,7 @@ void Bloom_end_source(Bloom *bloom, int draw_w, int draw_h)
 
 void Bloom_blur(Bloom *bloom)
 {
+	if (!bloom->valid) return;
 	glUseProgram(bloom->blur_program);
 	glUniform1i(bloom->blur_u_image, 0);
 	glUniform2f(bloom->blur_u_texel_size,
@@ -245,11 +262,12 @@ void Bloom_blur(Bloom *bloom)
 	GLuint read_tex = bloom->source_tex;
 	int horizontal = 1;
 
+	glViewport(0, 0, bloom->width, bloom->height);
+
 	for (int i = 0; i < bloom->blur_passes * 2; i++) {
 		GLuint write_fbo = horizontal ? bloom->ping_fbo : bloom->pong_fbo;
 
 		glBindFramebuffer(GL_FRAMEBUFFER, write_fbo);
-		glViewport(0, 0, bloom->width, bloom->height);
 		glBindTexture(GL_TEXTURE_2D, read_tex);
 		glUniform1i(bloom->blur_u_horizontal, horizontal);
 
@@ -265,6 +283,7 @@ void Bloom_blur(Bloom *bloom)
 
 void Bloom_composite(Bloom *bloom, int draw_w, int draw_h)
 {
+	if (!bloom->valid) return;
 	/* The last blur pass wrote to whichever was the write target.
 	   With blur_passes=3, we do 6 passes (H,V,H,V,H,V).
 	   Pass 0: H→ping, Pass 1: V→pong, Pass 2: H→ping,

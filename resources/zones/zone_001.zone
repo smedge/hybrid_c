@@ -231,6 +231,12 @@ spawn hunter -1600.0 2500.0
 spawn hunter 1600.0 2500.0
 spawn hunter 1600.0 -2400.0
 spawn hunter -1600.0 -2400.0
+spawn seeker 1600.0 -6400.0
+spawn seeker 0.0 -6400.0
+spawn defender 9600.0 8000.0
+spawn hunter 9100.0 8000.0
+spawn hunter 9600.0 7500.0
+spawn defender -6400.0 6400.0
 
 portal 576 512 east_gate ./resources/zones/zone_002.zone west_gate
 

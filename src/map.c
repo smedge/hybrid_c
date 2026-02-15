@@ -24,6 +24,12 @@ static void initialize_map_entity(void);
 static void render_cell(int x, int y, float outlineThickness);
 static int correctTruncation(double v);
 
+static inline const MapCell* get_cell_fast(int x, int y) {
+	if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE)
+		return &boundaryCell;
+	return map[x][y];
+}
+
 void Map_initialize(void)
 {
 	initialize_map_entity();
@@ -44,6 +50,14 @@ void Map_set_cell(int grid_x, int grid_y, const MapCell *cell)
 {
 	if (grid_x < 0 || grid_x >= MAP_SIZE || grid_y < 0 || grid_y >= MAP_SIZE)
 		return;
+
+	/* Check if this coordinate already has a pool cell — overwrite in place */
+	MapCell *existing = map[grid_x][grid_y];
+	if (existing >= cellPool && existing < cellPool + CELL_POOL_SIZE) {
+		*existing = *cell;
+		return;
+	}
+
 	if (cellPoolCount >= CELL_POOL_SIZE)
 		return;
 	cellPool[cellPoolCount] = *cell;
@@ -85,7 +99,7 @@ static void initialize_map_entity(void)
 	Entity_add_entity(entity);
 }
 
-Collision Map_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
+Collision Map_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
 	int corner1CellX = correctTruncation(boundingBox.aX / MAP_CELL_SIZE);
 	int corner1CellY = correctTruncation(boundingBox.aY / MAP_CELL_SIZE);
@@ -184,8 +198,11 @@ static bool cells_match_visual(const MapCell *a, const MapCell *b)
 		memcmp(&a->outlineColor, &b->outlineColor, sizeof(ColorRGB)) == 0;
 }
 
-void Map_render()
+void Map_render(const void *state, const PlaceableComponent *placeable)
 {
+	(void)state;
+	(void)placeable;
+
 	View view = View_get_view();
 	float outlineThickness = 2.0f / (float)view.scale;
 	if (outlineThickness < 2.0f) outlineThickness = 2.0f;
@@ -355,10 +372,10 @@ void Map_render_minimap(float center_x, float center_y,
 	float world_max_y = center_y + half_range;
 
 	/* Convert to map indices */
-	int cell_min_x = (int)(world_min_x / MAP_CELL_SIZE) + HALF_MAP_SIZE;
-	int cell_max_x = (int)(world_max_x / MAP_CELL_SIZE) + HALF_MAP_SIZE;
-	int cell_min_y = (int)(world_min_y / MAP_CELL_SIZE) + HALF_MAP_SIZE;
-	int cell_max_y = (int)(world_max_y / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+	int cell_min_x = correctTruncation(world_min_x / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+	int cell_max_x = correctTruncation(world_max_x / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+	int cell_min_y = correctTruncation(world_min_y / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+	int cell_max_y = correctTruncation(world_max_y / MAP_CELL_SIZE) + HALF_MAP_SIZE;
 
 	if (cell_min_x < 0) cell_min_x = 0;
 	if (cell_min_y < 0) cell_min_y = 0;
@@ -684,7 +701,7 @@ static void render_circuit_pattern(int cellX, int cellY, float ax, float ay,
 
 static void render_cell(int x, int y, float outlineThickness)
 {
-	const MapCell *me = Map_get_cell(x, y);
+	const MapCell *me = get_cell_fast(x, y);
 	MapCell mapCell = *me;
 	if (mapCell.empty)
 		return;
@@ -694,10 +711,10 @@ static void render_cell(int x, int y, float outlineThickness)
 	float bx = ax + MAP_CELL_SIZE;
 	float by = ay + MAP_CELL_SIZE;
 
-	const MapCell *nPtr = Map_get_cell(x, y + 1);
-	const MapCell *ePtr = Map_get_cell(x + 1, y);
-	const MapCell *sPtr = Map_get_cell(x, y - 1);
-	const MapCell *wPtr = Map_get_cell(x - 1, y);
+	const MapCell *nPtr = get_cell_fast(x, y + 1);
+	const MapCell *ePtr = get_cell_fast(x + 1, y);
+	const MapCell *sPtr = get_cell_fast(x, y - 1);
+	const MapCell *wPtr = get_cell_fast(x - 1, y);
 
 	/* Chamfer NE and SW corners of circuit cells when both edges face empty */
 	float chamf = MAP_CELL_SIZE * 0.17f;
@@ -798,22 +815,22 @@ static void render_cell(int x, int y, float outlineThickness)
 
 	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
 		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
-		CORNER_GAP(Map_get_cell(x + 1, y + 1)))
+		CORNER_GAP(get_cell_fast(x + 1, y + 1)))
 		Render_quad_absolute(bx - t, by - t, bx, by, or_, og, ob, oa);
 
 	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
 		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
-		CORNER_GAP(Map_get_cell(x - 1, y + 1)))
+		CORNER_GAP(get_cell_fast(x - 1, y + 1)))
 		Render_quad_absolute(ax, by - t, ax + t, by, or_, og, ob, oa);
 
 	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
 		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
-		CORNER_GAP(Map_get_cell(x + 1, y - 1)))
+		CORNER_GAP(get_cell_fast(x + 1, y - 1)))
 		Render_quad_absolute(bx - t, ay, bx, ay + t, or_, og, ob, oa);
 
 	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
 		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
-		CORNER_GAP(Map_get_cell(x - 1, y - 1)))
+		CORNER_GAP(get_cell_fast(x - 1, y - 1)))
 		Render_quad_absolute(ax, ay, ax + t, ay + t, or_, og, ob, oa);
 
 #undef CORNER_GAP

@@ -91,6 +91,8 @@ void Fragment_cleanup(void)
 
 void Fragment_spawn(Position position, FragmentType type)
 {
+	if (type < 0 || type >= FRAG_TYPE_COUNT) return;
+
 	/* Find inactive slot */
 	int slot = -1;
 	for (int i = 0; i < MAX_FRAGMENTS; i++) {

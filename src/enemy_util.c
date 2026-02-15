@@ -1,6 +1,8 @@
 #include "enemy_util.h"
 
 #include "map.h"
+#include "render.h"
+#include "color.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -29,19 +31,29 @@ void Enemy_move_toward(PlaceableComponent *pl, Position target, double speed, do
 	double nx = dx / dist;
 	double ny = dy / dist;
 
-	/* Wall avoidance */
-	double checkX = pl->position.x + nx * wallCheckDist;
-	double checkY = pl->position.y + ny * wallCheckDist;
-	double hx, hy;
-	if (Map_line_test_hit(pl->position.x, pl->position.y, checkX, checkY, &hx, &hy))
-		return;
-
 	double move = speed * dt;
 	if (move > dist)
 		move = dist;
 
-	pl->position.x += nx * move;
-	pl->position.y += ny * move;
+	/* Wall avoidance — try combined movement first, then axis-separated */
+	double checkX = pl->position.x + nx * wallCheckDist;
+	double checkY = pl->position.y + ny * wallCheckDist;
+	double hx, hy;
+	if (!Map_line_test_hit(pl->position.x, pl->position.y, checkX, checkY, &hx, &hy)) {
+		pl->position.x += nx * move;
+		pl->position.y += ny * move;
+	} else {
+		/* Try X movement only */
+		double checkXOnly = pl->position.x + nx * wallCheckDist;
+		if (!Map_line_test_hit(pl->position.x, pl->position.y, checkXOnly, pl->position.y, &hx, &hy)) {
+			pl->position.x += nx * move;
+		}
+		/* Try Y movement only */
+		double checkYOnly = pl->position.y + ny * wallCheckDist;
+		if (!Map_line_test_hit(pl->position.x, pl->position.y, pl->position.x, checkYOnly, &hx, &hy)) {
+			pl->position.y += ny * move;
+		}
+	}
 }
 
 void Enemy_move_away_from(PlaceableComponent *pl, Position threat, double speed, double dt, double wallCheckDist)
@@ -58,15 +70,27 @@ void Enemy_move_away_from(PlaceableComponent *pl, Position threat, double speed,
 	double nx = dx / dist;
 	double ny = dy / dist;
 
-	/* Wall avoidance */
+	double moveAmount = speed * dt;
+
+	/* Wall avoidance — try combined movement first, then axis-separated */
 	double checkX = pl->position.x + nx * wallCheckDist;
 	double checkY = pl->position.y + ny * wallCheckDist;
 	double hx, hy;
-	if (Map_line_test_hit(pl->position.x, pl->position.y, checkX, checkY, &hx, &hy))
-		return;
-
-	pl->position.x += nx * speed * dt;
-	pl->position.y += ny * speed * dt;
+	if (!Map_line_test_hit(pl->position.x, pl->position.y, checkX, checkY, &hx, &hy)) {
+		pl->position.x += nx * moveAmount;
+		pl->position.y += ny * moveAmount;
+	} else {
+		/* Try X movement only */
+		double checkXOnly = pl->position.x + nx * wallCheckDist;
+		if (!Map_line_test_hit(pl->position.x, pl->position.y, checkXOnly, pl->position.y, &hx, &hy)) {
+			pl->position.x += nx * moveAmount;
+		}
+		/* Try Y movement only */
+		double checkYOnly = pl->position.y + ny * wallCheckDist;
+		if (!Map_line_test_hit(pl->position.x, pl->position.y, pl->position.x, checkYOnly, &hx, &hy)) {
+			pl->position.y += ny * moveAmount;
+		}
+	}
 }
 
 void Enemy_pick_wander_target(Position spawnPoint, double radius, int baseInterval,
@@ -77,4 +101,24 @@ void Enemy_pick_wander_target(Position spawnPoint, double radius, int baseInterv
 	out_target->x = spawnPoint.x + cos(angle) * dist;
 	out_target->y = spawnPoint.y + sin(angle) * dist;
 	*out_timer = baseInterval + (rand() % 1000);
+}
+
+void Enemy_render_death_flash(const PlaceableComponent *pl, float deathTimer, float deathDuration)
+{
+	float fade = 1.0f - deathTimer / deathDuration;
+	ColorFloat flash = {1.0f, 1.0f, 1.0f, fade};
+	Rectangle sparkRect = {-20.0, 20.0, 20.0, -20.0};
+	Render_quad(&pl->position, 0.0, sparkRect, &flash);
+	Render_quad(&pl->position, 45.0, sparkRect, &flash);
+}
+
+void Enemy_render_spark(Position sparkPosition, int sparkTicksLeft, int sparkDuration, float sparkSize, bool sparkShielded, float normalR, float normalG, float normalB)
+{
+	float fade = (float)sparkTicksLeft / sparkDuration;
+	ColorFloat sparkColor = sparkShielded
+		? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
+		: (ColorFloat){normalR, normalG, normalB, fade};
+	Rectangle sparkRect = {-sparkSize, sparkSize, sparkSize, -sparkSize};
+	Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
+	Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
 }

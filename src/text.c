@@ -26,16 +26,30 @@ void Text_initialize(TextRenderer *tr, const char *font_path, float font_size)
 	}
 	fseek(f, 0, SEEK_END);
 	long fsize = ftell(f);
+	if (fsize < 0) {
+		fclose(f);
+		return;
+	}
 	fseek(f, 0, SEEK_SET);
 	unsigned char *font_buffer = malloc(fsize);
-	fread(font_buffer, 1, fsize, f);
+	if (!font_buffer) {
+		fclose(f);
+		return;
+	}
+	size_t read_count = fread(font_buffer, 1, fsize, f);
 	fclose(f);
+	if ((long)read_count != fsize) {
+		free(font_buffer);
+		return;
+	}
 
 	/* Bake font atlas */
 	unsigned char *atlas = calloc(tr->atlas_width * tr->atlas_height, 1);
 	stbtt_bakedchar cdata[96];
-	stbtt_BakeFontBitmap(font_buffer, 0, font_size,
+	int bake_result = stbtt_BakeFontBitmap(font_buffer, 0, font_size,
 		atlas, tr->atlas_width, tr->atlas_height, 32, 96, cdata);
+	if (bake_result < 0)
+		fprintf(stderr, "WARNING: font atlas too small, some glyphs may be missing\n");
 	free(font_buffer);
 
 	/* Store glyph metrics */
@@ -90,6 +104,20 @@ void Text_cleanup(TextRenderer *tr)
 	glDeleteVertexArrays(1, &tr->vao);
 }
 
+#define TEXT_MAX_CHARS 1024
+
+float Text_measure_width(const TextRenderer *tr, const char *text)
+{
+	float w = 0.0f;
+	for (int i = 0; text[i]; i++) {
+		int ch = (unsigned char)text[i];
+		if (ch < 32 || ch > 127)
+			continue;
+		w += tr->char_data[ch - 32][6];
+	}
+	return w;
+}
+
 void Text_render(TextRenderer *tr, const Shaders *shaders,
 	const Mat4 *projection, const Mat4 *view,
 	const char *text, float x, float y,
@@ -99,8 +127,9 @@ void Text_render(TextRenderer *tr, const Shaders *shaders,
 		return;
 
 	int len = (int)strlen(text);
-	int max_verts = len * 6;
-	TextVertex *verts = malloc(sizeof(TextVertex) * max_verts);
+	if (len > TEXT_MAX_CHARS)
+		len = TEXT_MAX_CHARS;
+	static TextVertex verts[TEXT_MAX_CHARS * 6];
 	int vert_count = 0;
 
 	float cursor_x = x;
@@ -145,10 +174,8 @@ void Text_render(TextRenderer *tr, const Shaders *shaders,
 		cursor_x += xadv;
 	}
 
-	if (vert_count == 0) {
-		free(verts);
+	if (vert_count == 0)
 		return;
-	}
 
 	/* Draw */
 	Shader_set_matrices(&shaders->text_shader, projection, view);
@@ -163,6 +190,4 @@ void Text_render(TextRenderer *tr, const Shaders *shaders,
 		verts, GL_DYNAMIC_DRAW);
 	glDrawArrays(GL_TRIANGLES, 0, vert_count);
 	glBindVertexArray(0);
-
-	free(verts);
 }

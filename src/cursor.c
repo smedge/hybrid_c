@@ -25,12 +25,12 @@ void cursor_render(void)
 	/* White crosshair lines */
 	float fx = (float)x;
 	float fy = (float)y;
-	Render_line_segment(fx, fy + 7.0f, fx, fy + 3.0f,
-		0.9f, 0.9f, 0.9f, 0.50f);
-	Render_line_segment(fx + 7.0f, fy, fx + 3.0f, fy,
-		0.9f, 0.9f, 0.9f, 0.50f);
-	Render_line_segment(fx, fy - 3.0f, fx, fy - 7.0f,
-		0.9f, 0.9f, 0.9f, 0.50f);
-	Render_line_segment(fx - 7.0f, fy, fx - 3.0f, fy,
-		0.9f, 0.9f, 0.9f, 0.50f);
+	Render_thick_line(fx, fy + 7.0f, fx, fy + 3.0f,
+		1.0f, 0.9f, 0.9f, 0.9f, 0.50f);
+	Render_thick_line(fx + 7.0f, fy, fx + 3.0f, fy,
+		1.0f, 0.9f, 0.9f, 0.9f, 0.50f);
+	Render_thick_line(fx, fy - 3.0f, fx, fy - 7.0f,
+		1.0f, 0.9f, 0.9f, 0.9f, 0.50f);
+	Render_thick_line(fx - 7.0f, fy, fx - 3.0f, fy,
+		1.0f, 0.9f, 0.9f, 0.9f, 0.50f);
 }

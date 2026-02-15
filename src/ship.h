@@ -2,6 +2,7 @@
 #define SHIP_H
 
 #define DEATH_TIMER 3000
+#define SHIP_BB_HALF_SIZE 20.0
 
 #include "input.h"
 #include "position.h"
@@ -10,8 +11,8 @@
 void Ship_initialize();
 void Ship_cleanup();
 
-Collision Ship_collide(const void* state, const PlaceableComponent *placeable, const Rectangle boundingBox);
-void Ship_resolve(const void *state, const Collision collision);
+Collision Ship_collide(void* state, const PlaceableComponent *placeable, const Rectangle boundingBox);
+void Ship_resolve(void *state, const Collision collision);
 void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);
 void Ship_render(const void *state, const PlaceableComponent *placeable);
 void Ship_render_bloom_source(void);

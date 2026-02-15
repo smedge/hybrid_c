@@ -57,9 +57,9 @@ static int selectedBgm;
 /* Zone music playlist */
 static int zoneMusicIndex = 0;
 static int zoneMusicCount = 0;
-static char zoneMusicPaths[3][256];
+static char zoneMusicPaths[ZONE_MAX_MUSIC][256];
 static bool useZoneMusic = false;
-static bool zoneMusicAdvance = false;
+static volatile bool zoneMusicAdvance = false;
 
 /* Warp transition state */
 static int warpTimer;
@@ -316,6 +316,8 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	if (input->keyO) {
 		godModeActive = !godModeActive;
 		Ship_set_god_mode(godModeActive);
+		if (!godModeActive)
+			Zone_save_if_dirty();
 	}
 
 	if (godModeActive) {
@@ -434,7 +436,7 @@ void Mode_Gameplay_render(void)
 		Bloom *bloom = Graphics_get_bloom();
 
 		Bloom_begin_source(bloom);
-		Map_render();
+		Map_render(NULL, NULL);
 		Ship_render_bloom_source();
 		Mine_render_bloom_source();
 		Hunter_render_bloom_source();
@@ -722,6 +724,9 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 	Destructible_update(ticks);
 	Fragment_update(ticks);
 	Progression_update(ticks);
+
+	/* Flush pending zone saves at most once per frame */
+	Zone_save_if_dirty();
 }
 
 static void god_mode_render_cursor(void)
@@ -938,6 +943,7 @@ static void god_mode_render_spawn_markers(void)
 
 static void zone_teardown_and_load(const char *zone_path)
 {
+	Zone_save_if_dirty();
 	Sub_Pea_cleanup();
 	Sub_Mgun_cleanup();
 	Sub_Mine_cleanup();

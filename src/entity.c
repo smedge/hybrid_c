@@ -62,9 +62,17 @@ void Entity_destroy_all(void)
 	highestIndex = 0;
 }
 
-void Entity_destroy(const unsigned int entityId) 
+void Entity_destroy(const unsigned int entityId)
 {
+	if (entityId >= ENTITY_COUNT)
+		return;
+
 	entities[entityId].empty = true;
+
+	if (entityId == highestIndex) {
+		while (highestIndex > 0 && entities[highestIndex].empty)
+			highestIndex--;
+	}
 }
 
 void Entity_user_update_system(const Input *input, const unsigned int ticks)
@@ -106,10 +114,10 @@ void Entity_collision_system(void)
 {
 	highestCollisionIndex = 0;
 
-	for(int i = 0; i <= highestIndex; i++) 
+	for(int i = 0; i <= highestIndex; i++)
 	{
 		if (entities[i].empty || entities[i].disabled || entities[i].collidable == 0 ||
-			entities[i].placeable == 0)	
+			entities[i].placeable == 0)
 			continue;
 
 		if (!entities[i].collidable->collidesWithOthers)
@@ -118,7 +126,7 @@ void Entity_collision_system(void)
 		for (int j = 0; j <= highestIndex; j++)
 		{
 			if (entities[j].empty || entities[j].disabled || entities[j].collidable == 0 ||
-				entities[i].placeable == 0)	
+				entities[j].placeable == 0)
 				continue;
 
 			if (i == j)
@@ -151,7 +159,7 @@ void Entity_collision_system(void)
 	}
 }
 
-void Entity_create_collision_command(void (*resolve)(const void *state, const Collision collision),
+void Entity_create_collision_command(void (*resolve)(void *state, const Collision collision),
 	void *state, Collision collision)
 {
 	if (highestCollisionIndex >= COLLISION_COUNT) {

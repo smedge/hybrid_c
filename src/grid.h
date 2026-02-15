@@ -6,8 +6,8 @@
 #include "entity.h"
 #include "render.h"
 
-void Grid_initialize();
-void Grid_render();
-void Grid_cleanup();
+void Grid_initialize(void);
+void Grid_render(const void *state, const PlaceableComponent *placeable);
+void Grid_cleanup(void);
 
 #endif

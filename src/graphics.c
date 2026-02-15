@@ -4,7 +4,7 @@
 
 #define TITLE_FONT_PATH "./resources/fonts/square_sans_serif_7.ttf"
 
-static Graphics graphics = {0, SDL_WINDOW_FULLSCREEN};
+static Graphics graphics = {0, HYBRID_START_FULLSCREEN};
 static Shaders shaders;
 static BatchRenderer batch;
 static TextRenderer text_renderer;
@@ -136,33 +136,33 @@ static void create_window(void)
 static void create_fullscreen_window(void)
 {
 	graphics.window = SDL_CreateWindow(
-		SDL_WINDOW_NAME,
+		HYBRID_WINDOW_NAME,
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
-		SDL_WINDOW_FULLSCREEN_WIDTH,
-		SDL_WINDOW_FULLSCREEN_HEIGHT,
+		HYBRID_FULLSCREEN_WIDTH,
+		HYBRID_FULLSCREEN_HEIGHT,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI |
 			SDL_WINDOW_FULLSCREEN | SDL_WINDOW_SHOWN
 	);
 
-	graphics.screen.width = SDL_WINDOW_FULLSCREEN_WIDTH;
-	graphics.screen.height = SDL_WINDOW_FULLSCREEN_HEIGHT;
+	graphics.screen.width = HYBRID_FULLSCREEN_WIDTH;
+	graphics.screen.height = HYBRID_FULLSCREEN_HEIGHT;
 }
 
 static void create_windowed_window(void)
 {
 	graphics.window = SDL_CreateWindow(
-		SDL_WINDOW_NAME,
+		HYBRID_WINDOW_NAME,
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
-		SDL_WINDOW_WINDOWED_WIDTH,
-		SDL_WINDOW_WINDOWED_HEIGHT,
+		HYBRID_WINDOWED_WIDTH,
+		HYBRID_WINDOWED_HEIGHT,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI |
 			SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
 	);
 
-	graphics.screen.width = SDL_WINDOW_WINDOWED_WIDTH;
-	graphics.screen.height = SDL_WINDOW_WINDOWED_HEIGHT;
+	graphics.screen.width = HYBRID_WINDOWED_WIDTH;
+	graphics.screen.height = HYBRID_WINDOWED_HEIGHT;
 }
 
 static void initialize_gl(void)

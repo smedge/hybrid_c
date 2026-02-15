@@ -109,10 +109,25 @@ static int highestUsedIndex = 0;
 static HunterProjectile projectiles[PROJ_COUNT];
 
 /* Sparks */
-static bool sparkActive = false;
-static bool sparkShielded = false;
-static Position sparkPosition;
-static int sparkTicksLeft = 0;
+#define SPARK_POOL_SIZE 8
+static struct {
+	bool active;
+	bool shielded;
+	Position position;
+	int ticksLeft;
+} sparks[SPARK_POOL_SIZE];
+
+static void activate_spark(Position pos, bool shielded) {
+	int slot = 0;
+	for (int i = 0; i < SPARK_POOL_SIZE; i++) {
+		if (!sparks[i].active) { slot = i; break; }
+		if (sparks[i].ticksLeft < sparks[slot].ticksLeft) slot = i;
+	}
+	sparks[slot].active = true;
+	sparks[slot].shielded = shielded;
+	sparks[slot].position = pos;
+	sparks[slot].ticksLeft = PROJ_SPARK_DURATION;
+}
 
 /* Audio */
 static Mix_Chunk *sampleShoot = 0;
@@ -143,8 +158,14 @@ static void fire_projectile(Position origin, Position target)
 			break;
 		}
 	}
-	if (slot < 0)
-		slot = 0;
+	if (slot < 0) {
+		int oldest = 0;
+		for (int i = 1; i < PROJ_COUNT; i++) {
+			if (projectiles[i].ticksLived > projectiles[oldest].ticksLived)
+				oldest = i;
+		}
+		slot = oldest;
+	}
 
 	HunterProjectile *p = &projectiles[slot];
 	p->active = true;
@@ -221,7 +242,8 @@ void Hunter_cleanup(void)
 
 	for (int i = 0; i < PROJ_COUNT; i++)
 		projectiles[i].active = false;
-	sparkActive = false;
+	for (int i = 0; i < SPARK_POOL_SIZE; i++)
+		sparks[i].active = false;
 
 	Audio_unload_sample(&sampleShoot);
 	Audio_unload_sample(&sampleDeath);
@@ -230,7 +252,7 @@ void Hunter_cleanup(void)
 	Audio_unload_sample(&sampleShieldHit);
 }
 
-Collision Hunter_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
+Collision Hunter_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
 	HunterState *h = (HunterState *)state;
 	Collision collision = {false, false};
@@ -249,7 +271,7 @@ Collision Hunter_collide(const void *state, const PlaceableComponent *placeable,
 	return collision;
 }
 
-void Hunter_resolve(const void *state, const Collision collision)
+void Hunter_resolve(void *state, const Collision collision)
 {
 	/* Hunter doesn't react to collision resolution from ship touching it.
 	   Damage is handled via projectile check_hit in update. */
@@ -257,7 +279,7 @@ void Hunter_resolve(const void *state, const Collision collision)
 	(void)collision;
 }
 
-void Hunter_update(const void *state, const PlaceableComponent *placeable, unsigned int ticks)
+void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned int ticks)
 {
 	HunterState *h = (HunterState *)state;
 	/* Find our index to get the mutable placeable */
@@ -287,10 +309,7 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 		}
 
 		if (hit) {
-			sparkActive = true;
-			sparkShielded = shielded;
-			sparkPosition = pl->position;
-			sparkTicksLeft = PROJ_SPARK_DURATION;
+			activate_spark(pl->position, shielded);
 			Audio_play_sample(shielded ? &sampleShieldHit : &sampleHit);
 
 			/* Getting shot immediately aggroes */
@@ -420,7 +439,7 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 	/* Only do this from hunter index 0 to avoid processing projectiles N times */
 	if (idx == 0) {
 		Position shipPos = Ship_get_position();
-		Rectangle shipBB = {-15.0, 15.0, 15.0, -15.0};
+		Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
 		Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
 
 		for (int i = 0; i < PROJ_COUNT; i++) {
@@ -445,16 +464,15 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 			double hx, hy;
 			if (Map_line_test_hit(p->prevPosition.x, p->prevPosition.y,
 					p->position.x, p->position.y, &hx, &hy)) {
-				sparkActive = true;
-				sparkPosition.x = hx;
-				sparkPosition.y = hy;
-				sparkTicksLeft = PROJ_SPARK_DURATION;
+				Position hitPos = {hx, hy};
+				activate_spark(hitPos, false);
 				p->active = false;
 				continue;
 			}
 
 			/* Hit ship */
-			if (Collision_line_aabb_test(p->prevPosition.x, p->prevPosition.y,
+			if (!Ship_is_destroyed() &&
+				Collision_line_aabb_test(p->prevPosition.x, p->prevPosition.y,
 					p->position.x, p->position.y, shipWorld, NULL)) {
 				p->active = false;
 				PlayerStats_damage(PROJ_DAMAGE);
@@ -463,10 +481,12 @@ void Hunter_update(const void *state, const PlaceableComponent *placeable, unsig
 		}
 
 		/* Spark decay */
-		if (sparkActive) {
-			sparkTicksLeft -= ticks;
-			if (sparkTicksLeft <= 0)
-				sparkActive = false;
+		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+			if (sparks[si].active) {
+				sparks[si].ticksLeft -= ticks;
+				if (sparks[si].ticksLeft <= 0)
+					sparks[si].active = false;
+			}
 		}
 	}
 }
@@ -480,11 +500,7 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 
 	/* Death flash */
 	if (h->aiState == HUNTER_DYING) {
-		float fade = 1.0f - (float)h->deathTimer / DEATH_FLASH_MS;
-		ColorFloat flash = {1.0f, 1.0f, 1.0f, fade};
-		Rectangle sparkRect = {-20.0, 20.0, 20.0, -20.0};
-		Render_quad(&placeable->position, 0.0, sparkRect, &flash);
-		Render_quad(&placeable->position, 45.0, sparkRect, &flash);
+		Enemy_render_death_flash(placeable, (float)h->deathTimer, (float)DEATH_FLASH_MS);
 		return;
 	}
 
@@ -542,15 +558,13 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 			Render_point(&projectiles[i].position, size, &colorProj);
 		}
 
-		/* Wall hit spark */
-		if (sparkActive) {
-			float fade = (float)sparkTicksLeft / PROJ_SPARK_DURATION;
-			ColorFloat sparkColor = sparkShielded
-			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
-			: (ColorFloat){1.0f, 0.5f, 0.1f, fade};
-			Rectangle sparkRect = {-PROJ_SPARK_SIZE, PROJ_SPARK_SIZE, PROJ_SPARK_SIZE, -PROJ_SPARK_SIZE};
-			Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
-			Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
+		/* Spark pool rendering */
+		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+			if (sparks[si].active) {
+				Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
+					PROJ_SPARK_DURATION, PROJ_SPARK_SIZE, sparks[si].shielded,
+					1.0f, 0.5f, 0.1f);
+			}
 		}
 	}
 }
@@ -565,11 +579,7 @@ void Hunter_render_bloom_source(void)
 			continue;
 
 		if (h->aiState == HUNTER_DYING) {
-			float fade = 1.0f - (float)h->deathTimer / DEATH_FLASH_MS;
-			ColorFloat flash = {1.0f, 1.0f, 1.0f, fade};
-			Rectangle sparkRect = {-20.0, 20.0, 20.0, -20.0};
-			Render_quad(&pl->position, 0.0, sparkRect, &flash);
-			Render_quad(&pl->position, 45.0, sparkRect, &flash);
+			Enemy_render_death_flash(pl, (float)h->deathTimer, (float)DEATH_FLASH_MS);
 			continue;
 		}
 
@@ -601,14 +611,12 @@ void Hunter_render_bloom_source(void)
 	}
 
 	/* Spark bloom */
-	if (sparkActive) {
-		float fade = (float)sparkTicksLeft / PROJ_SPARK_DURATION;
-		ColorFloat sparkColor = sparkShielded
-			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
-			: (ColorFloat){1.0f, 0.5f, 0.1f, fade};
-		Rectangle sparkRect = {-PROJ_SPARK_SIZE, PROJ_SPARK_SIZE, PROJ_SPARK_SIZE, -PROJ_SPARK_SIZE};
-		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
-		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
+	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+		if (sparks[si].active) {
+			Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
+				PROJ_SPARK_DURATION, PROJ_SPARK_SIZE, sparks[si].shielded,
+				1.0f, 0.5f, 0.1f);
+		}
 	}
 }
 
@@ -648,7 +656,8 @@ void Hunter_reset_all(void)
 
 	for (int i = 0; i < PROJ_COUNT; i++)
 		projectiles[i].active = false;
-	sparkActive = false;
+	for (int i = 0; i < SPARK_POOL_SIZE; i++)
+		sparks[i].active = false;
 }
 
 bool Hunter_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index)

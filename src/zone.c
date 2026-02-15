@@ -39,6 +39,7 @@ typedef struct {
 static Zone zone;
 static UndoEntry undoStack[ZONE_MAX_UNDO];
 static int undoCount = 0;
+static bool zoneDirty = false;
 
 static int find_cell_type(const char *id);
 static void apply_zone_to_world(void);
@@ -279,6 +280,13 @@ void Zone_save(void)
 	fclose(f);
 }
 
+void Zone_save_if_dirty(void)
+{
+	if (!zoneDirty) return;
+	zoneDirty = false;
+	Zone_save();
+}
+
 /* --- Editing API --- */
 
 void Zone_place_cell(int grid_x, int grid_y, const char *type_id)
@@ -303,7 +311,7 @@ void Zone_place_cell(int grid_x, int grid_y, const char *type_id)
 		ct->primaryColor, ct->outlineColor};
 	Map_set_cell(grid_x, grid_y, &cell);
 
-	Zone_save();
+	zoneDirty = true;
 }
 
 void Zone_remove_cell(int grid_x, int grid_y)
@@ -321,7 +329,7 @@ void Zone_remove_cell(int grid_x, int grid_y)
 	zone.cell_grid[grid_x][grid_y] = -1;
 	Map_clear_cell(grid_x, grid_y);
 
-	Zone_save();
+	zoneDirty = true;
 }
 
 void Zone_place_spawn(const char *enemy_type, double world_x, double world_y)
@@ -354,7 +362,7 @@ void Zone_place_spawn(const char *enemy_type, double world_x, double world_y)
 		Defender_initialize(pos);
 	}
 
-	Zone_save();
+	zoneDirty = true;
 }
 
 void Zone_remove_spawn(int index)
@@ -373,7 +381,7 @@ void Zone_remove_spawn(int index)
 	zone.spawn_count--;
 
 	respawn_enemies();
-	Zone_save();
+	zoneDirty = true;
 }
 
 int Zone_find_spawn_near(double world_x, double world_y, double radius)
@@ -426,7 +434,7 @@ void Zone_place_portal(int grid_x, int grid_y,
 	Position pos = {wx, wy};
 	Portal_initialize(pos, id, dest_zone, dest_portal_id);
 
-	Zone_save();
+	zoneDirty = true;
 }
 
 void Zone_remove_portal(int grid_x, int grid_y)
@@ -452,7 +460,7 @@ void Zone_remove_portal(int grid_x, int grid_y)
 	zone.portal_count--;
 
 	respawn_portals();
-	Zone_save();
+	zoneDirty = true;
 }
 
 void Zone_place_savepoint(int grid_x, int grid_y, const char *id)
@@ -484,7 +492,7 @@ void Zone_place_savepoint(int grid_x, int grid_y, const char *id)
 	Position pos = {wx, wy};
 	Savepoint_initialize(pos, id);
 
-	Zone_save();
+	zoneDirty = true;
 }
 
 void Zone_remove_savepoint(int grid_x, int grid_y)
@@ -510,7 +518,7 @@ void Zone_remove_savepoint(int grid_x, int grid_y)
 	zone.savepoint_count--;
 
 	respawn_savepoints();
-	Zone_save();
+	zoneDirty = true;
 }
 
 void Zone_undo(void)
@@ -585,7 +593,7 @@ void Zone_undo(void)
 		break;
 	}
 
-	Zone_save();
+	zoneDirty = true;
 }
 
 const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y)

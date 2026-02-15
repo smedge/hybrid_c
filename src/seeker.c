@@ -81,6 +81,7 @@ typedef struct {
 	/* Dash */
 	int dashTimer;
 	Position dashStartPos;
+	bool hitThisDash;
 
 	/* Recovery */
 	int recoverTimer;
@@ -116,13 +117,28 @@ static PlaceableComponent placeables[SEEKER_COUNT];
 static Entity *entityRefs[SEEKER_COUNT];
 static int highestUsedIndex = 0;
 
-/* Death spark */
-static bool sparkActive = false;
-static bool sparkShielded = false;
-static Position sparkPosition;
-static int sparkTicksLeft = 0;
+/* Sparks */
 #define SPARK_DURATION 80
 #define SPARK_SIZE 15.0
+#define SPARK_POOL_SIZE 8
+static struct {
+	bool active;
+	bool shielded;
+	Position position;
+	int ticksLeft;
+} sparks[SPARK_POOL_SIZE];
+
+static void activate_spark(Position pos, bool shielded) {
+	int slot = 0;
+	for (int i = 0; i < SPARK_POOL_SIZE; i++) {
+		if (!sparks[i].active) { slot = i; break; }
+		if (sparks[i].ticksLeft < sparks[slot].ticksLeft) slot = i;
+	}
+	sparks[slot].active = true;
+	sparks[slot].shielded = shielded;
+	sparks[slot].position = pos;
+	sparks[slot].ticksLeft = SPARK_DURATION;
+}
 
 /* Audio */
 static Mix_Chunk *sampleWindup = 0;
@@ -205,8 +221,8 @@ void Seeker_cleanup(void)
 		}
 	}
 	highestUsedIndex = 0;
-	sparkActive = false;
-	sparkShielded = false;
+	for (int i = 0; i < SPARK_POOL_SIZE; i++)
+		sparks[i].active = false;
 
 	Audio_unload_sample(&sampleWindup);
 	Audio_unload_sample(&sampleDash);
@@ -216,7 +232,7 @@ void Seeker_cleanup(void)
 	Audio_unload_sample(&sampleShieldHit);
 }
 
-Collision Seeker_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
+Collision Seeker_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
 	SeekerState *s = (SeekerState *)state;
 	Collision collision = {false, false};
@@ -237,13 +253,13 @@ Collision Seeker_collide(const void *state, const PlaceableComponent *placeable,
 	return collision;
 }
 
-void Seeker_resolve(const void *state, const Collision collision)
+void Seeker_resolve(void *state, const Collision collision)
 {
 	(void)state;
 	(void)collision;
 }
 
-void Seeker_update(const void *state, const PlaceableComponent *placeable, unsigned int ticks)
+void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned int ticks)
 {
 	SeekerState *s = (SeekerState *)state;
 	int idx = (int)(s - seekers);
@@ -271,10 +287,7 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 		}
 
 		if (hit) {
-			sparkActive = true;
-			sparkShielded = shielded;
-			sparkPosition = pl->position;
-			sparkTicksLeft = SPARK_DURATION;
+			activate_spark(pl->position, shielded);
 			Audio_play_sample(shielded ? &sampleShieldHit : &sampleHit);
 
 			/* Getting shot immediately aggroes */
@@ -399,6 +412,7 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 			s->aiState = SEEKER_DASHING;
 			s->dashTimer = 0;
 			s->dashStartPos = pl->position;
+			s->hitThisDash = false;
 			Audio_play_sample(&sampleDash);
 		}
 		break;
@@ -432,13 +446,14 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 		/* Check hit on player during dash */
 		if (!Ship_is_destroyed()) {
 			Position shipPos = Ship_get_position();
-			Rectangle shipBB = {-20.0, 20.0, 20.0, -20.0};
+			Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
 			Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
 			Rectangle seekerBB = {-BODY_WIDTH, BODY_LENGTH, BODY_WIDTH, -BODY_LENGTH};
 			Rectangle seekerWorld = Collision_transform_bounding_box(pl->position, seekerBB);
 
-			if (Collision_aabb_test(seekerWorld, shipWorld)) {
+			if (Collision_aabb_test(seekerWorld, shipWorld) && !s->hitThisDash) {
 				PlayerStats_damage(DASH_DAMAGE);
+				s->hitThisDash = true;
 			}
 		}
 
@@ -512,10 +527,12 @@ void Seeker_update(const void *state, const PlaceableComponent *placeable, unsig
 
 	/* Spark decay (only from seeker index 0 to avoid N updates) */
 	if (idx == 0) {
-		if (sparkActive) {
-			sparkTicksLeft -= ticks;
-			if (sparkTicksLeft <= 0)
-				sparkActive = false;
+		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+			if (sparks[si].active) {
+				sparks[si].ticksLeft -= ticks;
+				if (sparks[si].ticksLeft <= 0)
+					sparks[si].active = false;
+			}
 		}
 	}
 }
@@ -561,11 +578,7 @@ void Seeker_render(const void *state, const PlaceableComponent *placeable)
 
 	/* Death flash */
 	if (s->aiState == SEEKER_DYING) {
-		float fade = 1.0f - (float)s->deathTimer / DEATH_FLASH_MS;
-		ColorFloat flash = {1.0f, 1.0f, 1.0f, fade};
-		Rectangle sparkRect = {-20.0, 20.0, 20.0, -20.0};
-		Render_quad(&placeable->position, 0.0, sparkRect, &flash);
-		Render_quad(&placeable->position, 45.0, sparkRect, &flash);
+		Enemy_render_death_flash(placeable, (float)s->deathTimer, (float)DEATH_FLASH_MS);
 		return;
 	}
 
@@ -610,16 +623,16 @@ void Seeker_render(const void *state, const PlaceableComponent *placeable)
 	/* Center dot */
 	Render_point(&placeable->position, 3.0, bodyColor);
 
-	/* Render hit spark (only from index 0) */
+	/* Render hit sparks (only from index 0) */
 	int idx = (int)((SeekerState *)state - seekers);
-	if (idx == 0 && sparkActive) {
-		float fade = (float)sparkTicksLeft / SPARK_DURATION;
-		ColorFloat sparkColor = sparkShielded
-			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
-			: (ColorFloat){0.0f, 1.0f, 0.2f, fade};
-		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
-		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
-		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
+	if (idx == 0) {
+		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+			if (sparks[si].active) {
+				Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
+					SPARK_DURATION, SPARK_SIZE, sparks[si].shielded,
+					0.0f, 1.0f, 0.2f);
+			}
+		}
 	}
 }
 
@@ -633,11 +646,7 @@ void Seeker_render_bloom_source(void)
 			continue;
 
 		if (s->aiState == SEEKER_DYING) {
-			float fade = 1.0f - (float)s->deathTimer / DEATH_FLASH_MS;
-			ColorFloat flash = {1.0f, 1.0f, 1.0f, fade};
-			Rectangle sparkRect = {-20.0, 20.0, 20.0, -20.0};
-			Render_quad(&pl->position, 0.0, sparkRect, &flash);
-			Render_quad(&pl->position, 45.0, sparkRect, &flash);
+			Enemy_render_death_flash(pl, (float)s->deathTimer, (float)DEATH_FLASH_MS);
 			continue;
 		}
 
@@ -678,14 +687,12 @@ void Seeker_render_bloom_source(void)
 	}
 
 	/* Spark bloom */
-	if (sparkActive) {
-		float fade = (float)sparkTicksLeft / SPARK_DURATION;
-		ColorFloat sparkColor = sparkShielded
-			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
-			: (ColorFloat){0.0f, 1.0f, 0.2f, fade};
-		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
-		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
-		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
+	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+		if (sparks[si].active) {
+			Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
+				SPARK_DURATION, SPARK_SIZE, sparks[si].shielded,
+				0.0f, 1.0f, 0.2f);
+		}
 	}
 }
 
@@ -725,7 +732,8 @@ void Seeker_reset_all(void)
 		placeables[i].position = s->spawnPoint;
 		pick_wander_target(s);
 	}
-	sparkActive = false;
+	for (int i = 0; i < SPARK_POOL_SIZE; i++)
+		sparks[i].active = false;
 }
 
 bool Seeker_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index)

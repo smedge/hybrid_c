@@ -12,6 +12,9 @@
 #include "sub_aegis.h"
 
 #include <math.h>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #define SLOT_SIZE 50.0f
 #define SLOT_SPACING 60.0f
@@ -34,7 +37,7 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 	[SUB_ID_MINE]   = { SUB_ID_MINE,   SUB_TYPE_DEPLOYABLE, "sub_mine",   "MINE",
 		"Deployable mine. Detonates after 2 seconds.", false },
 	[SUB_ID_BOOST]  = { SUB_ID_BOOST,  SUB_TYPE_MOVEMENT,   "sub_boost",  "BOOST",
-		"Hold shift to boost speed. Overheats with sustained use.", true },
+		"Hold shift for unlimited speed boost.", true },
 	[SUB_ID_EGRESS] = { SUB_ID_EGRESS, SUB_TYPE_MOVEMENT,   "sub_egress", "EGRESS",
 		"Shift-tap dash burst. Quick escape with cooldown.", false },
 	[SUB_ID_MGUN]   = { SUB_ID_MGUN,   SUB_TYPE_PROJECTILE, "sub_mgun",   "MGUN",
@@ -261,6 +264,15 @@ void Skillbar_equip(int slot, SubroutineId id)
 {
 	if (slot < 0 || slot >= SKILLBAR_SLOTS)
 		return;
+	if (id < 0 || id >= SUB_ID_COUNT)
+		return;
+
+	/* Clear any existing slot that has this id to prevent duplicates */
+	for (int i = 0; i < SKILLBAR_SLOTS; i++) {
+		if (slots[i] == id)
+			slots[i] = SUB_NONE;
+	}
+
 	slots[slot] = id;
 }
 
@@ -348,8 +360,8 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		float r = 8.0f;
 		float t = 1.5f;
 		for (int i = 0; i < 6; i++) {
-			float a0 = i * 60.0f * 3.14159f / 180.0f;
-			float a1 = (i + 1) * 60.0f * 3.14159f / 180.0f;
+			float a0 = i * 60.0f * (float)M_PI / 180.0f;
+			float a1 = (i + 1) * 60.0f * (float)M_PI / 180.0f;
 			Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
 				cx + cosf(a1) * r, cy + sinf(a1) * r,
 				t, 0.6f, 0.9f, 1.0f, alpha);

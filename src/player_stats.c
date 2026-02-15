@@ -33,8 +33,8 @@
 /* --- State --- */
 static double integrity;
 static double feedback;
-static int timeSinceLastDamage;   /* ms since last integrity damage */
-static int timeSinceLastFeedback; /* ms since last feedback added */
+static unsigned int timeSinceLastDamage;   /* ms since last integrity damage */
+static unsigned int timeSinceLastFeedback; /* ms since last feedback added */
 static bool dead;
 
 static int flashTicksLeft;
@@ -72,7 +72,9 @@ void PlayerStats_update(unsigned int ticks)
 
 	/* Advance timers */
 	timeSinceLastDamage += ticks;
+	if (timeSinceLastDamage > 10000) timeSinceLastDamage = 10000;
 	timeSinceLastFeedback += ticks;
+	if (timeSinceLastFeedback > 10000) timeSinceLastFeedback = 10000;
 
 	/* Shield break grace decay */
 	if (shieldBreakGrace > 0)
@@ -110,17 +112,6 @@ void PlayerStats_update(unsigned int ticks)
 	}
 }
 
-static float measure_text(TextRenderer *tr, const char *text)
-{
-	float width = 0.0f;
-	for (int i = 0; text[i]; i++) {
-		int ch = (unsigned char)text[i];
-		if (ch < 32 || ch > 127) continue;
-		width += tr->char_data[ch - 32][6]; /* xadvance */
-	}
-	return width;
-}
-
 static void render_bar_border(float x, float y, float w, float h)
 {
 	Render_thick_line(x, y, x + w, y,
@@ -144,8 +135,8 @@ void PlayerStats_render(const Screen *screen)
 	float fbFrac = (float)(feedback / FEEDBACK_MAX);
 
 	/* Compute column layout from actual font metrics so nothing overlaps */
-	float labelW = measure_text(tr, "INTEGRITY"); /* widest label */
-	float valueW = measure_text(tr, "100");        /* widest value */
+	float labelW = Text_measure_width(tr, "INTEGRITY"); /* widest label */
+	float valueW = Text_measure_width(tr, "100");        /* widest value */
 	float valueCol = MARGIN_X + labelW + COL_GAP;  /* value column left edge */
 	float barX = valueCol + valueW + COL_GAP;       /* bar left edge */
 
@@ -233,7 +224,7 @@ void PlayerStats_render(const Screen *screen)
 
 	char intBuf[16];
 	snprintf(intBuf, sizeof(intBuf), "%.0f", integrity);
-	float intValW = measure_text(tr, intBuf);
+	float intValW = Text_measure_width(tr, intBuf);
 	Text_render(tr, shaders, &proj, &ident,
 		intBuf, valueCol + valueW - intValW, iy + textY_off,
 		1.0f, 1.0f, 1.0f, 0.9f);
@@ -245,7 +236,7 @@ void PlayerStats_render(const Screen *screen)
 
 	char fbBuf[16];
 	snprintf(fbBuf, sizeof(fbBuf), "%.0f", feedback);
-	float fbValW = measure_text(tr, fbBuf);
+	float fbValW = Text_measure_width(tr, fbBuf);
 	Text_render(tr, shaders, &proj, &ident,
 		fbBuf, valueCol + valueW - fbValW, fy + textY_off,
 		1.0f, 1.0f, 1.0f, 0.9f);
@@ -335,6 +326,7 @@ PlayerStatsSnapshot PlayerStats_snapshot(void)
 	PlayerStatsSnapshot snap;
 	snap.integrity = integrity;
 	snap.feedback = feedback;
+	snap.shielded = shielded;
 	return snap;
 }
 
@@ -347,6 +339,6 @@ void PlayerStats_restore(PlayerStatsSnapshot snap)
 	dead = false;
 	flashTicksLeft = 0;
 	feedbackFlashTimer = 0;
-	shielded = false;
+	shielded = snap.shielded;
 	shieldBreakGrace = 0;
 }

@@ -116,12 +116,27 @@ static Entity *entityRefs[DEFENDER_COUNT];
 static int highestUsedIndex = 0;
 
 /* Sparks */
-static bool sparkActive = false;
-static bool sparkShielded = false;
-static Position sparkPosition;
-static int sparkTicksLeft = 0;
 #define SPARK_DURATION 80
 #define SPARK_SIZE 12.0
+#define SPARK_POOL_SIZE 8
+static struct {
+	bool active;
+	bool shielded;
+	Position position;
+	int ticksLeft;
+} sparks[SPARK_POOL_SIZE];
+
+static void activate_spark(Position pos, bool shielded) {
+	int slot = 0;
+	for (int i = 0; i < SPARK_POOL_SIZE; i++) {
+		if (!sparks[i].active) { slot = i; break; }
+		if (sparks[i].ticksLeft < sparks[slot].ticksLeft) slot = i;
+	}
+	sparks[slot].active = true;
+	sparks[slot].shielded = shielded;
+	sparks[slot].position = pos;
+	sparks[slot].ticksLeft = SPARK_DURATION;
+}
 
 /* Audio */
 static Mix_Chunk *sampleHeal = 0;
@@ -258,7 +273,8 @@ void Defender_cleanup(void)
 		}
 	}
 	highestUsedIndex = 0;
-	sparkActive = false;
+	for (int i = 0; i < SPARK_POOL_SIZE; i++)
+		sparks[i].active = false;
 
 	Audio_unload_sample(&sampleHeal);
 	Audio_unload_sample(&sampleAegis);
@@ -268,7 +284,7 @@ void Defender_cleanup(void)
 	Audio_unload_sample(&sampleShieldHit);
 }
 
-Collision Defender_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
+Collision Defender_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
 	DefenderState *d = (DefenderState *)state;
 	Collision collision = {false, false};
@@ -287,13 +303,13 @@ Collision Defender_collide(const void *state, const PlaceableComponent *placeabl
 	return collision;
 }
 
-void Defender_resolve(const void *state, const Collision collision)
+void Defender_resolve(void *state, const Collision collision)
 {
 	(void)state;
 	(void)collision;
 }
 
-void Defender_update(const void *state, const PlaceableComponent *placeable, unsigned int ticks)
+void Defender_update(void *state, const PlaceableComponent *placeable, unsigned int ticks)
 {
 	DefenderState *d = (DefenderState *)state;
 	int idx = (int)(d - defenders);
@@ -352,10 +368,7 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 		}
 
 		if (hit) {
-			sparkActive = true;
-			sparkShielded = d->aegisActive;
-			sparkPosition = pl->position;
-			sparkTicksLeft = SPARK_DURATION;
+			activate_spark(pl->position, d->aegisActive);
 
 			if (d->aegisActive) {
 				if (mineHit) {
@@ -505,11 +518,20 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 			d->aiState = DEFENDER_DEAD;
 			d->respawnTimer = 0;
 
-			/* Drop fragment — random mend or aegis */
-			if (d->killedByPlayer &&
-				(!Progression_is_unlocked(SUB_ID_MEND) || !Progression_is_unlocked(SUB_ID_AEGIS))) {
-				FragmentType ftype = (rand() % 2 == 0) ? FRAG_TYPE_MEND : FRAG_TYPE_AEGIS;
-				Fragment_spawn(pl->position, ftype);
+			/* Drop fragment — prioritize locked subroutines */
+			if (d->killedByPlayer) {
+				bool mend_locked = !Progression_is_unlocked(SUB_ID_MEND);
+				bool aegis_locked = !Progression_is_unlocked(SUB_ID_AEGIS);
+				if (mend_locked || aegis_locked) {
+					FragmentType ftype;
+					if (mend_locked && aegis_locked)
+						ftype = (rand() % 2 == 0) ? FRAG_TYPE_MEND : FRAG_TYPE_AEGIS;
+					else if (mend_locked)
+						ftype = FRAG_TYPE_MEND;
+					else
+						ftype = FRAG_TYPE_AEGIS;
+					Fragment_spawn(pl->position, ftype);
+				}
 			}
 		}
 		break;
@@ -534,10 +556,14 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 	}
 
 	/* --- Spark decay (from idx 0 only) --- */
-	if (idx == 0 && sparkActive) {
-		sparkTicksLeft -= ticks;
-		if (sparkTicksLeft <= 0)
-			sparkActive = false;
+	if (idx == 0) {
+		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+			if (sparks[si].active) {
+				sparks[si].ticksLeft -= ticks;
+				if (sparks[si].ticksLeft <= 0)
+					sparks[si].active = false;
+			}
+		}
 	}
 }
 
@@ -565,11 +591,7 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 
 	/* Death flash */
 	if (d->aiState == DEFENDER_DYING) {
-		float fade = 1.0f - (float)d->deathTimer / DEATH_FLASH_MS;
-		ColorFloat flash = {1.0f, 1.0f, 1.0f, fade};
-		Rectangle sparkRect = {-20.0, 20.0, 20.0, -20.0};
-		Render_quad(&placeable->position, 0.0, sparkRect, &flash);
-		Render_quad(&placeable->position, 45.0, sparkRect, &flash);
+		Enemy_render_death_flash(placeable, (float)d->deathTimer, (float)DEATH_FLASH_MS);
 		return;
 	}
 
@@ -613,15 +635,15 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 			2.5f, 0.3f, 0.7f, 1.0f, fade);
 	}
 
-	/* Spark (from idx 0 only) */
-	if (idx == 0 && sparkActive) {
-		float fade = (float)sparkTicksLeft / SPARK_DURATION;
-		ColorFloat sparkColor = sparkShielded
-			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
-			: (ColorFloat){0.5f, 0.8f, 1.0f, fade};
-		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
-		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
-		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
+	/* Sparks (from idx 0 only) */
+	if (idx == 0) {
+		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+			if (sparks[si].active) {
+				Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
+					SPARK_DURATION, SPARK_SIZE, sparks[si].shielded,
+					0.5f, 0.8f, 1.0f);
+			}
+		}
 	}
 }
 
@@ -635,11 +657,7 @@ void Defender_render_bloom_source(void)
 			continue;
 
 		if (d->aiState == DEFENDER_DYING) {
-			float fade = 1.0f - (float)d->deathTimer / DEATH_FLASH_MS;
-			ColorFloat flash = {1.0f, 1.0f, 1.0f, fade};
-			Rectangle sparkRect = {-20.0, 20.0, 20.0, -20.0};
-			Render_quad(&pl->position, 0.0, sparkRect, &flash);
-			Render_quad(&pl->position, 45.0, sparkRect, &flash);
+			Enemy_render_death_flash(pl, (float)d->deathTimer, (float)DEATH_FLASH_MS);
 			continue;
 		}
 
@@ -678,14 +696,12 @@ void Defender_render_bloom_source(void)
 	}
 
 	/* Spark bloom */
-	if (sparkActive) {
-		float fade = (float)sparkTicksLeft / SPARK_DURATION;
-		ColorFloat sparkColor = sparkShielded
-			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
-			: (ColorFloat){0.5f, 0.8f, 1.0f, fade};
-		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
-		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
-		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
+	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+		if (sparks[si].active) {
+			Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
+				SPARK_DURATION, SPARK_SIZE, sparks[si].shielded,
+				0.5f, 0.8f, 1.0f);
+		}
 	}
 }
 
@@ -721,7 +737,8 @@ void Defender_reset_all(void)
 		d->prevPosition = d->spawnPoint;
 		pick_wander_target(d);
 	}
-	sparkActive = false;
+	for (int i = 0; i < SPARK_POOL_SIZE; i++)
+		sparks[i].active = false;
 }
 
 bool Defender_is_protecting(Position pos)

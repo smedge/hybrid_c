@@ -124,7 +124,7 @@ Mat4 Mat4_inverse(const Mat4 *m)
 	float det = s[0]*inv[0] + s[1]*inv[4] + s[2]*inv[8] + s[3]*inv[12];
 
 	Mat4 r;
-	if (det == 0.0f) {
+	if (fabsf(det) < 1e-6f) {
 		return Mat4_identity();
 	}
 

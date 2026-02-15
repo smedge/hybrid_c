@@ -76,6 +76,10 @@ void Ship_initialize()
 	entity.collidable = &collidable;
 
 	Entity *liveEntity = Entity_add_entity(entity);
+	if (!liveEntity) {
+		printf("WARNING: Ship could not be added to entity pool\n");
+		return;
+	}
 
 	shipState.destroyed = true;
 	shipState.ticksDestroyed = 0;
@@ -116,7 +120,7 @@ void Ship_cleanup()
 	Audio_unload_sample(&sample03);
 }
 
-Collision Ship_collide(const void *state, const PlaceableComponent *placeable, const Rectangle boundingBox) 
+Collision Ship_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
 	Collision collision = {false, true};
 
@@ -131,7 +135,7 @@ Collision Ship_collide(const void *state, const PlaceableComponent *placeable, c
 	return collision;
 }
 
-void Ship_resolve(const void *state, const Collision collision)
+void Ship_resolve(void *state, const Collision collision)
 {
 	if (godMode)
 		return;

@@ -13,20 +13,9 @@
 #define RADAR_SIZE 200.0f
 #define RADAR_RANGE 15000.0f
 
-static float measure_text(TextRenderer *tr, const char *text)
-{
-	float w = 0.0f;
-	for (int i = 0; text[i]; i++) {
-		int ch = (unsigned char)text[i];
-		if (ch >= 32 && ch <= 127)
-			w += tr->char_data[ch - 32][6];
-	}
-	return w;
-}
-
 static void render_radar(const Screen *screen);
 
-void Hud_initialize()
+void Hud_initialize(void)
 {
 }
 
@@ -84,7 +73,7 @@ static void render_radar(const Screen *screen)
 			Mat4 ident = Mat4_identity();
 
 			float right_edge = rx + RADAR_SIZE;
-			float tw = measure_text(tr, z->name);
+			float tw = Text_measure_width(tr, z->name);
 			float tx = right_edge - tw;
 			float ty = ry - 4.0f;
 

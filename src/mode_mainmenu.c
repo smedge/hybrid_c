@@ -35,17 +35,6 @@ static void (*quit_callback)();
 static void (*gameplay_mode_callback)();
 static void (*load_game_callback)();
 
-static float measure_text(TextRenderer *tr, const char *text)
-{
-	float w = 0.0f;
-	for (int i = 0; text[i]; i++) {
-		int ch = (unsigned char)text[i];
-		if (ch >= 32 && ch <= 127)
-			w += tr->char_data[ch - 32][6];
-	}
-	return w;
-}
-
 /* Called when New button is clicked */
 static void new_game_clicked(void)
 {
@@ -191,7 +180,7 @@ static void render_dialog(const Screen *screen)
 	/* WARNING! (slightly larger via scaled projection) */
 	float scale = 1.4f;
 	const char *warn = "WARNING!";
-	float ww = measure_text(tr, warn) * scale;
+	float ww = Text_measure_width(tr, warn) * scale;
 	Mat4 s = Mat4_scale(scale, scale, 1.0f);
 	Mat4 scaled_proj = Mat4_multiply(&proj, &s);
 	Text_render(tr, shaders, &scaled_proj, &ident,
@@ -202,7 +191,7 @@ static void render_dialog(const Screen *screen)
 
 	/* Message text */
 	const char *msg = "This will erase previously saved data.";
-	float tw = measure_text(tr, msg);
+	float tw = Text_measure_width(tr, msg);
 	Text_render(tr, shaders, &proj, &ident,
 		msg,
 		center_x - tw * 0.5f,

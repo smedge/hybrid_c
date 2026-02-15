@@ -3,6 +3,7 @@
 #include "skillbar.h"
 #include "progression.h"
 #include "player_stats.h"
+#include "ship.h"
 #include "audio.h"
 
 #define HEAL_AMOUNT 50.0
@@ -27,10 +28,13 @@ void Sub_Mend_initialize(void)
 
 void Sub_Mend_cleanup(void)
 {
+	Audio_unload_sample(&sampleHeal);
 }
 
 void Sub_Mend_update(const Input *input, unsigned int ticks)
 {
+	if (Ship_is_destroyed()) return;
+
 	switch (state) {
 	case MEND_READY:
 		if (input->keyG && Skillbar_is_active(SUB_ID_MEND)) {

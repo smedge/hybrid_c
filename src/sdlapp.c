@@ -58,7 +58,7 @@ static void initialize(void)
 	Graphics_initialize();
 	Audio_initialize();
 
-	srand(time(NULL));
+	srand((unsigned int)time(NULL) ^ (unsigned int)SDL_GetPerformanceCounter());
 
 	/* Load checkpoint from disk at startup */
 	Savepoint_load_from_disk();

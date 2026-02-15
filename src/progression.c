@@ -38,18 +38,6 @@ static unsigned int notifyTimer = 0;
 static char notifyText[64];
 
 
-static float text_width(TextRenderer *tr, const char *text)
-{
-	float w = 0.0f;
-	for (int i = 0; text[i]; i++) {
-		int ch = (unsigned char)text[i];
-		if (ch < 32 || ch > 127)
-			continue;
-		w += tr->char_data[ch - 32][6];
-	}
-	return w;
-}
-
 void Progression_initialize(void)
 {
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
@@ -76,18 +64,22 @@ void Progression_update(unsigned int ticks)
 		int count = Fragment_get_count(entries[i].frag_type);
 
 		/* First fragment — discovery notification */
+		/* Skip discovery notification if unlocking on same frame */
 		if (!entries[i].discovered && count >= 1) {
 			entries[i].discovered = true;
-			notifyElite = false;
 
-			const char *type_names[] = {
-				"Projectile", "Deployable", "Movement", "Shield", "Healing"
-			};
-			SubroutineType type = Skillbar_get_sub_type(i);
-			snprintf(notifyText, sizeof(notifyText),
-				">> New %s skill discovered <<", type_names[type]);
-			notifyActive = true;
-			notifyTimer = 0;
+			if (count < entries[i].threshold) {
+				notifyElite = false;
+
+				const char *type_names[] = {
+					"Projectile", "Deployable", "Movement", "Shield", "Healing"
+				};
+				SubroutineType type = Skillbar_get_sub_type(i);
+				snprintf(notifyText, sizeof(notifyText),
+					">> New %s skill discovered <<", type_names[type]);
+				notifyActive = true;
+				notifyTimer = 0;
+			}
 		}
 
 		if (count >= entries[i].threshold) {
@@ -128,9 +120,9 @@ void Progression_render(const Screen *screen)
 		if (remaining < NOTIFY_FADE_MS)
 			alpha = (float)remaining / NOTIFY_FADE_MS;
 
-		float tw = text_width(tr, notifyText);
+		float tw = Text_measure_width(tr, notifyText);
 		if (notifyElite)
-			tw += text_width(tr, "ELITE ") + text_width(tr, "UNLOCKED <<");
+			tw += Text_measure_width(tr, "ELITE ") + Text_measure_width(tr, "UNLOCKED <<");
 		float nx = (float)screen->width * 0.5f - tw * 0.5f;
 		float ny = (float)screen->height * 0.3f;
 
@@ -139,11 +131,11 @@ void Progression_render(const Screen *screen)
 			1.0f, 0.0f, 1.0f, alpha);
 
 		if (notifyElite) {
-			float cx = nx + text_width(tr, notifyText);
+			float cx = nx + Text_measure_width(tr, notifyText);
 			Text_render(tr, shaders, &proj, &ident,
 				"ELITE ", cx, ny,
 				1.0f, 0.84f, 0.0f, alpha);
-			cx += text_width(tr, "ELITE ");
+			cx += Text_measure_width(tr, "ELITE ");
 			Text_render(tr, shaders, &proj, &ident,
 				"UNLOCKED <<", cx, ny,
 				1.0f, 0.0f, 1.0f, alpha);
@@ -170,13 +162,7 @@ bool Progression_is_discovered(SubroutineId id)
 {
 	if (id < 0 || id >= SUB_ID_COUNT)
 		return false;
-	if (entries[id].unlocked)
-		return true;
-	if (entries[id].threshold == 0)
-		return true;
-	if (Fragment_get_count(entries[id].frag_type) >= 1)
-		return true;
-	return false;
+	return entries[id].discovered || entries[id].unlocked;
 }
 
 int Progression_get_current(SubroutineId id)

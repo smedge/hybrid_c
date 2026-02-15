@@ -1,3 +1,4 @@
+/* NOTE: This is a variant of sub_pea with faster fire rate. Keep in sync with sub_pea.c */
 #include "sub_mgun.h"
 
 #include "graphics.h"
@@ -11,6 +12,9 @@
 #include "player_stats.h"
 
 #include <math.h>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 #include <SDL2/SDL_mixer.h>
 
 #define MAX_PROJECTILES 8
@@ -81,8 +85,14 @@ void Sub_Mgun_update(const Input *userInput, const unsigned int ticks, Placeable
 				break;
 			}
 		}
-		if (slot < 0)
-			slot = 0; /* reuse oldest if all full */
+		if (slot < 0) {
+			int oldest = 0;
+			for (int i = 1; i < MAX_PROJECTILES; i++) {
+				if (projectiles[i].ticksLived > projectiles[oldest].ticksLived)
+					oldest = i;
+			}
+			slot = oldest;
+		}
 
 		Projectile *p = &projectiles[slot];
 		p->active = true;
@@ -177,34 +187,7 @@ void Sub_Mgun_render()
 
 void Sub_Mgun_render_bloom_source(void)
 {
-	View view = View_get_view();
-
-	const double UNSCALED_POINT_SIZE = 8.0;
-	const double MIN_POINT_SIZE = 2.0;
-
-	for (int i = 0; i < MAX_PROJECTILES; i++) {
-		if (projectiles[i].active) {
-			Render_thick_line(
-				(float)projectiles[i].prevPosition.x,
-				(float)projectiles[i].prevPosition.y,
-				(float)projectiles[i].position.x,
-				(float)projectiles[i].position.y,
-				3.0f, 1.0f, 1.0f, 1.0f, 0.6f);
-
-			double size = UNSCALED_POINT_SIZE * view.scale;
-			if (size < MIN_POINT_SIZE)
-				size = MIN_POINT_SIZE;
-			Render_point(&projectiles[i].position, size, &color);
-		}
-	}
-
-	if (sparkActive) {
-		float fade = (float)sparkTicksLeft / SPARK_DURATION;
-		ColorFloat sparkColor = {1.0f, 1.0f, 1.0f, fade};
-		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
-		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
-		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
-	}
+	Sub_Mgun_render();
 }
 
 bool Sub_Mgun_check_hit(Rectangle target)
@@ -251,5 +234,5 @@ float Sub_Mgun_get_cooldown_fraction(void)
 
 static double get_radians(double degrees)
 {
-	return degrees * 3.14159265358979323846 / 180.0;
+	return degrees * M_PI / 180.0;
 }

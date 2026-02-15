@@ -1,4 +1,6 @@
 #include "batch.h"
+#include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 static void init_batch(PrimitiveBatch *b)
@@ -34,13 +36,10 @@ static void cleanup_batch(PrimitiveBatch *b)
 	glDeleteVertexArrays(1, &b->vao);
 }
 
-static void flush_batch(PrimitiveBatch *b, GLenum mode,
-	const ShaderProgram *sp, const Mat4 *projection, const Mat4 *view)
+static void flush_batch_draw(PrimitiveBatch *b, GLenum mode)
 {
 	if (b->count == 0)
 		return;
-
-	Shader_set_matrices(sp, projection, view);
 
 	glBindVertexArray(b->vao);
 	glBindBuffer(GL_ARRAY_BUFFER, b->vbo);
@@ -73,8 +72,14 @@ void Batch_push_triangle_vertices(BatchRenderer *batch,
 	float r, float g, float b, float a)
 {
 	PrimitiveBatch *pb = &batch->triangles;
-	if (pb->count + 3 > BATCH_MAX_VERTICES)
+	if (pb->count + 3 > BATCH_MAX_VERTICES) {
+		static bool warned = false;
+		if (!warned) {
+			fprintf(stderr, "WARNING: batch vertex overflow, geometry dropped\n");
+			warned = true;
+		}
 		return;
+	}
 
 	ColorVertex *v = &pb->vertices[pb->count];
 	v[0] = (ColorVertex){x0, y0, r, g, b, a, 1.0f};
@@ -88,8 +93,14 @@ void Batch_push_line_vertices(BatchRenderer *batch,
 	float r, float g, float b, float a)
 {
 	PrimitiveBatch *pb = &batch->lines;
-	if (pb->count + 2 > BATCH_MAX_VERTICES)
+	if (pb->count + 2 > BATCH_MAX_VERTICES) {
+		static bool warned = false;
+		if (!warned) {
+			fprintf(stderr, "WARNING: batch vertex overflow, geometry dropped\n");
+			warned = true;
+		}
 		return;
+	}
 
 	ColorVertex *v = &pb->vertices[pb->count];
 	v[0] = (ColorVertex){x0, y0, r, g, b, a, 1.0f};
@@ -102,8 +113,14 @@ void Batch_push_point_vertex(BatchRenderer *batch,
 	float r, float g, float b, float a)
 {
 	PrimitiveBatch *pb = &batch->points;
-	if (pb->count + 1 > BATCH_MAX_VERTICES)
+	if (pb->count + 1 > BATCH_MAX_VERTICES) {
+		static bool warned = false;
+		if (!warned) {
+			fprintf(stderr, "WARNING: batch vertex overflow, geometry dropped\n");
+			warned = true;
+		}
 		return;
+	}
 
 	pb->vertices[pb->count] = (ColorVertex){x, y, r, g, b, a, size};
 	pb->count++;
@@ -112,12 +129,10 @@ void Batch_push_point_vertex(BatchRenderer *batch,
 void Batch_flush(BatchRenderer *batch, const Shaders *shaders,
 	const Mat4 *projection, const Mat4 *view)
 {
-	flush_batch(&batch->lines, GL_LINES,
-		&shaders->color_shader, projection, view);
-	flush_batch(&batch->triangles, GL_TRIANGLES,
-		&shaders->color_shader, projection, view);
-	flush_batch(&batch->points, GL_POINTS,
-		&shaders->color_shader, projection, view);
+	Shader_set_matrices(&shaders->color_shader, projection, view);
+	flush_batch_draw(&batch->lines, GL_LINES);
+	flush_batch_draw(&batch->triangles, GL_TRIANGLES);
+	flush_batch_draw(&batch->points, GL_POINTS);
 }
 
 static void flush_batch_keep(PrimitiveBatch *b, GLenum mode,

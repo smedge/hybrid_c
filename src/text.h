@@ -21,5 +21,6 @@ void Text_render(TextRenderer *tr, const Shaders *shaders,
 	const Mat4 *projection, const Mat4 *view,
 	const char *text, float x, float y,
 	float r, float g, float b, float a);
+float Text_measure_width(const TextRenderer *tr, const char *text);
 
 #endif

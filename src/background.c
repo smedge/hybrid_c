@@ -34,6 +34,7 @@ typedef struct {
 typedef struct {
 	float accum_x, accum_y;
 	float dir_x, dir_y;
+	float start_x, start_y;
 	float target_x, target_y;
 	float turn_t;
 	float timer;
@@ -103,6 +104,8 @@ static void pick_drift_direction(LayerDrift *d)
 	int idx = bg_xorshift(&d->rng) % 8;
 	d->target_x = dirs[idx][0];
 	d->target_y = dirs[idx][1];
+	d->start_x = d->dir_x;
+	d->start_y = d->dir_y;
 	d->turn_t = 0.0f;
 	d->next_change = DRIFT_CHANGE_MIN +
 		(float)(bg_xorshift(&d->rng) % 10000) / 10000.0f *
@@ -194,8 +197,8 @@ void Background_update(unsigned int ticks)
 			d->turn_t += dt / DRIFT_TURN_TIME;
 			if (d->turn_t > 1.0f) d->turn_t = 1.0f;
 			float t = d->turn_t * d->turn_t * (3.0f - 2.0f * d->turn_t);
-			d->dir_x += t * (d->target_x - d->dir_x);
-			d->dir_y += t * (d->target_y - d->dir_y);
+			d->dir_x = d->start_x + t * (d->target_x - d->start_x);
+			d->dir_y = d->start_y + t * (d->target_y - d->start_y);
 		}
 
 		/* Accumulate positional drift */

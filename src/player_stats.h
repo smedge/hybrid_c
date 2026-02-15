@@ -21,6 +21,7 @@ void PlayerStats_reset(void);
 typedef struct {
 	double integrity;
 	double feedback;
+	bool shielded;
 } PlayerStatsSnapshot;
 
 PlayerStatsSnapshot PlayerStats_snapshot(void);

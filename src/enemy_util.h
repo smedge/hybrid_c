@@ -13,4 +13,7 @@ void Enemy_move_away_from(PlaceableComponent *pl, Position threat, double speed,
 void Enemy_pick_wander_target(Position spawnPoint, double radius, int baseInterval,
 	Position *out_target, int *out_timer);
 
+void Enemy_render_death_flash(const PlaceableComponent *pl, float deathTimer, float deathDuration);
+void Enemy_render_spark(Position sparkPosition, int sparkTicksLeft, int sparkDuration, float sparkSize, bool sparkShielded, float normalR, float normalG, float normalB);
+
 #endif

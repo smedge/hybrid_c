@@ -8,6 +8,9 @@
 #include "audio.h"
 
 #include <math.h>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 #include <SDL2/SDL_mixer.h>
 
 #define SHIELD_DURATION_MS 10000
@@ -54,6 +57,8 @@ void Sub_Aegis_cleanup(void)
 
 void Sub_Aegis_update(const Input *input, unsigned int ticks)
 {
+	if (Ship_is_destroyed()) return;
+
 	switch (state) {
 	case AEGIS_READY:
 		if (input->keyF && Skillbar_is_active(SUB_ID_AEGIS)) {
@@ -105,8 +110,8 @@ void Sub_Aegis_render(void)
 	float r = RING_RADIUS * (0.95f + 0.05f * sinf(pulseTimer * PULSE_SPEED * 2.0f));
 
 	for (int i = 0; i < RING_SEGMENTS; i++) {
-		float a0 = i * (2.0f * 3.14159f / RING_SEGMENTS);
-		float a1 = (i + 1) * (2.0f * 3.14159f / RING_SEGMENTS);
+		float a0 = i * (2.0f * (float)M_PI / RING_SEGMENTS);
+		float a1 = (i + 1) * (2.0f * (float)M_PI / RING_SEGMENTS);
 		float x0 = (float)shipPos.x + cosf(a0) * r;
 		float y0 = (float)shipPos.y + sinf(a0) * r;
 		float x1 = (float)shipPos.x + cosf(a1) * r;
@@ -126,8 +131,8 @@ void Sub_Aegis_render_bloom_source(void)
 	float r = RING_RADIUS;
 
 	for (int i = 0; i < RING_SEGMENTS; i++) {
-		float a0 = i * (2.0f * 3.14159f / RING_SEGMENTS);
-		float a1 = (i + 1) * (2.0f * 3.14159f / RING_SEGMENTS);
+		float a0 = i * (2.0f * (float)M_PI / RING_SEGMENTS);
+		float a1 = (i + 1) * (2.0f * (float)M_PI / RING_SEGMENTS);
 		float x0 = (float)shipPos.x + cosf(a0) * r;
 		float y0 = (float)shipPos.y + sinf(a0) * r;
 		float x1 = (float)shipPos.x + cosf(a1) * r;

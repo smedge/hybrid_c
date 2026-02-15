@@ -1,7 +1,6 @@
 #include "audio.h"
 
 static Mix_Music *music = NULL;
-static int timer_ticks;
 
 // TODO audio files/resonrces SHOUD be managed here, not in the entities
 
@@ -13,11 +12,6 @@ void Audio_initialize(void)
 	}
 }
 
-void Audio_update(const int ticks)
-{
-	timer_ticks = ticks;
-}
-
 void Audio_cleanup(void)
 {
 	Mix_Quit();
@@ -27,6 +21,7 @@ void Audio_loop_music(const char *path)
 {
 	if (music) Mix_FreeMusic(music);
 	music = Mix_LoadMUS(path);
+	if (!music) return;
 	Mix_PlayMusic(music, -1);
 }
 
@@ -34,6 +29,7 @@ void Audio_play_music(const char *path)
 {
 	if (music) Mix_FreeMusic(music);
 	music = Mix_LoadMUS(path);
+	if (!music) return;
 	Mix_PlayMusic(music, 0);
 }
 

@@ -14,7 +14,7 @@ void Render_point(const Position *position, const float size,
 		color->red, color->green, color->blue, color->alpha);
 }
 
-void Render_line()
+void Render_line(void)
 {
 }
 
@@ -67,7 +67,7 @@ void Render_quad(const Position *position, const double rotation,
 		color->red, color->green, color->blue, color->alpha);
 }
 
-void Render_convex_poly()
+void Render_convex_poly(void)
 {
 }
 
@@ -101,15 +101,19 @@ void Render_grid_lines(const double gridSize, const double bigGridSize,
 	(void)minBigLineSize;
 	(void)minLineSize;
 
+	int gridIncrement = (int)gridSize;
+	if (gridIncrement == 0)
+		return;
+
 	BatchRenderer *batch = Graphics_get_batch();
 
 	/* Vertical lines along x */
 	for (int i = get_nearest_grid_start_point(
 			(int)(view.position.x - HALF_SCREEN_WIDTH), gridSize);
 			i < HALF_SCREEN_WIDTH + view.position.x;
-			i += (int)gridSize) {
+			i += gridIncrement) {
 		float alpha;
-		if (fmod(i, gridSize * bigGridSize) == 0.0)
+		if (i % (int)(gridSize * bigGridSize) == 0)
 			alpha = 0.3f;
 		else
 			alpha = 0.15f;
@@ -124,9 +128,9 @@ void Render_grid_lines(const double gridSize, const double bigGridSize,
 	for (int i = get_nearest_grid_start_point(
 			(int)(view.position.y - HALF_SCREEN_HEIGHT), gridSize);
 			i < HALF_SCREEN_HEIGHT + view.position.y;
-			i += (int)gridSize) {
+			i += gridIncrement) {
 		float alpha;
-		if (fmod(i, gridSize * bigGridSize) == 0.0)
+		if (i % (int)(gridSize * bigGridSize) == 0)
 			alpha = 0.3f;
 		else
 			alpha = 0.15f;

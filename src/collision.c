@@ -1,13 +1,20 @@
 #include "collision.h"
 
-bool Collision_aabb_test(const Rectangle rect1, 
-						 const Rectangle rect2) 
+bool Collision_aabb_test(const Rectangle rect1,
+						 const Rectangle rect2)
 {
-	if (rect1.bX < rect2.aX || rect1.aX > rect2.bX ||
-		rect1.bY > rect2.aY || rect1.aY < rect2.bY)
+	double minX1 = rect1.aX < rect1.bX ? rect1.aX : rect1.bX;
+	double maxX1 = rect1.aX > rect1.bX ? rect1.aX : rect1.bX;
+	double minX2 = rect2.aX < rect2.bX ? rect2.aX : rect2.bX;
+	double maxX2 = rect2.aX > rect2.bX ? rect2.aX : rect2.bX;
+	double minY1 = rect1.aY < rect1.bY ? rect1.aY : rect1.bY;
+	double maxY1 = rect1.aY > rect1.bY ? rect1.aY : rect1.bY;
+	double minY2 = rect2.aY < rect2.bY ? rect2.aY : rect2.bY;
+	double maxY2 = rect2.aY > rect2.bY ? rect2.aY : rect2.bY;
+
+	if (maxX1 < minX2 || minX1 > maxX2 || maxY1 < minY2 || minY1 > maxY2)
 		return false;
-    else 
-    	return true;
+	return true;
 }
 
 bool Collision_point_test(const double x,
