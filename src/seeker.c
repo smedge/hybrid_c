@@ -227,12 +227,15 @@ void Seeker_initialize(Position position)
 
 	highestUsedIndex++;
 
-	Audio_load_sample(&sampleWindup, "resources/sounds/enemy_aggro.wav");
-	Audio_load_sample(&sampleDash, "resources/sounds/ricochet.wav");
-	Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
-	Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
-	Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-	Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
+	/* Load audio once, not per-entity */
+	if (!sampleWindup) {
+		Audio_load_sample(&sampleWindup, "resources/sounds/enemy_aggro.wav");
+		Audio_load_sample(&sampleDash, "resources/sounds/ricochet.wav");
+		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
+		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
+		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
+		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
+	}
 }
 
 void Seeker_cleanup(void)
@@ -744,10 +747,16 @@ void Seeker_reset_all(void)
 		s->hp = SEEKER_HP;
 		s->aiState = SEEKER_IDLE;
 		s->killedByPlayer = false;
-		s->deathTimer = 0;
-		s->respawnTimer = 0;
+		s->orbitTimer = 0;
+		s->dashDirX = 0.0;
+		s->dashDirY = 0.0;
+		s->dashTimer = 0;
+		s->windupTimer = 0;
+		s->recoverTimer = 0;
 		s->recoverVelX = 0.0;
 		s->recoverVelY = 0.0;
+		s->deathTimer = 0;
+		s->respawnTimer = 0;
 		placeables[i].position = s->spawnPoint;
 		pick_wander_target(s);
 	}

@@ -117,6 +117,7 @@ static int highestUsedIndex = 0;
 
 /* Sparks */
 static bool sparkActive = false;
+static bool sparkShielded = false;
 static Position sparkPosition;
 static int sparkTicksLeft = 0;
 #define SPARK_DURATION 80
@@ -305,12 +306,15 @@ void Defender_initialize(Position position)
 
 	highestUsedIndex++;
 
-	Audio_load_sample(&sampleHeal, "resources/sounds/refill_start.wav");
-	Audio_load_sample(&sampleAegis, "resources/sounds/statue_rise.wav");
-	Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
-	Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
-	Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-	Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
+	/* Load audio once, not per-entity */
+	if (!sampleHeal) {
+		Audio_load_sample(&sampleHeal, "resources/sounds/refill_start.wav");
+		Audio_load_sample(&sampleAegis, "resources/sounds/statue_rise.wav");
+		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
+		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
+		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
+		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
+	}
 }
 
 void Defender_cleanup(void)
@@ -411,6 +415,7 @@ void Defender_update(const void *state, const PlaceableComponent *placeable, uns
 
 		if (hit) {
 			sparkActive = true;
+			sparkShielded = d->aegisActive;
 			sparkPosition = pl->position;
 			sparkTicksLeft = SPARK_DURATION;
 
@@ -673,7 +678,9 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 	/* Spark (from idx 0 only) */
 	if (idx == 0 && sparkActive) {
 		float fade = (float)sparkTicksLeft / SPARK_DURATION;
-		ColorFloat sparkColor = {0.5f, 0.8f, 1.0f, fade};
+		ColorFloat sparkColor = sparkShielded
+			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
+			: (ColorFloat){0.5f, 0.8f, 1.0f, fade};
 		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
 		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
 		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
@@ -735,7 +742,9 @@ void Defender_render_bloom_source(void)
 	/* Spark bloom */
 	if (sparkActive) {
 		float fade = (float)sparkTicksLeft / SPARK_DURATION;
-		ColorFloat sparkColor = {0.5f, 0.8f, 1.0f, fade};
+		ColorFloat sparkColor = sparkShielded
+			? (ColorFloat){0.6f, 0.9f, 1.0f, fade}
+			: (ColorFloat){0.5f, 0.8f, 1.0f, fade};
 		Rectangle sparkRect = {-SPARK_SIZE, SPARK_SIZE, SPARK_SIZE, -SPARK_SIZE};
 		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
 		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);

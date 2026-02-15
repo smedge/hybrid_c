@@ -241,11 +241,14 @@ void Hunter_initialize(Position position)
 
 	highestUsedIndex++;
 
-	Audio_load_sample(&sampleShoot, "resources/sounds/long_beam.wav");
-	Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
-	Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
-	Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-	Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
+	/* Load audio once, not per-entity */
+	if (!sampleShoot) {
+		Audio_load_sample(&sampleShoot, "resources/sounds/long_beam.wav");
+		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
+		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
+		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
+		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
+	}
 }
 
 void Hunter_cleanup(void)
