@@ -637,27 +637,35 @@ static void render_cell(int x, int y, float outlineThickness)
 
 	/* Concave corner fills — patch t×t gaps at inner L-corners where
 	   both cardinal neighbors match (suppressing their edge) but the
-	   diagonal cell is empty */
+	   diagonal cell is empty or (for non-circuit cells) a different type.
+	   Circuit cells skip borders against solids, so they only need fills
+	   when the diagonal is truly empty. */
 	MapCell *me = map[x][y];
+
+#define CORNER_GAP(diag) \
+	((diag)->empty || (!mapCell.circuitPattern && !CELLS_MATCH((diag), me)))
+
 	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
 		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
-		map[xp][yp]->empty)
+		CORNER_GAP(map[xp][yp]))
 		Render_quad_absolute(bx - t, by - t, bx, by, or_, og, ob, oa);
 
 	if (!nPtr->empty && CELLS_MATCH(nPtr, me) &&
 		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
-		map[xm][yp]->empty)
+		CORNER_GAP(map[xm][yp]))
 		Render_quad_absolute(ax, by - t, ax + t, by, or_, og, ob, oa);
 
 	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
 		!ePtr->empty && CELLS_MATCH(ePtr, me) &&
-		map[xp][ym]->empty)
+		CORNER_GAP(map[xp][ym]))
 		Render_quad_absolute(bx - t, ay, bx, ay + t, or_, og, ob, oa);
 
 	if (!sPtr->empty && CELLS_MATCH(sPtr, me) &&
 		!wPtr->empty && CELLS_MATCH(wPtr, me) &&
-		map[xm][ym]->empty)
+		CORNER_GAP(map[xm][ym]))
 		Render_quad_absolute(ax, ay, ax + t, ay + t, or_, og, ob, oa);
+
+#undef CORNER_GAP
 
 #undef EDGE_DRAW
 #undef CELLS_MATCH
