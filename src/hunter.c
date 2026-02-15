@@ -102,6 +102,7 @@ static const ColorFloat colorProj     = {1.0f, 0.35f, 0.05f, 1.0f};
 /* State arrays */
 static HunterState hunters[HUNTER_COUNT];
 static PlaceableComponent placeables[HUNTER_COUNT];
+static Entity *entityRefs[HUNTER_COUNT];
 static int highestUsedIndex = 0;
 
 /* Projectile pool */
@@ -194,7 +195,7 @@ void Hunter_initialize(Position position)
 	entity.collidable = &collidable;
 	entity.aiUpdatable = &updatable;
 
-	Entity_add_entity(entity);
+	entityRefs[idx] = Entity_add_entity(entity);
 
 	highestUsedIndex++;
 
@@ -210,6 +211,12 @@ void Hunter_initialize(Position position)
 
 void Hunter_cleanup(void)
 {
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (entityRefs[i]) {
+			entityRefs[i]->empty = true;
+			entityRefs[i] = NULL;
+		}
+	}
 	highestUsedIndex = 0;
 
 	for (int i = 0; i < PROJ_COUNT; i++)

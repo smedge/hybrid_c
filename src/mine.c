@@ -46,6 +46,7 @@ typedef struct {
 
 static MineState mines[MINE_COUNT];
 static PlaceableComponent placeables[MINE_COUNT];
+static Entity *entityRefs[MINE_COUNT];
 static int highestUsedIndex = 0;
 
 static Mix_Chunk *sample01 = 0;
@@ -78,8 +79,8 @@ void Mine_initialize(Position position)
 	entity.collidable = &collidable;
 	entity.aiUpdatable = &updatable;
 	
-	Entity_add_entity(entity);
-	
+	entityRefs[highestUsedIndex] = Entity_add_entity(entity);
+
 	highestUsedIndex++;
 
 	/* Load audio and colors once, not per-entity */
@@ -97,6 +98,12 @@ void Mine_initialize(Position position)
 
 void Mine_cleanup()
 {
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (entityRefs[i]) {
+			entityRefs[i]->empty = true;
+			entityRefs[i] = NULL;
+		}
+	}
 	highestUsedIndex = 0;
 
 	Audio_unload_sample(&sample01);

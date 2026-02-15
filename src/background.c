@@ -2,6 +2,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include "render.h"
 #include "view.h"
 #include "graphics.h"
@@ -52,13 +53,30 @@ typedef struct {
 static Layer layers[NUM_LAYERS];
 static float bg_time = 0.0f;
 
-/* Purple hue palette */
-static const float palette[][3] = {
+/* Default purple hue palette */
+static const float default_palette[4][3] = {
 	{0.35f, 0.10f, 0.55f},  /* violet */
 	{0.20f, 0.10f, 0.50f},  /* blue-purple */
 	{0.45f, 0.08f, 0.40f},  /* red-purple */
 	{0.15f, 0.05f, 0.35f},  /* dark violet */
 };
+
+static float palette[4][3] = {
+	{0.35f, 0.10f, 0.55f},
+	{0.20f, 0.10f, 0.50f},
+	{0.45f, 0.08f, 0.40f},
+	{0.15f, 0.05f, 0.35f},
+};
+
+void Background_set_palette(const float colors[4][3])
+{
+	memcpy(palette, colors, sizeof(palette));
+}
+
+void Background_reset_palette(void)
+{
+	memcpy(palette, default_palette, sizeof(palette));
+}
 
 static unsigned int bg_xorshift(unsigned int *state)
 {

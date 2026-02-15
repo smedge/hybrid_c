@@ -49,6 +49,7 @@ typedef struct {
 
 static SavepointState savepoints[SAVEPOINT_COUNT];
 static PlaceableComponent placeables[SAVEPOINT_COUNT];
+static Entity *entityRefs[SAVEPOINT_COUNT];
 static int savepointCount = 0;
 
 static RenderableComponent renderable = {Savepoint_render};
@@ -212,7 +213,7 @@ void Savepoint_initialize(Position position, const char *id)
 	entity.placeable = &placeables[savepointCount];
 	entity.renderable = &renderable;
 
-	Entity_add_entity(entity);
+	entityRefs[savepointCount] = Entity_add_entity(entity);
 
 	savepointCount++;
 }
@@ -224,6 +225,10 @@ void Savepoint_cleanup(void)
 		if (savepoints[i].charge_sound_playing) {
 			Mix_HaltChannel(SAVEPOINT_CHARGE_CHANNEL);
 			savepoints[i].charge_sound_playing = false;
+		}
+		if (entityRefs[i]) {
+			entityRefs[i]->empty = true;
+			entityRefs[i] = NULL;
 		}
 	}
 	savepointCount = 0;
@@ -429,7 +434,8 @@ void Savepoint_render_god_labels(void)
 {
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
-	Mat4 proj = Graphics_get_world_projection();
+	Mat4 ui_proj = Graphics_get_ui_projection();
+	Mat4 ident = Mat4_identity();
 	Screen screen = Graphics_get_screen();
 	Mat4 view = View_get_transform(&screen);
 
@@ -437,13 +443,15 @@ void Savepoint_render_god_labels(void)
 		SavepointState *sp = &savepoints[i];
 		if (!sp->active) continue;
 
-		float wx = (float)sp->position.x;
-		float wy = (float)sp->position.y;
+		/* World to screen coordinates */
+		float sx, sy;
+		Mat4_transform_point(&view, (float)sp->position.x, (float)sp->position.y, &sx, &sy);
+		sy = (float)screen.height - sy;
 
 		char buf[128];
 		snprintf(buf, sizeof(buf), "[SAVE:%s]", sp->id);
-		Text_render(tr, shaders, &proj, &view,
-			buf, wx - 40.0f, wy + 55.0f,
+		Text_render(tr, shaders, &ui_proj, &ident,
+			buf, sx - 40.0f, sy - 55.0f,
 			0.0f, 1.0f, 0.5f, 0.9f);
 	}
 }

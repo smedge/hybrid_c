@@ -112,6 +112,7 @@ static const ColorFloat colorAegis  = {0.6f, 0.9f, 1.0f, 0.8f};
 /* State arrays */
 static DefenderState defenders[DEFENDER_COUNT];
 static PlaceableComponent placeables[DEFENDER_COUNT];
+static Entity *entityRefs[DEFENDER_COUNT];
 static int highestUsedIndex = 0;
 
 /* Sparks */
@@ -233,7 +234,7 @@ void Defender_initialize(Position position)
 	entity.collidable = &collidable;
 	entity.aiUpdatable = &updatable;
 
-	Entity_add_entity(entity);
+	entityRefs[idx] = Entity_add_entity(entity);
 
 	highestUsedIndex++;
 
@@ -250,6 +251,12 @@ void Defender_initialize(Position position)
 
 void Defender_cleanup(void)
 {
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (entityRefs[i]) {
+			entityRefs[i]->empty = true;
+			entityRefs[i] = NULL;
+		}
+	}
 	highestUsedIndex = 0;
 	sparkActive = false;
 

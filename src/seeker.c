@@ -113,6 +113,7 @@ static const ColorFloat colorRecover = {0.0f, 0.4f, 0.1f, 0.6f};
 /* State arrays */
 static SeekerState seekers[SEEKER_COUNT];
 static PlaceableComponent placeables[SEEKER_COUNT];
+static Entity *entityRefs[SEEKER_COUNT];
 static int highestUsedIndex = 0;
 
 /* Death spark */
@@ -180,7 +181,7 @@ void Seeker_initialize(Position position)
 	entity.collidable = &collidable;
 	entity.aiUpdatable = &updatable;
 
-	Entity_add_entity(entity);
+	entityRefs[idx] = Entity_add_entity(entity);
 
 	highestUsedIndex++;
 
@@ -197,6 +198,12 @@ void Seeker_initialize(Position position)
 
 void Seeker_cleanup(void)
 {
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (entityRefs[i]) {
+			entityRefs[i]->empty = true;
+			entityRefs[i] = NULL;
+		}
+	}
 	highestUsedIndex = 0;
 	sparkActive = false;
 	sparkShielded = false;

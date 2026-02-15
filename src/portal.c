@@ -35,6 +35,7 @@ typedef struct {
 
 static PortalState portals[PORTAL_COUNT];
 static PlaceableComponent placeables[PORTAL_COUNT];
+static Entity *entityRefs[PORTAL_COUNT];
 static int portalCount = 0;
 
 static RenderableComponent renderable = {Portal_render};
@@ -84,13 +85,19 @@ void Portal_initialize(Position position, const char *id,
 	entity.placeable = &placeables[portalCount];
 	entity.renderable = &renderable;
 
-	Entity_add_entity(entity);
+	entityRefs[portalCount] = Entity_add_entity(entity);
 
 	portalCount++;
 }
 
 void Portal_cleanup(void)
 {
+	for (int i = 0; i < portalCount; i++) {
+		if (entityRefs[i]) {
+			entityRefs[i]->empty = true;
+			entityRefs[i] = NULL;
+		}
+	}
 	portalCount = 0;
 	pendingTransition = false;
 }
@@ -208,7 +215,8 @@ void Portal_render_god_labels(void)
 {
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
-	Mat4 proj = Graphics_get_world_projection();
+	Mat4 ui_proj = Graphics_get_ui_projection();
+	Mat4 ident = Mat4_identity();
 	Screen screen = Graphics_get_screen();
 	Mat4 view = View_get_transform(&screen);
 
@@ -216,19 +224,20 @@ void Portal_render_god_labels(void)
 		PortalState *p = &portals[i];
 		if (!p->active) continue;
 
-		/* Convert world position to screen position */
-		float wx = (float)p->position.x;
-		float wy = (float)p->position.y;
+		/* World to screen coordinates */
+		float sx, sy;
+		Mat4_transform_point(&view, (float)p->position.x, (float)p->position.y, &sx, &sy);
+		sy = (float)screen.height - sy; /* flip Y for UI projection */
 
 		char buf[128];
 		snprintf(buf, sizeof(buf), "[%s]", p->id);
-		Text_render(tr, shaders, &proj, &view,
-			buf, wx - 30.0f, wy + 55.0f,
+		Text_render(tr, shaders, &ui_proj, &ident,
+			buf, sx - 30.0f, sy - 55.0f,
 			0.0f, 1.0f, 1.0f, 0.9f);
 
 		snprintf(buf, sizeof(buf), "-> %s", p->dest_portal_id);
-		Text_render(tr, shaders, &proj, &view,
-			buf, wx - 30.0f, wy + 70.0f,
+		Text_render(tr, shaders, &ui_proj, &ident,
+			buf, sx - 30.0f, sy - 40.0f,
 			0.0f, 0.8f, 0.8f, 0.7f);
 	}
 }

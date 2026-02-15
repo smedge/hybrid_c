@@ -12,6 +12,7 @@ typedef struct {
 void Audio_initialize(void);
 void Audio_cleanup(void);
 void Audio_loop_music(const char *path);
+void Audio_play_music(const char *path);
 void Audio_stop_music(void);
 void Audio_load_sample(Mix_Chunk **sample, char *path);
 void Audio_unload_sample(Mix_Chunk **sample);

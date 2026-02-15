@@ -25,8 +25,16 @@ void Audio_cleanup(void)
 
 void Audio_loop_music(const char *path)
 {
+	if (music) Mix_FreeMusic(music);
 	music = Mix_LoadMUS(path);
 	Mix_PlayMusic(music, -1);
+}
+
+void Audio_play_music(const char *path)
+{
+	if (music) Mix_FreeMusic(music);
+	music = Mix_LoadMUS(path);
+	Mix_PlayMusic(music, 0);
 }
 
 void Audio_stop_music(void)

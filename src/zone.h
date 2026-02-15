@@ -36,6 +36,13 @@ typedef struct {
 } ZonePortal;
 
 typedef struct {
+	int grid_x, grid_y;
+	char id[32];
+} ZoneSavepoint;
+
+#define ZONE_MAX_MUSIC 3
+
+typedef struct {
 	char name[64];
 	int size;
 	char filepath[256];
@@ -54,11 +61,14 @@ typedef struct {
 	ZonePortal portals[ZONE_MAX_PORTALS];
 	int portal_count;
 
-	struct {
-		int grid_x, grid_y;
-		char id[32];
-	} savepoints[ZONE_MAX_SAVEPOINTS];
+	ZoneSavepoint savepoints[ZONE_MAX_SAVEPOINTS];
 	int savepoint_count;
+
+	bool has_bg_colors;
+	ColorRGB bg_colors[4];
+
+	char music_paths[ZONE_MAX_MUSIC][256];
+	int music_count;
 } Zone;
 
 void Zone_load(const char *path);
@@ -71,6 +81,12 @@ void Zone_place_cell(int grid_x, int grid_y, const char *type_id);
 void Zone_remove_cell(int grid_x, int grid_y);
 void Zone_place_spawn(const char *enemy_type, double world_x, double world_y);
 void Zone_remove_spawn(int index);
+int Zone_find_spawn_near(double world_x, double world_y, double radius);
+void Zone_place_portal(int grid_x, int grid_y,
+	const char *id, const char *dest_zone, const char *dest_portal_id);
+void Zone_remove_portal(int grid_x, int grid_y);
+void Zone_place_savepoint(int grid_x, int grid_y, const char *id);
+void Zone_remove_savepoint(int grid_x, int grid_y);
 void Zone_undo(void);
 
 const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y);

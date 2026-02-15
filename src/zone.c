@@ -5,6 +5,7 @@
 #include "defender.h"
 #include "portal.h"
 #include "savepoint.h"
+#include "background.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +17,11 @@ typedef enum {
 	UNDO_PLACE_CELL,
 	UNDO_REMOVE_CELL,
 	UNDO_PLACE_SPAWN,
-	UNDO_REMOVE_SPAWN
+	UNDO_REMOVE_SPAWN,
+	UNDO_PLACE_PORTAL,
+	UNDO_REMOVE_PORTAL,
+	UNDO_PLACE_SAVEPOINT,
+	UNDO_REMOVE_SAVEPOINT
 } UndoType;
 
 typedef struct {
@@ -25,6 +30,10 @@ typedef struct {
 	int cell_type_index;
 	ZoneSpawn spawn;
 	int spawn_index;
+	ZonePortal portal;
+	int portal_index;
+	ZoneSavepoint savepoint;
+	int savepoint_index;
 } UndoEntry;
 
 static Zone zone;
@@ -33,6 +42,9 @@ static int undoCount = 0;
 
 static int find_cell_type(const char *id);
 static void apply_zone_to_world(void);
+static void respawn_enemies(void);
+static void respawn_portals(void);
+static void respawn_savepoints(void);
 static void push_undo(UndoEntry entry);
 
 /* --- Loading --- */
@@ -135,6 +147,22 @@ void Zone_load(const char *path)
 				zone.savepoint_count++;
 			}
 		}
+		else if (strncmp(line, "bgcolor ", 8) == 0) {
+			int idx, r, g, b;
+			if (sscanf(line + 8, "%d %d %d %d", &idx, &r, &g, &b) == 4) {
+				if (idx >= 0 && idx < 4) {
+					zone.bg_colors[idx] = (ColorRGB){r, g, b, 255};
+					zone.has_bg_colors = true;
+				}
+			}
+		}
+		else if (strncmp(line, "music ", 6) == 0) {
+			if (zone.music_count < ZONE_MAX_MUSIC) {
+				strncpy(zone.music_paths[zone.music_count], line + 6, 255);
+				zone.music_paths[zone.music_count][255] = '\0';
+				zone.music_count++;
+			}
+		}
 	}
 
 	fclose(f);
@@ -178,6 +206,20 @@ void Zone_save(void)
 	fprintf(f, "# Zone: %s\n", zone.name);
 	fprintf(f, "name %s\n", zone.name);
 	fprintf(f, "size %d\n", zone.size);
+
+	/* Background colors */
+	if (zone.has_bg_colors) {
+		for (int i = 0; i < 4; i++) {
+			fprintf(f, "bgcolor %d %d %d %d\n", i,
+				zone.bg_colors[i].red, zone.bg_colors[i].green,
+				zone.bg_colors[i].blue);
+		}
+	}
+
+	/* Music playlist */
+	for (int i = 0; i < zone.music_count; i++)
+		fprintf(f, "music %s\n", zone.music_paths[i]);
+
 	fprintf(f, "\n");
 
 	/* Cell types */
@@ -329,8 +371,144 @@ void Zone_remove_spawn(int index)
 		zone.spawns[i] = zone.spawns[i + 1];
 	zone.spawn_count--;
 
-	/* Reload world to reflect removed spawn */
-	apply_zone_to_world();
+	respawn_enemies();
+	Zone_save();
+}
+
+int Zone_find_spawn_near(double world_x, double world_y, double radius)
+{
+	double best_dist = radius * radius;
+	int best_index = -1;
+	for (int i = 0; i < zone.spawn_count; i++) {
+		double dx = zone.spawns[i].world_x - world_x;
+		double dy = zone.spawns[i].world_y - world_y;
+		double d2 = dx * dx + dy * dy;
+		if (d2 < best_dist) {
+			best_dist = d2;
+			best_index = i;
+		}
+	}
+	return best_index;
+}
+
+void Zone_place_portal(int grid_x, int grid_y,
+	const char *id, const char *dest_zone, const char *dest_portal_id)
+{
+	if (zone.portal_count >= ZONE_MAX_PORTALS) return;
+
+	/* Check for duplicate at same grid position */
+	for (int i = 0; i < zone.portal_count; i++) {
+		if (zone.portals[i].grid_x == grid_x &&
+		    zone.portals[i].grid_y == grid_y)
+			return;
+	}
+
+	UndoEntry undo;
+	undo.type = UNDO_REMOVE_PORTAL;
+	undo.portal_index = zone.portal_count;
+	push_undo(undo);
+
+	ZonePortal *p = &zone.portals[zone.portal_count];
+	p->grid_x = grid_x;
+	p->grid_y = grid_y;
+	strncpy(p->id, id, 31);
+	p->id[31] = '\0';
+	strncpy(p->dest_zone, dest_zone, 255);
+	p->dest_zone[255] = '\0';
+	strncpy(p->dest_portal_id, dest_portal_id, 31);
+	p->dest_portal_id[31] = '\0';
+	zone.portal_count++;
+
+	/* Spawn in world */
+	double wx = (grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	double wy = (grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	Position pos = {wx, wy};
+	Portal_initialize(pos, id, dest_zone, dest_portal_id);
+
+	Zone_save();
+}
+
+void Zone_remove_portal(int grid_x, int grid_y)
+{
+	int index = -1;
+	for (int i = 0; i < zone.portal_count; i++) {
+		if (zone.portals[i].grid_x == grid_x &&
+		    zone.portals[i].grid_y == grid_y) {
+			index = i;
+			break;
+		}
+	}
+	if (index < 0) return;
+
+	UndoEntry undo;
+	undo.type = UNDO_PLACE_PORTAL;
+	undo.portal = zone.portals[index];
+	undo.portal_index = index;
+	push_undo(undo);
+
+	for (int i = index; i < zone.portal_count - 1; i++)
+		zone.portals[i] = zone.portals[i + 1];
+	zone.portal_count--;
+
+	respawn_portals();
+	Zone_save();
+}
+
+void Zone_place_savepoint(int grid_x, int grid_y, const char *id)
+{
+	if (zone.savepoint_count >= ZONE_MAX_SAVEPOINTS) return;
+
+	/* Check for duplicate at same grid position */
+	for (int i = 0; i < zone.savepoint_count; i++) {
+		if (zone.savepoints[i].grid_x == grid_x &&
+		    zone.savepoints[i].grid_y == grid_y)
+			return;
+	}
+
+	UndoEntry undo;
+	undo.type = UNDO_REMOVE_SAVEPOINT;
+	undo.savepoint_index = zone.savepoint_count;
+	push_undo(undo);
+
+	ZoneSavepoint *sp = &zone.savepoints[zone.savepoint_count];
+	sp->grid_x = grid_x;
+	sp->grid_y = grid_y;
+	strncpy(sp->id, id, 31);
+	sp->id[31] = '\0';
+	zone.savepoint_count++;
+
+	/* Spawn in world */
+	double wx = (grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	double wy = (grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	Position pos = {wx, wy};
+	Savepoint_initialize(pos, id);
+
+	Zone_save();
+}
+
+void Zone_remove_savepoint(int grid_x, int grid_y)
+{
+	int index = -1;
+	for (int i = 0; i < zone.savepoint_count; i++) {
+		if (zone.savepoints[i].grid_x == grid_x &&
+		    zone.savepoints[i].grid_y == grid_y) {
+			index = i;
+			break;
+		}
+	}
+	if (index < 0) return;
+
+	UndoEntry undo;
+	undo.type = UNDO_PLACE_SAVEPOINT;
+	undo.savepoint = zone.savepoints[index];
+	undo.savepoint_index = index;
+	push_undo(undo);
+
+	for (int i = index; i < zone.savepoint_count - 1; i++)
+		zone.savepoints[i] = zone.savepoints[i + 1];
+	zone.savepoint_count--;
+
+	respawn_savepoints();
 	Zone_save();
 }
 
@@ -364,13 +542,45 @@ void Zone_undo(void)
 			zone.spawns[undo.spawn_index] = undo.spawn;
 			zone.spawn_count++;
 		}
-		apply_zone_to_world();
+		respawn_enemies();
 		break;
 	case UNDO_REMOVE_SPAWN:
 		/* Remove last spawn */
 		if (zone.spawn_count > undo.spawn_index)
 			zone.spawn_count = undo.spawn_index;
-		apply_zone_to_world();
+		respawn_enemies();
+		break;
+	case UNDO_PLACE_PORTAL:
+		/* Re-insert portal at original index */
+		if (zone.portal_count < ZONE_MAX_PORTALS) {
+			for (int i = zone.portal_count; i > undo.portal_index; i--)
+				zone.portals[i] = zone.portals[i - 1];
+			zone.portals[undo.portal_index] = undo.portal;
+			zone.portal_count++;
+		}
+		respawn_portals();
+		break;
+	case UNDO_REMOVE_PORTAL:
+		/* Remove last portal */
+		if (zone.portal_count > undo.portal_index)
+			zone.portal_count = undo.portal_index;
+		respawn_portals();
+		break;
+	case UNDO_PLACE_SAVEPOINT:
+		/* Re-insert savepoint at original index */
+		if (zone.savepoint_count < ZONE_MAX_SAVEPOINTS) {
+			for (int i = zone.savepoint_count; i > undo.savepoint_index; i--)
+				zone.savepoints[i] = zone.savepoints[i - 1];
+			zone.savepoints[undo.savepoint_index] = undo.savepoint;
+			zone.savepoint_count++;
+		}
+		respawn_savepoints();
+		break;
+	case UNDO_REMOVE_SAVEPOINT:
+		/* Remove last savepoint */
+		if (zone.savepoint_count > undo.savepoint_index)
+			zone.savepoint_count = undo.savepoint_index;
+		respawn_savepoints();
 		break;
 	}
 
@@ -398,6 +608,55 @@ static int find_cell_type(const char *id)
 	return -1;
 }
 
+/* Lightweight rebuild: only enemies */
+static void respawn_enemies(void)
+{
+	Mine_cleanup();
+	Hunter_cleanup();
+	Seeker_cleanup();
+	Defender_cleanup();
+
+	for (int i = 0; i < zone.spawn_count; i++) {
+		ZoneSpawn *sp = &zone.spawns[i];
+		Position pos = {sp->world_x, sp->world_y};
+		if (strcmp(sp->enemy_type, "mine") == 0)
+			Mine_initialize(pos);
+		else if (strcmp(sp->enemy_type, "hunter") == 0)
+			Hunter_initialize(pos);
+		else if (strcmp(sp->enemy_type, "seeker") == 0)
+			Seeker_initialize(pos);
+		else if (strcmp(sp->enemy_type, "defender") == 0)
+			Defender_initialize(pos);
+	}
+}
+
+/* Lightweight rebuild: only portals */
+static void respawn_portals(void)
+{
+	Portal_cleanup();
+
+	for (int i = 0; i < zone.portal_count; i++) {
+		ZonePortal *p = &zone.portals[i];
+		double wx = (p->grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		double wy = (p->grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		Position pos = {wx, wy};
+		Portal_initialize(pos, p->id, p->dest_zone, p->dest_portal_id);
+	}
+}
+
+/* Lightweight rebuild: only savepoints */
+static void respawn_savepoints(void)
+{
+	Savepoint_cleanup();
+
+	for (int i = 0; i < zone.savepoint_count; i++) {
+		double wx = (zone.savepoints[i].grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		double wy = (zone.savepoints[i].grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		Position pos = {wx, wy};
+		Savepoint_initialize(pos, zone.savepoints[i].id);
+	}
+}
+
 static void apply_zone_to_world(void)
 {
 	Map_clear();
@@ -407,6 +666,20 @@ static void apply_zone_to_world(void)
 	Defender_cleanup();
 	Portal_cleanup();
 	Savepoint_cleanup();
+
+	/* Apply background palette */
+	if (zone.has_bg_colors) {
+		float colors[4][3];
+		for (int i = 0; i < 4; i++) {
+			colors[i][0] = zone.bg_colors[i].red / 255.0f;
+			colors[i][1] = zone.bg_colors[i].green / 255.0f;
+			colors[i][2] = zone.bg_colors[i].blue / 255.0f;
+		}
+		Background_set_palette(colors);
+	} else {
+		Background_reset_palette();
+	}
+	Background_initialize();
 
 	/* Place cells */
 	for (int x = 0; x < MAP_SIZE; x++) {
