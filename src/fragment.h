@@ -8,6 +8,7 @@ typedef enum {
 	FRAG_TYPE_MINE = 0,
 	FRAG_TYPE_ELITE,
 	FRAG_TYPE_HUNTER,
+	FRAG_TYPE_SEEKER,
 	FRAG_TYPE_COUNT
 } FragmentType;
 

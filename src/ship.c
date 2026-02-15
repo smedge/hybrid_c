@@ -11,6 +11,7 @@
 #include "audio.h"
 #include "player_stats.h"
 #include "hunter.h"
+#include "seeker.h"
 #include "mine.h"
 #include "savepoint.h"
 #include "zone.h"
@@ -184,6 +185,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Egress_initialize();
 			PlayerStats_reset();
 			Hunter_reset_all();
+			Seeker_reset_all();
 			Mine_reset_all();
 
 			Audio_play_sample(&sample01);
@@ -199,6 +201,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Audio_play_sample(&sample02);
 			Audio_play_sample(&sample03);
 			Hunter_deaggro_all();
+			Seeker_deaggro_all();
 		}
 
 		/* Update movement subs */
