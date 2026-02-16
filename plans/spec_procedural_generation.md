@@ -9,7 +9,7 @@ You author a minimal zone skeleton — a center anchor (savepoint + entry portal
 **The key innovation**: the zone has no fixed regions, no fixed quadrants, no predetermined layout structure. Instead:
 
 1. **Hotspot positions are generated per seed** — candidate landmark locations are scattered across the map procedurally, constrained by minimum separation and edge margins.
-2. **Each landmark carries a terrain influence** — a boss arena brings dense labyrinthine terrain around it, a safe zone brings sparse open ground, a portal room brings moderate mixed terrain. The terrain *character* is an emergent property of where the landmarks land.
+2. **Each landmark carries a designer-assigned terrain influence** — any landmark can be configured as dense (labyrinthine), moderate (mixed), or sparse (open battlefield). A boss designed for a claustrophobic fight gets dense. A boss designed for an open arena brawl gets sparse. A safe zone could be sparse for breathing room or moderate for a defensible hideout. The terrain *character* is entirely up to the designer per landmark, and it's an emergent property of where the landmarks land.
 3. **Noise-driven base terrain** covers the entire map — 2D simplex noise creates organic wall patterns. Landmark influences warp the noise density, creating natural transitions between dense and sparse areas.
 4. **Center anchor rotation/mirroring** — the hand-placed center geometry (savepoint, entry portal, surrounding structure) is rotated in 90° increments and/or mirrored before generation begins, so even the starting area feels different per seed.
 
@@ -36,6 +36,7 @@ Players can't memorize layouts. The labyrinth isn't always in the upper-left. Th
 - Noise-to-terrain converter (threshold noise + influences into wall/empty decisions)
 - Wall type refiner (influence-proximity circuit vs solid assignment)
 - Connectivity validator (flood fill between landmarks, corridor carving if needed)
+- Gate enforcer (gate-aware flood fill, alternate path detection, chokepoint sealing)
 - Chunk stamper (stamp landmark chunks + structured sub-areas)
 - Obstacle block scatter (in open areas)
 - Enemy population system (budget-capped, spacing-aware, influence-biased)
@@ -61,6 +62,7 @@ Diagonal walls are **scrapped** — square cells are the architecture going forw
 | 6 | Influence field system | Terrain density varies around landmarks |
 | 7 | Connectivity validation + corridor carving | All landmarks reachable |
 | 7.5 | Wall type refinement | Circuit tiles near landmarks, organic scatter in wilds |
+| 7.6 | Gate enforcement | Gated landmarks only reachable through their gates |
 | 8 | Obstacle block scatter | Style-matched sub-structures (structured/organic) |
 | 9 | Chunk sub-areas in dense zones | Structured rooms within labyrinthine terrain |
 | 10 | Enemy population with budget system | Enemies distributed through generated content |
@@ -79,6 +81,7 @@ Diagonal walls are **scrapped** — square cells are the architecture going forw
 | Noise-to-terrain conversion | Medium | Low | Threshold + influence modulation |
 | Connectivity validation | Medium | Low | BFS/flood fill between landmarks |
 | Corridor carving | Medium | Medium | A* or direct pathing, carve through terrain |
+| Gate enforcement | Medium | Medium | Gate-aware flood fill, chokepoint sealing, iterative verification |
 | Chunk stamper | Easy | Low | Map_set_cell in a loop |
 | Wall type refinement | Easy | None | Influence-proximity check + edge detection |
 | Obstacle scatter | Easy-Medium | Low | Random placement with spacing + style matching |
@@ -99,7 +102,7 @@ Two key references, extended with our own innovations:
 
 **Our innovations beyond the references:**
 - **Noise-driven whole-map terrain**: No fixed regions or rectangular zones. The entire map is one continuous generated environment with organic density variation.
-- **Influence fields from landmarks**: Terrain character emerges from where landmarks land. Dense labyrinth around the boss, open battlefield near the arena, moderate corridors between. The "zones" exist but they're soft-edged and move per seed.
+- **Influence fields from landmarks**: Terrain character emerges from where landmarks land. Each landmark's influence type (dense/moderate/sparse) is designer-configured — a boss can be surrounded by labyrinth OR open terrain depending on the encounter design. The "zones" exist but they're soft-edged and move per seed.
 - **Hotspot position generation**: Landmark candidates are generated per seed (not hand-placed), so landmark positions are truly unpredictable within constraints.
 - **Center anchor rotation**: Even the starting area varies per seed through 90° rotation and mirroring.
 - **Two terrain modes blend organically**: Dense areas use chunk-based structured fill, sparse areas use scatter-based obstacle placement, and the transition between them is driven by the continuous influence field — no hard boundaries.
@@ -115,7 +118,8 @@ Two key references, extended with our own innovations:
 | **Seed** | A uint32 stored in the zone file, initializing the PRNG. Same zone + same seed = identical output. Required. The PRNG call order must be deterministic — no conditional rolls based on runtime state. |
 | **Center anchor** | The hand-authored geometry at the zone center: savepoint, entry portal, and surrounding structure. Rotated/mirrored per seed before generation begins. |
 | **Hotspot** | A procedurally generated candidate position where a landmark might be placed. Positions vary per seed. |
-| **Landmark** | A key location (boss arena, portal room, safe zone) defined by a chunk template + terrain influence. Assigned to hotspot positions by the generator. |
+| **Landmark** | A key location (boss arena, encounter gate, portal room, safe zone) defined by a chunk template + terrain influence. Assigned to hotspot positions by the generator. |
+| **Progression gate** | A landmark flagged as a mandatory chokepoint. The generator guarantees that certain other landmarks are ONLY reachable by passing through the gate landmark's chunk. Defined via `gate` lines in the zone file. This is the metroidvania's core progression enforcement — difficulty gates that demand specific loadouts. |
 | **Terrain influence** | A property of a landmark that affects surrounding terrain density and character. Radiates outward from the landmark position, blending with the base noise and other influences. |
 | **Influence field** | The combined effect of all landmark influences across the map. A continuous 2D field that modulates noise thresholds. |
 | **Base noise** | 2D simplex noise covering the entire map. Multiple octaves at different frequencies create both macro and micro terrain variation. Seeded. |
@@ -140,7 +144,8 @@ The designer authors a zone's **skeleton**: the minimal elements that define the
 | **Seed** | PRNG seed for deterministic generation |
 | **Center anchor chunk** | The starting area geometry (rotated/mirrored per seed) |
 | **Cell type definitions** | Visual/physical cell types available for this zone's biome |
-| **Landmark definitions** | What landmarks exist (boss arena, portals, safe zones) + their terrain influences |
+| **Landmark definitions** | What landmarks exist (boss arenas, encounter gates, portals, safe zones) + their terrain influences |
+| **Progression gates** | Which landmarks are mandatory chokepoints and what they block access to |
 | **Global tuning** | Noise parameters, influence strengths, enemy budgets, hotspot constraints |
 | **Fixed spawns** | Any hand-placed enemy spawns that always appear regardless of generation |
 
@@ -227,11 +232,21 @@ If the generator can't place enough hotspots (very constrained parameters), it l
 
 ### Landmark definitions
 
-Each landmark definition specifies what it is, what chunk template to use, and what terrain influence it carries:
+Each landmark definition specifies what it is, what chunk template to use, and what terrain influence it carries. **Landmarks are the designer's primary tool for scripted content within procedural terrain.** They're not just "big important locations" — they're any curated encounter, difficulty gate, or set piece the designer wants placed at a generated position.
+
+Common landmark types:
+- **Boss arenas** — hand-crafted geometry with the boss spawn inside the chunk
+- **Encounter gates** — scripted enemy compositions designed as difficulty gates (e.g., 3 swarmers + 2 defenders in a medium room). These are the metroidvania's progression walls — near-impossible without the right loadout, manageable once you have it.
+- **Exit portals** — zone transition points to other zones
+- **Safe zones** — savepoints and breathing room
+- **Secret rooms** — hidden rewards, optional challenges
+- **Any other curated encounter** — the type is a freeform label, not a fixed enum
+
+Each landmark chunk includes `spawn_slot` lines for guaranteed enemy placement (probability 1.0) or probabilistic spawns (< 1.0). The enemies inside the chunk ARE the difficulty gate. The terrain influence around the landmark shapes the approach — dense labyrinth makes you fight through narrow corridors to reach the encounter, sparse open terrain lets you see it coming from far away.
 
 ```c
 typedef struct {
-    char type[32];                // "boss_arena", "exit_portal", "safe_zone", etc.
+    char type[32];                // Freeform label: "boss_arena", "swarmer_gate", "sniper_nest", etc.
     char chunk_file[64];          // Landmark chunk template file
     int priority;                 // Resolution order (lower = placed first)
 
@@ -260,13 +275,15 @@ typedef enum {
 
 ### Landmark resolution
 
-Same weighted-pick algorithm from the original spec, but operating on generated hotspots:
+Weighted-pick algorithm operating on generated hotspots, with gate-aware placement constraints:
 
 ```
-function resolve_landmarks(hotspots, landmark_defs, rng):
+function resolve_landmarks(hotspots, landmark_defs, gate_defs, rng):
     placed = []
 
-    // Sort landmark defs by priority
+    // Sort landmark defs by priority (lower = placed first)
+    // IMPORTANT: Gate landmarks should have lower priority than the landmarks
+    // they gate, so gates are placed first and gated landmarks placed "behind" them.
     sort(landmark_defs, by priority)
 
     for each def in landmark_defs:
@@ -287,6 +304,17 @@ function resolve_landmarks(hotspots, landmark_defs, rng):
             candidates = unused_hotspots
             sort by max_min_distance, descending
 
+        // Gate-aware placement constraint:
+        // If this landmark is gated (must be reached through a gate), prefer
+        // hotspots that are FARTHER from center than its gate landmark.
+        // If this landmark IS a gate, prefer hotspots BETWEEN center and the
+        // average position of already-placed landmarks it doesn't gate.
+        gate_info = find_gate_for(def.type, gate_defs)
+        if gate_info and gate_info.gate_landmark is placed:
+            // This landmark is gated — prefer hotspots behind its gate
+            gate_pos = position_of(gate_info.gate_landmark)
+            weight_candidates_by_behind_gate(candidates, center, gate_pos)
+
         chosen = weighted_pick(candidates, rng)
         stamp_landmark_chunk(chosen.x, chosen.y, def.chunk_file, rng)
         placed.append({chosen.x, chosen.y, def})
@@ -295,11 +323,40 @@ function resolve_landmarks(hotspots, landmark_defs, rng):
     return placed
 ```
 
+**Placement heuristic for gates**: The `weight_candidates_by_behind_gate()` function weights hotspots higher when they're farther from center along the center→gate vector. This creates a natural spatial progression: center → gate → gated landmarks. It's a soft preference (weighted pick), not a hard constraint — the generator works with whatever hotspots are available but nudges gated landmarks to land behind their gate.
+
+### Progression gates
+
+Progression gates are the metroidvania's core enforcement mechanism. A `gate` line in the zone file declares that certain landmarks are ONLY reachable by passing through a specific gate landmark:
+
+```
+# gate <gate_landmark_type> <gated_landmark_type> [<gated_landmark_type> ...]
+gate swarmer_gate boss_arena exit_portal_2
+gate sniper_nest  safe_zone
+```
+
+This means:
+- `boss_arena` and `exit_portal_2` are only reachable by passing through `swarmer_gate`
+- `safe_zone` is only reachable by passing through `sniper_nest`
+- All other landmarks are freely accessible from center
+
+The generator enforces gates in two phases:
+1. **Placement**: Gate landmarks placed first (lower priority), gated landmarks placed behind them relative to center (see landmark resolution above)
+2. **Validation + sealing**: After terrain generation, the connectivity validator verifies each gate is a true chokepoint and seals any alternate paths (see Layer 6)
+
+```c
+typedef struct {
+    char gate_type[32];           // The gate landmark's type label
+    char gated_types[8][32];      // Landmarks that require passing through this gate
+    int gated_count;              // Number of gated landmarks
+} GateDef;
+```
+
 ### Hotspot-carried influences
 
 This is the key insight: when a landmark is placed at a hotspot, its terrain influence radiates from that position. The influence field is the sum of all landmark influences across the map.
 
-Since hotspot positions change per seed, the influence field — and therefore the terrain character — reorganizes with every seed. A boss arena in the northeast means dense labyrinth in the northeast. Next seed it's in the southwest, and the labyrinth follows.
+Since hotspot positions change per seed, the influence field — and therefore the terrain character — reorganizes with every seed. A dense-configured landmark in the northeast means labyrinth in the northeast. Next seed it's in the southwest, and the labyrinth follows. A sparse-configured boss arena creates an open battlefield wherever it lands.
 
 ---
 
@@ -431,7 +488,7 @@ function generate_terrain(zone_params, placed_landmarks, rng):
 
 This produces organic terrain with three distinct tile types that:
 - Varies per seed (noise is seeded)
-- Is denser near dense-influence landmarks (boss arenas) with thin effect fringes
+- Is denser near dense-influence landmarks with thin effect fringes
 - Is sparser near sparse-influence landmarks (safe zones) with generous effect cell scatter
 - Transitions smoothly between areas — effect cells naturally concentrate at terrain edges
 - Has no visible boundaries or rectangular regions
@@ -599,6 +656,7 @@ typedef struct {
 
 ### Chunk file format (unchanged)
 
+**Generic chunk** (used in structured sub-areas):
 ```
 chunk combat_pillars_01
 size 16 16
@@ -618,6 +676,36 @@ maybe 4 4 solid 0.5
 obstacle_zone 6 2 4 4 pillar_cluster,wall_segment,empty 0.7
 spawn_slot 8 8 mine 0.3
 ```
+
+**Encounter landmark chunk** (scripted difficulty gate — 3 swarmers + 2 defenders):
+```
+chunk swarmer_gate_01
+size 24 24
+category combat
+biome neutral
+difficulty 3
+
+exits LRTB
+exit left 10 4
+exit right 10 4
+exit top 4 10
+exit bottom 4 10
+
+# Arena walls — open interior with pillar cover
+wall 0 0 circuit
+wall 23 0 circuit
+wall 0 23 circuit
+wall 23 23 circuit
+empty 12 12
+
+# Guaranteed enemy spawns — this IS the difficulty gate
+spawn_slot 6 12 swarmer 1.0
+spawn_slot 12 6 swarmer 1.0
+spawn_slot 18 12 swarmer 1.0
+spawn_slot 8 18 defender 1.0
+spawn_slot 16 18 defender 1.0
+```
+The `1.0` probability means these enemies always spawn. This encounter is designed to demand AoE subroutines — single-target builds will be overwhelmed by the swarm while defenders heal them.
 
 ---
 
@@ -711,11 +799,15 @@ The designer flags each obstacle block with its style when authoring. The scatte
 
 ---
 
-## Layer 6: Connectivity Validation & Corridor Carving
+## Layer 6: Connectivity Validation, Gate Enforcement & Corridor Carving
 
-After terrain generation, the map must be validated: all landmarks must be reachable from the center anchor. Noise-based terrain with influence modulation will usually produce connected terrain, but it's not guaranteed — especially between sparse areas separated by dense walls.
+After terrain generation, the map must be validated for two properties:
+1. **Basic connectivity**: All landmarks reachable from center anchor
+2. **Gate enforcement**: Gated landmarks reachable ONLY through their gate landmark
 
-### Validation
+This is the metroidvania's progression guarantee. If the zone file says `gate swarmer_gate boss_arena`, then there is NO path from center to boss_arena that doesn't pass through swarmer_gate. Period.
+
+### Phase 1: Basic connectivity validation
 
 ```
 function validate_connectivity(center, placed_landmarks, terrain):
@@ -730,7 +822,7 @@ function validate_connectivity(center, placed_landmarks, terrain):
     return unreachable
 ```
 
-### Corridor carving
+### Phase 2: Corridor carving (for unreachable landmarks)
 
 For each unreachable landmark, carve a corridor from the nearest reachable point:
 
@@ -760,6 +852,90 @@ function carve_corridors(center, unreachable_landmarks, terrain, rng):
 - 2-3 cells wide (not cramped single-cell tunnels)
 - Slightly rough edges (noise perturbation) so they don't look laser-cut
 - Optional: different cell type for corridor walls (to visually distinguish carved paths)
+
+### Phase 3: Gate enforcement
+
+After all landmarks are reachable, verify that gated landmarks are ONLY reachable through their designated gate. If alternate paths exist, seal them.
+
+```
+function enforce_gates(center, placed_landmarks, gate_defs, terrain, rng):
+    for each gate_def in gate_defs:
+        gate_landmark = find_placed(gate_def.gate_type, placed_landmarks)
+        gate_cells = get_chunk_cells(gate_landmark)  // All cells in the gate chunk
+
+        for each gated_type in gate_def.gated_types:
+            gated_landmark = find_placed(gated_type, placed_landmarks)
+
+            // Flood fill from center, treating gate chunk cells as WALLS
+            // (impassable). If the gated landmark is still reachable,
+            // there's an alternate path that bypasses the gate.
+            reachable_without_gate = flood_fill_excluding(
+                center.x, center.y, terrain, gate_cells)
+
+            if reachable_without_gate[gated_landmark.x][gated_landmark.y]:
+                // Alternate path exists — seal it
+                seal_alternate_paths(center, gate_landmark, gated_landmark,
+                                     gate_cells, terrain, rng)
+
+function seal_alternate_paths(center, gate, gated, gate_cells, terrain, rng):
+    // Strategy: find the alternate path and fill it with walls.
+    // Iterate until no alternate path exists.
+    max_iterations = 10
+    for i in 0..max_iterations:
+        reachable = flood_fill_excluding(center, terrain, gate_cells)
+
+        if not reachable[gated.x][gated.y]:
+            break  // Gate is now enforced
+
+        // A* from gated landmark to center, avoiding gate chunk.
+        // This finds the alternate path.
+        alt_path = astar(gated, center, terrain,
+                         wall_cost=1, gate_cells=impassable)
+
+        // Find the narrowest point of the alternate path — the best
+        // place to seal it. Sealing at a chokepoint minimizes wall fill.
+        chokepoint = find_narrowest_point(alt_path, terrain)
+
+        // Fill walls across the chokepoint (perpendicular to path direction)
+        seal_chokepoint(chokepoint, terrain, seal_width=3)
+
+    if i == max_iterations:
+        log_warning("Could not enforce gate %s after %d iterations",
+                    gate.type, max_iterations)
+```
+
+**Why this works**: Gate landmarks naturally use dense influence, which creates labyrinthine terrain around them. This means very few alternate paths exist — typically 0-2 small gaps in the wall of dense terrain. The sealing pass closes those gaps surgically. The result is a terrain barrier that looks organic (it's 95% noise-generated walls) with a few small fills that are invisible among the dense terrain.
+
+**Sealing aesthetics**: Sealed chokepoints should use the same wall types as surrounding terrain so they're invisible. The `seal_width=3` creates a small wall patch that blends with the dense terrain around the gate. If the gate landmark's influence is dense enough, the sealed cells are surrounded by other walls and completely invisible to the player.
+
+### Phase 4: Final validation
+
+After gate enforcement, re-validate that ALL landmarks are still reachable from center (sealing might have disconnected something). If so, carve a corridor through the gate chunk to restore connectivity:
+
+```
+function final_validation(center, placed_landmarks, gate_defs, terrain, rng):
+    unreachable = validate_connectivity(center, placed_landmarks, terrain)
+    if unreachable is not empty:
+        // Sealing disconnected something — carve corridors THROUGH gates
+        // (not around them) to restore connectivity
+        for each landmark in unreachable:
+            gate = find_gate_for(landmark, gate_defs)
+            if gate:
+                // Carve: center-side → gate entrance → gate exit → gated landmark
+                carve_through_gate(center, gate, landmark, terrain, rng)
+            else:
+                // Not gated, just disconnected — normal corridor carving
+                carve_corridor(center, landmark, terrain, rng)
+```
+
+### Gate enforcement summary
+
+The full connectivity + gate enforcement sequence:
+1. Flood fill from center — find unreachable landmarks
+2. Carve corridors to unreachable landmarks
+3. For each gate: verify gated landmarks are only reachable through the gate
+4. Seal alternate paths that bypass gates
+5. Final validation — ensure everything is still reachable (carve through gates if needed)
 
 ---
 
@@ -886,6 +1062,7 @@ No new systems needed — tuning numbers on existing mechanics.
 | Terrain generator | `procgen.c/h` | Medium | Noise + dual threshold + influence modulation → 3 tile types |
 | Wall type refiner | `procgen.c/h` | Low | Influence-proximity edge detection + random scatter |
 | Connectivity validator | `procgen.c/h` | Medium | Flood fill + A* corridor carving |
+| Gate enforcer | `procgen.c/h` | Medium | Gate-aware flood fill + chokepoint sealing |
 | Chunk loader | `chunk.c/h` | Medium | Parse, validate, build library |
 | Obstacle loader | Part of chunk.c | Low | Parse obstacle block files |
 | Structured sub-area gen | `procgen.c/h` | Medium-High | Spelunky walk within influence zones |
@@ -896,11 +1073,12 @@ No new systems needed — tuning numbers on existing mechanics.
 
 ```
 Zone_load("fire_zone.zone"):
-    1. Parse zone skeleton (cell types, fixed spawns, center anchor, landmark defs, params)
+    1. Parse zone skeleton (cell types, fixed spawns, center anchor, landmark defs,
+       gate defs, params)
     2. Initialize PRNG with seed
     3. Apply center anchor with per-seed rotation/mirror
     4. Generate hotspot positions (constrained scatter)
-    5. Resolve landmarks → assign types to hotspots, stamp landmark chunks
+    5. Resolve landmarks → gate-aware assignment to hotspots, stamp landmark chunks
     6. Compute influence field from placed landmarks
     7. Generate base terrain (noise + dual thresholds + influence → walls, effect cells, empty)
     7.5. Refine wall types (influence-proximity circuit vs solid assignment)
@@ -908,9 +1086,11 @@ Zone_load("fire_zone.zone"):
     9. Scatter obstacle blocks (style-matched: structured near landmarks, organic in wilds)
     10. Validate connectivity (flood fill from center)
     11. Carve corridors to unreachable landmarks
-    12. Populate enemies (budget-controlled, influence-biased)
-    13. Distribute resources
-    14. Gameplay begins
+    12. Enforce progression gates (verify gate chokepoints, seal alternate paths)
+    13. Final connectivity validation (ensure sealing didn't disconnect anything)
+    14. Populate enemies (budget-controlled, influence-biased)
+    15. Distribute resources
+    16. Gameplay begins
 ```
 
 ### Zone file format (complete example)
@@ -964,15 +1144,37 @@ hotspot_min_separation 150
 
 # Landmark definitions
 # landmark <type> <chunk_file> <priority> <influence_type> <radius> <strength> <falloff> [enemy_bias] [density_mult]
+#
+# type = freeform label (boss_arena, encounter_gate, safe_zone, exit_portal, etc.)
+# influence_type = dense | moderate | sparse | structured (terrain character around the landmark)
+# Chunks contain spawn_slot lines for scripted enemy placement inside the landmark
+
+# Boss: labyrinth approach, structured rooms around the encounter
 landmark boss_arena boss_fire.chunk 1 structured 120 0.9 1.5 stalker_heavy 0.8
+
+# Zone exit portals: moderate terrain, balanced approach
 landmark exit_portal_1 portal_exit_fire.chunk 2 moderate 80 0.6 2.0 mixed 1.0
 landmark exit_portal_2 portal_exit_fire.chunk 3 moderate 80 0.6 2.0 mixed 1.0
+
+# Safe zone: sparse terrain, breathing room
 landmark safe_zone safe_fire.chunk 4 sparse 100 0.8 1.0 none 0.3
-landmark arena_1 arena_fire.chunk 5 sparse 90 0.7 1.5 swarmer_heavy 1.5
-landmark secret_room secret_fire.chunk 6 dense 60 0.9 2.0 hunter_heavy 1.2
+
+# Encounter gates: scripted difficulty gates with specific enemy compositions
+# These are the metroidvania progression walls — designed to demand specific loadouts
+# Gate landmarks should use dense influence (creates natural wall barrier around chokepoint)
+landmark swarmer_gate swarmer_gate_fire.chunk 5 dense 90 0.7 1.5 swarmer_heavy 1.5
+landmark sniper_nest hunter_nest_fire.chunk 6 dense 60 0.9 2.0 hunter_heavy 1.2
+landmark defender_line defender_gate_fire.chunk 7 dense 70 0.6 1.5 mixed 1.0
 
 # Landmark minimum separation (grid cells)
 landmark_min_separation 120
+
+# === PROGRESSION GATES ===
+# gate <gate_landmark_type> <gated_landmark_type> [<gated_landmark_type> ...]
+# "You must pass through X to reach Y"
+# The generator guarantees these are true chokepoints — no alternate paths.
+gate swarmer_gate boss_arena exit_portal_2
+gate sniper_nest safe_zone
 
 # Enemy population
 enemy_budget_base 0.003
@@ -1026,7 +1228,7 @@ noise_effect_threshold 0.15
 
 1. **Unpredictability**: No fixed spatial zones means no memorizable layout patterns. The world reorganizes every seed.
 2. **Organic transitions**: Influence falloff creates smooth density gradients — no hard "you entered the labyrinth" boundaries. Feels like exploring continuous cyberspace, not entering rooms.
-3. **Emergent character**: The terrain's personality is tied to what's there, not where it is. Dense terrain means "something important is nearby." Players learn to read the environment.
+3. **Emergent character**: The terrain's personality is tied to what's there, not where it is. Terrain density is a designed choice per landmark — dense terrain could mean a labyrinth boss, sparse terrain could mean an arena boss. Players learn to read the environment, but they can't assume "dense = boss" or "open = safe."
 4. **Minimal authoring**: The designer defines landmarks and their influences. The generator does the heavy lifting across 1024×1024 cells.
 5. **Open-world feel**: Players can go in any direction from the center. There's no predetermined path through regions. Exploration is genuine.
 

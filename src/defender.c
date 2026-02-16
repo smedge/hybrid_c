@@ -45,6 +45,7 @@
 #define PROTECT_RADIUS 100.0
 #define SHIELD_CHASE_SPEED 800.0
 #define AEGIS_STANDOFF_DIST 500.0
+#define RELAY_STANDOFF_DIST 150.0
 #define HEAL_BEAM_DURATION_MS 200
 #define BOOST_TRAIL_GHOSTS 12
 #define BOOST_TRAIL_LENGTH 3.0
@@ -118,6 +119,7 @@ static DefenderState defenders[DEFENDER_COUNT];
 static PlaceableComponent placeables[DEFENDER_COUNT];
 static Entity *entityRefs[DEFENDER_COUNT];
 static int highestUsedIndex = 0;
+static int defenderTypeId = -1;
 
 /* Self-exclusion: skip this index in find_wounded/find_aggro to prevent self-targeting */
 static int currentUpdaterIdx = -1;
@@ -203,21 +205,29 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 	int bestIdx = -1;
 	double bestDist = 99999.0;
 
-	for (int t = 0; t < typeCount; t++) {
-		const EnemyTypeCallbacks *et = EnemyRegistry_get_type(t);
-		if (!et->find_wounded || !et->heal)
-			continue;
-		Position pos;
-		int eidx;
-		if (et->find_wounded(pl->position, HEAL_RANGE, 50.0, &pos, &eidx)) {
-			double dist = Enemy_distance_between(pl->position, pos);
-			if (dist < bestDist) {
-				bestDist = dist;
-				bestPos = pos;
-				bestType = t;
-				bestIdx = eidx;
+	/* Two-pass: prefer damage-dealing types, fallback to fellow defenders */
+	for (int priority = 0; priority < 2; priority++) {
+		for (int t = 0; t < typeCount; t++) {
+			bool isDefType = (defenderTypeId >= 0 && t == defenderTypeId);
+			if ((priority == 0 && isDefType) || (priority == 1 && !isDefType))
+				continue;
+			const EnemyTypeCallbacks *et = EnemyRegistry_get_type(t);
+			if (!et->find_wounded || !et->heal)
+				continue;
+			Position pos;
+			int eidx;
+			if (et->find_wounded(pl->position, HEAL_RANGE, 50.0, &pos, &eidx)) {
+				double dist = Enemy_distance_between(pl->position, pos);
+				if (dist < bestDist) {
+					bestDist = dist;
+					bestPos = pos;
+					bestType = t;
+					bestIdx = eidx;
+				}
 			}
 		}
+		if (bestType >= 0)
+			break;
 	}
 
 	if (bestType < 0)
@@ -297,7 +307,7 @@ void Defender_initialize(Position position)
 		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
 
 		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal};
-		EnemyRegistry_register(cb);
+		defenderTypeId = EnemyRegistry_register(cb);
 	}
 }
 
@@ -310,6 +320,7 @@ void Defender_cleanup(void)
 		}
 	}
 	highestUsedIndex = 0;
+	defenderTypeId = -1;
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 
@@ -441,7 +452,9 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	}
 
 	/* --- Self-shield on nearby shots --- */
-	if (d->alive && d->aiState != DEFENDER_DYING && d->aiState != DEFENDER_DEAD) {
+	/* In SUPPORTING, aegis is managed by the relay logic — don't preemptively pop */
+	if (d->alive && d->aiState != DEFENDER_DYING && d->aiState != DEFENDER_DEAD
+			&& d->aiState != DEFENDER_SUPPORTING) {
 		bool nearbyShot = Sub_Pea_check_nearby(pl->position, 200.0)
 						|| Sub_Mgun_check_nearby(pl->position, 200.0);
 		if (nearbyShot)
@@ -524,25 +537,40 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				et->find_aggro(pl->position, 1600.0, &aggroPos[t]);
 		}
 
-		/* Prefer uncontested wounded */
-		for (int t = 0; t < typeCount && !hasTarget; t++) {
-			if (hasWounded[t] && !another_defender_assigned(idx, woundedPos[t])) {
-				allyPos = woundedPos[t]; hasTarget = true;
+		/* Two-pass priority: damage-dealing types first, fellow defenders only as fallback */
+		for (int priority = 0; priority < 2 && !hasTarget; priority++) {
+			/* Prefer uncontested wounded */
+			for (int t = 0; t < typeCount && !hasTarget; t++) {
+				bool isDefType = (defenderTypeId >= 0 && t == defenderTypeId);
+				if ((priority == 0 && isDefType) || (priority == 1 && !isDefType))
+					continue;
+				if (hasWounded[t] && !another_defender_assigned(idx, woundedPos[t])) {
+					allyPos = woundedPos[t]; hasTarget = true;
+				}
 			}
-		}
-		/* Prefer uncontested aggro */
-		for (int t = 0; t < typeCount && !hasTarget; t++) {
-			if (hasAggro[t] && !another_defender_assigned(idx, aggroPos[t])) {
-				allyPos = aggroPos[t]; hasTarget = true;
+			/* Prefer uncontested aggro */
+			for (int t = 0; t < typeCount && !hasTarget; t++) {
+				bool isDefType = (defenderTypeId >= 0 && t == defenderTypeId);
+				if ((priority == 0 && isDefType) || (priority == 1 && !isDefType))
+					continue;
+				if (hasAggro[t] && !another_defender_assigned(idx, aggroPos[t])) {
+					allyPos = aggroPos[t]; hasTarget = true;
+				}
 			}
-		}
-		/* Fallback: contested wounded */
-		for (int t = 0; t < typeCount && !hasTarget; t++) {
-			if (hasWounded[t]) { allyPos = woundedPos[t]; hasTarget = true; }
-		}
-		/* Fallback: contested aggro */
-		for (int t = 0; t < typeCount && !hasTarget; t++) {
-			if (hasAggro[t]) { allyPos = aggroPos[t]; hasTarget = true; }
+			/* Fallback: contested wounded */
+			for (int t = 0; t < typeCount && !hasTarget; t++) {
+				bool isDefType = (defenderTypeId >= 0 && t == defenderTypeId);
+				if ((priority == 0 && isDefType) || (priority == 1 && !isDefType))
+					continue;
+				if (hasWounded[t]) { allyPos = woundedPos[t]; hasTarget = true; }
+			}
+			/* Fallback: contested aggro */
+			for (int t = 0; t < typeCount && !hasTarget; t++) {
+				bool isDefType = (defenderTypeId >= 0 && t == defenderTypeId);
+				if ((priority == 0 && isDefType) || (priority == 1 && !isDefType))
+					continue;
+				if (hasAggro[t]) { allyPos = aggroPos[t]; hasTarget = true; }
+			}
 		}
 
 		if (hasTarget) {
@@ -565,10 +593,12 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				if (allyDist < PROTECT_RADIUS)
 					activate_aegis(d);
 			} else {
-				/* Aegis on cooldown — maintain standoff distance, heal from range */
-				if (allyDist < AEGIS_STANDOFF_DIST - 50.0) {
+				/* Aegis not ready — use relay distance if partner is shielding, else full standoff */
+				double standoff = another_defender_shielding(idx, allyPos) ?
+					RELAY_STANDOFF_DIST : AEGIS_STANDOFF_DIST;
+				if (allyDist < standoff - 50.0) {
 					Enemy_move_away_from(pl, allyPos, NORMAL_SPEED, dt, WALL_CHECK_DIST);
-				} else if (allyDist > AEGIS_STANDOFF_DIST + 50.0) {
+				} else if (allyDist > standoff + 50.0) {
 					d->boosting = true;
 					Enemy_move_toward(pl, allyPos, NORMAL_SPEED, dt, WALL_CHECK_DIST);
 				}

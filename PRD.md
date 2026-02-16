@@ -81,6 +81,12 @@ Subroutines are abilities the Hybrid AI can execute to interact with digital spa
 
 Each archetype requires commitment — dedicating multiple of your 10 slots to a strategy. Slot economy IS the build constraint. You can't have everything.
 
+**Activation Categories**:
+Every subroutine falls into one of three activation categories:
+- **Toggle**: Activated/deactivated by the player. Untoggles other toggles of the same SubroutineType (only one movement toggle active, one weapon toggle active, etc.). May have ongoing feedback cost while active. Examples: sub_boost (hold for speed).
+- **Instant**: One-time activation with a cooldown before next use. Feedback cost on activation. This is the most common category. Examples: sub_pea (fire), sub_egress (dash), sub_mend (heal), sub_aegis (shield).
+- **Passive**: Always on while equipped in the skillbar. No activation, no cooldown, no per-use feedback cost. The cost IS the slot — dedicating one of 10 slots to a permanent effect instead of an active ability. Examples: (future) stat boosts, resistance effects, aura effects.
+
 **Architecture**:
 - Each subroutine has a **type**: `projectile`, `movement`, `shield`, etc.
 - Only one subroutine of each type can be **active** at a time
@@ -88,17 +94,19 @@ Each archetype requires commitment — dedicating multiple of your 10 slots to a
 - Pressing a slot's key activates that subroutine and deactivates any other of the same type
 - Example: sub_pea (projectile) in slot 1, sub_plasma (projectile) in slot 2 — pressing 2 deactivates pea, activates plasma. LMB now fires plasma.
 
+**Balance Framework**: All subroutines are balanced using a point-budget system. Each skill attribute (damage, cooldown, feedback cost, range, AoE, etc.) contributes points to a total. Normal skills are capped at 10 points, elite skills at 14. This ensures no single skill is overloaded with too many powerful attributes. See `plans/spec_skill_balance.md` for the full framework, scoring tables, and score cards for all implemented skills.
+
 **Known Subroutines**:
 
-| Subroutine | Type | Description | Unlocked By | Status |
-|------------|------|-------------|-------------|--------|
-| sub_pea | projectile | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. 50 damage per shot, 1 feedback per shot. | Default | Implemented |
-| sub_mgun | projectile | Machine gun. Fires white dots toward cursor. 200ms cooldown, 1000ms TTL, up to 8 simultaneous. 20 damage per shot, 2 feedback per shot. Same DPS as sub_pea but easier to aim, burns feedback 5x faster. | 3 hunter kills | Implemented |
-| sub_egress | movement | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | 3 seeker kills | Implemented |
-| sub_boost | movement (elite) | Hold shift for unlimited speed boost. No cooldown, no feedback cost. Elite subroutine (gold border). | Elite fragment | Implemented |
-| sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback on explosion. | 5 mine kills | Implemented |
-| sub_mend | healing | Instant heal. Restores 50 integrity. 10s cooldown. 20 feedback. Activated with G key. | 5 defender kills (mend fragments) | Implemented |
-| sub_aegis | shield | Damage shield. Invulnerable to all damage for 10 seconds. 30s cooldown. 30 feedback. Activated with F key. Cyan ring visual. | 5 defender kills (aegis fragments) | Implemented |
+| Subroutine | Type | Category | Description | Budget | Unlocked By | Status |
+|------------|------|----------|-------------|--------|-------------|--------|
+| sub_pea | projectile | Instant | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. 50 damage per shot, 1 feedback per shot. | 11/10 | Default | Implemented |
+| sub_mgun | projectile | Instant | Machine gun. Fires white dots toward cursor. 200ms cooldown, 1000ms TTL, up to 8 simultaneous. 20 damage per shot, 2 feedback per shot. Same DPS as sub_pea but easier to aim, burns feedback 5x faster. | 11/10 | 3 hunter kills | Implemented |
+| sub_egress | movement | Instant | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | 6/10 | 3 seeker kills | Implemented |
+| sub_boost | movement (elite) | Toggle | Hold shift for unlimited speed boost. No cooldown, no feedback cost. Elite subroutine (gold border). | 15/14 | Elite fragment | Implemented |
+| sub_mine | deployable | Instant | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback on explosion. | 11/10 | 5 mine kills | Implemented |
+| sub_mend | healing | Instant | Instant heal. Restores 50 integrity. 10s cooldown. 20 feedback. Activated with G key. | 3/10 | 5 defender kills (mend fragments) | Implemented |
+| sub_aegis | shield | Instant | Damage shield. Invulnerable to all damage for 10 seconds. 30s cooldown. 30 feedback. Activated with F key. Cyan ring visual. | 4/10 | 5 defender kills (aegis fragments) | Implemented |
 
 **Each enemy type has a corresponding subroutine** (or set of subroutines) unlocked by defeating enough of that enemy. This creates a progression loop: encounter enemy → learn its patterns → kill it → gain its ability. As the subroutine count grows, some enemies will unlock multiple subroutines (e.g., defenders unlock both sub_mend and sub_aegis), and later enemies will unlock subroutines that form the building blocks of entire playstyle archetypes.
 
@@ -380,7 +388,7 @@ Zones use a **noise + influence field approach** to level generation. The design
 
 - **Noise-driven whole-map terrain**: 2D simplex noise (seeded, multi-octave) covers the entire 1024×1024 map, creating organic wall patterns. No rectangular regions, no visible boundaries between generated areas. The map is one continuous environment with smooth density variation.
 
-- **Hotspot-carried terrain influences**: Each landmark (boss arena, portal room, safe zone) carries a **terrain influence** that radiates from its position. A boss arena brings dense labyrinthine terrain around it. A safe zone brings sparse open ground. Since hotspot positions change per seed, the terrain character — and therefore the "zones" within the map — reorganize every seed. The labyrinth follows the boss, the open field follows the arena, wherever they land.
+- **Hotspot-carried terrain influences**: Each landmark (boss arena, portal room, safe zone) carries a **designer-configured terrain influence** (dense, moderate, sparse, or structured) that radiates from its position. A boss designed for claustrophobic combat gets dense labyrinthine terrain. A boss designed for an open arena brawl gets sparse terrain. Any landmark can use any influence type — the designer decides per landmark. Since hotspot positions change per seed, the terrain character reorganizes every seed.
 
 - **Hotspot position generation**: Landmark candidate positions are generated per seed (not hand-placed), constrained by minimum separation, edge margins, and center exclusion. Players know a zone *has* a boss — they have to explore to find it.
 
@@ -388,7 +396,9 @@ Zones use a **noise + influence field approach** to level generation. The design
 
 - **Connectivity guarantee**: After terrain generation, flood fill validates all landmarks are reachable from center. Unreachable landmarks get corridors carved to them — these feel like intentional data conduits in cyberspace, not ugly tunnels.
 
-- **Chunk templates**: Hand-crafted room geometry for landmark locations (boss arenas, portal rooms, safe zones). These are the recognizable set pieces that persist across runs even though their positions vary. Optional structured sub-areas within dense terrain can also use chunk-based fill for curated combat encounters.
+- **Progression gates**: The metroidvania's core enforcement mechanism. The designer defines `gate` lines in the zone file declaring that certain landmarks are ONLY reachable by passing through a specific gate landmark (e.g., `gate swarmer_gate boss_arena`). The generator guarantees this — gate landmarks use dense influence to create natural wall barriers, and a sealing pass closes any alternate paths that noise leaves open. Players cannot bypass difficulty gates by walking around them. The encounter inside the gate chunk IS the progression wall.
+
+- **Chunk templates**: Hand-crafted room geometry for landmark locations. Landmarks include boss arenas, **scripted encounter gates** (specific enemy compositions designed as difficulty gates — the metroidvania progression walls), portal rooms, safe zones, and any other curated encounter. Each chunk contains `spawn_slot` lines for guaranteed enemy placement. These are the recognizable set pieces that persist across runs even though their positions vary. Optional structured sub-areas within dense terrain can also use chunk-based fill.
 
 - **Three tile types** (wall / effect / empty): The noise generator uses two thresholds to produce three distinct tile types instead of binary wall-or-empty. Walls block movement. Effect cells are traversable with visual properties and optional gameplay effects. Empty space is pure traversable grid over the background cloudscape. The middle band (effect cells) naturally concentrates at terrain transitions — the edges where dense walls meet open space — adding organic visual texture where it matters most. In generic zones, effect cells are **data traces** (faint glowing circuit patterns, purely atmospheric). In themed zones, they become **biome hazards** (fire damage, ice friction, poison DOT, etc.), creating a tactical terrain-reading layer where players think about WHERE they fight. Same generation system, same noise, different cell type per biome.
 
@@ -398,7 +408,7 @@ Zones use a **noise + influence field approach** to level generation. The design
 
 - **Influence-biased enemy population**: Each landmark's influence includes an enemy composition bias (stalker-heavy, swarmer-heavy, etc.), creating organic variation in enemy types across the map. Budget-controlled spawning with spacing enforcement.
 
-- **Content investment**: Center anchor chunks + landmark chunks per zone (5-10 per biome) + obstacle blocks (15-30 across biomes). The noise layer generates the vast majority of terrain procedurally. A fraction of hand-authoring every room across 11+ zones at 1024×1024 scale.
+- **Content investment**: Center anchor chunks + landmark chunks per zone (5-10 per biome: boss arenas, encounter gates, portals, safe zones) + obstacle blocks (15-30 across biomes, flagged structured or organic). The noise layer generates the vast majority of terrain procedurally. A fraction of hand-authoring every room across 11+ zones at 1024×1024 scale.
 
 **Prerequisites** (all complete):
 1. ~~God mode editing tools for procgen content authoring~~ (done)

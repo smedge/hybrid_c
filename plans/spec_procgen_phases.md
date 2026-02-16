@@ -141,7 +141,9 @@ Evaluate after Phase 2 whether visual authoring tools are needed or if text-file
 ### Landmark Resolution
 - Parse `landmark` definitions from zone file (type, chunk file, priority, influence params)
 - Parse `landmark_min_separation`
-- Resolve: assign landmark types to hotspot positions (priority order, weighted pick, separation enforcement)
+- Parse `gate` definitions (which landmarks gate access to which other landmarks)
+- **Gate-aware placement**: Gate landmarks placed first (lower priority), gated landmarks placed at hotspots behind their gate relative to center
+- Resolve: assign landmark types to hotspot positions (priority order, weighted pick, separation enforcement, gate placement constraints)
 - Stamp landmark chunks at resolved positions
 - Mark landmark cells as "fixed" — terrain generation skips them
 
@@ -161,22 +163,29 @@ Evaluate after Phase 2 whether visual authoring tools are needed or if text-file
 
 ### Content Authoring
 - Hand-write 1 center anchor chunk (text editor)
-- Hand-write 3-5 landmark chunks (boss arena, portal room, safe zone, arena)
+- Hand-write landmark chunks — any mix of:
+  - Boss arenas (boss spawn + arena geometry)
+  - Encounter gates (scripted enemy compositions as difficulty gates — e.g., 3 swarmers + 2 defenders)
+  - Portal rooms (zone transition points)
+  - Safe zones (savepoint + breathing room)
+  - Other curated encounters (sniper nests, defender lines, etc.)
+- Each landmark chunk includes `spawn_slot` lines for guaranteed enemy placement (prob 1.0)
+- Encounter gates are the metroidvania progression walls — designed to demand specific loadouts
 - Test with different seeds to verify position randomization
 
 ### Done When
 - Center anchor appears at map center with per-seed rotation/mirror
 - Hotspot positions vary per seed within constraints
 - Landmark chunks appear at different positions per seed
-- Terrain density varies around landmarks (dense near boss, sparse near safe zone)
+- Terrain density varies around landmarks according to each landmark's configured influence type (dense, moderate, sparse, or structured)
 - Transitions between terrain types are smooth and organic
 - No visible hard boundaries between "dense zone" and "sparse zone"
 
 ---
 
-## Phase 4 — Connectivity + Corridors + Obstacles
+## Phase 4 — Connectivity + Gates + Corridors + Obstacles
 
-**Goal**: All landmarks guaranteed reachable. Carved corridors connect disconnected areas. Obstacle blocks add tactical structure to open terrain.
+**Goal**: All landmarks guaranteed reachable. **Progression gates enforced** — gated landmarks only reachable through their designated gate. Carved corridors connect disconnected areas. Obstacle blocks add tactical structure to open terrain.
 
 ### Connectivity Validation
 - Flood fill from center anchor position
@@ -190,6 +199,17 @@ Evaluate after Phase 2 whether visual authoring tools are needed or if text-file
 - Optional: roughen corridor edges for organic feel
 - Optional: use a distinct cell type for corridor walls ("data conduit" aesthetic)
 - Re-flood-fill after each corridor to update reachable set
+
+### Progression Gate Enforcement
+- Parse `gate` definitions from zone file: `gate <gate_type> <gated_type> [<gated_type> ...]`
+- For each gate: flood fill from center treating gate chunk cells as impassable
+- If a gated landmark is still reachable → alternate path exists → seal it
+- **Sealing algorithm**: A* to find the alternate path, seal at its narrowest chokepoint
+- Iterate until gated landmarks are only reachable through their gate (max ~10 iterations)
+- Gate landmarks should use dense influence — creates natural wall barrier, minimizes gaps to seal
+- After sealing: re-validate all landmarks still reachable (sealing might disconnect something)
+- If sealing disconnected a landmark: carve corridor THROUGH the gate (not around it)
+- **This is the metroidvania's core enforcement** — guarantees difficulty-gated progression
 
 ### Wall Type Refinement
 - Post-process pass after terrain generation assigns walls
@@ -218,12 +238,14 @@ Evaluate after Phase 2 whether visual authoring tools are needed or if text-file
 
 ### Done When
 - All landmarks reachable from center anchor (verified by flood fill)
+- **Progression gates enforced**: gated landmarks ONLY reachable through their gate (verified by gate-aware flood fill)
+- No alternate paths bypass any gate — sealing pass closes all gaps
 - Carved corridors look intentional, not ugly
 - Wall type refinement produces geometric circuit edges near landmarks and organic scatter in wilds
 - Obstacle blocks are style-matched: structured blocks near landmarks, organic blocks in the wilds
 - Obstacle blocks add tactical interest to open areas
 - (Optional) Structured sub-areas produce curated room sequences within dense zones
-- Can walk from center to any landmark
+- Can walk from center to any landmark (through required gates)
 
 ---
 
@@ -273,6 +295,7 @@ Evaluate after Phase 2 whether visual authoring tools are needed or if text-file
 - Influence field visualization overlay
 - Enemy density heatmap overlay
 - Connectivity graph overlay (show flood fill result)
+- **Gate enforcement overlay**: highlight gate landmarks, show gated regions, visualize sealed chokepoints
 - **Three-tile-type heatmap**: visualize wall/effect/empty distribution
 - Generation time profiling
 
@@ -306,7 +329,7 @@ Evaluate after Phase 2 whether visual authoring tools are needed or if text-file
 
 ### Content Ramp
 - Author center anchors for all 11 zones (Origin + 3 generic + 6 themed + alien)
-- Author landmark chunks per biome (boss arenas, portal rooms, safe zones)
+- Author landmark chunks per biome (boss arenas, encounter gates, portal rooms, safe zones, scripted difficulty gates)
 - Author 30-50 obstacle blocks across biomes (flagged as structured or organic per block)
 - Author biome-specific cell types (solid + circuit wall types + effect cell types per zone)
 - **Define effect cell types per biome**: data traces for generic zones, hazard cells for themed zones
