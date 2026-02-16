@@ -1,8 +1,10 @@
-# Spec: Phase 1 — Godmode Entity Placement + Zone Navigation
+# Spec: Phase 1 — Godmode Entity Placement + Zone Navigation ✅ COMPLETE
 
 ## Summary
 
 Expand godmode from cell-only editing to full entity placement (enemies, savepoints, portals), add zone navigation (create new zones, jump between zones without portals), and make background colors and music per-zone properties defined in the zone file.
+
+**Status**: Implemented. See `plans/spec_procgen_phases.md` for Phase 1.5 (potential additional godmode tools for procgen authoring — to be evaluated after Phase 2).
 
 ## What Already Exists
 

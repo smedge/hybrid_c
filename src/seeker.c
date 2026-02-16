@@ -13,6 +13,7 @@
 #include "color.h"
 #include "audio.h"
 #include "map.h"
+#include "enemy_registry.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -25,7 +26,7 @@
 #define ORBIT_SPEED 500.0
 #define AGGRO_RANGE 1000.0
 #define DEAGGRO_RANGE 3200.0
-#define ORBIT_RADIUS 750.0
+#define ORBIT_RADIUS 500.0
 #define IDLE_DRIFT_RADIUS 500.0
 #define IDLE_DRIFT_SPEED 80.0
 #define IDLE_WANDER_INTERVAL 2000
@@ -201,7 +202,7 @@ void Seeker_initialize(Position position)
 
 	highestUsedIndex++;
 
-	/* Load audio once, not per-entity */
+	/* Load audio and register with enemy registry once, not per-entity */
 	if (!sampleWindup) {
 		Audio_load_sample(&sampleWindup, "resources/sounds/enemy_aggro.wav");
 		Audio_load_sample(&sampleDash, "resources/sounds/ricochet.wav");
@@ -209,6 +210,9 @@ void Seeker_initialize(Position position)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
+
+		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal};
+		EnemyRegistry_register(cb);
 	}
 }
 

@@ -5,12 +5,16 @@
 **Hybrid** takes place in a digital world where a human brain has been interfaced with a computer system for the first time. The player character is the "Hybrid" — a fusion of human mind and AI consciousness navigating cyberspace.
 
 - **Rebirth**: The game begins with a "rebirth" sequence — what was once a human is being reborn as a brain connected to a network, with the structure of that network projected into its consciousness. This is the player's first moment of awareness in cyberspace.
-- **The Grid**: Represents the fabric of cyberspace. Movement across it shows traversal through digital space.
+- **The Grid**: Represents the fabric of cyberspace. Movement across it shows traversal through digital space. Superimposed over the breathing, shifting background cloudscape.
 - **Map Cells / Walls**: Give the system topography — structural geometry the player must navigate around. The architecture of the digital system.
+- **Data Traces**: Faint glowing circuit-like patterns on traversable ground in generic zones. The visible flow of information through the system — subtle atmospheric detail that makes areas feel alive and active without gameplay effect. In themed zones, these become **biome hazards** (fire embers, frost patches, toxic ground, etc.) with actual gameplay impact.
 - **Mines**: Security intrusion detection devices. Part of the system's defenses against the Hybrid.
 - **Hunters**: Active security programs that patrol, chase, and fire machine-gun bursts at the player. Orange triangles.
 - **Seekers**: Predatory security programs that stalk the player, orbit at dash range, then execute high-speed charge attacks. Green needles.
-- **Defenders**: Support security programs that heal wounded hunters/seekers and shield themselves with aegis when threatened. Light blue hexagons.
+- **Defenders**: Support security programs that heal wounded allies and shield themselves with aegis when threatened. Light blue hexagons.
+- **Stalkers**: Stealth assassination programs that approach nearly invisible, with a subtle tell before striking. Dark purple crescents. (Planned)
+- **Swarmers**: Distributed security protocols that split into drone swarms to overwhelm by numbers. Yellow/amber clusters. (Planned)
+- **Corruptors**: Counter-intrusion programs that degrade the Hybrid's subsystems — slowing feedback decay, disabling regen, reducing speed. Dark magenta. (Planned)
 - **Viruses**: Planned as tools the player eventually uses *against* the system.
 - **The Alien Entity**: The ultimate antagonist — a foreign alien intelligence projecting into human Earth cyberspace via a network connection. Its presence warps the final zone into something alien and unrecognizable.
 
@@ -20,6 +24,8 @@ Bullet hell shooter × Metroidvania
 
 - **Bullet hell**: Dense enemy patterns, projectile-heavy combat, reflexive gameplay
 - **Metroidvania**: Interconnected world, ability-gated progression, exploration with fog of war, boss encounters
+
+**What makes this different from traditional metroidvania**: There are no colored doors. No keys. No hard locks (except the final zone). Progression is gated by **enemy composition difficulty** — specific enemy types and combinations that are near-impossible without the right subroutine loadout, but manageable once you have it. The player doesn't find the weapon that opens the orange door. They find the combination of subroutines that are deadly against the enemy type that's been handing them their ass every time they try to push into a new area. That realization — "oh, THIS is how I beat that" — is the core discovery loop.
 
 ## Core Mechanics
 
@@ -64,6 +70,17 @@ Feedback accumulates from subroutine usage and represents connection strain. Dec
 
 Subroutines are abilities the Hybrid AI can execute to interact with digital space. They are the core progression mechanic.
 
+**Endgame Vision**: 50+ subroutines across many types. The current set (pea, mgun, mine, boost, egress, mend, aegis) are the foundation — general-purpose tools that work everywhere but excel nowhere specific. As the game expands, subroutines become increasingly specialized. No single loadout of 10 handles everything. The player must read the situation, understand what they're up against, visit their catalog, and build for the challenge. This build-craft layer — choosing, combining, and swapping subroutines to match the threat — is where the strategic depth lives. The skill expression isn't just aim and reflexes; it's knowing which tools to bring and when to swap them.
+
+**Build Archetypes** (long-term direction — examples, not exhaustive):
+- **Minion Master**: Drone summoning + drone healing + drone command + feedback management. Powerful army but demands multiple slots and careful resource management. Inspired by Guild Wars necromancer builds where you need supporting skills to make the core strategy viable.
+- **Stealth Assassin**: Cloak + blink/teleport + burst damage. Get in, delete a target, get out unseen. High skill ceiling, punishes mistakes.
+- **Control/Disruption**: Enemy debuffs + cleanse + area denial. Weaken enemies systematically rather than brute-forcing. Enables otherwise impossible fights through attrition.
+- **AoE Specialist**: Plasma cannon + nuke + gravity well + damage dash. Crowd-clearing build that shreds swarms but lacks single-target burst for tanky enemies.
+- **Tank/Sustain**: Aegis + mend + damage reduction + regen boost. Survive anything but kill slowly. Safe for exploration, too slow for timed encounters.
+
+Each archetype requires commitment — dedicating multiple of your 10 slots to a strategy. Slot economy IS the build constraint. You can't have everything.
+
 **Architecture**:
 - Each subroutine has a **type**: `projectile`, `movement`, `shield`, etc.
 - Only one subroutine of each type can be **active** at a time
@@ -80,12 +97,16 @@ Subroutines are abilities the Hybrid AI can execute to interact with digital spa
 | sub_egress | movement | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | 3 seeker kills | Implemented |
 | sub_boost | movement (elite) | Hold shift for unlimited speed boost. No cooldown, no feedback cost. Elite subroutine (gold border). | Elite fragment | Implemented |
 | sub_mine | deployable | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback on explosion. | 5 mine kills | Implemented |
-| sub_mend | healing | Instant heal. Restores 50 integrity. 10s cooldown. 20 feedback. Activated with E key. | 5 defender kills (mend fragments) | Implemented |
-| sub_aegis | shield | Damage shield. Invulnerable to all damage for 10 seconds. 30s cooldown. 30 feedback. Activated with Q key. Cyan ring visual. | 5 defender kills (aegis fragments) | Implemented |
+| sub_mend | healing | Instant heal. Restores 50 integrity. 10s cooldown. 20 feedback. Activated with G key. | 5 defender kills (mend fragments) | Implemented |
+| sub_aegis | shield | Damage shield. Invulnerable to all damage for 10 seconds. 30s cooldown. 30 feedback. Activated with F key. Cyan ring visual. | 5 defender kills (aegis fragments) | Implemented |
 
-**Each enemy type has a corresponding subroutine** unlocked by defeating enough of that enemy. This creates a progression loop: encounter enemy → learn its patterns → kill it → gain its ability.
+**Each enemy type has a corresponding subroutine** (or set of subroutines) unlocked by defeating enough of that enemy. This creates a progression loop: encounter enemy → learn its patterns → kill it → gain its ability. As the subroutine count grows, some enemies will unlock multiple subroutines (e.g., defenders unlock both sub_mend and sub_aegis), and later enemies will unlock subroutines that form the building blocks of entire playstyle archetypes.
 
 ### Progression System
+
+**Philosophy: Enemies are gates. Subroutines are keys.**
+
+Every enemy type exists to create demand for specific subroutines. Every subroutine exists to answer specific enemies. Neither makes sense without the other. An enemy that is trivially beatable with basic tools doesn't justify its existence. A subroutine that doesn't dramatically change how you handle a specific threat doesn't justify its slot. The power of this system is in enemy **compositions** — combinations of enemy types that create demand for specific **builds**, not just individual abilities.
 
 Enemies drop **fragments** (small colored binary glyph collectibles) when destroyed by the player (only if the associated subroutine isn't already unlocked). Fragments last 10 seconds (fade begins at 8s), attract toward the player when nearby, and are collectible for their full lifetime. Collecting fragments from a specific enemy type progresses toward unlocking the subroutine associated with that enemy. Fragment colors match their enemy type.
 
@@ -108,6 +129,7 @@ All security programs share common behaviors:
 - **De-aggro on player death**: All active enemies immediately return to idle when the player dies. Their in-flight projectiles are cleared.
 - **Reset on player respawn**: All enemies (except bosses) silently reset to full health at their original spawn points when the player respawns. This happens during the death timer so it's invisible to the player.
 - **Hit feedback**: Player projectiles hitting an enemy produce a spark + samus_hurt sound for clear damage confirmation.
+- **Enemy Registry**: All enemy types register callbacks (find_wounded, find_aggro, heal) with a central registry. This allows support enemies (defenders) to automatically protect any enemy type — including other defenders — without hard-coded type knowledge. New enemy types get defender support by registering with the registry during initialization.
 
 #### Mines (Intrusion Detection Devices)
 
@@ -154,7 +176,7 @@ Predatory dash-kill enemies. Green elongated diamonds (needles).
 | Aggro range | 1000 units, requires LOS |
 | De-aggro range | 3200 units |
 | HP | 60 (glass cannon) |
-| Orbit radius | 750 units (matches dash range) |
+| Orbit radius | 500 units (dash overshoots by 250 — can't just back up) |
 | Dash speed | 5000 u/s |
 | Dash duration | 150ms |
 | Dash damage | 80 (near-lethal) |
@@ -167,7 +189,7 @@ Predatory dash-kill enemies. Green elongated diamonds (needles).
 
 #### Defenders
 
-Support security programs. Light blue hexagons that heal wounded hunters/seekers and shield themselves.
+Support security programs. Light blue hexagons that heal wounded allies of any type (including other defenders) and shield themselves.
 
 | Property | Value |
 |---|---|
@@ -187,9 +209,42 @@ Support security programs. Light blue hexagons that heal wounded hunters/seekers
 
 **Aegis shield**: Activated when taking damage or player gets close. All incoming damage absorbed for 10 seconds. Bright pulsing hexagon ring visual. Creates a timing puzzle — wait for shield to expire, or kill allies first.
 
-**Heal beam**: Brief light-blue line connecting defender to healed target. Heals the most wounded alive hunter or seeker within range every 4 seconds.
+**Heal beam**: Brief light-blue line connecting defender to healed target. Heals the most wounded alive ally of any registered enemy type within range every 4 seconds. Multiple defenders coordinating on the same group will stagger their aegis shields and spread across targets for maximum coverage.
 
 **Damage to kill**: 2 sub_pea shots, 4 sub_mgun shots, or 1 sub_mine (when not shielded)
+
+#### Stalkers (Planned)
+
+Stealth assassins. Dark purple crescents that approach the player nearly invisible, with a brief decloak tell before a devastating strike. Glass cannons — fragile if spotted, lethal if not. The tell (bloom flicker + audio cue + proximity fade-in) must be subtle enough that new players miss it, but consistent enough that experienced players learn to react. Killing stalkers unlocks stealth/phase-shift subroutines.
+
+**Detailed spec**: `plans/new_enemies_spec.md`
+
+#### Swarmers (Planned)
+
+Distributed security protocols. Yellow/amber hexagonal clusters that split into 8-12 fast, individually weak drones when aggroed. Intentionally oppressive with basic weapons — meant to create demand for AoE subroutines (plasma cannon, nuke, gravity well, damage dash) that don't exist yet. Swarmers are the gate that says "you need better AoE to get past here." Critically, swarmer fragments unlock drone-summoning subroutines — the foundation of the **minion master playstyle archetype**, where the player builds their own army with supporting sustain and command subroutines.
+
+**Detailed spec**: `plans/new_enemies_spec.md`
+
+#### Corruptors (Planned)
+
+Debuff support programs. Dark magenta glitchy polygons that degrade the player's subsystems from range — slowing feedback decay, disabling health regen, reducing movement speed. They don't attack directly; they make everything else harder. Position behind allies, flee when approached. Force the player to make target priority decisions: kill the hunter shooting you NOW, or the corruptor behind it making the fight unwinnable? Killing corruptors unlocks disruption/debuff subroutines the player can use against enemies.
+
+**Detailed spec**: `plans/new_enemies_spec.md`
+
+#### Enemy Composition Gating
+
+The real difficulty gating comes from enemy **combinations**, not individual types. Single enemy types test single skills. Compositions test builds.
+
+| Composition | Challenge | What the Player Needs |
+|---|---|---|
+| Hunters + Defenders | Sustained DPS behind shields | Shield-breaking, burst damage, or heal disruption |
+| Seekers + Stalkers | Multi-vector melee from visible and invisible threats | Detection + defensive mobility |
+| Swarmers + Corruptors | Overwhelming numbers while debuffed | AoE + cleanse to maintain effectiveness |
+| Hunters + Corruptors + Defenders | Ranged DPS, debuffs, AND shields | A real build — no single answer works |
+| Swarmers + Defenders | Defenders healing/shielding the mother | Must prioritize defenders or burst mother pre-split |
+| Stalkers + Corruptors | Speed-debuffed + invisible assassins | Speed reduction makes stalker tells harder to react to |
+
+No single loadout handles all of these. The player must adapt their build to the zone.
 
 ### Damage Model
 
@@ -203,54 +258,152 @@ Support security programs. Light blue hexagons that heal wounded hunters/seekers
 ### World Design
 
 **Structure**:
-- Each zone is a complete map — grid size varies by zone (up to 1024×1024, 100-unit cells)
-- Zones are always accessible (no hard locks) except the **final zone** which requires all normal bosses defeated
-- Zones are **difficulty-gated**: without the right subroutines, areas are effectively impossible to survive
-- This creates natural metroidvania progression — unlock abilities, access harder zones, unlock more abilities
+- Each zone is a complete 1024×1024 map (100-unit cells, ~102,400 world units per side)
+- Zones are always accessible (no hard locks) except the **final zone** which requires all 6 themed zone bosses defeated
+- Zones are **difficulty-gated through enemy composition**: without the right subroutine loadout, areas are effectively impossible to survive. The gate isn't a locked door — it's a room full of enemies that counter your current build. The key isn't an item — it's the right combination of subroutines and the knowledge of when to use them.
+- This creates natural metroidvania progression — encounter a wall → explore elsewhere → unlock abilities → return with the right build → push deeper
+- The player will never steamroll everything with one setup. Different zones demand different loadouts, and mastery means knowing how to read a zone and adapt.
 - Portals connect zones — stepping on a portal unloads the current zone and loads the destination
 
-**Zones** (12+ planned):
+**Zone Map** (11 zones):
 
-| Zone | Theme | Description |
-|------|-------|-------------|
-| Starting Zone | Neutral/tutorial | Player spawn, safe structures, introduction to mechanics |
-| 10 Themed Zones | Fire, Ice, Poison, Blood, etc. | Each themed visually with custom cell types and patterns. Each contains 1 major boss + mini bosses. |
-| Final Zone | Alien | Alien entity's domain — visually alien and unrecognizable. Locked until all 10 zone bosses defeated. |
+```
+                        [Fire Zone] ←── Boss 1
+                       /
+            [Generic A]
+           /            \
+          /              [Ice Zone] ←── Boss 2
+         /
+[ORIGIN] ── [Generic B] ── [Poison Zone] ←── Boss 3
+         \               \
+          \               [Blood Zone] ←── Boss 4
+           \
+            [Generic C]
+           /            \
+          /              [Electric Zone] ←── Boss 5
+                        \
+                         [Void Zone] ←── Boss 6
+
+                All 6 cleared → [Alien Zone] ←── Final Boss
+```
+
+| Zone | Theme | Role |
+|------|-------|------|
+| The Origin | Neutral hub | Central hub, player spawn, safe structures, tutorial area. All paths start here. |
+| Generic A/B/C | Standard cyberspace | Training grounds with base enemy types. Where players learn mechanics, build initial subroutine collection, and access themed zone portals. Each contains 2 portals to themed zones. |
+| Fire, Ice, Poison, Blood, Electric, Void | Themed zones | 6 distinct themed zones, each with custom cell types, themed enemy variants, and a major boss encounter. Clearing a boss is permanent progression. |
+| Alien Zone | Alien | The alien entity's domain — visually alien and unrecognizable. Locked until all 6 themed zone bosses are defeated. Contains the final boss. |
+
+**Themed Enemy Variants**:
+
+Each themed zone features the same base enemy types (hunters, seekers, defenders, stalkers, swarmers, corruptors) but with elemental modifiers layered on top. The base AI doesn't change — same patrol, chase, burst, orbit, dash state machines. The twist is in damage types, secondary effects, and visual theming.
+
+Examples (illustrative, not final):
+- **Fire hunters**: projectiles leave burning ground on impact
+- **Ice seekers**: dash leaves a frozen trail that slows the player
+- **Poison stalkers**: backstab applies damage-over-time
+- **Electric seekers**: dash chains lightning to nearby targets on contact
+- **Blood defenders**: heal beam drains player integrity to fuel ally healing
+- **Void corruptors**: corruption aura distorts spatial awareness (minimap interference?)
+
+This approach multiplies content without multiplying AI code. Same state machines, different damage types and secondary effects. Players who know base enemy patterns must still adapt to the twist — you know how to dodge a seeker dash, but when it leaves a frozen trail, your positioning calculus changes. Each theme creates demand for different defensive subroutines (fire resistance, poison cleanse, electric grounding), feeding the 50+ subroutine ecosystem.
+
+**Themed Terrain (Effect Cells)**:
+
+In addition to themed enemies, each zone's **effect cells** (the third tile type) change to match the biome. In generic zones these are purely atmospheric data traces. In themed zones they become gameplay hazards:
+
+- **Fire**: Ember cells — faint orange glow, damage-over-time while standing on them
+- **Ice**: Frost cells — pale blue shimmer, reduced friction / momentum sliding
+- **Poison**: Toxic cells — sickly green pulse, slow feedback decay while standing on them
+- **Blood**: Drain cells — dark red veins, slow integrity drain
+- **Electric**: Charge cells — crackling blue-white, periodic damage pulses
+- **Void**: Distortion cells — visual warping, minimap interference
+
+Effect cells are generated by the same noise system as walls (using the middle noise band between wall and empty thresholds), so they appear organically throughout the terrain. Players must read the ground as well as the enemies — kiting through fire cells versus clean ground changes the fight. This adds a positioning layer that costs zero AI code and comes free from the procgen system.
+
+**AI Difficulty Tuning**:
+
+Base enemy AI has tunable parameters that scale difficulty across zones without changing behavior logic. The same hunter code runs everywhere — only the numbers change.
+
+Tuning knobs per zone (planned):
+- **Aggro range**: how far enemies detect the player
+- **Reaction speed**: delay before state transitions (idle → chase, etc.)
+- **Projectile speed/accuracy**: how fast and precise enemy shots are
+- **HP scaling**: enemy health multiplier
+- **Damage scaling**: enemy damage multiplier
+- **Cooldown scaling**: how frequently enemies attack
+- **Group coordination**: how aggressively support enemies (defenders, corruptors) respond
+
+The Origin and generic zones use relaxed tuning — enemies are slower to react, less accurate, lower damage. Players can explore, die, learn, and make incremental progress. Themed zones ramp up. The alien final zone pulls out all the stops — maximum aggro range, fastest reactions, highest damage, tightest coordination. The final zone should feel genuinely brutal, demanding mastery of both build-craft and mechanical skill.
+
+**Death Philosophy**:
+
+Death is an annoyance, not a punishment. The game is designed to be hard — brutally hard in late zones — but dying should never feel like lost progress. The player should always be able to throw themselves at a challenging area, make incremental gains, die, respawn, and try again.
+
+Core principles:
+- **No fragment/skill loss on death**: fragments collected and subroutine progress are permanent. Dying does not roll back progression. The player can push into a zone that's over their head, pick up a fragment or two, die, and keep that progress.
+- **Fast respawn**: death → respawn is quick (currently 3s). Get the player back in the action immediately.
+- **Respawn at save points**: save points are checkpoints, not progress-save gates. They exist to reduce backtracking, not to create risk/reward tension around saving.
+- **Encourage exploration of hard content**: because death is cheap, players are encouraged to probe zones they're not ready for. They might discover what enemies are there, what subroutines they need, and pick up a few fragments before dying. This IS the progression loop — reconnaissance through death.
+
+This philosophy enables the extreme difficulty curve. The alien final zone can be ruthlessly hard because dying 50 times while learning it doesn't cost the player anything except time. The challenge is the reward. Getting through it means you earned it through skill and build-craft, not through hoarding lives or save-scumming.
+
+**Endgame (Vision — Not Yet Designed)**:
+
+Post-final-boss endgame will leverage the procedural generation system to create replayable content. The noise + influence field architecture is built for this — seed-based generation means every seed produces a deterministic but unique world, enabling:
+- **Seeded challenge runs**: Daily/weekly seeds where all players get the same world layout, competing on completion time or score
+- **Deep network runs**: Randomized zone remixes with escalating difficulty, enemy compositions, and theme crossovers (fire enemies in ice terrain, etc.)
+- **Escalating corruption**: Post-game corruption levels that progressively increase enemy AI parameters, add new enemy compositions, and introduce environmental hazards
+- **Roguelike mode**: Randomized starting loadouts with permadeath, testing build-craft improvisation
+- **Leaderboards by seed**: Shared seeds enable direct competition on identical worlds
+
+This is long-term vision — the building blocks (procgen infrastructure, themed variants, difficulty tuning) need to exist first.
 
 **Bosses**:
-- Each themed zone has 1 major boss and several mini bosses
-- Final boss is the alien entity in the final zone
+- Each themed zone has 1 major boss encounter
+- The alien zone contains the final boss
 - Boss encounters drive major progression milestones
+- Boss design is not yet specified
 
-**Cell types per zone**: Each zone defines its own visual theme through custom cell type definitions. The engine provides global defaults (solid, circuit) but zones can override colors, patterns, and define zone-specific types (fire walls, ice barriers, poison pools, etc.).
+**Cell types per zone**: Each zone defines its own visual theme through custom cell type definitions. Two categories: **wall types** (solid + circuit, blocking movement and LOS) and **effect types** (traversable, with visual properties and optional gameplay effects). The engine provides global defaults but zones override colors, patterns, and define zone-specific types. Wall types use an influence-proximity placement system: circuit walls concentrate as geometric edge patterns near landmarks (architectural feel) and scatter organically in the wilds (raw, natural feel). Effect types: data traces (generic zones), ember cells, frost cells, toxic cells (themed zones).
 
 ### Procedural Level Generation
 
-Zones use a **hybrid approach** to level generation: the designer hand-authors a zone's identity (landmark rooms, anchor walls, ability gates), and the algorithm procedurally generates the connective terrain between those landmarks (corridors, combat rooms, open battlefields, enemy placements). Every generation run is **seed-deterministic** — same zone + same seed = identical world. This is foundational for multiplayer, shared seeds, and reproducible runs.
+Zones use a **noise + influence field approach** to level generation. The designer authors a minimal zone skeleton — a center anchor (savepoint + entry portal), landmark definitions with terrain influence tags, and global tuning parameters. The generator procedurally builds the entire 1024×1024 zone around that skeleton. Every generation run is **seed-deterministic** — same zone + same seed = identical world. This is foundational for multiplayer, shared seeds, and reproducible runs.
 
 **Detailed spec**: `plans/spec_procedural_generation.md`
+**Implementation phases**: `plans/spec_procgen_phases.md`
+
+**Design philosophy**: No fixed regions, no fixed quadrants, no predetermined layout structure. The world organically reorganizes itself around wherever the landmarks land. Players can't memorize layouts — the labyrinth isn't always in the upper-left, the boss isn't always through the same corridor. Exploration is genuine.
 
 **Key concepts**:
 
-- **Hotspot system**: The designer places generic candidate positions (hotspots) throughout a zone. The generator assigns landmark types (boss arena, portal, safe zone) to hotspots per seed. Players know a zone *has* a boss — they have to explore to find it. Prevents memorizable layouts. Landmarks can also be hand-placed at fixed positions when explicit control is needed.
+- **Noise-driven whole-map terrain**: 2D simplex noise (seeded, multi-octave) covers the entire 1024×1024 map, creating organic wall patterns. No rectangular regions, no visible boundaries between generated areas. The map is one continuous environment with smooth density variation.
 
-- **Two generation modes** per region:
-  - **Structured mode**: Chunk-based coarse grid with solution path guarantee (inspired by Spelunky). Variable chunk sizes (8×8 to 64×64) mix within a single region. For corridors, labyrinths, and dense navigational areas.
-  - **Open mode**: Scatter-based placement of walls, obstacle blocks, and enemies across open space. For expansive battlefields, arenas, and sparse cyberspace. No chunks or solution path — traversability is trivially guaranteed by low density.
+- **Hotspot-carried terrain influences**: Each landmark (boss arena, portal room, safe zone) carries a **terrain influence** that radiates from its position. A boss arena brings dense labyrinthine terrain around it. A safe zone brings sparse open ground. Since hotspot positions change per seed, the terrain character — and therefore the "zones" within the map — reorganize every seed. The labyrinth follows the boss, the open field follows the arena, wherever they land.
 
-- **Chunk templates**: Reusable room/corridor building blocks authored by the designer. Each chunk has exit configurations (which sides have openings), probabilistic cells, obstacle zones, and enemy spawn slots. One authored template produces thousands of variations through probabilistic resolution and mirroring.
+- **Hotspot position generation**: Landmark candidate positions are generated per seed (not hand-placed), constrained by minimum separation, edge margins, and center exclusion. Players know a zone *has* a boss — they have to explore to find it.
 
-- **Regions**: Rectangular areas of the zone designated for procedural generation. Multiple rectangles with the same ID union into composite shapes (L-shapes, T-shapes). Each region specifies generation mode, style (linear/labyrinthine/branching for structured; sparse/scattered/clustered for open), difficulty, density, and pacing.
+- **Center anchor rotation/mirroring**: The hand-authored center geometry (savepoint, entry portal, surrounding structure) is rotated in 90° increments and/or mirrored before generation begins (1 of 8 transformations per seed). Even the starting area feels different each run.
 
-- **Solution path first**: In structured mode, the algorithm builds a guaranteed traversable path from entry to exit before filling around it. Reachability by construction, not validation.
+- **Connectivity guarantee**: After terrain generation, flood fill validates all landmarks are reachable from center. Unreachable landmarks get corridors carved to them — these feel like intentional data conduits in cyberspace, not ugly tunnels.
 
-- **Content investment**: ~50-100 chunk templates + ~15-30 obstacle blocks across all biomes. Each template multiplies through procedural assembly, probabilistic variation, and mirroring. A fraction of hand-coding every room across 12+ zones at 1024×1024 scale.
+- **Chunk templates**: Hand-crafted room geometry for landmark locations (boss arenas, portal rooms, safe zones). These are the recognizable set pieces that persist across runs even though their positions vary. Optional structured sub-areas within dense terrain can also use chunk-based fill for curated combat encounters.
 
-**Prerequisites** (implement before procgen):
+- **Three tile types** (wall / effect / empty): The noise generator uses two thresholds to produce three distinct tile types instead of binary wall-or-empty. Walls block movement. Effect cells are traversable with visual properties and optional gameplay effects. Empty space is pure traversable grid over the background cloudscape. The middle band (effect cells) naturally concentrates at terrain transitions — the edges where dense walls meet open space — adding organic visual texture where it matters most. In generic zones, effect cells are **data traces** (faint glowing circuit patterns, purely atmospheric). In themed zones, they become **biome hazards** (fire damage, ice friction, poison DOT, etc.), creating a tactical terrain-reading layer where players think about WHERE they fight. Same generation system, same noise, different cell type per biome.
+
+- **Wall type refinement**: Two wall types (solid and circuit) are distributed by influence proximity. Near landmarks, walls use **edge detection** — exposed wall faces become circuit type, creating geometric, architectural edges. In the wilds, circuit tiles appear as **organic scatter** — random placement that creates the natural, untamed feel of raw digital terrain. The transition is smooth, driven by influence falloff.
+
+- **Obstacle block scatter**: Small pre-authored wall patterns (3×3, 4×4, etc.) scattered in moderate-to-sparse terrain for tactical cover and visual interest. Each block is flagged as **structured** (geometric, placed near landmarks) or **organic** (random-looking, placed in the wilds), ensuring visual consistency with the surrounding terrain character.
+
+- **Influence-biased enemy population**: Each landmark's influence includes an enemy composition bias (stalker-heavy, swarmer-heavy, etc.), creating organic variation in enemy types across the map. Budget-controlled spawning with spacing enforcement.
+
+- **Content investment**: Center anchor chunks + landmark chunks per zone (5-10 per biome) + obstacle blocks (15-30 across biomes). The noise layer generates the vast majority of terrain procedurally. A fraction of hand-authoring every room across 11+ zones at 1024×1024 scale.
+
+**Prerequisites** (all complete):
 1. ~~God mode editing tools for procgen content authoring~~ (done)
 2. ~~Portals and zone transitions~~ (done)
-3. Diagonal walls (new cell types)
-4. ~~At least one active enemy type~~ (done — hunters)
+3. ~~At least one active enemy type~~ (done — hunters, seekers, defenders)
 
 ### Map & Navigation
 
@@ -284,9 +437,9 @@ The 10-slot skill bar at the bottom of the screen is the central interaction mec
 |------------|-----------------|
 | Projectile | LMB (fires toward cursor) |
 | Movement | Shift (triggers dash/burst) |
-| Shield | Slot key (toggles on/off) |
-| Healing | Slot key (triggers effect) |
-| Deployable | LMB (places at position) |
+| Shield | F key (triggers activation) |
+| Healing | G key (triggers heal) |
+| Deployable | Space (deploys at position) |
 
 **Placeable activation** (god mode): Activate slot, LMB to place at cursor with grid snapping.
 
@@ -311,7 +464,7 @@ A modal window for browsing and equipping skills or placeables, context-sensitiv
 
 ### God Mode
 
-God mode is the in-game level editor. Toggle with **G** key. God mode and gameplay mode are mutually exclusive — skills cannot be used in god mode, and placeables cannot be used in gameplay.
+God mode is the in-game level editor. Toggle with **O** key. God mode and gameplay mode are mutually exclusive — skills cannot be used in god mode, and placeables cannot be used in gameplay.
 
 **When entering god mode**:
 - Skill bar swaps to the god mode placeable loadout
@@ -319,7 +472,7 @@ God mode is the in-game level editor. Toggle with **G** key. God mode and gamepl
 - Ship collision and death disabled
 - Catalog window (P) switches to showing placeables
 
-**When exiting god mode** (press G again):
+**When exiting god mode** (press O again):
 - Skill bar swaps back to the gameplay skill loadout
 - Normal gameplay resumes immediately with existing skill configuration
 - Camera returns to following the ship
@@ -362,7 +515,8 @@ More types will be added as new cell types, enemy types, and world features are 
 - Player stats system (Integrity + Feedback bars, spillover damage, regen with 2x rate at 0 feedback, damage flash + sound, shield state)
 - Hunter enemy (patrol, chase, 3-shot burst, LOS requirement, near-miss aggro, deaggro on player death)
 - Seeker enemy (stalk, orbit, telegraph, dash-charge, 60HP glass cannon)
-- Defender enemy (support healer, heals hunters/seekers, aegis self-shield, flees player, random mend/aegis fragment drops)
+- Defender enemy (support healer, generic ally protection via enemy registry, aegis self-shield on hit/nearby shots, shield staggering, target deconfliction, flees player, random mend/aegis fragment drops)
+- Enemy registry (callback-based type registration — find_wounded, find_aggro, heal — enabling generic enemy interactions)
 - Mine state machine (idle → armed → exploding → destroyed → respawn)
 - Fragment drops and collection (typed colored binary glyphs, attract to player, 10s lifetime)
 - Subroutine progression/unlock system (fragment counting, per-enemy thresholds, discovery + unlock notifications)
@@ -370,7 +524,7 @@ More types will be added as new cell types, enemy types, and world features are 
 - Zone persistent editing and undo system (Ctrl+Z, auto-save on edit)
 - Portals and zone transitions (warp pull → acceleration → flash → arrive cinematic)
 - Save point system (checkpoint persistence, cross-zone respawn)
-- God mode (G toggle — free camera, cell placement/removal, Tab to cycle types)
+- God mode (O toggle — free camera, placement modes for cells/enemies/savepoints/portals, Q/E to cycle modes, Tab to cycle types, zone jump J, new zone N)
 - Skill bar (10 slots, number key activation, type exclusivity, geometric icons, cooldown pie sweep)
 - Catalog window (P key — tabbed sub browser, drag-and-drop equipping, slot swapping, right-click unequip, notification dots)
 - Map cell rendering with zoom-scaled outlines
@@ -392,8 +546,13 @@ More types will be added as new cell types, enemy types, and world features are 
 - Unified skill bar Phase 3 (two-loadout system for gameplay/god mode)
 - God mode placeable catalog (cell types, enemy spawns, portals via catalog drag-and-drop)
 - Boss encounters
-- Diagonal walls (new cell types with angled geometry + collision)
-- Procedural level generation (hybrid approach — see spec at `plans/spec_procedural_generation.md`)
+- ~~Diagonal walls~~ (scrapped — too many rendering edge cases, square cells are the architecture going forward)
+- Procedural level generation (noise + influence field approach — see spec at `plans/spec_procedural_generation.md`)
+- Stalker enemy (stealth assassin — see `plans/new_enemies_spec.md`)
+- Swarmer enemy (splitting drone swarm — see `plans/new_enemies_spec.md`)
+- Corruptor enemy (debuff support — see `plans/new_enemies_spec.md`)
+- Themed enemy variants (elemental modifiers per biome zone)
+- AI difficulty tuning parameters per zone
 - Minimap fog of war
 - Full map view
 - Intro mode

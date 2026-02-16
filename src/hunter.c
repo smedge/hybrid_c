@@ -13,6 +13,7 @@
 #include "color.h"
 #include "audio.h"
 #include "map.h"
+#include "enemy_registry.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -220,13 +221,16 @@ void Hunter_initialize(Position position)
 
 	highestUsedIndex++;
 
-	/* Load audio once, not per-entity */
+	/* Load audio and register with enemy registry once, not per-entity */
 	if (!sampleShoot) {
 		Audio_load_sample(&sampleShoot, "resources/sounds/long_beam.wav");
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
+
+		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal};
+		EnemyRegistry_register(cb);
 	}
 }
 

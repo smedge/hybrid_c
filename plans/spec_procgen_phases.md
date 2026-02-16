@@ -6,164 +6,290 @@ This is the master sequencing plan for implementing procedural generation and th
 
 Detailed implementation specs will be written for each phase right before work begins. This document captures the sequence, dependencies, scope, and key decisions so context isn't lost between sessions.
 
-**Reference**: `plans/spec_procedural_generation.md` — the full procgen design spec (algorithms, data structures, file formats, layer definitions).
+**Reference**: `plans/spec_procedural_generation.md` — the full procgen design spec (noise-driven terrain, influence fields, hotspot generation, landmark placement).
 
 **Scrapped prerequisites**: Diagonal walls (scrapped — too many rendering edge cases, not worth the complexity). Square cells are the architecture going forward.
 
-**Already done**: 4 enemy types (mine, hunter, seeker, defender), player stats/feedback, skill system, zone loader, bloom rendering, portals (with zone transitions), savepoints (with save/load).
+**Already done**: 6 enemy types (mine, hunter, seeker, defender + mgun turret as variant), player stats/feedback, skill system, zone loader, bloom rendering, portals (with zone transitions), savepoints (with save/load), enemy registry.
 
 ---
 
-## Phase 1 — Godmode Entity Placement + Zone Navigation
+## Phase 1 — Godmode Entity Placement + Zone Navigation ✅ COMPLETE
 
 **Goal**: Godmode can place all entity types and navigate between zones without relying on portals. The authoring baseline everything else builds on.
 
-### What Already Exists
-- **Godmode cell editing**: O key toggles godmode, LMB places cells, RMB removes, scroll cycles cell type. (`mode_gameplay.c`)
-- **Portals**: Fully implemented — `portal.c/h` with ID-based linking, zone transitions, arrival suppression, rendering, bloom, minimap. Zone files already serialize `portal <grid_x> <grid_y> <id> <dest_zone> <dest_portal_id>`.
-- **Savepoints**: Fully implemented — `savepoint.c/h` with checkpoint save/load, disk persistence. Zone files already serialize `savepoint <grid_x> <grid_y> <id>`.
-- **Enemy spawns**: `Zone_place_spawn()` / `Zone_remove_spawn()` exist in zone.c with undo support. Zone files serialize `spawn <type> <world_x> <world_y>`. But these APIs aren't wired into the godmode UI yet.
-- **Zone save**: `Zone_save()` writes all cells, spawns, portals, and savepoints to disk.
+**Status**: Implemented. See `plans/spec_phase1_godmode.md` for full details.
 
-### What Needs to Be Built
-
-**Godmode placement modes** — expand beyond cell-only editing:
-- **Enemy placement**: Place enemies at cursor position in godmode. Cycle enemy type (mine, hunter, seeker, defender). Wire into existing `Zone_place_spawn()` / `Zone_remove_spawn()`.
-- **Savepoint placement**: Place/remove savepoints at cursor. Need `Zone_place_savepoint()` / `Zone_remove_savepoint()` in zone.c (similar to spawn API with undo).
-- **Portal placement**: Place portals at cursor. Need `Zone_place_portal()` / `Zone_remove_portal()` in zone.c. Portal needs ID + dest_zone + dest_portal_id — either prompt or auto-generate IDs, configure destination separately.
-- **Mode switching**: Key to cycle godmode between placement modes (cells, enemies, savepoints, portals). HUD shows current mode.
-
-**Zone navigation** — move between zones without needing portals:
-- **Create new zone**: Godmode command to initialize a blank zone file with a name and save it. Essential for building new zones from scratch.
-- **Zone jumping**: Godmode hotkey/command to load any zone by filename. Teleport ship to origin (or first savepoint if one exists). No portal required — just tear down current zone, load target, place ship.
-- **Zone list**: Show available zone files (from `resources/zones/`) so you know what to jump to.
-
-### Key Decisions to Make (at impl time)
-- Godmode mode switching UI (dedicated keys per mode? single key to cycle?)
-- Portal configuration flow (how to set dest_zone + dest_portal_id during placement — text input? cycle through known zones/portals?)
-- Zone jump UI (text input for filename? numbered list?)
-
-### Done When
-- Can place/remove enemies, savepoints, and portals in godmode
-- Can create a new empty zone from godmode
-- Can jump to any zone without needing a portal
-- Round-trip: place content → save → reload → content is there
-- All placement operations support undo (Ctrl+Z)
+**What's working:**
+- Godmode placement modes (cells, enemies, savepoints, portals)
+- Mode switching (Q/E), sub-type cycling (Tab)
+- Zone jump (J key), new zone creation (N key)
+- Per-zone background colors + music playlists
+- All entity placement with undo support
+- Zone save/load round-trip
 
 ---
 
-## Phase 2 — PRNG + Chunk Pipeline
+## Phase 1.5 — Godmode Procgen Authoring Tools (if needed)
 
-**Goal**: Load chunk template files and stamp them into the map at specified positions. The building blocks for structured generation.
+**Goal**: Any additional godmode tools needed for authoring procgen content that weren't covered in Phase 1.
+
+### Potential additions
+- **Center anchor authoring**: Paint a center anchor chunk in godmode, export to `.chunk` file. Alternatively, author chunks in a text editor (they're simple text format).
+- **Hotspot constraint visualization**: Debug overlay showing hotspot positions, influence radii, and connectivity for a given seed. Essential for tuning.
+- **Seed cycling**: Godmode hotkey to re-roll the seed and regenerate terrain without reloading the zone file. Fast iteration.
+- **Influence field visualization**: Debug overlay showing the influence field as a color gradient (red = dense, blue = sparse). Helps tune landmark influence parameters.
+
+### Decision
+Evaluate after Phase 2 whether visual authoring tools are needed or if text-file editing + debug overlays are sufficient. The chunk format is simple enough that a text editor may be fine for bootstrapping. Debug overlays for visualization are likely essential regardless.
+
+### Done When
+- Can author center anchor chunks (text editor or godmode)
+- Can visualize hotspot positions and influence fields in-game
+- Can cycle seeds and regenerate in-place for rapid tuning
+
+---
+
+## Phase 2 — PRNG + Noise + Basic Terrain
+
+**Goal**: Seedable PRNG and simplex noise generate visible organic terrain across the whole map. The foundation layer that everything else modulates.
 
 ### PRNG
 - Seedable PRNG (xoshiro128** or PCG) in `prng.c/h`
 - `Prng_seed(uint32_t)`, `Prng_next()`, `Prng_range(min, max)`, `Prng_float()`
 - Deterministic: same seed = same sequence. Foundational for everything.
 
-### Chunk File Parser
-- `chunk.c/h` — parse `.chunk` text files (format defined in procgen spec)
-- Chunk template library: load all chunks from `resources/chunks/` at startup
-- Validation: exit traversability (flood fill), no maybe/empty overlap, obstacle zone bounds
-- Obstacle block parser (small sub-patterns, loaded from `resources/blocks/`)
+### Simplex Noise
+- `noise.c/h` — 2D simplex noise implementation
+- Multi-octave wrapper: `Noise_fbm(x, y, octaves, frequency, lacunarity, persistence, seed)`
+- Returns normalized value in [-1, 1]
+- Seed offsets each octave for per-seed uniqueness
 
-### Chunk Stamper
-- `stamp_chunk(grid_x, grid_y, ChunkTemplate*, mirror_flags, prng)` — write chunk cells into the map
-- 5-step resolution: fill walls → carve empties → resolve maybes → resolve obstacle zones → resolve spawn slots
-- Mirroring (horizontal/vertical) applied during stamp
+### Noise-to-Terrain Conversion (Three Tile Types)
+- Parse `seed`, `noise_*` parameters from zone file (extend zone.c parser)
+- Parse `effecttype` definitions (traversable cells with visual properties)
+- Iterate entire 1024×1024 grid
+- **Two thresholds** produce three tile types:
+  - `noise < wall_threshold` → wall cell (solid, blocks movement)
+  - `wall_threshold <= noise < effect_threshold` → effect cell (traversable, visual + optional effect)
+  - `noise >= effect_threshold` → empty (pure traversable space)
+- Use zone's existing `celltype` definitions for walls, `effecttype` definitions for effect cells
+- Skip cells already occupied by hand-placed content
+
+### Effect Cell System
+- New `effecttype` line in zone files defines traversable cells with visual properties
+- Effect cells are MapCells with a `traversable` flag — rendered like walls but no collision
+- Generic zones: data trace effect cells (faint circuit glow, purely atmospheric)
+- Themed zones: hazard effect cells (fire DOT, ice friction, poison feedback drain, etc.)
+- Effect cell gameplay behaviors are per-biome, resolved at runtime by cell type tag
+
+### Zone File Extensions
+- `seed <uint32>` — PRNG seed
+- `noise_octaves <int>` — number of noise layers (default 5)
+- `noise_frequency <float>` — base frequency (default 0.01)
+- `noise_lacunarity <float>` — frequency multiplier per octave (default 2.0)
+- `noise_persistence <float>` — amplitude multiplier per octave (default 0.5)
+- `noise_wall_threshold <float>` — wall cutoff (default -0.1)
+- `noise_effect_threshold <float>` — effect/empty cutoff (default 0.15)
+- `effecttype <id> <primary_rgba> <outline_rgba> <pattern> [effect] [params]`
+
+### Testing
+- Godmode debug overlay: colorize cells by noise value (gradient visualization)
+- Verify three distinct tile types appear: walls, effect cells, empty space
+- Effect cells concentrate at terrain transitions (edges between dense and sparse)
+- Try different seeds — verify determinism (same seed = same terrain)
+- Try different noise parameters — verify density/scale changes
+- Try different threshold gaps — verify effect cell coverage varies
+- Walk through generated terrain — verify it feels organic, not grid-aligned
+- Walk over effect cells — verify they don't block movement
+
+### Done When
+- PRNG produces deterministic sequences
+- Simplex noise generates smooth 2D fields
+- Terrain fills a 1024×1024 zone with three tile types: walls, effect cells, empty
+- Effect cells render with their own visual appearance (distinct from walls)
+- Effect cells are traversable (no collision)
+- Different seeds produce different layouts
+- Noise parameters visibly affect terrain character
+- Can walk through generated terrain (reasonably traversable at default threshold)
+
+---
+
+## Phase 3 — Center Anchor + Hotspots + Landmarks
+
+**Goal**: Center anchor placed with per-seed rotation/mirror. Hotspot positions generated per seed. Landmarks assigned to hotspots and stamped as chunks. The spatial identity of each zone emerges.
+
+### Center Anchor System
+- Parse `center_anchor <chunk_file>` from zone file
+- Load and stamp the center chunk at map center (grid 512, 512)
+- Apply per-seed transformation (1 of 8: identity, 3 rotations, 4 mirrors)
+- Center cells marked as "fixed" — terrain generation skips them
+
+### Chunk Loader
+- `chunk.c/h` — parse `.chunk` text files (format in procgen spec)
+- Chunk template library: load from `resources/chunks/` at startup
+- Validation: exit traversability (flood fill), no maybe/empty overlap, obstacle zone bounds
+- 5-step chunk stamping: fill walls → carve empties → resolve maybes → resolve obstacle zones → resolve spawn slots
+- Transform support: rotation (0/90/180/270) and mirror (H/V) applied during stamp
+
+### Hotspot Position Generator
+- Parse hotspot constraint parameters from zone file:
+  - `hotspot_count`, `hotspot_edge_margin`, `hotspot_center_exclusion`, `hotspot_min_separation`
+- Generate N positions per seed using constrained random scatter
+- Verify reasonable distribution (warn if clustered)
+
+### Landmark Resolution
+- Parse `landmark` definitions from zone file (type, chunk file, priority, influence params)
+- Parse `landmark_min_separation`
+- Resolve: assign landmark types to hotspot positions (priority order, weighted pick, separation enforcement)
+- Stamp landmark chunks at resolved positions
+- Mark landmark cells as "fixed" — terrain generation skips them
+
+### Influence Field Computation
+- For each landmark, compute terrain influence based on type, radius, strength, falloff
+- Modulate **both** noise thresholds per cell: wall threshold AND effect threshold
+- Dense influences: raise wall threshold (more walls) + narrow effect band (thin fringes)
+- Sparse influences: lower wall threshold (fewer walls) + widen effect band (more effect cells)
+- **This is where terrain character becomes landmark-driven** — the key feature
+- Effect cells naturally concentrate at terrain transitions, giving organic fringes
+
+### Integration with Phase 2
+- Terrain generation now uses influence-modulated dual thresholds instead of flat base values
+- Three tile types respond to influence: dense areas = mostly walls with thin effect fringes, sparse areas = few walls with generous effect cell scatter
+- Center anchor and landmark chunks are stamped before terrain generation
+- Terrain generation skips fixed cells
 
 ### Content Authoring
-- Hand-write 5-10 `.chunk` files in a text editor to bootstrap the library
-- Hand-write 3-5 obstacle block files
-- No visual chunk editor yet — that's Phase 5
+- Hand-write 1 center anchor chunk (text editor)
+- Hand-write 3-5 landmark chunks (boss arena, portal room, safe zone, arena)
+- Test with different seeds to verify position randomization
 
 ### Done When
-- Can load chunk files, validate them, report errors
-- Can stamp a chunk at a position and see its walls on the map
-- Probabilistic cells vary with different seeds
-- Obstacle blocks appear in designated zones within chunks
-- Mirrored chunks render correctly
+- Center anchor appears at map center with per-seed rotation/mirror
+- Hotspot positions vary per seed within constraints
+- Landmark chunks appear at different positions per seed
+- Terrain density varies around landmarks (dense near boss, sparse near safe zone)
+- Transitions between terrain types are smooth and organic
+- No visible hard boundaries between "dense zone" and "sparse zone"
 
 ---
 
-## Phase 3 — Regions + Structured Generation
+## Phase 4 — Connectivity + Corridors + Obstacles
 
-**Goal**: Define regions in zone files, generate solution paths through them, fill with chunks. The core procgen loop.
+**Goal**: All landmarks guaranteed reachable. Carved corridors connect disconnected areas. Obstacle blocks add tactical structure to open terrain.
 
-### Region Parser
-- Extend `zone.c` to parse `region`, `regionmode`, `regionconfig`, `hotspot`, `landmark`, `connect` lines
-- Region data structure with composite rectangles, validity mask, coarse grid
-- Validation: no overlapping regions, regions don't overlap fixed assets
+### Connectivity Validation
+- Flood fill from center anchor position
+- Identify landmarks not reachable from center
+- This catches the main failure mode: dense terrain walls off a landmark
 
-### Godmode: Region Visualization
-- In edit mode, render region rectangle outlines (colored by region ID)
-- Render hotspot markers (distinctive icon/color)
-- Render coarse grid overlay for structured regions (optional, debug toggle)
+### Corridor Carving
+- For each unreachable landmark: A* pathfind from landmark to nearest reachable cell
+- Wall cost > empty cost (prefer existing passages)
+- Carve 2-3 cell wide corridors along the path
+- Optional: roughen corridor edges for organic feel
+- Optional: use a distinct cell type for corridor walls ("data conduit" aesthetic)
+- Re-flood-fill after each corridor to update reachable set
 
-### Solution Path Walk
-- Implement `generate_solution_path()` from the procgen spec
-- Direction biasing by region style (linear, labyrinthine, branching)
-- Backtracking + restart on stuck
-- Hard fallback to straight-line corridor
+### Wall Type Refinement
+- Post-process pass after terrain generation assigns walls
+- Influence-proximity-based circuit vs solid wall type selection
+- **Near landmarks** (high influence): edge detection mode — walls with exposed faces become circuit (geometric, architectural feel)
+- **In the wilds** (low/no influence): organic scatter — random chance of any wall becoming circuit (natural, raw feel)
+- Smooth gradient between modes via influence falloff
+- Parse `circuit_prob_landmark` and `circuit_prob_wild` from zone file
+- Mirrors hand-crafted pattern from The Origin (geometric near portal/savepoint, organic in southern terrain)
 
-### Non-Path Fill
-- `fill_non_path()` — fill unoccupied valid coarse cells with sealed or connected chunks
-- Style-dependent connectivity chance
+### Obstacle Block Scatter
+- Load obstacle blocks from `resources/blocks/`
+- Each block has a `style` flag: **structured** (geometric, deliberate) or **organic** (random-looking, natural)
+- **Style-matched placement**: structured blocks placed near landmarks (high influence), organic blocks placed in the wilds (low influence), blended at moderate influence
+- Scatter in moderate-to-sparse terrain (within INFLUENCE_SPARSE and INFLUENCE_MODERATE zones)
+- Spacing enforcement (min distance between blocks)
+- Random mirroring for variety
+- Parse `obstacle_density` and `obstacle_min_spacing` from zone file
 
-### Exit Stitching
-- For v1: standardize exit offsets per chunk size class (stitching becomes trivial)
-- Clear wall cells on shared edges where exits align
-
-### Multi-Cell Chunks
-- Large chunks (32×32 in a base-16 grid) spanning multiple coarse cells
-- Size preference in chunk selection (try large first, fall back to base)
-
-### Border Sealing
-- Wall off region edges to contain the generated content
+### Structured Sub-Area Fill (Optional, INFLUENCE_STRUCTURED)
+- Within INFLUENCE_STRUCTURED zones: identify inner area (influence strength > 0.5)
+- Compute coarse grid, generate Spelunky-style solution path
+- Fill with chunk templates (path cells = traversable, non-path = sealed/connected)
+- Blend at edges with surrounding noise terrain
+- **This is the most complex piece** — defer if pure noise + obstacles produce good enough results
 
 ### Done When
-- Zone files define regions with structured mode
-- Solution path generates through a region, visible as connected chunks
-- Non-path cells filled with sealed/connected rooms
-- Region borders are solid
-- Different seeds produce different layouts
-- Can walk through a generated region
+- All landmarks reachable from center anchor (verified by flood fill)
+- Carved corridors look intentional, not ugly
+- Wall type refinement produces geometric circuit edges near landmarks and organic scatter in wilds
+- Obstacle blocks are style-matched: structured blocks near landmarks, organic blocks in the wilds
+- Obstacle blocks add tactical interest to open areas
+- (Optional) Structured sub-areas produce curated room sequences within dense zones
+- Can walk from center to any landmark
 
 ---
 
-## Phase 4 — Open Mode + Enemy Population + Hotspots
+## Phase 5 — Enemy Population + Tuning
 
-**Goal**: Open scatter regions, procedural enemy placement, and hotspot-driven landmark positioning. The remaining procgen layers.
+**Goal**: Enemies distributed through generated content. Influence-biased enemy composition varies across the map. Generation quality tuned for gameplay.
 
-### Open Mode Scatter
-- `generate_open_region()` — scatter obstacle blocks + individual cells
-- Density/spacing controls per region
-- Style variants: sparse, scattered, clustered
+### Enemy Population System
+- Parse `enemy_budget_base`, `enemy_min_spacing`, `difficulty_min`, `difficulty_max` from zone file
+- Budget-controlled spawning: total budget = open cells × density
+- Fixed spawns from zone file subtracted from budget
+- Random position selection with spacing enforcement
 
-### Enemy Population
-- Budget-controlled procedural spawns for both structured and open regions
-- Spacing enforcement (no enemy stacking)
-- Pacing tags (hot/cool/neutral) modulate density
-- Fixed spawns from zone file respected first, budget reduced accordingly
+### Influence-Biased Enemy Selection
+- Parse `enemy_bias` from landmark definitions
+- At each spawn position, blend enemy type weights from active influences
+- Stalker-heavy landmarks produce more stalkers nearby, swarmer-heavy produce more swarmers, etc.
+- Default weights used in neutral areas (no strong influence)
 
-### Hotspot Resolver
-- `resolve_hotspots()` — weighted selection, min_distance enforcement
-- Stamp landmark chunks at resolved positions
-- Fixed hand-placed landmarks respected (non-negotiable positions)
-- Region connections resolved to grid coordinates after hotspot selection
+### Density Modulation
+- `enemy_density_mult` per influence adjusts local spawn density
+- Dense labyrinth areas: fewer but deadlier enemies
+- Open arena areas: more enemies spread across the field
+
+### Effect Cell Gameplay Behaviors (Themed Zones)
+- Generic zones: effect cells are purely visual (data traces) — no gameplay behavior needed
+- Themed zones: implement per-biome effect cell behaviors:
+  - Player standing on an effect cell triggers the associated effect (DOT, slow, feedback drain, etc.)
+  - Effect parameters defined in zone file's `effecttype` line
+  - Ship update checks current cell type and applies effect
+  - Visual feedback when effect is active (screen tint, particle, etc.)
+- Enemies are NOT affected by effect cells (they're security programs — they belong to the system)
+
+### Tuning Pass
+- Noise parameter tuning: find the sweet spot for base density, frequency, octave count
+- **Dual threshold tuning**: wall_threshold and effect_threshold gap controls effect cell coverage
+- Influence radius/strength tuning: how far should terrain character bleed from landmarks?
+- Effect cell density tuning: enough to add texture, not so much they dominate the visual
+- Enemy budget tuning: how many enemies per zone feels right?
+- Corridor width tuning: 2 or 3 cells?
+- Obstacle density tuning in sparse areas
+- Difficulty gradient: harder enemies farther from center?
+- **Extensive playtesting** — this is where the game feel comes together
+
+### Debug Tools
+- Seed cycling hotkey in godmode (re-roll and regenerate without reload)
+- Influence field visualization overlay
+- Enemy density heatmap overlay
+- Connectivity graph overlay (show flood fill result)
+- **Three-tile-type heatmap**: visualize wall/effect/empty distribution
+- Generation time profiling
 
 ### Done When
-- Open regions generate with scattered walls and obstacles
-- Enemies populate both structured and open regions within budget
-- Landmark chunks appear at different hotspot positions per seed
-- Full generation pipeline runs: skeleton → hotspots → regions → enemies
-- Multiple seeds produce meaningfully different zone layouts
+- Enemies populate generated terrain within budget
+- Enemy composition varies by area (influence-driven)
+- Effect cells in themed zones apply gameplay effects to the player
+- Data traces in generic zones render with subtle bloom glow
+- Multiple seeds produce meaningfully different combat experiences
+- Game feels good to play through generated content
+- Debug tools enable rapid tuning iteration
 
 ---
 
-## Phase 5 — Godmode Content Tools + Tuning
+## Phase 6 — Content Authoring + Polish
 
-**Goal**: Efficient authoring tools for scaling up content. Tuning knobs for generation quality.
+**Goal**: Efficient authoring tools for scaling up content. Multiple zones with varied biomes.
 
 ### Godmode: Chunk Editor
 - Edit mode for authoring chunk templates visually
@@ -171,52 +297,68 @@ Detailed implementation specs will be written for each phase right before work b
 - Save to `.chunk` file format
 - Validation feedback in-editor (exit traversability, overlap errors)
 
-### Godmode: Region/Hotspot Editor
-- Place/resize region rectangles visually
-- Place/move hotspot markers
-- Configure region mode, constraints, connections via UI or quick-keys
+### Godmode: Procgen Debug/Tuning Panel
+- Hotspot position visualization
+- Influence field gradient overlay
+- Connectivity graph overlay
+- Seed input/cycling
+- Live parameter adjustment (noise, influence, density)
 
 ### Content Ramp
-- Author 50-100 chunks across biomes and size classes
-- Author 15-30 obstacle blocks
-- Define 2-3 complete zones with multiple regions
+- Author center anchors for all 11 zones (Origin + 3 generic + 6 themed + alien)
+- Author landmark chunks per biome (boss arenas, portal rooms, safe zones)
+- Author 30-50 obstacle blocks across biomes (flagged as structured or organic per block)
+- Author biome-specific cell types (solid + circuit wall types + effect cell types per zone)
+- **Define effect cell types per biome**: data traces for generic zones, hazard cells for themed zones
+- Define zone-specific enemy compositions and influence parameters
+- Tune dual thresholds per zone for appropriate three-tile-type balance
+- Optional: chunk templates for INFLUENCE_STRUCTURED areas (if used)
 
-### Tuning
-- Difficulty gradients along solution path
-- Combat ratio and density per region
-- Chunk selection weights and constraint relaxation
-- Playtest → adjust → repeat
+### Multi-Zone Integration
+- Verify portal connectivity across zones (zone A exit → zone B entry)
+- Per-zone difficulty scaling via noise/influence/enemy parameters
+- Themed enemy variants per biome (fire hunters, poison stalkers, etc.)
+- **Themed effect cells per biome** (fire ember cells, ice frost cells, poison toxic cells, etc.)
+- Background color and music per zone
+- Verify effect cell visual palette complements background cloudscape colors per zone
 
 ### Done When
-- Can author chunks visually in godmode and save them
-- Can define regions and hotspots visually
-- Multiple zones with varied content generate cleanly
-- Game feels good to play through generated content
+- All 11 zones have authored content and generate cleanly
+- Each zone feels visually and mechanically distinct
+- Generic zones have atmospheric data trace cells
+- Themed zones have hazard effect cells with per-biome gameplay behavior
+- Portal connectivity works across all zones
+- Difficulty progression feels right from Origin through themed zones to alien zone
+- Content volume is sufficient for interesting per-seed variety
 
 ---
 
 ## Dependencies
 
 ```
-Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4
-                                        ↓
-                                    Phase 5
+Phase 1 ──→ Phase 1.5? ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5
+     ✅                                                              ↓
+                                                                Phase 6
 ```
 
-- Phase 1 is standalone (godmode entity placement + zone navigation)
-- Phase 2 needs nothing from Phase 1 code-wise, but zone jumping makes testing chunks across zones easier
-- Phase 3 depends on Phase 2 (chunks must exist to generate with)
-- Phase 4 depends on Phase 3 (structured mode should work before adding open mode + population)
-- Phase 5 can start anytime after Phase 3 (tooling for content authoring) but is most valuable after Phase 4 when the full pipeline runs
+- Phase 1 is complete (godmode entity placement + zone navigation)
+- Phase 1.5 is conditional — evaluate after Phase 2 whether extra authoring tools are needed
+- Phase 2 is standalone (PRNG + noise + basic terrain)
+- Phase 3 depends on Phase 2 (terrain gen must exist to modulate with influences)
+- Phase 4 depends on Phase 3 (landmarks must exist to validate connectivity)
+- Phase 5 depends on Phase 4 (terrain must be connected before populating enemies)
+- Phase 6 can start after Phase 4 for tooling, but content authoring benefits most after Phase 5
 
 ---
 
 ## Open Questions (revisit per phase)
 
-1. **Portal configuration in godmode**: How to set dest_zone + dest_portal_id during placement? Text input vs cycling through known zones/portals. (Phase 1)
-2. **Zone jump UI**: Text input for filename, numbered list, or something else? (Phase 1)
-3. **Chunk authoring volume**: How many chunks needed before structured gen feels good? (Phase 2-3)
-4. **Generation timing**: Seed per save file vs per zone entry? Start with per-file. (Phase 3)
-5. **Difficulty gradient**: Weight chunk difficulty by path position? (Phase 4)
-6. **Chunk rotation**: Mirroring only for v1, add 90° rotation later? (Phase 3)
-7. **Open mode flood fill**: Safety net traversability check after scatter? Probably yes. (Phase 4)
+1. **Noise algorithm**: Simplex vs OpenSimplex vs Perlin? Lean simplex — fastest, best visual properties, no grid artifacts. (Phase 2)
+2. **Generation performance**: 1024×1024 noise evaluation + flood fill + A* — how fast? Should be well under a second, but profile. (Phase 2-4)
+3. **Chunk authoring volume**: How many landmark chunks and obstacle blocks needed before generation feels good? Start minimal (5-10 landmarks, 10-15 blocks), ramp during Phase 6. (Phase 3+)
+4. **Generation timing**: Seed per save file vs per zone entry? Start with per-file (metroidvania — stable layout per playthrough). Endgame may use per-entry or rotating seeds. (Phase 3)
+5. **Influence overlap behavior**: Additive vs max-wins when two influences overlap? Start additive — two dense influences create extra-dense terrain. (Phase 3)
+6. **Structured sub-areas**: Are they needed, or does noise + obstacles produce good enough results? Evaluate after Phase 4 before investing in the Spelunky walk algorithm. (Phase 4)
+7. **Corridor cell type**: Should carved corridors use a visually distinct cell type? Adds to fiction ("data conduits") but requires extra cell types per biome. (Phase 4)
+8. **Center anchor size**: 32×32 vs 48×48 vs 64×64? Needs playtesting — too small and the start feels generic, too large and it dominates the map. (Phase 3)
+9. **Debug overlay rendering**: Render influence field as a transparent color overlay in godmode? Needs to work with existing bloom pipeline without adding GPU cost during gameplay. (Phase 5)

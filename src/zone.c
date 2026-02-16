@@ -6,6 +6,7 @@
 #include "portal.h"
 #include "savepoint.h"
 #include "background.h"
+#include "enemy_registry.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -182,6 +183,7 @@ void Zone_unload(void)
 	Hunter_cleanup();
 	Seeker_cleanup();
 	Defender_cleanup();
+	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();
 	memset(&zone, 0, sizeof(zone));
@@ -624,6 +626,7 @@ static void respawn_enemies(void)
 	Hunter_cleanup();
 	Seeker_cleanup();
 	Defender_cleanup();
+	EnemyRegistry_clear();
 
 	for (int i = 0; i < zone.spawn_count; i++) {
 		ZoneSpawn *sp = &zone.spawns[i];
@@ -673,6 +676,7 @@ static void apply_zone_to_world(void)
 	Hunter_cleanup();
 	Seeker_cleanup();
 	Defender_cleanup();
+	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();
 

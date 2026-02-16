@@ -1,10 +1,9 @@
 #include "defender.h"
 #include "enemy_util.h"
+#include "enemy_registry.h"
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
-#include "hunter.h"
-#include "seeker.h"
 #include "fragment.h"
 #include "progression.h"
 #include "player_stats.h"
@@ -45,6 +44,7 @@
 #define BODY_SIZE 10.0
 #define PROTECT_RADIUS 100.0
 #define SHIELD_CHASE_SPEED 800.0
+#define AEGIS_STANDOFF_DIST 500.0
 #define HEAL_BEAM_DURATION_MS 200
 #define BOOST_TRAIL_GHOSTS 12
 #define BOOST_TRAIL_LENGTH 3.0
@@ -90,6 +90,10 @@ typedef struct {
 	/* Brief invulnerability after mine pops aegis (outlasts explosion) */
 	int shieldBreakGrace;
 
+	/* Target deconfliction — set each frame during SUPPORTING */
+	bool hasAssignment;
+	Position assignedTarget;
+
 	/* Death/respawn */
 	int deathTimer;
 	int respawnTimer;
@@ -114,6 +118,9 @@ static DefenderState defenders[DEFENDER_COUNT];
 static PlaceableComponent placeables[DEFENDER_COUNT];
 static Entity *entityRefs[DEFENDER_COUNT];
 static int highestUsedIndex = 0;
+
+/* Self-exclusion: skip this index in find_wounded/find_aggro to prevent self-targeting */
+static int currentUpdaterIdx = -1;
 
 /* Sparks */
 #define SPARK_DURATION 80
@@ -153,43 +160,70 @@ static void pick_wander_target(DefenderState *d)
 		&d->wanderTarget, &d->wanderTimer);
 }
 
+static bool another_defender_shielding(int selfIdx, Position targetPos)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (i == selfIdx)
+			continue;
+		DefenderState *other = &defenders[i];
+		if (!other->alive || !other->aegisActive)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, targetPos);
+		if (dist < PROTECT_RADIUS)
+			return true;
+	}
+	return false;
+}
+
+static bool another_defender_assigned(int selfIdx, Position targetPos)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (i == selfIdx)
+			continue;
+		DefenderState *other = &defenders[i];
+		if (!other->alive || !other->hasAssignment)
+			continue;
+		if (other->aiState != DEFENDER_SUPPORTING)
+			continue;
+		double dist = Enemy_distance_between(other->assignedTarget, targetPos);
+		if (dist < PROTECT_RADIUS * 2)
+			return true;
+	}
+	return false;
+}
+
 static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 {
 	if (d->healCooldown > 0)
 		return false;
 
-	Position healPos;
-	int healIdx;
-	int bestType = -1; /* 0 = hunter, 1 = seeker */
+	int typeCount = EnemyRegistry_type_count();
+	int bestType = -1;
 	Position bestPos = {0, 0};
 	int bestIdx = -1;
+	double bestDist = 99999.0;
 
-	/* Check hunters */
-	if (Hunter_find_wounded(pl->position, HEAL_RANGE, 50.0, &healPos, &healIdx)) {
-		bestType = 0;
-		bestPos = healPos;
-		bestIdx = healIdx;
-	}
-
-	/* Check seekers — pick whichever is closer */
-	if (Seeker_find_wounded(pl->position, HEAL_RANGE, 50.0, &healPos, &healIdx)) {
-		double distH = bestType >= 0 ? Enemy_distance_between(pl->position, bestPos) : 99999.0;
-		double distS = Enemy_distance_between(pl->position, healPos);
-		if (bestType < 0 || distS < distH) {
-			bestType = 1;
-			bestPos = healPos;
-			bestIdx = healIdx;
+	for (int t = 0; t < typeCount; t++) {
+		const EnemyTypeCallbacks *et = EnemyRegistry_get_type(t);
+		if (!et->find_wounded || !et->heal)
+			continue;
+		Position pos;
+		int eidx;
+		if (et->find_wounded(pl->position, HEAL_RANGE, 50.0, &pos, &eidx)) {
+			double dist = Enemy_distance_between(pl->position, pos);
+			if (dist < bestDist) {
+				bestDist = dist;
+				bestPos = pos;
+				bestType = t;
+				bestIdx = eidx;
+			}
 		}
 	}
 
 	if (bestType < 0)
 		return false;
 
-	/* Heal the ally */
-	if (bestType == 0)
-		Hunter_heal(bestIdx, HEAL_AMOUNT);
-	else
-		Seeker_heal(bestIdx, HEAL_AMOUNT);
+	EnemyRegistry_heal(bestType, bestIdx, HEAL_AMOUNT);
 
 	d->healCooldown = HEAL_COOLDOWN_MS;
 	d->healBeamActive = true;
@@ -253,7 +287,7 @@ void Defender_initialize(Position position)
 
 	highestUsedIndex++;
 
-	/* Load audio once, not per-entity */
+	/* Load audio and register with enemy registry once, not per-entity */
 	if (!sampleHeal) {
 		Audio_load_sample(&sampleHeal, "resources/sounds/refill_start.wav");
 		Audio_load_sample(&sampleAegis, "resources/sounds/statue_rise.wav");
@@ -261,6 +295,9 @@ void Defender_initialize(Position position)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
+
+		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal};
+		EnemyRegistry_register(cb);
 	}
 }
 
@@ -318,7 +355,9 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 
 	d->prevPosition = pl->position;
 	d->boosting = false;
+	d->hasAssignment = false;
 	d->aegisWasActive = d->aegisActive;
+	currentUpdaterIdx = idx;
 
 	/* --- Tick timers --- */
 	if (d->healCooldown > 0)
@@ -382,6 +421,9 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				d->hp -= damage;
 				Audio_play_sample(&sampleHit);
 
+				/* Self-shield reaction — pop aegis after taking damage */
+				activate_aegis(d);
+
 				/* Getting hit while idle triggers flee */
 				if (d->aiState == DEFENDER_IDLE) {
 					d->aiState = DEFENDER_FLEEING;
@@ -398,6 +440,14 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		}
 	}
 
+	/* --- Self-shield on nearby shots --- */
+	if (d->alive && d->aiState != DEFENDER_DYING && d->aiState != DEFENDER_DEAD) {
+		bool nearbyShot = Sub_Pea_check_nearby(pl->position, 200.0)
+						|| Sub_Mgun_check_nearby(pl->position, 200.0);
+		if (nearbyShot)
+			activate_aegis(d);
+	}
+
 	/* --- State machine --- */
 	switch (d->aiState) {
 	case DEFENDER_IDLE: {
@@ -407,20 +457,17 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		if (d->wanderTimer <= 0)
 			pick_wander_target(d);
 
-		/* Check for nearby wounded allies — transition to supporting */
-		Position allyPos;
-		int allyIdx;
-		if (Hunter_find_wounded(pl->position, HEAL_RANGE, 50.0, &allyPos, &allyIdx) ||
-			Seeker_find_wounded(pl->position, HEAL_RANGE, 50.0, &allyPos, &allyIdx)) {
-			d->aiState = DEFENDER_SUPPORTING;
-		}
-
-		/* Nearby ally went aggro — rush to support */
+		/* Check for nearby wounded or aggro allies — transition to supporting */
 		if (d->aiState == DEFENDER_IDLE) {
-			Position aggroPos;
-			if (Hunter_find_aggro(pl->position, 1600.0, &aggroPos) ||
-				Seeker_find_aggro(pl->position, 1600.0, &aggroPos)) {
-				d->aiState = DEFENDER_SUPPORTING;
+			int typeCount = EnemyRegistry_type_count();
+			for (int t = 0; t < typeCount && d->aiState == DEFENDER_IDLE; t++) {
+				const EnemyTypeCallbacks *et = EnemyRegistry_get_type(t);
+				Position pos;
+				int eidx;
+				if (et->find_wounded && et->find_wounded(pl->position, HEAL_RANGE, 50.0, &pos, &eidx))
+					d->aiState = DEFENDER_SUPPORTING;
+				else if (et->find_aggro && et->find_aggro(pl->position, 1600.0, &pos))
+					d->aiState = DEFENDER_SUPPORTING;
 			}
 		}
 
@@ -457,35 +504,80 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			break;
 		}
 
-		/* Boost toward wounded allies first, then aggro'd allies */
+		/* Find ally to protect — deconflict with other defenders */
 		Position allyPos;
-		int allyIdx;
 		bool hasTarget = false;
-		if (Hunter_find_wounded(pl->position, HEAL_RANGE * 1.5, 50.0, &allyPos, &allyIdx) ||
-			Seeker_find_wounded(pl->position, HEAL_RANGE * 1.5, 50.0, &allyPos, &allyIdx)) {
-			hasTarget = true;
-		} else if (Hunter_find_aggro(pl->position, 1600.0, &allyPos) ||
-				   Seeker_find_aggro(pl->position, 1600.0, &allyPos)) {
-			hasTarget = true;
+		int typeCount = EnemyRegistry_type_count();
+
+		/* Collect per-type candidates */
+		Position woundedPos[MAX_ENEMY_TYPES];
+		Position aggroPos[MAX_ENEMY_TYPES];
+		bool hasWounded[MAX_ENEMY_TYPES];
+		bool hasAggro[MAX_ENEMY_TYPES];
+
+		for (int t = 0; t < typeCount; t++) {
+			const EnemyTypeCallbacks *et = EnemyRegistry_get_type(t);
+			int eidx;
+			hasWounded[t] = et->find_wounded &&
+				et->find_wounded(pl->position, HEAL_RANGE * 1.5, 50.0, &woundedPos[t], &eidx);
+			hasAggro[t] = et->find_aggro &&
+				et->find_aggro(pl->position, 1600.0, &aggroPos[t]);
+		}
+
+		/* Prefer uncontested wounded */
+		for (int t = 0; t < typeCount && !hasTarget; t++) {
+			if (hasWounded[t] && !another_defender_assigned(idx, woundedPos[t])) {
+				allyPos = woundedPos[t]; hasTarget = true;
+			}
+		}
+		/* Prefer uncontested aggro */
+		for (int t = 0; t < typeCount && !hasTarget; t++) {
+			if (hasAggro[t] && !another_defender_assigned(idx, aggroPos[t])) {
+				allyPos = aggroPos[t]; hasTarget = true;
+			}
+		}
+		/* Fallback: contested wounded */
+		for (int t = 0; t < typeCount && !hasTarget; t++) {
+			if (hasWounded[t]) { allyPos = woundedPos[t]; hasTarget = true; }
+		}
+		/* Fallback: contested aggro */
+		for (int t = 0; t < typeCount && !hasTarget; t++) {
+			if (hasAggro[t]) { allyPos = aggroPos[t]; hasTarget = true; }
 		}
 
 		if (hasTarget) {
-			/* When aegis is active, chase faster to stay glued to ally */
-			double chaseSpeed = d->aegisActive ? SHIELD_CHASE_SPEED : NORMAL_SPEED * BOOST_MULTIPLIER;
-			d->boosting = true;
-			Enemy_move_toward(pl, allyPos, chaseSpeed, dt, WALL_CHECK_DIST);
-			d->facing = Position_get_heading(pl->position, allyPos);
+			d->hasAssignment = true;
+			d->assignedTarget = allyPos;
+		}
 
-			/* Close enough to protect — pop aegis */
-			if (Enemy_distance_between(pl->position, allyPos) < PROTECT_RADIUS)
-				activate_aegis(d);
+		if (hasTarget) {
+			bool aegisReady = d->aegisActive ||
+				(d->aegisCooldown <= 0 && !another_defender_shielding(idx, allyPos));
+			double allyDist = Enemy_distance_between(pl->position, allyPos);
+
+			if (aegisReady) {
+				/* Aegis available — rush in to shield ally */
+				double chaseSpeed = d->aegisActive ? SHIELD_CHASE_SPEED : NORMAL_SPEED * BOOST_MULTIPLIER;
+				d->boosting = true;
+				Enemy_move_toward(pl, allyPos, chaseSpeed, dt, WALL_CHECK_DIST);
+
+				/* Close enough to protect — pop aegis */
+				if (allyDist < PROTECT_RADIUS)
+					activate_aegis(d);
+			} else {
+				/* Aegis on cooldown — maintain standoff distance, heal from range */
+				if (allyDist < AEGIS_STANDOFF_DIST - 50.0) {
+					Enemy_move_away_from(pl, allyPos, NORMAL_SPEED, dt, WALL_CHECK_DIST);
+				} else if (allyDist > AEGIS_STANDOFF_DIST + 50.0) {
+					d->boosting = true;
+					Enemy_move_toward(pl, allyPos, NORMAL_SPEED, dt, WALL_CHECK_DIST);
+				}
+			}
+			d->facing = Position_get_heading(pl->position, allyPos);
 		} else {
-			/* No allies in need — drift around spawn but stay aware */
-			Enemy_move_toward(pl, d->wanderTarget, IDLE_DRIFT_SPEED, dt, WALL_CHECK_DIST);
-			d->wanderTimer -= ticks;
-			if (d->wanderTimer <= 0)
-				pick_wander_target(d);
-			d->facing = Position_get_heading(pl->position, shipPos);
+			/* No allies in need — return to idle */
+			d->aiState = DEFENDER_IDLE;
+			pick_wander_target(d);
 		}
 		break;
 	}
@@ -755,4 +847,78 @@ bool Defender_is_protecting(Position pos)
 			return true;
 	}
 	return false;
+}
+
+bool Defender_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index)
+{
+	double bestDamage = 0.0;
+	int bestIdx = -1;
+
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (i == currentUpdaterIdx)
+			continue;
+		DefenderState *d = &defenders[i];
+		if (!d->alive || d->aiState == DEFENDER_DYING || d->aiState == DEFENDER_DEAD)
+			continue;
+		if (d->hp >= hp_threshold)
+			continue;
+		double missing = DEFENDER_HP - d->hp;
+		if (missing <= 0.0)
+			continue;
+		double dist = Enemy_distance_between(from, placeables[i].position);
+		if (dist > range)
+			continue;
+		if (missing > bestDamage) {
+			bestDamage = missing;
+			bestIdx = i;
+		}
+	}
+
+	if (bestIdx >= 0) {
+		*out_pos = placeables[bestIdx].position;
+		*out_index = bestIdx;
+		return true;
+	}
+	return false;
+}
+
+bool Defender_find_aggro(Position from, double range, Position *out_pos)
+{
+	double bestDist = range + 1.0;
+	int bestIdx = -1;
+
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (i == currentUpdaterIdx)
+			continue;
+		DefenderState *d = &defenders[i];
+		if (!d->alive)
+			continue;
+		if (d->aiState != DEFENDER_SUPPORTING && d->aiState != DEFENDER_FLEEING)
+			continue;
+		double dist = Enemy_distance_between(from, placeables[i].position);
+		if (dist > range)
+			continue;
+		if (dist < bestDist) {
+			bestDist = dist;
+			bestIdx = i;
+		}
+	}
+
+	if (bestIdx >= 0) {
+		*out_pos = placeables[bestIdx].position;
+		return true;
+	}
+	return false;
+}
+
+void Defender_heal(int index, double amount)
+{
+	if (index < 0 || index >= highestUsedIndex)
+		return;
+	DefenderState *d = &defenders[index];
+	if (!d->alive)
+		return;
+	d->hp += amount;
+	if (d->hp > DEFENDER_HP)
+		d->hp = DEFENDER_HP;
 }

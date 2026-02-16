@@ -4,80 +4,85 @@
 
 ### What this system does
 
-You build the identity of each zone by hand — landmark rooms (boss arenas, portal rooms, safe zones), anchor walls, ability gates. The algorithm procedurally generates the terrain between those landmarks: corridors, open battlefields, combat rooms, and enemy placements. Every generation run is **seed-deterministic**: same zone + same seed = identical world. This is a hard requirement — foundational for multiplayer, shared seeds, reproducible bugs, and daily/weekly challenge runs.
+You author a minimal zone skeleton — a center anchor (savepoint + entry portal), landmark definitions with terrain influence tags, and global tuning parameters. The generator procedurally builds the entire 1024×1024 zone around that skeleton: terrain, corridors, open areas, enemy placements, and landmark positioning. Every generation run is **seed-deterministic**: same zone + same seed = identical world. This is a hard requirement — foundational for multiplayer, shared seeds, reproducible bugs, and daily/weekly challenge runs.
 
-The key innovation over the reference designs (Dead Cells, Spelunky): **landmark positions vary per seed.** The designer places generic hotspot markers at viable locations throughout the zone. The generator assigns landmark types (boss, portal, safe zone) to hotspots each run. The boss arena's internal geometry is always the same (hand-authored), but it could be anywhere. Players know the fire zone *has* a boss — they have to explore to find it.
+**The key innovation**: the zone has no fixed regions, no fixed quadrants, no predetermined layout structure. Instead:
 
-**Two generation modes** handle the range of zone layouts Hybrid needs:
+1. **Hotspot positions are generated per seed** — candidate landmark locations are scattered across the map procedurally, constrained by minimum separation and edge margins.
+2. **Each landmark carries a terrain influence** — a boss arena brings dense labyrinthine terrain around it, a safe zone brings sparse open ground, a portal room brings moderate mixed terrain. The terrain *character* is an emergent property of where the landmarks land.
+3. **Noise-driven base terrain** covers the entire map — 2D simplex noise creates organic wall patterns. Landmark influences warp the noise density, creating natural transitions between dense and sparse areas.
+4. **Center anchor rotation/mirroring** — the hand-placed center geometry (savepoint, entry portal, surrounding structure) is rotated in 90° increments and/or mirrored before generation begins, so even the starting area feels different per seed.
 
-- **Structured mode** — Chunk-based grid with solution path guarantee (Spelunky-style). For corridors, labyrinths, and dense navigational areas. Variable chunk sizes (8×8 to 64×64) mix within a single region.
-- **Open mode** — Scatter-based placement of individual walls, obstacle blocks, and enemy spawns across open space. For expansive battlefields, arenas, and sparse cyberspace. Density tunable per region. No chunks, no solution path — traversability is trivially guaranteed because the space is mostly empty.
-
-The content authoring investment (chunk templates + obstacle blocks) is a fraction of hand-coding every room across 12+ zones at 1024×1024 scale. Each authored template multiplies through procedural assembly, probabilistic variation, and mirroring.
+Players can't memorize layouts. The labyrinth isn't always in the upper-left. The boss isn't always through the same corridor. The world organically reorganizes itself around wherever the landmarks land.
 
 ### Who does what
 
 **Jason (designer) is responsible for:**
-- Authoring landmark chunk templates (boss arena geometry, portal rooms, safe zones — hand-tuned internal design, position varies per seed)
-- Placing general hotspot markers at viable positions throughout each zone (4+ per zone, untyped — the generator assigns landmark types)
-- Optionally hand-placing specific landmarks at fixed positions when you want explicit control
-- Authoring chunk templates for structured regions (reusable building blocks — 50-100 across all biomes, variable sizes)
-- Authoring obstacle blocks for both structured and open regions (small sub-patterns — 15-30 generic + biome-specific)
-- Defining region rectangles, constraints, and generation mode in zone files
-- Tuning: difficulty, density, combat ratios, pacing tags, hotspot weights, probabilistic cell percentages
-- Implementing prerequisites: god mode editing tools, portals/zone transitions, diagonal walls (before procgen)
+- Authoring the center anchor chunk (savepoint + entry portal + surrounding geometry)
+- Authoring landmark chunk templates (boss arenas, portal rooms, safe zones — hand-tuned internal design)
+- Defining each landmark's terrain influence (dense/sparse/moderate, influence radius, enemy bias)
+- Authoring chunk templates for structured sub-areas within influence zones (reusable building blocks)
+- Authoring obstacle blocks (small sub-patterns for scatter and fill)
+- Tuning: base noise parameters, influence strengths, enemy budgets, difficulty curves
+- Defining per-zone parameters: biome, base density, enemy composition, difficulty range
 
 **Bob (code) is responsible for:**
-- Chunk file parser + loader with validation (exit traversability, safety rule enforcement)
-- Obstacle block parser + loader
-- Hotspot resolver (weighted selection, min_distance enforcement, landmark chunk stamping)
 - Seedable PRNG (xoshiro128** or PCG)
-- Region parser (extension to zone.c)
-- Structured mode: solution path walk, chunk selection, multi-cell chunk placement, non-path fill, chunk stamping, exit stitching
-- Open mode: scatter algorithm, density/spacing enforcement, obstacle block placement
-- Enemy population system (budget-capped, spacing-aware, pacing-modulated)
-- Region border sealing
+- Simplex noise generator (2D, multi-octave)
+- Center anchor rotation/mirror system
+- Hotspot position generator (per-seed, constrained scatter)
+- Hotspot resolver (assign landmark types to positions, stamp landmark chunks)
+- Influence field system (blend terrain character from landmark positions)
+- Noise-to-terrain converter (threshold noise + influences into wall/empty decisions)
+- Wall type refiner (influence-proximity circuit vs solid assignment)
+- Connectivity validator (flood fill between landmarks, corridor carving if needed)
+- Chunk stamper (stamp landmark chunks + structured sub-areas)
+- Obstacle block scatter (in open areas)
+- Enemy population system (budget-capped, spacing-aware, influence-biased)
 - Integration into Zone_load() call sequence
 
 ### Prerequisites (implement before procgen)
 
-1. **God mode editing tools** — Spec and implement the authoring tools needed for procgen content (chunk editing workflow, hotspot placement, region markers). Separate spec to be written.
-2. **Portals and zone transitions** — Procgen is most valuable with multiple zones. Jason will spec and implement these first.
-3. **Diagonal walls** — New cell types with angled geometry + collision changes. Procgen treats them as just another cell type by name, but they need to exist first.
-4. **At least one active enemy type** — Mines are passive. Procedural enemy placement in combat rooms isn't interesting until something hunts the player.
+1. **God mode editing tools** — Authoring tools for center anchor, landmark chunks, and obstacle blocks. Separate spec (Phase 1).
+2. **Portals and zone transitions** — Already implemented.
+3. **At least one active enemy type** — Already have mines, hunters, seekers, defenders.
+
+Diagonal walls are **scrapped** — square cells are the architecture going forward.
 
 ### Implementation order (incremental, tight feedback loop)
 
 | Step | What | Visible result |
 |------|------|---------------|
-| 1 | PRNG + chunk file parser + hardcoded test chunks | Can load and print chunk data (console) |
-| 2 | Chunk stamper (stamp one chunk at a known position) | See a chunk's walls appear on the map |
-| 3 | Region parser + coarse grid + straight-line path | See a corridor of chunks connecting two points |
-| 4 | Solution path walk (random direction, biased) | See winding paths through structured regions |
-| 5 | Multi-cell chunks (large chunks spanning grid cells) | See mixed room sizes in a region |
-| 6 | Non-path fill (sealed + connected rooms) | See full structured regions |
-| 7 | Open mode scatter algorithm | See sparse regions with scattered walls and enemies |
-| 8 | Hotspot resolver + landmark chunk placement | See landmarks at different positions per seed |
-| 9 | Probabilistic cells + obstacle zones + mirroring | See per-seed variation within chunks |
-| 10 | Enemy population with budget system | See enemies distributed through generated content |
-| 11 | Tuning pass | Tweak densities, bias weights, chunk variety |
+| 1 | PRNG + simplex noise | Can generate and visualize a noise field |
+| 2 | Noise-to-terrain conversion | See organic wall patterns across the whole map |
+| 3 | Center anchor system | Center chunk placed with per-seed rotation/mirror |
+| 4 | Hotspot position generator | See hotspot markers at different positions per seed |
+| 5 | Hotspot resolver + landmark stamping | See landmark chunks placed at hotspot positions |
+| 6 | Influence field system | Terrain density varies around landmarks |
+| 7 | Connectivity validation + corridor carving | All landmarks reachable |
+| 7.5 | Wall type refinement | Circuit tiles near landmarks, organic scatter in wilds |
+| 8 | Obstacle block scatter | Style-matched sub-structures (structured/organic) |
+| 9 | Chunk sub-areas in dense zones | Structured rooms within labyrinthine terrain |
+| 10 | Enemy population with budget system | Enemies distributed through generated content |
+| 11 | Tuning pass | Tweak noise, influences, density, enemy balance |
 
 ### Complexity assessment
 
 | Component | Difficulty | Risk | Notes |
 |-----------|-----------|------|-------|
 | PRNG | Trivial | None | ~10 lines of C |
-| Chunk parser | Easy | None | Same line-based text pattern as zone parser |
-| Chunk stamper | Easy | Low | Map_set_cell in a loop. Off-by-one risk with mirroring. |
-| Region parser | Easy | None | Bolt onto zone.c |
+| Simplex noise | Easy-Medium | Low | Well-documented algorithm, ~100 lines |
+| Center rotation/mirror | Easy | None | Transform cell coords before stamping |
+| Hotspot position generator | Easy | None | Constrained random scatter |
 | Hotspot resolver | Easy | None | Weighted pick + distance check |
-| Solution path walk | Medium-Hard | Medium | Core algorithm. Backtracking state management is where bugs hide. |
-| Multi-cell chunk placement | Medium | Medium | Large chunks claiming NxN grid cells. Needs careful walk integration. |
-| Non-path fill | Medium | Low | Straightforward once path generator works |
-| Open mode scatter | Medium | Low | Random placement with spacing constraints. Simpler than structured mode. |
-| Exit stitching | Medium | Low | Simplified if we standardize exit offsets per chunk size class |
+| Influence field system | Medium | Low | Distance-weighted blending, straightforward math |
+| Noise-to-terrain conversion | Medium | Low | Threshold + influence modulation |
+| Connectivity validation | Medium | Low | BFS/flood fill between landmarks |
+| Corridor carving | Medium | Medium | A* or direct pathing, carve through terrain |
+| Chunk stamper | Easy | Low | Map_set_cell in a loop |
+| Wall type refinement | Easy | None | Influence-proximity check + edge detection |
+| Obstacle scatter | Easy-Medium | Low | Random placement with spacing + style matching |
 | Enemy population | Medium | Low | Arithmetic on existing spawn code + budget cap |
-| Loader validation (flood fill) | Medium | Low | BFS on small grids. Must be correct. |
 
 ---
 
@@ -89,15 +94,15 @@ Two key references, extended with our own innovations:
 
 2. **Spelunky** — [Part 1: Solution Path](https://tinysubversions.com/spelunkyGen/), [Part 2: Room Templates](https://tinysubversions.com/spelunkyGen2/). Key takeaways:
    - **Solution path first**: Build the critical path before filling around it. Reachability by construction, not validation.
-   - **Exit configurations**: Classify rooms by which sides have openings. Cascading constraints propagate automatically.
    - **Hierarchical templates**: Room → probabilistic tiles → obstacle blocks. Multiple randomization layers within a single template.
    - **Mirroring**: Flip rooms for free variety.
 
 **Our innovations beyond the references:**
-- **General hotspots**: Landmark positions vary per seed — the designer places candidate spots, the generator assigns landmark types. Players can't memorize boss/portal locations.
-- **Two generation modes**: Structured (chunk-based, Spelunky-style) and Open (scatter-based) per region, controlled by a style parameter. Handles both corridor-crawling and expansive cyberspace battlefields.
-- **Variable chunk sizes**: 8×8 to 64×64 within a single region. Large chunks span multiple coarse grid cells. Mixes tight corridors with large arenas.
-- **Composite regions**: Multiple overlapping rectangles unioned into irregular shapes (L-shapes, T-shapes).
+- **Noise-driven whole-map terrain**: No fixed regions or rectangular zones. The entire map is one continuous generated environment with organic density variation.
+- **Influence fields from landmarks**: Terrain character emerges from where landmarks land. Dense labyrinth around the boss, open battlefield near the arena, moderate corridors between. The "zones" exist but they're soft-edged and move per seed.
+- **Hotspot position generation**: Landmark candidates are generated per seed (not hand-placed), so landmark positions are truly unpredictable within constraints.
+- **Center anchor rotation**: Even the starting area varies per seed through 90° rotation and mirroring.
+- **Two terrain modes blend organically**: Dense areas use chunk-based structured fill, sparse areas use scatter-based obstacle placement, and the transition between them is driven by the continuous influence field — no hard boundaries.
 
 ---
 
@@ -105,255 +110,494 @@ Two key references, extended with our own innovations:
 
 | Term | Definition |
 |------|-----------|
-| **Zone** | A complete playable map. Grid size varies per zone (up to 1024×1024 cells of 100 world units each). One .zone file per zone. |
+| **Zone** | A complete playable map. 1024×1024 grid cells of 100 world units each. One .zone file per zone. |
 | **Map cell** | A single cell in the zone grid. 100×100 world units. Coordinates are 0-indexed. |
-| **Fixed asset** | Any map cell or structure hand-placed by the designer. Stored in the .zone file. Never modified by the generator. |
-| **Hotspot** | A designer-placed candidate position where any landmark chunk might be placed. Untyped — the generator assigns landmark types (boss, portal, safe zone) from the hotspot pool per seed. |
-| **Landmark chunk** | A special chunk template for a key location (portal room, boss arena, safe zone). Hand-authored internal geometry, but position chosen by the generator from hotspot candidates (or fixed by the designer). |
-| **Region** | An area of the zone grid designated for procedural generation, defined by one or more rectangles sharing the same ID. Multiple rectangles with the same ID are unioned into a composite region. Each region has a **generation mode**: structured or open. |
-| **Chunk** | A reusable room/corridor template for structured regions. Variable dimensions (8×8 to 64×64 map cells). Contains cell data, exit configs, probabilistic elements, and variation rules. |
-| **Coarse grid** | A structured region's bounding box subdivided into cells of the region's **base chunk size** (the smallest chunk size used in that region). Large chunks span multiple coarse cells. Each coarse cell is **valid** (inside the region) or **invalid** (outside — impassable). |
-| **Exit** | An opening on a chunk's edge that guarantees traversability. Defined by side (N/S/E/W), offset along that edge, and width in cells. |
-| **Exit config** | Bitmask of which sides have exits (L/R/T/B). Determines where a chunk can appear on the solution path. |
-| **Solution path** | A sequence of coarse grid cells from entry to exit where adjacent chunks have matching exits. Guarantees traversability through structured regions. Not used in open regions. |
-| **Critical cells** | Map cells within a chunk on the internal path connecting its exits. Must never be walled off — enforces the exit config guarantee. |
-| **Obstacle block** | A small pre-authored sub-pattern (3×3, 4×4, etc.) of wall cells. Used within chunk obstacle zones (structured mode) and as scatter elements (open mode). |
-| **Seed** | A uint32 stored in the zone file, initializing the PRNG. Same zone + same seed = identical output. Required. The PRNG call order must be deterministic — no conditional rolls based on runtime state. Foundational for multiplayer. |
+| **Seed** | A uint32 stored in the zone file, initializing the PRNG. Same zone + same seed = identical output. Required. The PRNG call order must be deterministic — no conditional rolls based on runtime state. |
+| **Center anchor** | The hand-authored geometry at the zone center: savepoint, entry portal, and surrounding structure. Rotated/mirrored per seed before generation begins. |
+| **Hotspot** | A procedurally generated candidate position where a landmark might be placed. Positions vary per seed. |
+| **Landmark** | A key location (boss arena, portal room, safe zone) defined by a chunk template + terrain influence. Assigned to hotspot positions by the generator. |
+| **Terrain influence** | A property of a landmark that affects surrounding terrain density and character. Radiates outward from the landmark position, blending with the base noise and other influences. |
+| **Influence field** | The combined effect of all landmark influences across the map. A continuous 2D field that modulates noise thresholds. |
+| **Base noise** | 2D simplex noise covering the entire map. Multiple octaves at different frequencies create both macro and micro terrain variation. Seeded. |
+| **Wall threshold** | The noise value below which a cell becomes a wall. Lower threshold = fewer walls (sparser). Higher threshold = more walls (denser). The influence field modulates this threshold across the map. |
+| **Effect threshold** | A second noise threshold above which a cell stays empty. Cells between the wall threshold and effect threshold become **effect cells** — traversable cells with visual properties and optional gameplay effects. This creates the "three tile types" that make terrain feel alive. |
+| **Effect cell** | A traversable map cell with visual appearance and optional gameplay effects. The third tile type between walls (solid) and empty space. In generic zones: data traces (subtle glowing circuit patterns, purely atmospheric). In themed zones: biome hazards (fire damage, ice friction, poison DOT, etc.). Placed by the noise generator in the middle band between wall and empty thresholds. |
+| **Chunk** | A reusable room/structure template. Used for landmark rooms and structured sub-areas within dense terrain. Contains cell data, exits, probabilistic elements. |
+| **Obstacle block** | A small pre-authored wall pattern (3×3, 4×4, etc.) scattered in moderate-to-sparse terrain for visual interest and tactical cover. |
+| **Corridor** | A carved path connecting disconnected landmark areas. Generated only when the connectivity validator detects unreachable landmarks. Feels like intentional data conduits in cyberspace. |
 
 ---
 
 ## Layer 1: Zone Skeleton (Hand-Authored)
 
-The designer authors a zone's **skeleton**: the elements that define the zone's identity and the framework the generator operates within.
+The designer authors a zone's **skeleton**: the minimal elements that define the zone's identity.
 
-### Fixed elements (always present, never modified by generator)
+### Zone definition (in the .zone file)
 
 | Element | Purpose |
 |---------|---------|
-| **Anchor walls** | Decorative or structural geometry — always present, recognizable landmarks |
-| **Ability gates** | Gaps/walls requiring specific subroutines to pass — enforce progression order |
-| **Region markers** | Rectangles designating procedural fill areas + generation mode |
-| **Hotspots** | Candidate positions for landmark chunks — untyped, generator assigns |
+| **Zone parameters** | Name, size (1024), biome, base density, difficulty range |
+| **Seed** | PRNG seed for deterministic generation |
+| **Center anchor chunk** | The starting area geometry (rotated/mirrored per seed) |
+| **Cell type definitions** | Visual/physical cell types available for this zone's biome |
+| **Landmark definitions** | What landmarks exist (boss arena, portals, safe zones) + their terrain influences |
+| **Global tuning** | Noise parameters, influence strengths, enemy budgets, hotspot constraints |
+| **Fixed spawns** | Any hand-placed enemy spawns that always appear regardless of generation |
 
-### Hand-placed landmarks (optional)
+### What the designer does NOT author
 
-The designer can place specific landmark chunks at **fixed positions** when explicit control is needed. A hand-placed landmark is locked in — the generator treats it as a fixed asset and works around it. Its position counts toward hotspot min_distance checks, so generator-placed landmarks won't crowd it.
+- **Region rectangles** — eliminated. No fixed spatial zones.
+- **Hotspot positions** — generated per seed. The designer defines constraints (count, separation, edge margin), not positions.
+- **Terrain layout** — entirely procedural. No hand-placed walls outside the center anchor and landmark chunks.
 
-Use fixed placement when a landmark's position is critical to the zone's design (e.g., a portal that must be at a specific zone boundary for inter-zone connectivity). Use hotspots when you want the position to vary.
+### Center anchor
 
-### Hotspot system
+The center anchor is a small hand-authored chunk placed at the zone center. It contains the entry savepoint, the zone's entry portal(s), and a recognizable starting structure.
 
-Hotspots solve the "boss is always in the upper-right corner" problem.
-
-The designer places **generic hotspot markers** at viable positions throughout the zone. These are untyped — they're just "good spots" that could work for a boss arena, a portal room, a safe zone, or any other landmark. The generator assigns landmark types to hotspots per seed.
-
-This is simpler than per-type hotspots because:
-- You don't worry about boss hotspots being too close to portal hotspots
-- You place fewer markers (one pool, not N pools)
-- The generator handles separation constraints
-
-**Hotspot data:**
+**Per-seed transformation**: Before the center anchor is stamped, the generator applies one of 8 transformations (identity, 3 rotations, 4 mirrors) selected by the seed. This means even veteran players who recognize "this is The Origin's center" see it at a different orientation each run.
 
 ```c
-typedef struct {
-    int grid_x, grid_y;          // Position in the zone grid
-    int coarse_col, coarse_row;  // Computed position in the coarse grid (if inside a structured region)
-    float weight;                // Selection weight (default 1.0, higher = more likely)
-} Hotspot;
+typedef enum {
+    TRANSFORM_IDENTITY,       // No change
+    TRANSFORM_ROT90,          // 90° clockwise
+    TRANSFORM_ROT180,         // 180°
+    TRANSFORM_ROT270,         // 270° clockwise (90° counter-clockwise)
+    TRANSFORM_MIRROR_H,       // Horizontal mirror
+    TRANSFORM_MIRROR_V,       // Vertical mirror
+    TRANSFORM_MIRROR_H_ROT90, // Mirror + 90°
+    TRANSFORM_MIRROR_V_ROT90, // Mirror + 90° (equivalent to diagonal mirror)
+    TRANSFORM_COUNT
+} ChunkTransform;
 ```
 
-**Landmark type list** (zone-level, defines what needs to be placed):
+The center anchor is always centered on the map (grid cell 512, 512). Its size should be modest (32×32 to 64×64) — large enough to be a recognizable starting area, small enough that it doesn't dominate the zone.
+
+---
+
+## Layer 2: Hotspot Generation & Landmark Placement
+
+### Hotspot position generation
+
+Instead of hand-placing hotspot markers, the generator creates hotspot candidate positions per seed. This ensures landmark positions are truly unpredictable.
+
+**Constraints:**
+- **Count**: Configurable per zone (e.g., 8-12 hotspots for a zone with 4-5 landmarks)
+- **Edge margin**: Minimum distance from map edges (e.g., 100 cells / 10% of map size)
+- **Center exclusion**: Minimum distance from center anchor (don't place a boss arena overlapping the start)
+- **Separation**: Minimum distance between any two hotspots
+- **Distribution**: Hotspots should be reasonably spread — no cluster of 5 in one corner
+
+**Algorithm:**
+
+```
+function generate_hotspots(zone_params, rng):
+    hotspots = []
+    margin = zone_params.hotspot_edge_margin
+    center_exclusion = zone_params.center_exclusion_radius
+    min_sep = zone_params.hotspot_min_separation
+    target_count = zone_params.hotspot_count
+
+    attempts = 0
+    while len(hotspots) < target_count and attempts < target_count * 50:
+        x = rng_range(margin, zone_size - margin, rng)
+        y = rng_range(margin, zone_size - margin, rng)
+
+        // Check center exclusion
+        if distance(x, y, center_x, center_y) < center_exclusion:
+            attempts++
+            continue
+
+        // Check separation from existing hotspots
+        too_close = false
+        for each h in hotspots:
+            if distance(x, y, h.x, h.y) < min_sep:
+                too_close = true
+                break
+        if too_close:
+            attempts++
+            continue
+
+        hotspots.append({x, y, weight: 1.0})
+        attempts = 0  // Reset on success
+
+    return hotspots
+```
+
+If the generator can't place enough hotspots (very constrained parameters), it logs a warning and works with what it has.
+
+### Landmark definitions
+
+Each landmark definition specifies what it is, what chunk template to use, and what terrain influence it carries:
 
 ```c
 typedef struct {
-    char type[32];               // "entry_portal", "boss_arena", "exit_portal", "safe_zone"
-    char chunk_file[64];         // Landmark chunk template file
-    int priority;                // Resolution order (lower = placed first)
+    char type[32];                // "boss_arena", "exit_portal", "safe_zone", etc.
+    char chunk_file[64];          // Landmark chunk template file
+    int priority;                 // Resolution order (lower = placed first)
+
+    // Terrain influence
+    TerrainInfluence influence;
 } LandmarkDef;
+
+typedef struct {
+    InfluenceType type;           // INFLUENCE_DENSE, INFLUENCE_MODERATE, INFLUENCE_SPARSE
+    float radius;                 // How far the influence extends (in grid cells)
+    float strength;               // How strongly it overrides base noise (0.0-1.0)
+    float falloff;                // How quickly influence fades with distance (1.0 = linear, 2.0 = quadratic)
+
+    // Enemy composition bias (optional)
+    char enemy_bias[32];          // "stalker_heavy", "swarmer_heavy", "mixed", etc.
+    float enemy_density_mult;     // Multiplier on base enemy density within influence
+} TerrainInfluence;
+
+typedef enum {
+    INFLUENCE_DENSE,              // Low noise threshold = lots of walls, labyrinthine
+    INFLUENCE_MODERATE,           // Medium threshold = mixed terrain
+    INFLUENCE_SPARSE,             // High threshold = few walls, open battlefield
+    INFLUENCE_STRUCTURED          // Dense + use chunk templates for structured rooms
+} InfluenceType;
 ```
 
-**Resolution algorithm:**
+### Landmark resolution
+
+Same weighted-pick algorithm from the original spec, but operating on generated hotspots:
 
 ```
-function resolve_hotspots(hotspots, landmark_defs, fixed_landmarks, min_distance, rng):
+function resolve_landmarks(hotspots, landmark_defs, rng):
     placed = []
 
-    // Fixed hand-placed landmarks go in first — their positions are non-negotiable
-    for each fixed in fixed_landmarks:
-        placed.append({fixed.grid_x, fixed.grid_y, fixed.type})
-
-    // Sort landmark defs by priority (entry_portal first, then boss, etc.)
+    // Sort landmark defs by priority
     sort(landmark_defs, by priority)
 
     for each def in landmark_defs:
-        if def.type already in placed:
-            continue  // Already hand-placed
-
-        // Filter hotspots: must be far enough from all placed landmarks
+        // Filter hotspots: far enough from all placed landmarks
         candidates = []
         for each hotspot in hotspots:
-            too_close = false
-            for each p in placed:
-                if manhattan_distance(hotspot, p) < min_distance:
-                    too_close = true
-                    break
-            if not too_close:
-                candidates.append(hotspot)
+            if not used(hotspot):
+                too_close = false
+                for each p in placed:
+                    if distance(hotspot, p) < landmark_min_separation:
+                        too_close = true
+                        break
+                if not too_close:
+                    candidates.append(hotspot)
 
         if candidates is empty:
-            // Fallback: pick the hotspot that maximizes min distance from placed
-            candidates = hotspots (excluding already-used hotspots)
-            sort by max_min_distance_from_placed, descending
+            // Fallback: pick unused hotspot maximizing min distance from placed
+            candidates = unused_hotspots
+            sort by max_min_distance, descending
 
-        chosen = weighted_pick(candidates, weight_field, rng)
-        stamp_landmark_chunk(chosen, def.chunk_file)
-        placed.append({chosen.grid_x, chosen.grid_y, def.type})
-        remove chosen from hotspots  // Can't be reused
+        chosen = weighted_pick(candidates, rng)
+        stamp_landmark_chunk(chosen.x, chosen.y, def.chunk_file, rng)
+        placed.append({chosen.x, chosen.y, def})
+        mark_used(chosen)
 
     return placed
 ```
 
-**Hotspot rules (zone loader validation):**
-- At least **N+2** hotspots where N is the number of landmark types that aren't hand-placed (gives the generator meaningful choice)
-- Hotspots must fall within a region's bounds
-- Loader warns if any two hotspots are closer than `min_distance` (they'd constrain each other unnecessarily)
+### Hotspot-carried influences
 
-### Design constraint
+This is the key insight: when a landmark is placed at a hotspot, its terrain influence radiates from that position. The influence field is the sum of all landmark influences across the map.
 
-Regions must not overlap fixed assets or each other. The generator treats every map cell within a region's valid area as writable, except cells occupied by fixed assets. The zone loader rejects overlapping regions or region/fixed-asset collisions as hard errors.
-
-Landmark chunks stamped at hotspot positions become effectively fixed for that generation run — the solution path routes around or through them.
+Since hotspot positions change per seed, the influence field — and therefore the terrain character — reorganizes with every seed. A boss arena in the northeast means dense labyrinth in the northeast. Next seed it's in the southwest, and the labyrinth follows.
 
 ---
 
-## Layer 2: Chunk Templates (Structured Mode)
+## Layer 3: Noise-Driven Terrain Generation
 
-### Chunk data structure
+### Base noise
+
+2D simplex noise covers the entire 1024×1024 map. Multiple octaves create terrain at different scales:
 
 ```c
 typedef struct {
-    char name[64];               // Unique identifier
-    int width, height;           // Grid dimensions in map cells (8-64)
+    int octaves;                  // Number of noise layers (4-6 typical)
+    float base_frequency;         // Starting frequency (0.005-0.02 typical for 1024 maps)
+    float lacunarity;             // Frequency multiplier per octave (2.0 typical)
+    float persistence;            // Amplitude multiplier per octave (0.5 typical)
+    float wall_threshold;         // Noise below this = wall (default -0.1)
+    float effect_threshold;       // Noise between wall and effect = effect cell (default 0.15)
+                                  // Noise above effect_threshold = empty
+} NoiseParams;
+```
 
-    // Classification
+**The three tile types**: The two thresholds divide the noise range into three bands:
+- `noise < wall_threshold` → **Wall cell** (solid, blocks movement and LOS)
+- `wall_threshold <= noise < effect_threshold` → **Effect cell** (traversable, visual + optional gameplay effect)
+- `noise >= effect_threshold` → **Empty** (pure traversable space, grid over background cloudscape)
+
+The middle band naturally concentrates at terrain transitions — the edges where dense walls give way to open space. This is exactly where visual interest matters most. Effect cells form organic fringes and scattered patches that break up both the density of walls and the emptiness of open ground.
+
+**Multi-octave noise evaluation:**
+
+```
+function noise_at(x, y, params, rng_seed):
+    value = 0.0
+    amplitude = 1.0
+    frequency = params.base_frequency
+    max_amplitude = 0.0
+
+    for octave in 0..params.octaves:
+        // Offset each octave by seed-derived values for uniqueness
+        ox = x * frequency + seed_offset_x[octave]
+        oy = y * frequency + seed_offset_y[octave]
+        value += simplex2d(ox, oy) * amplitude
+        max_amplitude += amplitude
+        amplitude *= params.persistence
+        frequency *= params.lacunarity
+
+    return value / max_amplitude  // Normalize to [-1, 1]
+```
+
+### Influence field
+
+The influence field modulates **both** noise thresholds across the map. Each landmark's influence adjusts the local wall and effect thresholds, controlling not just wall density but also how much effect cell coverage appears:
+
+- **INFLUENCE_DENSE**: Raises wall threshold (more walls) + narrows effect band → labyrinthine with thin effect fringes
+- **INFLUENCE_SPARSE**: Lowers wall threshold (fewer walls) + widens effect band → open terrain with generous effect cell coverage
+- **INFLUENCE_MODERATE**: Slight adjustments → balanced mix of all three tile types
+- **INFLUENCE_STRUCTURED**: Like dense, but flags the area for chunk-based fill instead of pure noise
+
+```
+function compute_thresholds(grid_x, grid_y, base_wall_thresh, base_effect_thresh, placed_landmarks):
+    wall_thresh = base_wall_thresh
+    effect_thresh = base_effect_thresh
+
+    for each landmark in placed_landmarks:
+        dist = distance(grid_x, grid_y, landmark.x, landmark.y)
+        inf = landmark.def.influence
+
+        if dist > inf.radius:
+            continue
+
+        // Falloff: 1.0 at landmark position, 0.0 at radius edge
+        t = 1.0 - (dist / inf.radius)
+        falloff_weight = pow(t, inf.falloff) * inf.strength
+
+        switch inf.type:
+            INFLUENCE_DENSE:
+                wall_thresh += falloff_weight * DENSE_SHIFT     // More walls
+                effect_thresh += falloff_weight * DENSE_SHIFT * 0.5  // Narrow effect band
+            INFLUENCE_SPARSE:
+                wall_thresh -= falloff_weight * SPARSE_SHIFT    // Fewer walls
+                effect_thresh += falloff_weight * SPARSE_SHIFT * 0.3 // Wider effect band
+            INFLUENCE_MODERATE:
+                wall_thresh += falloff_weight * MODERATE_SHIFT  // Slight wall increase
+                // Effect threshold unchanged — natural band width
+            INFLUENCE_STRUCTURED:
+                wall_thresh += falloff_weight * DENSE_SHIFT
+                effect_thresh += falloff_weight * DENSE_SHIFT * 0.5
+                // Also flag for structured fill (see Layer 4)
+
+    wall_thresh = clamp(wall_thresh, -0.8, 0.8)
+    effect_thresh = clamp(effect_thresh, wall_thresh + 0.05, 0.95)  // Always some gap
+    return {wall_thresh, effect_thresh}
+```
+
+### Noise-to-terrain conversion
+
+For each cell in the map, the noise value is compared against two thresholds to produce one of three tile types:
+
+```
+function generate_terrain(zone_params, placed_landmarks, rng):
+    noise_params = zone_params.noise
+
+    for grid_y in 0..zone_size:
+        for grid_x in 0..zone_size:
+            // Skip cells occupied by center anchor or landmark chunks
+            if cell_is_fixed(grid_x, grid_y):
+                continue
+
+            noise_val = noise_at(grid_x, grid_y, noise_params, seed)
+            thresholds = compute_thresholds(grid_x, grid_y,
+                                            noise_params.wall_threshold,
+                                            noise_params.effect_threshold,
+                                            placed_landmarks)
+
+            if noise_val < thresholds.wall:
+                // WALL — solid, blocks movement and LOS
+                cell_type = pick_wall_type(zone_params.biome, rng)
+                Map_set_cell(grid_x, grid_y, cell_type)
+
+            else if noise_val < thresholds.effect:
+                // EFFECT CELL — traversable, visual + optional gameplay effect
+                cell_type = pick_effect_type(zone_params.biome, rng)
+                Map_set_cell(grid_x, grid_y, cell_type)
+
+            // else: EMPTY — pure traversable space (grid over background cloudscape)
+```
+
+**Initial wall type assignment**: During terrain generation, `pick_wall_type()` assigns a preliminary wall type (e.g., solid). The wall type refinement pass (Layer 3.5) then selectively upgrades walls to circuit type based on influence proximity and edge exposure.
+
+This produces organic terrain with three distinct tile types that:
+- Varies per seed (noise is seeded)
+- Is denser near dense-influence landmarks (boss arenas) with thin effect fringes
+- Is sparser near sparse-influence landmarks (safe zones) with generous effect cell scatter
+- Transitions smoothly between areas — effect cells naturally concentrate at terrain edges
+- Has no visible boundaries or rectangular regions
+
+### Terrain character notes
+
+**Dense areas** (near INFLUENCE_DENSE landmarks): Wall threshold is high, so most cells become walls. The result is labyrinthine — narrow passages winding through dense walls. Effect cells appear as thin fringes along corridor walls, adding subtle visual texture to tight spaces. Feels like navigating compressed data structures.
+
+**Sparse areas** (near INFLUENCE_SPARSE landmarks): Wall threshold is low, so few cells become walls. The wider effect band means more effect cells are scattered through open space, breaking up the emptiness with subtle visual interest. The background cloudscape is still the dominant visual — effect cells are an accent layer, not a replacement. Feels like an open cyberspace battlefield with traces of active data.
+
+**Moderate areas** (between influences, or near INFLUENCE_MODERATE landmarks): Balanced mix of all three tile types. Walls provide structure, effect cells add texture at transitions, empty space lets the cloudscape breathe. Natural connective tissue between the extremes.
+
+**The transition** between dense and sparse is gradual and organic — the influence falloff creates a smooth density gradient. Effect cells emerge naturally in the transition band, visually marking the boundary between terrain types without hard edges.
+
+### Effect cell types per biome
+
+The effect cell is the same system everywhere — a traversable cell with visual properties defined in the zone's cell type definitions. What changes per biome is the visual appearance and optional gameplay behavior:
+
+**Generic zones (Origin, Generic A/B/C) — Data Traces**:
+- Faint glowing circuit-like patterns on the grid — subtle, atmospheric
+- Complement the zone's background cloudscape palette (e.g., faint cyan-white against purple clouds)
+- Render through foreground bloom for soft glow
+- **No gameplay effect** — purely visual texture that makes the world feel alive and active
+- Varying visual density adds atmosphere: some areas feel more "active" than others without telling the player why
+
+**Themed zones — Biome Hazards** (examples, not final):
+- **Fire zone**: Ember cells — faint orange glow, deal damage-over-time while standing on them
+- **Ice zone**: Frost cells — pale blue shimmer, reduce friction (momentum/sliding effect)
+- **Poison zone**: Toxic cells — sickly green pulse, tick feedback while standing on them (slows feedback decay)
+- **Blood zone**: Drain cells — dark red veins, slowly drain integrity while standing on them
+- **Electric zone**: Charge cells — crackling blue-white, periodic damage pulses at intervals
+- **Void zone**: Distortion cells — visual warping/glitch effect, interfere with minimap rendering
+
+Same noise generation, same two thresholds, same influence system. The only difference is what `pick_effect_type()` returns per biome and what gameplay behavior (if any) the cell type triggers. Themed zone hazards create terrain-reading gameplay — players think about WHERE they fight, not just how. Kiting a seeker through fire cells versus clean ground changes the positioning calculus.
+
+---
+
+## Layer 3.5: Wall Type Refinement
+
+After terrain generation assigns walls, a post-processing pass refines which wall cells use the **solid** type versus the **circuit** type. This creates visual variety that's modulated by landmark influence — geometric near landmarks, organic in the wilds.
+
+### Two wall types
+
+The zone's cell type definitions include both solid and circuit wall types (as already exists in The Origin):
+- **Solid**: The base wall type. Opaque fill, no internal pattern.
+- **Circuit**: Internal circuit-trace pattern. Visually distinctive, implies structure and purpose.
+
+### Influence-proximity-based placement
+
+The key insight: circuit tiles feel geometric and intentional near landmarks, but scattered and organic far from them. This is controlled by the local influence strength at each wall cell.
+
+**Near landmarks (high influence strength)** — Edge detection mode:
+- Circuit placement uses **edge detection**: walls with at least one exposed face (adjacent to empty or effect cell) get circuit type
+- This creates geometric, circuit-lined edges around landmark structures — feels deliberate and architectural
+- Interior walls (surrounded by other walls on all sides) stay solid — they're hidden anyway
+- Probability of edge-detected walls becoming circuit: 80-95%
+
+**In the wilds (low/no influence strength)** — Organic scatter mode:
+- Circuit placement uses **random scatter**: any wall has a low base probability of becoming circuit
+- Creates the organic, random-looking circuit appearance seen in The Origin's southern terrain
+- No relationship to edges — circuit tiles appear anywhere, breaking up solid monotony
+- Base probability: 10-20% (tunable per zone)
+
+**Transition**: The influence falloff creates a smooth gradient between the two modes. At moderate influence, it's a blend — some edge-detected circuits plus some random scatter.
+
+```
+function refine_wall_types(terrain, placed_landmarks, zone_params, rng):
+    for each wall cell (grid_x, grid_y):
+        // Compute max influence strength at this cell
+        max_influence = 0.0
+        for each landmark in placed_landmarks:
+            dist = distance(grid_x, grid_y, landmark.x, landmark.y)
+            inf = landmark.def.influence
+            if dist < inf.radius:
+                t = 1.0 - (dist / inf.radius)
+                strength = pow(t, inf.falloff) * inf.strength
+                max_influence = max(max_influence, strength)
+
+        // Determine circuit probability
+        is_edge = has_exposed_face(grid_x, grid_y, terrain)
+
+        if max_influence > 0.3:
+            // Near landmark: edge detection mode
+            // Blend toward edge-detection as influence increases
+            edge_weight = smoothstep(0.3, 0.7, max_influence)
+            if is_edge:
+                circuit_prob = lerp(zone_params.wild_circuit_prob,
+                                    zone_params.landmark_circuit_prob,
+                                    edge_weight)
+            else:
+                circuit_prob = zone_params.wild_circuit_prob * (1.0 - edge_weight * 0.5)
+        else:
+            // In the wilds: organic scatter
+            circuit_prob = zone_params.wild_circuit_prob
+
+        if rng_float(rng) < circuit_prob:
+            set_cell_type(grid_x, grid_y, zone_params.circuit_type)
+        // else: stays solid (default from terrain generation)
+```
+
+### Zone file parameters
+
+```
+# Wall type refinement
+circuit_prob_landmark 0.9      # Probability of edge-detected walls becoming circuit near landmarks
+circuit_prob_wild 0.15         # Base probability of any wall becoming circuit in the wilds
+```
+
+### Design rationale
+
+This mirrors the hand-crafted feel of The Origin. Around the portal and savepoint, circuit tiles form deliberate geometric patterns along edges — they look placed with purpose. Moving south into the open terrain, circuit tiles scatter more randomly among the solid walls, creating an organic, lived-in feel. The influence system automates this transition: landmarks are the "purpose" that circuit patterns gather around, and the wilds are the raw digital frontier where patterns emerge randomly.
+
+---
+
+## Layer 4: Structured Sub-Areas
+
+Within dense influence zones (INFLUENCE_STRUCTURED), pure noise terrain can be replaced or augmented with chunk-based structured rooms. This gives the designer control over room shapes and combat encounters in high-density areas while keeping the organic feel of noise-generated corridors between rooms.
+
+### When to use structured fill
+
+The INFLUENCE_STRUCTURED type is for areas where the designer wants hand-crafted room geometry — boss approach corridors, puzzle rooms, specific combat arenas. It's optional. INFLUENCE_DENSE with pure noise produces perfectly playable labyrinthine terrain without any chunks.
+
+### Structured fill algorithm
+
+Within an INFLUENCE_STRUCTURED zone (defined by the influence radius of a landmark):
+
+1. **Identify the structured area**: All cells within the influence radius where the influence strength exceeds a threshold (e.g., 0.5 — the inner portion of the influence)
+2. **Compute a coarse grid**: Divide the structured area into chunk-sized cells (e.g., 16×16)
+3. **Generate a solution path**: Spelunky-style walk from the area's edge toward the landmark, ensuring connectivity
+4. **Fill with chunks**: Path cells get traversable chunks, non-path cells get sealed or connected filler chunks
+5. **Blend at edges**: Cells at the structured area's boundary blend into the surrounding noise terrain — use noise to decide whether edge chunks have exits to the open terrain
+
+This preserves the Spelunky chunk system for areas that benefit from it, while the rest of the map uses organic noise terrain. The structured area is embedded within the noise terrain and connected to it, not isolated in a rectangle.
+
+### Chunk templates (unchanged from original spec)
+
+```c
+typedef struct {
+    char name[64];
+    int width, height;           // Grid dimensions (8-64)
+
     ChunkCategory category;      // CHUNK_COMBAT, CHUNK_CORRIDOR, CHUNK_JUNCTION, etc.
-    char biome[32];              // "neutral", "fire", "ice", etc.
-    int difficulty;              // 1-5
+    char biome[32];
+    int difficulty;
     uint8_t flags;               // CHUNK_NO_HMIRROR, CHUNK_NO_VMIRROR
 
-    // Exit configuration
     ExitConfig exit_config;      // Bitmask: EXIT_LEFT | EXIT_RIGHT | EXIT_TOP | EXIT_BOTTOM
-    Exit exits[4];               // One per side max
+    Exit exits[4];
     int exit_count;
 
-    // Cell data — three sparse arrays
-    ChunkWall walls[MAX_CHUNK_CELLS];       // Guaranteed solid
+    ChunkWall walls[MAX_CHUNK_CELLS];
     int wall_count;
-    ChunkEmpty empties[MAX_CHUNK_CELLS];    // Guaranteed open (critical path + exits)
+    ChunkEmpty empties[MAX_CHUNK_CELLS];
     int empty_count;
-    ChunkMaybe maybes[MAX_CHUNK_CELLS];     // Probabilistic
+    ChunkMaybe maybes[MAX_CHUNK_CELLS];
     int maybe_count;
 
-    // Obstacle zones
     ObstacleZone obstacle_zones[MAX_OBSTACLE_ZONES];
     int obstacle_zone_count;
 
-    // Enemy spawn slots
     ChunkSpawnSlot spawn_slots[MAX_CHUNK_SPAWNS];
     int spawn_slot_count;
 } ChunkTemplate;
 ```
 
-### Exit configurations
-
-```c
-typedef enum {
-    EXIT_NONE   = 0,
-    EXIT_LEFT   = 1 << 0,
-    EXIT_RIGHT  = 1 << 1,
-    EXIT_TOP    = 1 << 2,
-    EXIT_BOTTOM = 1 << 3,
-} ExitConfig;
-
-typedef struct {
-    Direction side;
-    int offset;       // Cell offset along edge (0-indexed from top-left corner of that edge)
-    int width;        // Opening width in cells
-} Exit;
-```
-
-Common configurations:
-
-| Config | Bitmask | Use |
-|--------|---------|-----|
-| LR | 0x03 | Horizontal corridor |
-| TB | 0x0C | Vertical shaft |
-| LRB | 0x07 | Downward fork |
-| LRT | 0x06 | Upward fork |
-| LRTB | 0x0F | Crossroads / junction |
-| L/R/T/B | single bit | Dead-end |
-| None | 0x00 | Sealed filler room |
-
-**The guarantee**: If a chunk has `EXIT_LEFT | EXIT_RIGHT`, a walkable path exists from the left exit to the right exit through `empty` cells. The chunk loader validates this via flood fill.
-
-### Critical cells and the probabilistic safety rule
-
-**Critical cells** form the internal paths connecting exits. Marked `empty` in the template — never obstructed.
-
-**The rule**: `maybe` cells must never overlap `empty` cells. A probabilistic wall on the critical path would break the exit guarantee. The chunk loader validates this as a hard error.
-
-### Three-tier cell resolution
-
-When a chunk is stamped into the map:
-
-1. **Fill chunk bounds** with default wall type (everything starts solid)
-2. **Carve empties** — `Map_clear_cell` for critical path + exits
-3. **Resolve maybes** — roll PRNG against probability, set cell if hit
-4. **Resolve obstacle zones** — pick block from pool (or empty), stamp it
-5. **Resolve spawn slots** — roll PRNG, spawn enemy if hit
-
-Unmarked cells stay as the default wall from step 1. The chunk is mostly wall with carved-out rooms — same philosophy as Spelunky.
-
-### Obstacle blocks
-
-Small pre-authored wall patterns stamped into designated zones within chunks. Also used as scatter elements in open regions.
-
-```c
-typedef struct {
-    char name[64];
-    int width, height;
-    ChunkWall cells[MAX_OBSTACLE_CELLS];
-    int cell_count;
-} ObstacleBlock;
-```
-
-```c
-typedef struct {
-    int x, y;                    // Top-left within chunk (local coords)
-    int width, height;           // Zone dimensions
-    char pool[MAX_POOL][64];     // Eligible blocks (includes "empty")
-    int pool_count;
-    float probability;           // Chance of placing any block
-} ObstacleZone;
-```
-
-**Safety**: Obstacle zones must not overlap `empty` cells. Validated by loader.
-
-### Chunk mirroring
-
-After template selection, before stamping:
-
-- **Horizontal**: cell (x, y) → (width - 1 - x, y). Swap EXIT_LEFT ↔ EXIT_RIGHT.
-- **Vertical**: cell (x, y) → (x, height - 1 - y). Swap EXIT_TOP ↔ EXIT_BOTTOM.
-- **Both**: 180° rotation.
-
-50% chance per axis (independent), controlled by PRNG. Chunks flagged `CHUNK_NO_HMIRROR` or `CHUNK_NO_VMIRROR` skip the flip.
-
-### Intra-chunk variation math
-
-For a chunk with 10 `maybe` cells (50% each), 2 obstacle zones (4 options each), and 4 mirror states: 2^10 × 4 × 4 × 4 = **65,536** distinct instances from one authored template.
-
-### Chunk file format
+### Chunk file format (unchanged)
 
 ```
 chunk combat_pillars_01
@@ -367,539 +611,250 @@ exits LR
 exit left 6 4
 exit right 6 4
 
-# Guaranteed walls (local coords, 0-indexed from top-left)
 wall 0 0 solid
-wall 1 0 solid
-# ... (perimeter)
-
-# Critical path — guaranteed open
 empty 0 6
-empty 0 7
-empty 0 8
-empty 0 9
-# ... (path from left exit to right exit)
-
-# Probabilistic cells
 maybe 4 4 solid 0.5
-maybe 11 4 solid 0.5
-maybe 4 11 solid 0.5
-maybe 11 11 solid 0.5
 
-# Obstacle zones
 obstacle_zone 6 2 4 4 pillar_cluster,wall_segment,empty 0.7
-obstacle_zone 6 10 4 4 pillar_cluster,barrier,empty 0.7
-
-# Enemy spawn slots
 spawn_slot 8 8 mine 0.3
 ```
 
-**Parsing rules:**
-- `#` comments, blank lines ignored, unrecognized lines are parse errors (strict)
-- Coordinates are local to chunk (0,0 = top-left)
-- All unmarked cells default to solid wall
-- `exits` is the bitmask; `exit` lines are physical openings
-- `exit <side> <offset> <width>`
-
-**Loader validation (hard errors):**
-1. Every side in `exits` has at least one `exit` line
-2. Every `exit` opening cell is within bounds and marked `empty`
-3. Flood fill from any exit reaches all other exits via `empty` cells
-4. No `maybe` overlaps `empty`
-5. No obstacle zone overlaps `empty`
-6. Obstacle zone dimensions fit every block in its pool
-
 ---
 
-## Layer 3: Region Graph
+## Layer 5: Obstacle Block Scatter
 
-### Region definition
-
-A **region** is one or more rectangles sharing the same ID, unioned into a composite shape. Each region has a **generation mode**: structured or open.
-
-```c
-#define MAX_REGION_RECTS 8
-
-typedef struct {
-    int grid_x, grid_y;
-    int width, height;
-} RegionRect;
-
-typedef struct {
-    char id[16];
-
-    // Component rectangles (1+, unioned)
-    RegionRect rects[MAX_REGION_RECTS];
-    int rect_count;
-
-    // Bounding box (computed)
-    int bbox_x, bbox_y;
-    int bbox_w, bbox_h;
-
-    // Generation mode
-    RegionMode mode;             // MODE_STRUCTURED or MODE_OPEN
-
-    // --- Structured mode fields ---
-    int base_chunk_size;         // Smallest chunk size used (coarse grid unit), e.g. 16
-    int cols, rows;              // Coarse grid dimensions (bbox / base_chunk_size)
-    bool *valid;                 // [cols * rows] validity mask
-
-    // --- Open mode fields ---
-    float density;               // 0.0-1.0, fraction of region area with walls/obstacles
-    float obstacle_spacing;      // Minimum distance between placed obstacle blocks (map cells)
-    float cell_scatter_chance;   // Probability of placing a random individual wall cell per grid point
-
-    // --- Shared fields ---
-    int min_chunks, max_chunks;  // For structured: chunk count. For open: obstacle block count.
-    float combat_ratio;          // Fraction of combat-oriented content
-    int difficulty_min, difficulty_max;
-    RegionStyle style;           // STYLE_LINEAR, STYLE_LABYRINTHINE, STYLE_BRANCHING (structured)
-                                 // STYLE_SPARSE, STYLE_SCATTERED, STYLE_CLUSTERED (open)
-    PacingTag pacing;            // PACING_HOT, PACING_COOL, PACING_NEUTRAL
-
-    // Connections — reference landmark types, resolved after hotspot selection
-    RegionConnection entry;
-    RegionConnection exit;       // exit.type = "none" for dead-end regions
-} Region;
-```
-
-```c
-typedef struct {
-    char landmark_type[32];      // Resolved to a coarse cell / grid position after hotspot selection
-    int resolved_x, resolved_y;  // Filled in by hotspot resolver
-} RegionConnection;
-```
-
-### Composite regions
-
-Multiple `region` lines with the same ID are unioned:
-
-```
-region A 100 100 320 320
-region A 100 340 512 128
-```
-
-Bounding box computed from the union. Coarse grid (structured mode) covers the bounding box; cells outside all component rectangles are marked invalid.
-
-```
-Validity mask example (. = invalid, # = valid):
-  ##########..........
-  ##########..........
-  ##########..........
-  ##########..........
-  ################....
-  ################....
-```
-
-**Bottleneck warning**: Loader warns if a valid cell has only one valid neighbor — indicates a potential routing bottleneck.
-
-### Coarse grid sizing (structured mode)
-
-The coarse grid covers the bounding box, divided by `base_chunk_size`. A region with `base_chunk_size = 16` and bounding box 320×320 has a 20×20 coarse grid.
-
-Large chunks (e.g., 32×32 in a base-16 grid) occupy 2×2 coarse cells. The walk algorithm treats the block of cells as a single node.
-
-Component rectangles should be multiples of `base_chunk_size`. If not evenly divisible, the loader rounds down and pads remaining cells with solid wall.
-
-### Region connections and hotspot resolution
-
-Connections reference landmark types, not fixed positions:
-
-```
-connect A entry entry_portal
-connect A exit boss_arena
-```
-
-After hotspot resolution, `entry_portal` and `boss_arena` map to specific grid coordinates. The solution path (structured mode) or traversal guarantee (open mode — trivial) connects them.
-
-**Validation**: After resolution, both endpoints must be inside the region's valid area.
-
-**Shared landmarks**: `boss_arena` can be region A's exit and region B's entry. The landmark chunk is placed once; both regions route to/from it.
-
-**Dead-end regions**: `connect C exit none` — the path starts at the entry and explores inward. No exit required.
-
-### Region graph in the zone file
-
-```
-# Regions
-region A 100 100 320 320
-region A 100 340 512 128
-region B 500 100 400 400
-region C 200 500 200 200
-
-# Generation mode
-regionmode A structured 16      # structured, base chunk size 16
-regionmode B open                # open scatter mode
-regionmode C structured 32      # structured, base chunk size 32
-
-# Hotspots (generic — generator assigns landmark types)
-# hotspot <grid_x> <grid_y> [weight]
-hotspot 120 120 1.0
-hotspot 380 200 1.0
-hotspot 600 150 1.2
-hotspot 200 400 1.0
-hotspot 700 350 0.8
-hotspot 300 550 1.0
-
-# Landmark types to place (what + which chunk template + priority)
-# landmark <type> <chunk_file> <priority>
-landmark entry_portal portal_entry_fire.chunk 1
-landmark boss_arena boss_arena_fire.chunk 3
-landmark exit_portal portal_exit_fire.chunk 2
-landmark safe_zone safe_zone_fire.chunk 4
-
-# Fixed hand-placed landmarks (optional — locked position, generator works around them)
-# fixed_landmark <type> <chunk_file> <grid_x> <grid_y>
-fixed_landmark entry_portal portal_entry_fire.chunk 100 100
-
-# Minimum distance between placed landmarks (coarse grid cells for structured, map cells for open)
-hotspot_min_distance 5
-
-# Region connections
-connect A entry entry_portal
-connect A exit boss_arena
-connect B entry boss_arena
-connect B exit exit_portal
-connect C entry safe_zone
-connect C exit none
-
-# Region constraints
-# regionconfig <id> <min_content> <max_content> <combat_ratio> <diff_min> <diff_max> <style> <pacing>
-regionconfig A 12 20 0.4 2 3 labyrinthine hot
-regionconfig B 20 40 0.6 3 4 scattered hot
-regionconfig C 4 8 0.2 1 2 linear cool
-
-# Open mode density (only for open regions)
-# opendensity <id> <density> <obstacle_spacing> <cell_scatter_chance>
-opendensity B 0.15 8.0 0.02
-```
-
----
-
-## Layer 4: Algorithmic Assembly — Structured Mode
-
-### Phase 1: Solution path generation
-
-The core algorithm from Spelunky, adapted for variable chunk sizes and composite regions.
-
-**The insight**: Don't generate then validate. Build the traversable path first, fill around it. Reachability guaranteed by construction.
-
-**Inputs:**
-- Region definition (coarse grid, validity mask, entry cell, exit cell)
-- Chunk template library (filtered by biome, difficulty, size)
-- Seeded PRNG
-
-**Output:**
-- Array of (coarse_col, coarse_row, ChunkTemplate*, mirror_flags, span) for each path node. `span` indicates how many coarse cells the chunk occupies (1×1, 2×2, etc.).
-
-**Algorithm:**
-
-```
-function generate_solution_path(region, chunk_lib, rng):
-    path = []
-    visited = 2D bool array [cols × rows], all false
-
-    entry_cell = region.entry.resolved_cell
-    exit_cell  = region.exit.resolved_cell  // INVALID for dead-end regions
-
-    current = entry_cell
-    mark_visited(visited, current, 1)  // 1×1 initially
-
-    prev_required_exit = EXIT_NONE  // No constraint on first chunk's "incoming" side
-
-    while current != exit_cell:
-        direction = pick_walk_direction(current, exit_cell, region, visited, rng)
-
-        if direction == STUCK:
-            // Backtrack: pop last path entry, unmark, try different direction
-            // Limit backtrack depth to 5. If exhausted, restart walk (limit 10 restarts).
-            // If all restarts fail, fall back to straight-line corridor.
-            backtrack_or_restart()
-            continue
-
-        next_cell = current + direction_offset(direction)
-
-        // Current chunk needs: prev_required_exit + exit toward next cell
-        current_required = prev_required_exit | direction_to_exit(direction)
-
-        // Try to place a large chunk first (more interesting), fall back to base size
-        chunk = select_chunk_with_size_preference(
-            chunk_lib, current_required, region, current, visited, rng
-        )
-
-        if chunk == NULL:
-            // Try different direction
-            continue
-
-        span = chunk.width / region.base_chunk_size  // 1 for base size, 2 for 2x, etc.
-        mirror = roll_mirror(chunk, rng)
-        path.append({current, chunk, mirror, span})
-        mark_visited(visited, current, span)
-
-        prev_required_exit = opposite_exit(direction)
-        current = next_cell
-
-    // Place exit chunk
-    exit_required = prev_required_exit
-    if exit_cell != INVALID:
-        exit_required |= exit_toward_landmark(region.exit)
-    chunk = select_chunk(chunk_lib, exit_required, region.constraints, rng)
-    path.append({current, chunk, roll_mirror(chunk, rng), span})
-
-    return path
-```
-
-**`select_chunk_with_size_preference`** — tries large chunks first for variety:
-
-```
-function select_chunk_with_size_preference(chunk_lib, required_exits, region, pos, visited, rng):
-    // Try sizes from largest to smallest
-    for size_class in [64, 32, 16, base_chunk_size] (descending, >= base_chunk_size):
-        span = size_class / region.base_chunk_size
-        if span > 1:
-            // Check if NxN coarse cells starting at pos are all valid and unvisited
-            if not can_fit(pos, span, region, visited):
-                continue
-        // Select chunk of this size matching exits + constraints
-        chunk = select_chunk(chunk_lib, required_exits, region.constraints, rng,
-                            size_filter=size_class)
-        if chunk != NULL:
-            return chunk
-    return NULL  // Nothing fits
-```
-
-**`pick_walk_direction`** — biased by region style:
-
-```
-function pick_walk_direction(current, target, region, visited, rng):
-    candidates = []
-    for dir in [LEFT, RIGHT, UP, DOWN]:
-        next = current + offset(dir)
-        if in_bounds(next, region) and region.valid[next] and not visited[next]:
-            candidates.append(dir)
-
-    if empty: return STUCK
-
-    weights = []
-    for dir in candidates:
-        if target == INVALID:
-            weights.append(1.0)  // Dead-end: uniform
-        else:
-            alignment = dot(dir_vector, normalize(target - current))
-            switch region.style:
-                LINEAR:       weight = (alignment > 0) ? 5.0 : (== 0) ? 1.5 : 0.5
-                LABYRINTHINE: weight = (alignment > 0) ? 2.0 : (== 0) ? 2.0 : 1.5
-                BRANCHING:    weight = (alignment > 0) ? 3.0 : (== 0) ? 2.5 : 0.5
-            weights.append(weight)
-
-    return weighted_pick(candidates, weights, rng)
-```
-
-**`select_chunk`** — 4-pass constraint relaxation:
-
-```
-function select_chunk(chunk_lib, required_exits, constraints, rng, size_filter=0):
-    // Connectivity is NEVER relaxed. Content constraints relax in order:
-    // Pass 1: exits + category + difficulty + biome + size
-    // Pass 2: exits + difficulty + biome + size  (relax category)
-    // Pass 3: exits + biome + size              (relax difficulty)
-    // Pass 4: exits + size                      (relax biome)
-    // Pass 5: exits only                        (last resort)
-    // Return NULL if no chunk has the required exits
-```
-
-### Phase 2: Non-path fill
-
-```
-function fill_non_path(region, path_cells, chunk_lib, rng):
-    for each unoccupied valid coarse cell:
-        // Check if adjacent path/filled chunks have exits facing this cell
-        desired_exits = compute_desired_exits(cell, neighbors)
-
-        // Style controls connectivity of non-path cells:
-        //   labyrinthine → 70% connected, 30% sealed
-        //   linear       → 20% connected, 80% sealed
-        //   branching    → 50% connected, 50% sealed
-        if rng_roll < connect_chance AND desired_exits != 0:
-            chunk = select_chunk(chunk_lib, desired_exits, constraints, rng)
-        else:
-            chunk = select_chunk(chunk_lib, EXIT_NONE, constraints, rng)
-
-        if chunk == NULL:
-            fill_solid(cell)
-            continue
-
-        place_chunk(cell, chunk, roll_mirror(chunk, rng), rng)
-```
-
-### Phase 3: Stamp and stitch
-
-```
-function stamp_all_chunks(region, placed_chunks, rng):
-    for each placed chunk:
-        stamp_chunk(origin, template, mirror, rng)  // 5-pass resolution (see Layer 2)
-
-    // Stitch adjacent chunks with matching exits
-    for each adjacent pair with mutual exits:
-        stitch_exits(chunk_a, chunk_b)
-
-    seal_region_border(region)
-```
-
-**Exit stitching**: clear wall cells on the shared edge where exits overlap. If exits don't align (different offsets), carve an L-shaped connector. **Simplification for v1**: standardize exit offsets per chunk size class — all 16×16 chunks with a left exit at the same offset. Stitching becomes a no-op.
-
-### Backtracking and failure recovery
-
-1. **Local retry**: Try all untried directions from current cell.
-2. **Backtrack**: Pop last 1-5 path cells, try alternate routes.
-3. **Full restart**: Discard path, advance PRNG, retry. Limit 10 restarts.
-4. **Hard fallback**: Straight-line corridor from entry to exit. Always works. Log warning — indicates chunk library content gap.
-
----
-
-## Layer 5: Algorithmic Assembly — Open Mode
-
-Open regions use a fundamentally different algorithm. No chunks, no coarse grid, no solution path. The space is mostly empty — traversability is trivially guaranteed because walls are sparse and separated.
+In moderate-to-sparse terrain, individual noise-generated walls can feel too random — just scattered dots. Obstacle blocks add tactical structure: cover positions, chokepoints, pillar clusters.
 
 ### Scatter algorithm
 
+The scatter algorithm selects obstacle blocks based on local influence strength. Near landmarks, it picks from the **structured** pool. In the wilds, it picks from the **organic** pool. At moderate influence, it blends between both pools.
+
 ```
-function generate_open_region(region, obstacle_lib, rng):
-    // 1. Compute available area (union of component rectangles, minus fixed assets)
-    area = compute_region_area(region)
+function scatter_obstacles(zone_params, placed_landmarks, terrain, rng):
+    obstacle_lib = load_obstacle_blocks(zone_params.biome)
+    structured_blocks = filter(obstacle_lib, style == OBSTACLE_STRUCTURED)
+    organic_blocks = filter(obstacle_lib, style == OBSTACLE_ORGANIC)
 
-    // 2. Place obstacle blocks
-    obstacle_budget = area * region.density * OBSTACLE_AREA_FRACTION
-    placed_obstacles = []
+    for each placed landmark:
+        inf = landmark.def.influence
+        if inf.type == INFLUENCE_DENSE or inf.type == INFLUENCE_STRUCTURED:
+            continue  // Dense areas don't need scattered obstacles
 
-    attempts = 0
-    while placed_area < obstacle_budget and attempts < MAX_ATTEMPTS:
-        // Pick random position within region bounds
-        x = rng_range(region.bbox_x, region.bbox_x + region.bbox_w, rng)
-        y = rng_range(region.bbox_y, region.bbox_y + region.bbox_h, rng)
+        // Scatter within this landmark's influence radius
+        area = influence_area(landmark)
+        budget = area * inf.obstacle_density
+        placed = []
 
-        if not point_in_region(x, y, region):
-            attempts++
-            continue
+        attempts = 0
+        while len(placed) < budget and attempts < budget * 20:
+            x = rng_range(landmark area bounds, rng)
+            y = rng_range(landmark area bounds, rng)
 
-        // Pick random obstacle block from biome-appropriate library
-        block = pick_uniform(obstacle_lib, rng)
-
-        // Check spacing from other placed obstacles
-        if too_close(x, y, placed_obstacles, region.obstacle_spacing):
-            attempts++
-            continue
-
-        // Check no overlap with fixed assets or landmarks
-        if overlaps_fixed(x, y, block):
-            attempts++
-            continue
-
-        stamp_obstacle_block(x, y, block, rng)  // May mirror the block
-        placed_obstacles.append({x, y, block})
-        attempts = 0  // Reset on success
-
-    // 3. Scatter individual cells for texture
-    for grid_y in region bounds:
-        for grid_x in region bounds:
-            if not point_in_region(grid_x, grid_y, region):
+            if not in_influence(x, y, landmark):
+                attempts++
                 continue
-            if cell_already_occupied(grid_x, grid_y):
-                continue
-            if rng_float(rng) < region.cell_scatter_chance:
-                cell_type = pick_scatter_cell_type(region.biome, rng)
-                Map_set_cell(grid_x, grid_y, cell_type)
 
-    // 4. Place enemies
-    populate_enemies_open(region, placed_obstacles, rng)
+            // Pick block style based on local influence strength
+            local_strength = compute_influence_strength(x, y, placed_landmarks)
+            if local_strength > 0.5:
+                block = pick_uniform(structured_blocks, rng)
+            else if local_strength > 0.2:
+                // Blend zone — either pool
+                if rng_float(rng) < local_strength:
+                    block = pick_uniform(structured_blocks, rng)
+                else:
+                    block = pick_uniform(organic_blocks, rng)
+            else:
+                block = pick_uniform(organic_blocks, rng)
+
+            if too_close(x, y, placed, min_spacing):
+                attempts++
+                continue
+
+            if overlaps_fixed(x, y, block):
+                attempts++
+                continue
+
+            stamp_obstacle_block(x, y, block, rng)  // May mirror
+            placed.append({x, y, block})
+            attempts = 0
+
+    // Also scatter in "no man's land" — organic blocks only
+    scatter_neutral_obstacles(zone_params, placed_landmarks, terrain,
+                              organic_blocks, rng)
 ```
 
-### Open mode styles
+### Obstacle blocks
 
-The `style` field for open regions controls scatter behavior:
+```c
+typedef enum {
+    OBSTACLE_STRUCTURED,   // Geometric, deliberate patterns — placed near landmarks
+    OBSTACLE_ORGANIC        // Random-looking, natural patterns — placed in the wilds
+} ObstacleStyle;
 
-| Style | Behavior |
-|-------|----------|
-| **SPARSE** | Obstacle blocks placed uniformly with large spacing. Individual cells very rare. Wide open with occasional cover. |
-| **SCATTERED** | Moderate spacing. Individual cells more common. Broken terrain with lots of small cover. |
-| **CLUSTERED** | Obstacle blocks placed in groups (2-4 nearby, then a gap). Creates islands of structure in open space. |
+typedef struct {
+    char name[64];
+    int width, height;
+    ObstacleStyle style;   // Determines where the block gets placed
+    ChunkWall cells[MAX_OBSTACLE_CELLS];
+    int cell_count;
+} ObstacleBlock;
+```
 
-### Traversability in open regions
+Small pre-authored patterns (3×3, 4×4, etc.) that get stamped into terrain. Mirrored randomly for variety.
 
-Not explicitly guaranteed — it's emergent from low density. At 5-15% wall coverage with spacing constraints, it's geometrically impossible to wall off the player. The density parameter has a hard cap (e.g., 0.40) to prevent the designer from accidentally creating impassable regions in open mode. If you want >40% density, use structured mode.
+**Structured blocks** feature deliberate geometric patterns — symmetry, circuit-heavy edges, recognizable shapes. They're placed near landmarks where the terrain feels architectural and purposeful.
+
+**Organic blocks** feature random-looking, asymmetric wall clusters — the kind of terrain that looks naturally formed rather than designed. They're placed in the wilds, far from landmark influence, where terrain should feel raw and untamed.
+
+The designer flags each obstacle block with its style when authoring. The scatter algorithm selects blocks based on local influence strength at the placement position.
 
 ---
 
-## Layer 6: Enemy Population
+## Layer 6: Connectivity Validation & Corridor Carving
 
-### Two-pass placement (both modes)
+After terrain generation, the map must be validated: all landmarks must be reachable from the center anchor. Noise-based terrain with influence modulation will usually produce connected terrain, but it's not guaranteed — especially between sparse areas separated by dense walls.
+
+### Validation
+
+```
+function validate_connectivity(center, placed_landmarks, terrain):
+    // Flood fill from center anchor
+    reachable = flood_fill(center.x, center.y, terrain)
+
+    unreachable = []
+    for each landmark in placed_landmarks:
+        if not reachable[landmark.x][landmark.y]:
+            unreachable.append(landmark)
+
+    return unreachable
+```
+
+### Corridor carving
+
+For each unreachable landmark, carve a corridor from the nearest reachable point:
+
+```
+function carve_corridors(center, unreachable_landmarks, terrain, rng):
+    for each landmark in unreachable_landmarks:
+        // Find the nearest reachable cell to this landmark
+        target = nearest_reachable_cell(landmark, reachable_set)
+
+        // A* pathfind from landmark to target through walls
+        // Cost: empty cell = 1, wall cell = 5 (prefer existing open space)
+        path = astar(landmark, target, terrain, wall_cost=5)
+
+        // Carve the path — clear walls along it
+        // Width: 2-3 cells for a corridor feel (not just 1-cell tunnels)
+        for each cell in path:
+            clear_corridor_cells(cell, corridor_width=2, terrain)
+
+        // Add some noise to the corridor edges for organic feel
+        roughen_corridor_edges(path, rng)
+
+        // Re-flood-fill to update reachable set
+        reachable_set = flood_fill(center, terrain)
+```
+
+**Corridor aesthetics**: Carved corridors are intentional game geometry — in the fiction, they're data conduits or network pathways through dense digital terrain. They should feel deliberate:
+- 2-3 cells wide (not cramped single-cell tunnels)
+- Slightly rough edges (noise perturbation) so they don't look laser-cut
+- Optional: different cell type for corridor walls (to visually distinguish carved paths)
+
+---
+
+## Layer 7: Enemy Population
+
+### Two-pass placement
 
 **Pass 1 — Fixed spawns**: `spawn` lines from the .zone file placed first. Non-negotiable.
 
 **Pass 2 — Budget-controlled procedural spawns**:
 
-For structured regions, chunk `spawn_slot` entries are resolved subject to a region budget:
-
 ```
-function populate_enemies(region, placed_chunks, fixed_spawns, rng):
-    combat_cells = count_combat_cells(placed_chunks)
-    density = difficulty_to_density(region.difficulty_avg)
-    budget = combat_cells / density
-    budget -= count_fixed_spawns_in_region(fixed_spawns, region)
+function populate_enemies(zone_params, placed_landmarks, terrain, rng):
+    // Global budget based on zone difficulty
+    total_open_cells = count_open_cells(terrain)
+    base_density = difficulty_to_density(zone_params.difficulty_avg)
+    global_budget = total_open_cells * base_density
+    global_budget -= count_fixed_spawns(zone_params)
 
-    if budget <= 0: return
-
-    all_slots = collect_spawn_slots(placed_chunks)
-    shuffle(all_slots, rng)
-
-    spawned = 0
-    for slot in all_slots:
-        if spawned >= budget: break
-        if rng_float(rng) < slot.probability:
-            if no_enemy_within(slot.world_pos, MIN_ENEMY_SPACING):
-                spawn_enemy(slot.enemy_type, slot.world_pos)
-                spawned++
-```
-
-For open regions, enemies are placed at random valid positions with spacing:
-
-```
-function populate_enemies_open(region, placed_obstacles, rng):
-    open_area = compute_open_area(region)  // Total non-wall cells
-    density = difficulty_to_density(region.difficulty_avg)
-    budget = open_area / density * region.combat_ratio
+    if global_budget <= 0: return
 
     spawned = 0
     attempts = 0
-    while spawned < budget and attempts < MAX_ATTEMPTS:
-        x = rng_range(region bounds, rng)
-        y = rng_range(region bounds, rng)
-        if point_in_region(x, y) and not cell_occupied(x, y):
-            if no_enemy_within(world_pos(x, y), MIN_ENEMY_SPACING):
-                enemy_type = pick_enemy_type(region.biome, region.difficulty, rng)
-                spawn_enemy(enemy_type, world_pos(x, y))
-                spawned++
-                attempts = 0
-        attempts++
+
+    while spawned < global_budget and attempts < global_budget * 20:
+        // Pick random open cell
+        x = rng_range(0, zone_size, rng)
+        y = rng_range(0, zone_size, rng)
+
+        if cell_is_wall(x, y) or cell_is_fixed(x, y):
+            attempts++
+            continue
+
+        if enemy_within(world_pos(x, y), MIN_ENEMY_SPACING):
+            attempts++
+            continue
+
+        // Determine enemy type based on local influence
+        enemy_type = pick_enemy_type_for_position(
+            x, y, placed_landmarks, zone_params, rng)
+
+        spawn_enemy(enemy_type, world_pos(x, y))
+        spawned++
+        attempts = 0
+```
+
+### Influence-biased enemy selection
+
+Each landmark's `enemy_bias` field weights enemy type selection within its influence radius:
+
+```
+function pick_enemy_type_for_position(x, y, landmarks, zone_params, rng):
+    // Blend enemy weights from all active influences at this position
+    weights = default_enemy_weights(zone_params)
+
+    for each landmark in landmarks:
+        dist = distance(x, y, landmark.x, landmark.y)
+        inf = landmark.def.influence
+        if dist > inf.radius:
+            continue
+
+        t = 1.0 - (dist / inf.radius)
+        blend = pow(t, inf.falloff) * inf.strength
+
+        bias_weights = get_bias_weights(inf.enemy_bias)
+        // Blend: weights = lerp(weights, bias_weights, blend)
+        for each enemy_type:
+            weights[enemy_type] = lerp(weights[enemy_type],
+                                       bias_weights[enemy_type], blend)
+
+    return weighted_pick(enemy_types, weights, rng)
+```
+
+This means stalker-heavy areas naturally form around landmarks tagged with `"stalker_heavy"`, swarmer swarms cluster near swarmer-biased landmarks, etc. The enemy composition varies organically across the map, driven by landmark influences.
+
+### Density modulation
+
+Enemy density also varies by influence. Dense labyrinthine areas might have fewer but deadlier enemies (tight corridors amplify danger). Open areas might have more enemies spread across the field. The `enemy_density_mult` field on each influence controls this:
+
+```
+local_density = base_density
+for each landmark influence at (x, y):
+    local_density *= lerp(1.0, inf.enemy_density_mult, blend_weight)
 ```
 
 ### Danger budget (future)
 
-When multiple enemy types exist, each carries a danger rating. Budget becomes danger-weighted.
-
-### Pacing tags
-
-| Pacing | Density multiplier |
-|--------|-------------------|
-| HOT | 1.5× |
-| NEUTRAL | 1.0× |
-| COOL | 0.5× |
+When multiple enemy types exist with varying difficulty, each carries a danger rating. Budget becomes danger-weighted — a single stalker "costs" more than a mine.
 
 ---
 
-## Layer 7: Resource Distribution
+## Layer 8: Resource Distribution
 
 - **Fragment drops**: Per-enemy-type, unchanged from current system.
-- **Bonus pickups**: Spawn in treasure-category chunks (structured) or near obstacle clusters (open). Tuned by spawn_slot probability.
+- **Bonus pickups**: Spawned near obstacle clusters and in cleared areas of dense terrain.
 - **Pickup density**: Inversely correlates with zone difficulty.
 
 No new systems needed — tuning numbers on existing mechanics.
@@ -912,9 +867,9 @@ No new systems needed — tuning numbers on existing mechanics.
 
 | System | Role | Changes |
 |--------|------|---------|
-| Zone files (.zone) | Fixed skeleton + regions + hotspots | Add new line types |
+| Zone files (.zone) | Zone skeleton + parameters | Add new line types for procgen config |
 | Map grid | Target for generator writes | None — Map_set_cell / Map_clear_cell exist |
-| Cell types + cell pool | Chunks reference types by name | None (diagonals = new type, added separately) |
+| Cell types + cell pool | Wall + effect cell types per biome | Add traversable effect cell category + per-biome effect types |
 | God mode | Author content | New editing tools (separate spec) |
 | Entity spawns | Fixed spawns respected by budget | None |
 | Fragment/progression | Resource layer | None |
@@ -924,33 +879,38 @@ No new systems needed — tuning numbers on existing mechanics.
 | System | Files | Complexity | Notes |
 |--------|-------|-----------|-------|
 | PRNG | `prng.c/h` | Trivial | xoshiro128** or PCG |
+| Simplex noise | `noise.c/h` | Easy-Medium | 2D simplex, multi-octave wrapper |
+| Influence field | `procgen.c/h` | Medium | Distance-weighted blending from landmarks |
+| Hotspot generator | `procgen.c/h` | Low | Constrained random scatter |
+| Landmark resolver | `procgen.c/h` | Low-Medium | Weighted assignment + chunk stamping |
+| Terrain generator | `procgen.c/h` | Medium | Noise + dual threshold + influence modulation → 3 tile types |
+| Wall type refiner | `procgen.c/h` | Low | Influence-proximity edge detection + random scatter |
+| Connectivity validator | `procgen.c/h` | Medium | Flood fill + A* corridor carving |
 | Chunk loader | `chunk.c/h` | Medium | Parse, validate, build library |
 | Obstacle loader | Part of chunk.c | Low | Parse obstacle block files |
-| Hotspot resolver | `procgen.c/h` | Low-Medium | Weighted selection, distance enforcement |
-| Region parser | Extension to `zone.c` | Low | New line types |
-| Structured generator | `procgen.c/h` | High | Walk, multi-cell chunks, fill, stitch |
-| Open generator | `procgen.c/h` | Medium | Scatter algorithm, spacing |
-| Enemy populator | `procgen.c/h` | Medium | Budget, spacing, pacing |
-| Border sealer | `procgen.c/h` | Low | Wall off region edges |
+| Structured sub-area gen | `procgen.c/h` | Medium-High | Spelunky walk within influence zones |
+| Enemy populator | `procgen.c/h` | Medium | Budget, spacing, influence-biased selection |
+| Center anchor system | `procgen.c/h` | Low | Rotation/mirror + stamp |
 
 ### Generation call sequence
 
 ```
 Zone_load("fire_zone.zone"):
-    1. Parse fixed assets (anchor walls, ability gates, fixed landmarks)
-    2. Parse regions, hotspots, landmark defs, connections
-    3. Initialize PRNG with seed (required field)
-    4. Resolve hotspots → assign landmark types, stamp landmark chunks
-    5. Resolve region connections → map landmark types to grid positions
-    6. For each region:
-       IF structured:
-         a. Compute coarse grid + validity mask
-         b. generate_solution_path() → path
-         c. fill_non_path() → full grid
-         d. stamp_all_chunks() → map cells + enemies
-       IF open:
-         a. generate_open_region() → scatter walls + enemies
-    7. Gameplay begins
+    1. Parse zone skeleton (cell types, fixed spawns, center anchor, landmark defs, params)
+    2. Initialize PRNG with seed
+    3. Apply center anchor with per-seed rotation/mirror
+    4. Generate hotspot positions (constrained scatter)
+    5. Resolve landmarks → assign types to hotspots, stamp landmark chunks
+    6. Compute influence field from placed landmarks
+    7. Generate base terrain (noise + dual thresholds + influence → walls, effect cells, empty)
+    7.5. Refine wall types (influence-proximity circuit vs solid assignment)
+    8. Structured sub-area fill (within INFLUENCE_STRUCTURED zones)
+    9. Scatter obstacle blocks (style-matched: structured near landmarks, organic in wilds)
+    10. Validate connectivity (flood fill from center)
+    11. Carve corridors to unreachable landmarks
+    12. Populate enemies (budget-controlled, influence-biased)
+    13. Distribute resources
+    14. Gameplay begins
 ```
 
 ### Zone file format (complete example)
@@ -958,112 +918,171 @@ Zone_load("fire_zone.zone"):
 ```
 name Fire Zone
 size 1024
-
-# Cell type definitions
-celltype fire_wall 200 50 0 255 255 100 0 255 none
-celltype fire_circuit 150 30 0 255 200 80 0 255 circuit
-celltype fire_diagonal_ne 200 50 0 255 255 100 0 255 diagonal_ne
-
-# Anchor walls (always present)
-cell 500 500 fire_wall
-cell 500 501 fire_wall
-cell 501 500 fire_circuit
-
-# Fixed enemy spawns
-spawn mine 50000.0 50000.0
-
-# === PROCEDURAL GENERATION ===
-
+biome fire
 seed 48291
 
-# Regions
-region A 100 100 320 320
-region A 100 340 512 128
-region B 500 100 400 400
-region C 200 600 200 200
+# Cell type definitions — walls
+celltype fire_wall 200 50 0 255 255 100 0 255 none
+celltype fire_circuit 150 30 0 255 200 80 0 255 circuit
 
-# Generation mode per region
-regionmode A structured 16
-regionmode B open
-regionmode C structured 32
+# Cell type definitions — effect cells (traversable, tagged with "effect" flag)
+# effecttype <id> <primary_rgba> <outline_rgba> <pattern> [gameplay_effect] [effect_params]
+effecttype fire_ember 180 40 0 180 200 60 0 120 ember dot 5
+#                                                        ^effect ^param (5 DPS)
 
-# Generic hotspots (untyped — generator assigns landmark types)
-hotspot 120 120 1.0
-hotspot 380 200 1.0
-hotspot 600 150 1.2
-hotspot 200 400 1.0
-hotspot 700 350 0.8
-hotspot 300 650 1.0
+# Per-zone background colors
+bgcolor 0 200 50 0
+bgcolor 1 150 30 0
+bgcolor 2 255 100 0
+bgcolor 3 100 20 0
 
-# Landmark types to place
-landmark entry_portal portal_entry_fire.chunk 1
-landmark boss_arena boss_arena_fire.chunk 3
-landmark exit_portal portal_exit_fire.chunk 2
-landmark safe_zone safe_zone_fire.chunk 4
+# Music playlist
+music ./resources/music/fire_zone_1.mp3
+music ./resources/music/fire_zone_2.mp3
 
-# Fixed landmark (optional — locked position)
-fixed_landmark entry_portal portal_entry_fire.chunk 100 100
+# Center anchor (rotated/mirrored per seed)
+center_anchor fire_center.chunk
 
-# Hotspot separation
-hotspot_min_distance 5
+# Fixed enemy spawns (always present)
+spawn mine 50000.0 50000.0
 
-# Region connections
-connect A entry entry_portal
-connect A exit boss_arena
-connect B entry boss_arena
-connect B exit exit_portal
-connect C entry safe_zone
-connect C exit none
+# === PROCEDURAL GENERATION CONFIG ===
 
-# Region constraints
-regionconfig A 12 20 0.4 2 3 labyrinthine hot
-regionconfig B 20 40 0.6 3 4 scattered hot
-regionconfig C 4 8 0.2 1 2 linear cool
+# Noise parameters (two thresholds for three tile types)
+noise_octaves 5
+noise_frequency 0.01
+noise_lacunarity 2.0
+noise_persistence 0.5
+noise_wall_threshold -0.1
+noise_effect_threshold 0.15
 
-# Open region density
-opendensity B 0.15 8.0 0.02
+# Hotspot generation constraints
+hotspot_count 10
+hotspot_edge_margin 80
+hotspot_center_exclusion 120
+hotspot_min_separation 150
+
+# Landmark definitions
+# landmark <type> <chunk_file> <priority> <influence_type> <radius> <strength> <falloff> [enemy_bias] [density_mult]
+landmark boss_arena boss_fire.chunk 1 structured 120 0.9 1.5 stalker_heavy 0.8
+landmark exit_portal_1 portal_exit_fire.chunk 2 moderate 80 0.6 2.0 mixed 1.0
+landmark exit_portal_2 portal_exit_fire.chunk 3 moderate 80 0.6 2.0 mixed 1.0
+landmark safe_zone safe_fire.chunk 4 sparse 100 0.8 1.0 none 0.3
+landmark arena_1 arena_fire.chunk 5 sparse 90 0.7 1.5 swarmer_heavy 1.5
+landmark secret_room secret_fire.chunk 6 dense 60 0.9 2.0 hunter_heavy 1.2
+
+# Landmark minimum separation (grid cells)
+landmark_min_separation 120
+
+# Enemy population
+enemy_budget_base 0.003
+enemy_min_spacing 15
+difficulty_min 2
+difficulty_max 4
+
+# Wall type refinement
+circuit_prob_landmark 0.9
+circuit_prob_wild 0.15
+
+# Obstacle scatter (blocks flagged as structured or organic)
+obstacle_density 0.08
+obstacle_min_spacing 10
+```
+
+**Generic zone example** (The Origin — data traces, no gameplay effect):
+
+```
+name The Origin
+size 1024
+biome neutral
+seed 12345
+
+celltype solid 20 0 20 255 128 0 128 255 none
+celltype circuit 10 20 20 255 64 128 128 255 circuit
+
+# Data trace effect cells — traversable, purely atmospheric
+# effecttype <id> <primary_rgba> <outline_rgba> <pattern>
+effecttype data_trace 10 60 80 140 30 120 160 100 circuit
+#          faint cyan-white glow against the purple cloudscape — no gameplay effect
+
+bgcolor 0 89 26 140
+bgcolor 1 51 26 128
+bgcolor 2 115 20 102
+bgcolor 3 38 13 89
+
+center_anchor origin_center.chunk
+noise_octaves 5
+noise_frequency 0.01
+noise_wall_threshold -0.1
+noise_effect_threshold 0.15
+# ... (rest of procgen config)
 ```
 
 ---
 
 ## Design Philosophy
 
-### Why hybrid over pure procedural?
+### Why noise + influences over fixed regions?
 
-1. **Identity**: Players recognize hand-crafted landmark geometry — the boss arena's shape, the portal room's design. These persist across runs even though their *positions* vary. Hotspots make every run feel familiar yet different.
-2. **Progression integrity**: Boss arenas and ability gates need hand-tuned geometry. Hotspots let position vary while design stays precise.
-3. **Pacing control**: The designer controls macro flow (portal → gauntlet → boss). The generator controls micro flow (corridors, cover, enemy combos).
-4. **Scale**: 12+ zones at 1024×1024 is an enormous authoring surface. Procedural generation is the only way to fill it with interesting content without a team of level designers.
+1. **Unpredictability**: No fixed spatial zones means no memorizable layout patterns. The world reorganizes every seed.
+2. **Organic transitions**: Influence falloff creates smooth density gradients — no hard "you entered the labyrinth" boundaries. Feels like exploring continuous cyberspace, not entering rooms.
+3. **Emergent character**: The terrain's personality is tied to what's there, not where it is. Dense terrain means "something important is nearby." Players learn to read the environment.
+4. **Minimal authoring**: The designer defines landmarks and their influences. The generator does the heavy lifting across 1024×1024 cells.
+5. **Open-world feel**: Players can go in any direction from the center. There's no predetermined path through regions. Exploration is genuine.
 
-### Why two generation modes?
+### Why three tile types?
 
-Hybrid's world is cyberspace — it's not all corridor crawling. Some areas are vast open digital plains with scattered security programs. Others are dense labyrinthine data structures. One algorithm can't serve both:
+The "three tile strategy" — wall, effect, empty — is a proven approach to creating terrain that feels alive with minimal complexity. Binary terrain (wall or empty) creates maps that are either dense corridors or featureless voids with nothing in between. The third tile type fills that gap:
 
-- **Structured mode** excels at: corridors, room-and-corridor dungeons, labyrinths, mazes, navigational challenges
-- **Open mode** excels at: battlefields, arenas, sparse cyberspace voids, areas where enemies are the challenge and terrain is just cover
+1. **Transition texture**: Effect cells naturally concentrate at terrain edges (the noise middle band), giving organic visual fringes where walls meet open space instead of hard cutoffs.
+2. **Atmospheric depth**: In generic zones, data traces add visual activity to traversable space without competing with the background cloudscape. They're an accent layer — subtle glowing patterns that make areas feel "active" or "alive."
+3. **Biome identity with zero AI cost**: Themed zones swap the effect cell from visual-only (data traces) to gameplay hazard (fire, ice, poison) with no AI code changes. Same generation, same noise, different cell type per biome. Each zone feels mechanically distinct through terrain alone.
+4. **Tactical terrain**: In themed zones, effect cells create a positioning layer. Players think about WHERE they fight — avoiding fire cells, using ice cells to kite enemies, managing poison exposure. This depth comes from the world itself.
+5. **Procgen for free**: Two noise thresholds instead of one. Trivial code change, massive output quality improvement.
 
-The region's `mode` field picks the right tool for each area.
+### Why keep chunks at all?
+
+Chunks serve two purposes in this architecture:
+
+1. **Landmark rooms**: Boss arenas, portal rooms, safe zones need hand-crafted geometry. These are the recognizable set pieces players remember across runs. Noise can't design a good boss arena.
+2. **Structured sub-areas** (optional): Within INFLUENCE_STRUCTURED zones, chunk-based rooms provide curated combat encounters and navigational puzzles that pure noise can't create. This is an optional layer for areas that benefit from hand-crafted room design.
+
+Everything else is noise-generated. Chunks are precision tools used where they matter, not the default for all terrain.
 
 ### The endgame loop
 
-Seed-based generation + hotspot-randomized landmark positions = a game that stays fresh after mastery. A maxed-out Hybrid doesn't replay memorized rooms — the world regenerates. Daily/weekly challenge seeds, leaderboard runs on shared seeds, multiplayer on deterministic worlds — all fall out of this architecture.
+Seed-based generation + noise-driven terrain + influence-randomized landmarks = a game that stays fresh after mastery. A maxed-out Hybrid doesn't replay memorized rooms — the world regenerates. Daily/weekly challenge seeds, leaderboard runs on shared seeds, multiplayer on deterministic worlds — all fall out of this architecture.
+
+### Center anchor rotation — why it matters
+
+Even the starting area is the most-seen geometry in the game. Without rotation/mirroring, players would see the exact same center structure every run. With 8 possible transformations × the surrounding terrain changing due to different influence positions, the starting experience feels substantially different each seed. The center is recognizable (same chunk layout) but disorienting enough to prevent autopilot.
 
 ---
 
 ## Open Questions
 
-1. **Chunk authoring workflow**: Separate `.chunk` files in `resources/chunks/<biome>/`, or repurpose god mode? Lean toward `.chunk` files + a minimal chunk editor in god mode.
+1. **Noise algorithm**: Simplex vs OpenSimplex vs Perlin? Simplex is fastest and has the best visual properties (no grid artifacts). Lean toward simplex.
 
-2. **Generation timing**: Seed per save file (metroidvania — stable layout per playthrough), seed per zone entry (roguelike — fresh every visit), or seed changes at endgame milestones (new game+)? Start with seed per save file, layer endgame rotation later.
+2. **Influence blending**: When two landmark influences overlap, how do they combine? Current spec uses additive threshold adjustment. Could also use max-wins or weighted average. Additive means two dense influences create extra-dense terrain (interesting). Start with additive, tune later.
 
-3. **Difficulty gradient within structured regions**: Weight chunk difficulty by distance along the solution path? `effective_difficulty = base + (path_position / path_length) * gradient`. Adds tension curve.
+3. **Structured sub-area triggers**: What influence strength threshold triggers chunk-based fill instead of pure noise? Needs tuning. Start with 0.5 (inner half of INFLUENCE_STRUCTURED radius).
 
-4. **Chunk rotation vs. mirroring**: Full 90° rotation changes LR → TB, which could auto-generate vertical chunks from horizontal ones. More complex exit config matching. Recommend mirroring only for v1.
+4. **Corridor aesthetics**: Should carved corridors use a different cell type than noise walls? Would create visual "data conduit" corridors that look intentional. Probably yes — adds to the fiction.
 
-5. **Exit alignment simplification**: For v1, standardize exit offsets per chunk size class. All 16×16 chunks with a left exit at the same offset. Stitching becomes trivial. Relax later for variety.
+5. **Generation timing**: Seed per save file (metroidvania — stable layout per playthrough), seed per zone entry (roguelike — fresh every visit), or seed changes at endgame milestones? Start with seed per save file.
 
-6. **Open mode traversability validation**: Current spec says traversability is trivially guaranteed by low density. Worth adding a cheap flood fill check after scatter as a safety net? Probably yes — it's O(n) and catches edge cases.
+6. **Center anchor size**: 32×32 vs 64×64? Larger = more recognizable starting area but less terrain variation near center. Recommend 48×48 as a compromise.
 
-7. **Chunk authoring volume**: The system needs ~50-100 chunks across biomes + sizes to produce interesting variety. Fastest path: start with ~10 hand-written chunks, build procgen pipeline, invest in tooling once authoring volume ramps up.
+7. **Hotspot count vs landmark count**: How many surplus hotspots (hotspot_count - landmark_count) gives good variety without wasting generation effort? At least N+3 surplus recommended.
 
-8. **Multi-cell chunk stitching**: When a 32×32 chunk sits next to a 16×16 chunk, the exit on the large chunk's edge spans the full edge of the small chunk's side. Exit width matching needs careful handling. Define conventions per size-class pair.
+8. **Obstacle density in neutral zones**: Areas not strongly influenced by any landmark should still have some structure. What's the right baseline obstacle scatter density? Needs playtesting.
+
+9. **Multi-zone connectivity**: Portals between zones are in landmark chunks. How do we ensure the zone graph is consistent? (Zone A's exit portal chunk matches zone B's entry portal chunk.) Probably: portal IDs are authored once in the zone skeleton, chunk templates reference them.
+
+10. **Effect cell threshold tuning**: What wall_threshold / effect_threshold values produce the right balance? Too narrow a band = barely any effect cells. Too wide = effect cells dominate and dilute walls. Needs visual iteration. Start with wall=-0.1, effect=0.15 (roughly 25% of noise range produces effect cells).
+
+11. **Effect cell collision model**: Effect cells are traversable — do they block LOS? Probably not (they're ground-level features, not walls). But themed zone variants could have LOS-blocking versions (e.g., void distortion cells that block vision).
+
+12. **Effect cell rendering**: Should effect cells render through foreground bloom like walls, or as a separate subtle layer? Data traces should be subtle — maybe lower bloom intensity than walls. Themed hazards should be more visible (player needs to see fire cells to avoid them).
+
+13. **Multiple effect types per zone**: Should zones have more than one effect cell type? E.g., fire zone has both "ember" (mild DOT) and "inferno" (severe DOT, rarer). Could use a second noise layer or probability split within the effect band. Start with one type per zone, add variety later if needed.
