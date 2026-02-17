@@ -23,6 +23,7 @@ double Sub_Stealth_get_damage_multiplier(double distance);
 void Sub_Stealth_notify_kill(void);
 
 bool Sub_Stealth_is_stealthed(void);
+bool Sub_Stealth_is_ambush_active(void);
 bool Sub_Stealth_is_available(void);
 float Sub_Stealth_get_cooldown_fraction(void);
 

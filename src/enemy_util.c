@@ -7,6 +7,8 @@
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
+#include "sub_inferno.h"
+#include "sub_egress.h"
 #include "sub_stealth.h"
 
 #include <math.h>
@@ -30,6 +32,14 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 	if (Sub_Mine_check_hit(hitBox)) {
 		r.mine_damage = 100.0 * mul;
 		r.mine_hit = true;
+		r.hit = true;
+	}
+	if (Sub_Inferno_check_hit(hitBox)) {
+		r.damage += 10.0 * mul;
+		r.hit = true;
+	}
+	if (Sub_Egress_check_hit(hitBox)) {
+		r.damage += Sub_Egress_get_damage() * mul;
 		r.hit = true;
 	}
 

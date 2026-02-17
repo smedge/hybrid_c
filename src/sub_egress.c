@@ -4,6 +4,7 @@
 #include "progression.h"
 #include "ship.h"
 #include "player_stats.h"
+#include "collision.h"
 
 #include <math.h>
 
@@ -12,6 +13,8 @@
 #define DASH_DURATION  150    /* 150ms burst */
 #define DASH_SPEED     4000.0 /* 5x normal speed */
 #define DASH_COOLDOWN  2000   /* 2 seconds between dashes */
+#define DASH_DAMAGE    50.0
+#define DASH_HIT_HALF  50.0   /* 100 unit wide damage corridor */
 
 typedef enum {
 	EGRESS_READY,
@@ -69,6 +72,7 @@ void Sub_Egress_update(const Input *input, unsigned int ticks)
 			state = EGRESS_DASHING;
 			dashTimeLeft = DASH_DURATION;
 			PlayerStats_add_feedback(25.0);
+			PlayerStats_set_iframes(DASH_DURATION);
 		}
 		break;
 
@@ -115,4 +119,23 @@ float Sub_Egress_get_cooldown_fraction(void)
 	if (state == EGRESS_DASHING)
 		return 1.0f;
 	return 0.0f;
+}
+
+bool Sub_Egress_check_hit(Rectangle target)
+{
+	if (state != EGRESS_DASHING)
+		return false;
+	Position shipPos = Ship_get_position();
+	Rectangle dashBox = {
+		shipPos.x - DASH_HIT_HALF,
+		shipPos.y + DASH_HIT_HALF,
+		shipPos.x + DASH_HIT_HALF,
+		shipPos.y - DASH_HIT_HALF
+	};
+	return Collision_aabb_test(dashBox, target);
+}
+
+double Sub_Egress_get_damage(void)
+{
+	return DASH_DAMAGE;
 }

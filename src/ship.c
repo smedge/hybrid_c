@@ -9,6 +9,7 @@
 #include "sub_mend.h"
 #include "sub_aegis.h"
 #include "sub_stealth.h"
+#include "sub_inferno.h"
 #include "color.h"
 #include "shipstate.h"
 #include "audio.h"
@@ -101,6 +102,7 @@ void Ship_initialize()
 	Sub_Mend_initialize();
 	Sub_Aegis_initialize();
 	Sub_Stealth_initialize();
+	Sub_Inferno_initialize(liveEntity);
 }
 
 void Ship_cleanup()
@@ -113,6 +115,7 @@ void Ship_cleanup()
 	Sub_Mend_cleanup();
 	Sub_Aegis_cleanup();
 	Sub_Stealth_cleanup();
+	Sub_Inferno_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -298,6 +301,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	Sub_Mend_update(userInput, ticks);
 	Sub_Aegis_update(userInput, ticks);
 	Sub_Stealth_update(ticks);
+	Sub_Inferno_update(userInput, ticks, placeable);
 }
 
 void Ship_render(const void *state, const PlaceableComponent *placeable)
@@ -344,6 +348,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Mgun_render();
 	Sub_Mine_render();
 	Sub_Aegis_render();
+	Sub_Inferno_render();
 }
 
 void Ship_render_bloom_source(void)
@@ -376,6 +381,7 @@ void Ship_render_bloom_source(void)
 	Sub_Pea_render_bloom_source();
 	Sub_Mgun_render_bloom_source();
 	Sub_Mine_render_bloom_source();
+	Sub_Inferno_render_bloom_source();
 }
 
 Position Ship_get_position()

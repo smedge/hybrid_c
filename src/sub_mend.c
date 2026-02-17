@@ -9,6 +9,8 @@
 #define HEAL_AMOUNT 50.0
 #define FEEDBACK_COST 20.0
 #define COOLDOWN_MS 10000
+#define REGEN_BOOST_DURATION 5000  /* 5s boosted regen after heal */
+#define REGEN_BOOST_MULTIPLIER 3.0 /* 3x regen rate */
 
 typedef enum {
 	MEND_READY,
@@ -39,6 +41,7 @@ void Sub_Mend_update(const Input *input, unsigned int ticks)
 	case MEND_READY:
 		if (input->keyG && Skillbar_is_active(SUB_ID_MEND)) {
 			PlayerStats_heal(HEAL_AMOUNT);
+			PlayerStats_boost_regen(REGEN_BOOST_DURATION, REGEN_BOOST_MULTIPLIER);
 			PlayerStats_add_feedback(FEEDBACK_COST);
 			Audio_play_sample(&sampleHeal);
 			state = MEND_COOLDOWN;

@@ -144,6 +144,11 @@ bool Sub_Stealth_is_stealthed(void)
 	return state == STEALTH_ACTIVE;
 }
 
+bool Sub_Stealth_is_ambush_active(void)
+{
+	return ambushMs > 0;
+}
+
 bool Sub_Stealth_is_available(void)
 {
 	return state == STEALTH_READY && PlayerStats_get_feedback() <= 0.0;

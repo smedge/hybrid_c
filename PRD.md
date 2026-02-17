@@ -34,17 +34,19 @@ Bullet hell shooter × Metroidvania
 The player's representation in cyberspace. A red triangle that moves with WASD, aims with mouse.
 
 - **Movement**: WASD directional, with speed modifiers (Shift = fast, Ctrl = warp)
-- **Death**: All damage funnels through Integrity. Walls and mines instantly zero Integrity via `PlayerStats_force_kill()`. Enemy projectiles reduce Integrity via `PlayerStats_damage()`. When Integrity reaches 0, the ship is destroyed. Respawns at last save point (or origin) after 3 seconds.
+- **Death**: All damage funnels through Integrity. Walls and mines instantly zero Integrity via `PlayerStats_force_kill()`. Enemy projectiles reduce Integrity via `PlayerStats_damage()`, which also generates Feedback at 0.5x the damage amount. When Integrity reaches 0, the ship is destroyed. Respawns at last save point (or origin) after 3 seconds. I-frames (from sub_egress dash) block both damage and feedback generation.
 - **Death FX**: White diamond spark flash + explosion sound
 - **On respawn**: All enemies (hunters, seekers, defenders, mines) silently reset to full health at their spawn points. This is seamless — the player doesn't see the reset happen.
 
 #### Integrity (Health)
 
-The ship's structural health. Starts at 100, regens at 5/sec after 2 seconds without taking damage (10/sec when Feedback is at 0 — rewards discipline). At 0, the ship is destroyed. Damaged by feedback spillover, enemy projectiles, and environmental hazards (walls, mines). All damage sources funnel through the Integrity system — there is one unified death path.
+The ship's structural health. Starts at 100, regens at 5/sec after 2 seconds without taking damage (10/sec when Feedback is at 0 — rewards discipline). Sub_mend can instantly activate regen (bypassing the 2s delay) and boost the rate to 3x for 5 seconds. At 0, the ship is destroyed. Damaged by feedback spillover, enemy projectiles, and environmental hazards (walls, mines). All damage sources funnel through the Integrity system — there is one unified death path.
 
 #### Feedback (Overload Meter)
 
-Feedback accumulates from subroutine usage and represents connection strain. Decays at 15/sec after a 500ms grace period. When feedback is full (100) and a subroutine is used, the excess feedback spills over as direct Integrity damage — the damage equals the feedback the action would have added. This creates a resource management layer: sustained combat has consequences, and players must pace their ability usage.
+Feedback accumulates from two sources: **subroutine usage** (active cost of abilities) and **damage taken** (passive cost of getting hit, at 0.5x the damage amount). This dual-source design means feedback represents total combat intensity — both what you dish out and what you absorb. Decays at 15/sec after a 500ms grace period. When feedback is full (100) and a subroutine is used, the excess feedback spills over as direct Integrity damage — the damage equals the feedback the action would have added. Damage-generated feedback caps at 100 without spillover (no death spiral from getting hit). This creates a resource management layer: sustained combat has consequences, and players must pace their ability usage AND avoid taking hits to keep feedback manageable.
+
+**Stealth interaction**: Sub_stealth requires 0 feedback to activate. Because damage taken now generates feedback, players can't simply stop shooting and wait to cloak — they must also avoid all incoming damage. This rewards skilled evasion and makes stealth activation a genuine achievement in combat, not just a timeout.
 
 **Feedback costs per subroutine**:
 
@@ -57,10 +59,14 @@ Feedback accumulates from subroutine usage and represents connection strain. Dec
 | sub_mend | 20 per heal |
 | sub_aegis | 30 per activation |
 | sub_boost | None |
+| sub_stealth | 0 (requires 0 feedback to activate) |
+| sub_inferno | 25 per second while channeling |
 
 **Spillover example**: Feedback is at 95, sub_mine adds 15. Feedback caps at 100, the remaining 10 spills over as 10 Integrity damage.
 
-**Damage feedback**: When spillover damage occurs, a bright red border flashes around the screen (fades over 200ms) and the samus_hurt sound plays. This gives clear visual/audio feedback that you're burning health.
+**Spillover feedback**: When spillover damage occurs, a bright red border flashes around the screen (fades over 200ms) and the samus_hurt sound plays. This gives clear visual/audio feedback that you're burning health.
+
+**Damage-to-feedback ratio**: 0.5x — a 20-damage hit generates 10 feedback. This is tunable via `DAMAGE_FEEDBACK_RATIO` in player_stats.c. Shielded damage (aegis) and i-framed damage (egress dash) generate zero feedback since the damage is fully blocked before the feedback calculation.
 
 **HUD**: Two horizontal bars in the top-left corner, with labels and numeric values to the left of each bar:
 - **Integrity bar**: Green at full → yellow when low → red when critical
@@ -70,7 +76,7 @@ Feedback accumulates from subroutine usage and represents connection strain. Dec
 
 Subroutines are abilities the Hybrid AI can execute to interact with digital space. They are the core progression mechanic.
 
-**Endgame Vision**: 50+ subroutines across many types. The current set (pea, mgun, mine, boost, egress, mend, aegis) are the foundation — general-purpose tools that work everywhere but excel nowhere specific. As the game expands, subroutines become increasingly specialized. No single loadout of 10 handles everything. The player must read the situation, understand what they're up against, visit their catalog, and build for the challenge. This build-craft layer — choosing, combining, and swapping subroutines to match the threat — is where the strategic depth lives. The skill expression isn't just aim and reflexes; it's knowing which tools to bring and when to swap them.
+**Endgame Vision**: 50+ subroutines across many types. The current set (pea, mgun, mine, boost, egress, mend, aegis, stealth, inferno) are the foundation — general-purpose tools that work everywhere but excel nowhere specific. As the game expands, subroutines become increasingly specialized. No single loadout of 10 handles everything. The player must read the situation, understand what they're up against, visit their catalog, and build for the challenge. This build-craft layer — choosing, combining, and swapping subroutines to match the threat — is where the strategic depth lives. The skill expression isn't just aim and reflexes; it's knowing which tools to bring and when to swap them.
 
 **Build Archetypes** (long-term direction — examples, not exhaustive):
 - **Minion Master**: Drone summoning + drone healing + drone command + feedback management. Powerful army but demands multiple slots and careful resource management. Inspired by Guild Wars necromancer builds where you need supporting skills to make the core strategy viable.
@@ -102,11 +108,13 @@ Every subroutine falls into one of three activation categories:
 |------------|------|----------|-------------|--------|-------------|--------|
 | sub_pea | projectile | Instant | Basic projectile weapon. Fires white dots toward cursor. 500ms cooldown, 1000ms TTL, up to 8 simultaneous. 50 damage per shot, 1 feedback per shot. | 11/10 | Default | Implemented |
 | sub_mgun | projectile | Instant | Machine gun. Fires white dots toward cursor. 200ms cooldown, 1000ms TTL, up to 8 simultaneous. 20 damage per shot, 2 feedback per shot. Same DPS as sub_pea but easier to aim, burns feedback 5x faster. | 11/10 | 3 hunter kills | Implemented |
-| sub_egress | movement | Instant | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. | 6/10 | 3 seeker kills | Implemented |
+| sub_egress | movement | Instant | Shift-tap dash burst in WASD/facing direction. 150ms dash at 5x speed, 2s cooldown. 25 feedback per dash. I-frames for full dash duration (invuln to all damage including mines). 50 contact damage on enemy body collision (100-unit wide corridor). | 10/10 | 3 seeker kills | Implemented |
 | sub_boost | movement (elite) | Toggle | Hold shift for unlimited speed boost. No cooldown, no feedback cost. Elite subroutine (gold border). | 15/14 | Elite fragment | Implemented |
 | sub_mine | deployable | Instant | Deployable mine. 3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light. 15 feedback on explosion. | 11/10 | 5 mine kills | Implemented |
-| sub_mend | healing | Instant | Instant heal. Restores 50 integrity. 10s cooldown. 20 feedback. Activated with G key. | 3/10 | 5 defender kills (mend fragments) | Implemented |
+| sub_mend | healing | Instant | Instant heal + regen boost. Restores 50 integrity, immediately activates regen (bypasses 2s delay), and boosts regen to 3x for 5 seconds. 10s cooldown. 20 feedback. Activated with G key. | 7/10 | 5 defender kills (mend fragments) | Implemented |
 | sub_aegis | shield | Instant | Damage shield. Invulnerable to all damage for 10 seconds. 30s cooldown. 30 feedback. Activated with F key. Cyan ring visual. | 4/10 | 5 defender kills (aegis fragments) | Implemented |
+| sub_stealth | stealth | Instant | Cloak and ambush. Go invisible (0.15 alpha + pulse), 0.5x speed while cloaked. Requires 0 feedback to activate. 15s cooldown (starts on unstealth). Breaking stealth via attack grants 5x ambush damage for 1s within 500 units, pierces all shields. Ambush kill resets cooldown. Enemies detect player in 90° vision cone within 100 units. | 7/10 | TBD (placeholder) | Implemented |
+| sub_inferno | projectile (elite) | Channel | Channeled fire beam. Hold LMB to unleash 125 blobs/sec, 10 damage each (~1250 DPS). ±5° spread, 2500 u/s speed, 500ms TTL, piercing. 25 feedback/sec while channeling — ~4s sustain window before spillover. 256 blob pool. | 15/14 | TBD (placeholder) | Implemented |
 
 **Each enemy type has a corresponding subroutine** (or set of subroutines) unlocked by defeating enough of that enemy. This creates a progression loop: encounter enemy → learn its patterns → kill it → gain its ability. As the subroutine count grows, some enemies will unlock multiple subroutines (e.g., defenders unlock both sub_mend and sub_aegis), and later enemies will unlock subroutines that form the building blocks of entire playstyle archetypes.
 
@@ -260,6 +268,9 @@ No single loadout handles all of these. The player must adapt their build to the
 |---|---|---|---|
 | sub_pea | 50 | 2/sec (500ms) | 100 |
 | sub_mgun | 20 | 5/sec (200ms) | 100 |
+| sub_mine | 100 (AoE) | 2s fuse, 3 max | burst |
+| sub_egress | 50 (contact) | 2s cooldown | burst |
+| sub_inferno | 10/blob | 125 blobs/sec | ~1250 |
 | Hunter burst shot | 15 | 3-shot burst, 1.5s between | ~30 avg |
 | Seeker dash | 80 | ~every 4s | ~20 avg |
 
@@ -445,11 +456,12 @@ The 10-slot skill bar at the bottom of the screen is the central interaction mec
 
 | Skill Type | Activation Input |
 |------------|-----------------|
-| Projectile | LMB (fires toward cursor) |
+| Projectile | LMB (fires toward cursor; hold for inferno channel) |
 | Movement | Shift (triggers dash/burst) |
 | Shield | F key (triggers activation) |
 | Healing | G key (triggers heal) |
 | Deployable | Space (deploys at position) |
+| Stealth | Skill slot key toggles stealth on/off |
 
 **Placeable activation** (god mode): Activate slot, LMB to place at cursor with grid snapping.
 
@@ -519,10 +531,12 @@ More types will be added as new cell types, enemy types, and world features are 
 - Sub_mgun machine gun (pooled, 8 max, 200ms cooldown, swept collision, 20 damage, 2 feedback/shot)
 - Sub_mine deployable mine (3 max, 250ms cooldown, 2s fuse, Space to deploy, steady red light)
 - Sub_boost elite movement (hold shift for unlimited speed boost, no cooldown)
-- Sub_egress dash burst (shift-tap, 150ms at 5x speed, 2s cooldown)
-- Sub_mend instant heal (E key, 50 integrity, 10s cooldown, 20 feedback)
-- Sub_aegis damage shield (Q key, 10s invulnerability, 30s cooldown, 30 feedback, cyan ring visual)
-- Player stats system (Integrity + Feedback bars, spillover damage, regen with 2x rate at 0 feedback, damage flash + sound, shield state)
+- Sub_egress dash burst (shift-tap, 150ms at 5x speed, 2s cooldown, i-frames during dash, 50 contact damage)
+- Sub_mend instant heal + regen boost (G key, 50 integrity, 3x regen for 5s, 10s cooldown, 20 feedback)
+- Sub_aegis damage shield (F key, 10s invulnerability, 30s cooldown, 30 feedback, cyan ring visual)
+- Sub_stealth cloak and ambush (invisible + 0.5x speed, 0 feedback gate, 5x ambush multiplier, shield pierce, cooldown reset on ambush kill, 15s cooldown, enemy vision cone detection)
+- Sub_inferno channeled fire beam (elite, hold LMB, 125 blobs/sec, ~1250 DPS, 25 feedback/sec, piercing, 256 blob pool)
+- Player stats system (Integrity + Feedback bars, spillover damage, damage-to-feedback (0.5x), regen with 2x rate at 0 feedback, damage flash + sound, shield state, i-frame system)
 - Hunter enemy (patrol, chase, 3-shot burst, LOS requirement, near-miss aggro, deaggro on player death)
 - Seeker enemy (stalk, orbit, telegraph, dash-charge, 60HP glass cannon)
 - Defender enemy (support healer, generic ally protection via enemy registry, aegis self-shield on hit/nearby shots, shield staggering, target deconfliction, flees player, random mend/aegis fragment drops)
@@ -578,14 +592,15 @@ More types will be added as new cell types, enemy types, and world features are 
 | Sound | Used For |
 |-------|----------|
 | statue_rise.wav | Ship respawn, aegis activation (player + defender) |
-| bomb_explode.wav | Ship death, mine explosion, hunter/seeker/defender death |
+| bomb_explode.wav | Ship death, mine explosion, hunter/seeker/defender death, inferno fire loop |
 | long_beam.wav | Sub_pea fire, sub_mgun fire, hunter shots |
 | ricochet.wav | Projectile wall hit (pea, mgun), shielded defender hit |
 | bomb_set.wav | Mine armed |
-| door.wav | Mine/hunter/seeker/defender respawn, aegis deactivation |
+| door.wav | Mine/hunter/seeker/defender respawn, aegis deactivation, stealth break |
 | samus_die.wav | Ship death |
 | samus_hurt.wav | Integrity damage (spillover, enemy hits, hit feedback) |
-| refill_start.wav | Defender heal beam |
+| refill_start.wav | Defender heal beam, stealth activation |
+| heal.wav | Sub_mend activation |
 | samus_pickup.wav | Fragment collection |
 | samus_pickup2.wav | Subroutine unlock |
 
@@ -726,7 +741,7 @@ Two-instance bloom system replacing the old geometry-based glow (which hit verte
 | bloom (foreground) | Neon halos on entities | 2 (half-res) | 2.0 | 5 |
 | bg_bloom (background) | Diffuse ethereal clouds | 8 (eighth-res) | 1.5 | 10 |
 
-**Bloom sources**: Map cells, ship, ship death spark, sub_pea/sub_mgun projectiles + sparks, sub_aegis shield ring, mine blink/explosion, hunter body + projectiles, seeker body + dash trail, defender body + aegis ring + heal beams, portals, save points, fragments. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
+**Bloom sources**: Map cells, ship, ship death spark, sub_pea/sub_mgun projectiles + sparks, sub_inferno fire blobs (1.5x brightness), sub_aegis shield ring, mine blink/explosion, hunter body + projectiles, seeker body + dash trail, defender body + aegis ring + heal beams, portals, save points, fragments. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
 
 **Key design decision**: Background renders ONLY through the bg_bloom FBO (no raw polygon render). Additive bloom on top of sharp polygons doesn't hide edges — rendering exclusively through blur produces the desired diffuse cloud effect.
 

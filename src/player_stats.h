@@ -17,6 +17,9 @@ bool PlayerStats_is_shielded(void);
 void PlayerStats_set_shielded(bool shielded);
 void PlayerStats_reset(void);
 double PlayerStats_get_feedback(void);
+void PlayerStats_set_iframes(int ms);
+bool PlayerStats_has_iframes(void);
+void PlayerStats_boost_regen(int duration_ms, double multiplier);
 
 /* Snapshot/restore for zone transitions */
 typedef struct {

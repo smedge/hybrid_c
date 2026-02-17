@@ -11,6 +11,7 @@
 #include "sub_mend.h"
 #include "sub_aegis.h"
 #include "sub_stealth.h"
+#include "sub_inferno.h"
 
 #include <math.h>
 #ifndef M_PI
@@ -49,6 +50,8 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Damage shield. Invulnerable for 10 seconds.", false },
 	[SUB_ID_STEALTH] = { SUB_ID_STEALTH, SUB_TYPE_STEALTH, "sub_stealth", "STEALTH",
 		"Cloak. Undetectable until you attack. 15s cooldown.", false },
+	[SUB_ID_INFERNO] = { SUB_ID_INFERNO, SUB_TYPE_PROJECTILE, "sub_inferno", "INFERNO",
+		"Channel a devastating beam of fire. Melts everything.", true },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -258,6 +261,15 @@ void Skillbar_auto_equip(SubroutineId id)
 			return;
 	}
 
+	/* Elite limit: only one elite on the skillbar at a time.
+	   Auto-equip skips if an elite is already equipped. */
+	if (sub_registry[id].elite) {
+		for (int i = 0; i < SKILLBAR_SLOTS; i++) {
+			if (slots[i] != SUB_NONE && sub_registry[slots[i]].elite)
+				return;
+		}
+	}
+
 	/* Find first empty slot */
 	int slot = -1;
 	for (int i = 0; i < SKILLBAR_SLOTS; i++) {
@@ -289,6 +301,18 @@ void Skillbar_equip(int slot, SubroutineId id)
 	for (int i = 0; i < SKILLBAR_SLOTS; i++) {
 		if (slots[i] == id)
 			slots[i] = SUB_NONE;
+	}
+
+	/* Elite limit: only one elite on the bar. Remove existing elite. */
+	if (sub_registry[id].elite) {
+		for (int i = 0; i < SKILLBAR_SLOTS; i++) {
+			if (slots[i] != SUB_NONE && sub_registry[slots[i]].elite) {
+				SubroutineType oldType = sub_registry[slots[i]].type;
+				if (active_sub[oldType] == slots[i])
+					active_sub[oldType] = SUB_NONE;
+				slots[i] = SUB_NONE;
+			}
+		}
 	}
 
 	slots[slot] = id;
@@ -408,6 +432,22 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Render_filled_circle(cx, cy, 2.5f, 6, 0.6f, 0.3f, 0.8f, alpha);
 		break;
 	}
+	case SUB_ID_INFERNO: {
+		/* Flame icon — two overlapping fire shapes */
+		float t = 1.5f;
+		/* Outer flame — orange */
+		Render_thick_line(cx, cy + 9, cx - 5, cy - 3, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx - 5, cy - 3, cx - 2, cy - 1, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx - 2, cy - 1, cx - 3, cy - 7, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx - 3, cy - 7, cx, cy - 3, t, 1.0f, 0.6f, 0.1f, alpha);
+		Render_thick_line(cx, cy - 3, cx + 3, cy - 7, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx + 3, cy - 7, cx + 2, cy - 1, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx + 2, cy - 1, cx + 5, cy - 3, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx + 5, cy - 3, cx, cy + 9, t, 1.0f, 0.5f, 0.0f, alpha);
+		/* Inner bright core */
+		Render_filled_circle(cx, cy, 3.0f, 6, 1.0f, 1.0f, 0.7f, alpha);
+		break;
+	}
 	default:
 		break;
 	}
@@ -424,6 +464,7 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_MEND:   return Sub_Mend_get_cooldown_fraction();
 	case SUB_ID_AEGIS:  return Sub_Aegis_get_cooldown_fraction();
 	case SUB_ID_STEALTH: return Sub_Stealth_get_cooldown_fraction();
+	case SUB_ID_INFERNO: return Sub_Inferno_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

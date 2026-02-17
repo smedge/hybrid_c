@@ -9,6 +9,8 @@
 #include "color.h"
 #include "audio.h"
 #include "sub_stealth.h"
+#include "sub_inferno.h"
+#include "sub_egress.h"
 
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
@@ -175,7 +177,7 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 	if (!mineState->destroyed && !mineState->exploding) {
 		Rectangle body = {-10.0, 10.0, 10.0, -10.0};
 		Rectangle mineBody = Collision_transform_bounding_box(placeable->position, body);
-		if (Sub_Pea_check_hit(mineBody) || Sub_Mgun_check_hit(mineBody) || Sub_Mine_check_hit(mineBody)) {
+		if (Sub_Pea_check_hit(mineBody) || Sub_Mgun_check_hit(mineBody) || Sub_Mine_check_hit(mineBody) || Sub_Inferno_check_hit(mineBody) || Sub_Egress_check_hit(mineBody)) {
 			Audio_play_sample(&sample02);
 			mineState->active = false;
 			mineState->exploding = true;

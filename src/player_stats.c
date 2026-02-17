@@ -18,6 +18,8 @@
 #define FEEDBACK_DECAY      15.0    /* units/sec */
 #define FEEDBACK_GRACE_MS   500     /* ms after last feedback before decay starts */
 
+#define DAMAGE_FEEDBACK_RATIO 0.5    /* damage taken → feedback (no spillover) */
+
 #define FLASH_DURATION      200     /* ms for red border flash */
 #define FLASH_THICKNESS     4.0f
 
@@ -41,6 +43,9 @@ static int flashTicksLeft;
 static unsigned int feedbackFlashTimer; /* running timer for 4Hz feedback-full blink */
 static bool shielded;
 static int shieldBreakGrace;
+static int iframeMs;
+static int regenBoostMs;
+static double regenBoostMultiplier;
 static Mix_Chunk *sampleHurt = 0;
 
 void PlayerStats_initialize(void)
@@ -54,6 +59,9 @@ void PlayerStats_initialize(void)
 	feedbackFlashTimer = 0;
 	shielded = false;
 	shieldBreakGrace = 0;
+	iframeMs = 0;
+	regenBoostMs = 0;
+	regenBoostMultiplier = 1.0;
 
 	Audio_load_sample(&sampleHurt, "resources/sounds/samus_hurt.wav");
 }
@@ -80,6 +88,21 @@ void PlayerStats_update(unsigned int ticks)
 	if (shieldBreakGrace > 0)
 		shieldBreakGrace -= ticks;
 
+	/* I-frame decay */
+	if (iframeMs > 0) {
+		iframeMs -= (int)ticks;
+		if (iframeMs < 0) iframeMs = 0;
+	}
+
+	/* Regen boost decay */
+	if (regenBoostMs > 0) {
+		regenBoostMs -= (int)ticks;
+		if (regenBoostMs <= 0) {
+			regenBoostMs = 0;
+			regenBoostMultiplier = 1.0;
+		}
+	}
+
 	/* Flash decay */
 	if (flashTicksLeft > 0)
 		flashTicksLeft -= ticks;
@@ -97,9 +120,10 @@ void PlayerStats_update(unsigned int ticks)
 			feedback = 0.0;
 	}
 
-	/* Integrity regen after delay — 2x rate when feedback is empty */
+	/* Integrity regen after delay — 2x rate when feedback is empty, boosted by mend */
 	if (timeSinceLastDamage >= REGEN_DELAY_MS && integrity < INTEGRITY_MAX) {
 		double rate = (feedback <= 0.0) ? INTEGRITY_REGEN * 2.0 : INTEGRITY_REGEN;
+		rate *= regenBoostMultiplier;
 		integrity += rate * dt;
 		if (integrity > INTEGRITY_MAX)
 			integrity = INTEGRITY_MAX;
@@ -263,7 +287,7 @@ void PlayerStats_add_feedback(double amount)
 
 void PlayerStats_damage(double amount)
 {
-	if (shielded)
+	if (shielded || iframeMs > 0)
 		return;
 	integrity -= amount;
 	if (integrity < 0.0)
@@ -271,10 +295,18 @@ void PlayerStats_damage(double amount)
 	timeSinceLastDamage = 0;
 	flashTicksLeft = FLASH_DURATION;
 	Audio_play_sample(&sampleHurt);
+
+	/* Combat feedback — taking damage generates feedback (no spillover) */
+	feedback += amount * DAMAGE_FEEDBACK_RATIO;
+	if (feedback > FEEDBACK_MAX)
+		feedback = FEEDBACK_MAX;
+	timeSinceLastFeedback = 0;
 }
 
 void PlayerStats_force_kill(void)
 {
+	if (iframeMs > 0)
+		return; /* Dashing through — invulnerable */
 	if (shielded) {
 		shielded = false;  /* Mine breaks shield, no damage */
 		shieldBreakGrace = 200; /* Outlasts mine explosion (100ms) */
@@ -303,6 +335,23 @@ void PlayerStats_set_shielded(bool value)
 	shielded = value;
 }
 
+void PlayerStats_set_iframes(int ms)
+{
+	iframeMs = ms;
+}
+
+bool PlayerStats_has_iframes(void)
+{
+	return iframeMs > 0;
+}
+
+void PlayerStats_boost_regen(int duration_ms, double multiplier)
+{
+	timeSinceLastDamage = REGEN_DELAY_MS; /* activate regen immediately */
+	regenBoostMs = duration_ms;
+	regenBoostMultiplier = multiplier;
+}
+
 bool PlayerStats_is_dead(void)
 {
 	return dead;
@@ -324,6 +373,9 @@ void PlayerStats_reset(void)
 	feedbackFlashTimer = 0;
 	shielded = false;
 	shieldBreakGrace = 0;
+	iframeMs = 0;
+	regenBoostMs = 0;
+	regenBoostMultiplier = 1.0;
 }
 
 PlayerStatsSnapshot PlayerStats_snapshot(void)
