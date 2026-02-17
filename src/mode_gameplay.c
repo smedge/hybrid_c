@@ -218,6 +218,7 @@ void Mode_Gameplay_initialize_from_save(void)
 		Fragment_set_count(i, ckpt->fragment_counts[i]);
 	Progression_restore(ckpt->unlocked, ckpt->discovered);
 	Skillbar_restore(ckpt->skillbar);
+	Catalog_mark_all_seen();
 
 	godModeActive = false;
 	godModeSelectedType = 0;

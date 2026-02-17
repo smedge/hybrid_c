@@ -326,7 +326,6 @@ void Savepoint_update_all(unsigned int ticks)
 
 			if (sp->flash_timer >= FLASH_DURATION_MS) {
 				sp->phase = SAVEPOINT_DEACTIVATED;
-				sp->spin_angle = 0.0f;
 			}
 			break;
 
@@ -592,7 +591,6 @@ void Savepoint_suppress_by_id(const char *savepoint_id)
 			savepoints[i].phase = SAVEPOINT_DEACTIVATED;
 			savepoints[i].dwell_timer = 0;
 			savepoints[i].ship_inside = true;
-			savepoints[i].spin_angle = 0.0f;
 			if (savepoints[i].charge_sound_playing) {
 				Mix_HaltChannel(SAVEPOINT_CHARGE_CHANNEL);
 				savepoints[i].charge_sound_playing = false;

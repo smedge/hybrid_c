@@ -280,6 +280,12 @@ void Catalog_toggle(void)
 	}
 }
 
+void Catalog_mark_all_seen(void)
+{
+	for (int i = 0; i < SUB_ID_COUNT; i++)
+		seenState[i] = get_sub_state(i);
+}
+
 void Catalog_update(const Input *input, const unsigned int ticks)
 {
 	if (!catalogOpen)

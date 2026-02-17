@@ -377,6 +377,48 @@ void Map_render_minimap(float center_x, float center_y,
 	int cell_min_y = correctTruncation(world_min_y / MAP_CELL_SIZE) + HALF_MAP_SIZE;
 	int cell_max_y = correctTruncation(world_max_y / MAP_CELL_SIZE) + HALF_MAP_SIZE;
 
+	/* Render boundary (out-of-bounds) fill on minimap */
+	if (!boundaryCell.empty) {
+		float map_left   = (float)(-HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		float map_right  = (float)(MAP_SIZE - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		float map_bottom = map_left;
+		float map_top    = map_right;
+
+		/* Map edges in minimap screen coords */
+		float ml_sx = screen_x + (map_left - world_min_x) * scale;
+		float mr_sx = screen_x + (map_right - world_min_x) * scale;
+		float mt_sy = screen_y + size - (map_top - world_min_y) * scale;
+		float mb_sy = screen_y + size - (map_bottom - world_min_y) * scale;
+
+		/* Minimap bounds */
+		float mm_l = screen_x, mm_r = screen_x + size;
+		float mm_t = screen_y, mm_b = screen_y + size;
+
+		/* Clamp map edges to minimap */
+		if (ml_sx < mm_l) ml_sx = mm_l;
+		if (mr_sx > mm_r) mr_sx = mm_r;
+		if (mt_sy < mm_t) mt_sy = mm_t;
+		if (mb_sy > mm_b) mb_sy = mm_b;
+
+		ColorFloat bc = Color_rgb_to_float(&boundaryCell.primaryColor);
+		float br = bc.red * 8.0f;  if (br > 1.0f) br = 1.0f;
+		float bg = bc.green * 8.0f; if (bg > 1.0f) bg = 1.0f;
+		float bb = bc.blue * 8.0f;  if (bb > 1.0f) bb = 1.0f;
+
+		/* Top strip (above map) */
+		if (mt_sy > mm_t)
+			Render_quad_absolute(mm_l, mm_t, mm_r, mt_sy, br, bg, bb, 1.0f);
+		/* Bottom strip (below map) */
+		if (mb_sy < mm_b)
+			Render_quad_absolute(mm_l, mb_sy, mm_r, mm_b, br, bg, bb, 1.0f);
+		/* Left strip */
+		if (ml_sx > mm_l)
+			Render_quad_absolute(mm_l, mt_sy, ml_sx, mb_sy, br, bg, bb, 1.0f);
+		/* Right strip */
+		if (mr_sx < mm_r)
+			Render_quad_absolute(mr_sx, mt_sy, mm_r, mb_sy, br, bg, bb, 1.0f);
+	}
+
 	if (cell_min_x < 0) cell_min_x = 0;
 	if (cell_min_y < 0) cell_min_y = 0;
 	if (cell_max_x >= MAP_SIZE) cell_max_x = MAP_SIZE - 1;
