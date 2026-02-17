@@ -44,7 +44,7 @@ static bool zoneDirty = false;
 
 static int find_cell_type(const char *id);
 static void apply_zone_to_world(void);
-static void respawn_enemies(void);
+static void rebuild_enemies(void);
 static void respawn_portals(void);
 static void respawn_savepoints(void);
 static void push_undo(UndoEntry entry);
@@ -382,7 +382,7 @@ void Zone_remove_spawn(int index)
 		zone.spawns[i] = zone.spawns[i + 1];
 	zone.spawn_count--;
 
-	respawn_enemies();
+	rebuild_enemies();
 	zoneDirty = true;
 }
 
@@ -553,13 +553,13 @@ void Zone_undo(void)
 			zone.spawns[undo.spawn_index] = undo.spawn;
 			zone.spawn_count++;
 		}
-		respawn_enemies();
+		rebuild_enemies();
 		break;
 	case UNDO_REMOVE_SPAWN:
 		/* Remove last spawn */
 		if (zone.spawn_count > undo.spawn_index)
 			zone.spawn_count = undo.spawn_index;
-		respawn_enemies();
+		rebuild_enemies();
 		break;
 	case UNDO_PLACE_PORTAL:
 		/* Re-insert portal at original index */
@@ -619,15 +619,20 @@ static int find_cell_type(const char *id)
 	return -1;
 }
 
-/* Lightweight rebuild: only enemies */
-static void respawn_enemies(void)
+/* Editor rebuild: tear down existing enemies and respawn from zone data */
+static void rebuild_enemies(void)
 {
 	Mine_cleanup();
 	Hunter_cleanup();
 	Seeker_cleanup();
 	Defender_cleanup();
 	EnemyRegistry_clear();
+	Zone_spawn_enemies();
+}
 
+/* Spawn enemy entities from zone spawn data */
+void Zone_spawn_enemies(void)
+{
 	for (int i = 0; i < zone.spawn_count; i++) {
 		ZoneSpawn *sp = &zone.spawns[i];
 		Position pos = {sp->world_x, sp->world_y};
@@ -707,23 +712,7 @@ static void apply_zone_to_world(void)
 		}
 	}
 
-	/* Spawn enemies */
-	for (int i = 0; i < zone.spawn_count; i++) {
-		ZoneSpawn *sp = &zone.spawns[i];
-		if (strcmp(sp->enemy_type, "mine") == 0) {
-			Position pos = {sp->world_x, sp->world_y};
-			Mine_initialize(pos);
-		} else if (strcmp(sp->enemy_type, "hunter") == 0) {
-			Position pos = {sp->world_x, sp->world_y};
-			Hunter_initialize(pos);
-		} else if (strcmp(sp->enemy_type, "seeker") == 0) {
-			Position pos = {sp->world_x, sp->world_y};
-			Seeker_initialize(pos);
-		} else if (strcmp(sp->enemy_type, "defender") == 0) {
-			Position pos = {sp->world_x, sp->world_y};
-			Defender_initialize(pos);
-		}
-	}
+	/* Enemies are NOT spawned here — callers use Zone_spawn_enemies() */
 
 	/* Spawn portals */
 	for (int i = 0; i < zone.portal_count; i++) {

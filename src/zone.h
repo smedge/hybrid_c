@@ -92,4 +92,7 @@ void Zone_undo(void);
 
 const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y);
 
+/* Enemy lifecycle (for deferred spawning during rebirth) */
+void Zone_spawn_enemies(void);
+
 #endif

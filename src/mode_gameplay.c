@@ -500,6 +500,9 @@ static void complete_rebirth(void)
 {
 	gameplayState = GAMEPLAY_ACTIVE;
 
+	/* Spawn enemies now that rebirth zoom is done */
+	Zone_spawn_enemies();
+
 	/* Spawn ship — at checkpoint if loading, otherwise origin */
 	Position spawn = {0.0, 0.0};
 	if (loadFromSave) {
@@ -960,6 +963,7 @@ static void zone_teardown_and_load(const char *zone_path)
 	Map_initialize();
 	Ship_initialize();
 	Zone_load(zone_path);
+	Zone_spawn_enemies();
 	Destructible_initialize();
 }
 
