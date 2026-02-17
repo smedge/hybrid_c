@@ -8,6 +8,7 @@
 #include "render.h"
 #include "color.h"
 #include "audio.h"
+#include "sub_stealth.h"
 
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
@@ -117,7 +118,28 @@ Collision Mine_collide(void *state, const PlaceableComponent *placeable, const R
 
 	Collision collision = {false, false};
 
+	if (mineState->destroyed)
+		return collision;
+
 	Position position = placeable->position;
+
+	/* Check direct body hit (the grey diamond + red dot) */
+	Rectangle body = {-10.0, 10.0, 10.0, -10.0};
+	Rectangle bodyTransformed = Collision_transform_bounding_box(position, body);
+	if (!mineState->exploding && Collision_aabb_test(bodyTransformed, boundingBox)) {
+		/* Direct contact — instant explosion, breaks stealth */
+		Sub_Stealth_break();
+		Audio_play_sample(&sample02);
+		mineState->active = false;
+		mineState->exploding = true;
+		mineState->ticksExploding = 0;
+		mineState->killedByPlayer = true;
+		collision.collisionDetected = true;
+		collision.solid = true;
+		return collision;
+	}
+
+	/* Detection radius — only triggers when unstealthed */
 	Rectangle thisBoundingBox = collidable.boundingBox;
 	Rectangle transformedBoundingBox = Collision_transform_bounding_box(position, thisBoundingBox);
 
@@ -135,6 +157,10 @@ void Mine_resolve(void *state, const Collision collision)
 	MineState* mineState = (MineState*)state;
 
 	if (mineState->active || mineState->exploding || mineState->destroyed)
+		return;
+
+	/* Detection radius — stealth bypasses it */
+	if (Sub_Stealth_is_stealthed())
 		return;
 
 	Audio_play_sample(&sample01);

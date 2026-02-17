@@ -29,6 +29,7 @@ static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_MGUN]   = { "MGUN",   "sub_mgun",   FRAG_TYPE_HUNTER, 3, false },
 	[SUB_ID_MEND]   = { "MEND",   "sub_mend",   FRAG_TYPE_MEND,   5, false },
 	[SUB_ID_AEGIS]  = { "AEGIS",  "sub_aegis",  FRAG_TYPE_AEGIS,  5, false },
+	[SUB_ID_STEALTH] = { "STEALTH", "sub_stealth", FRAG_TYPE_MINE, 0, false },
 };
 
 /* Notification state */
@@ -72,7 +73,7 @@ void Progression_update(unsigned int ticks)
 				notifyElite = false;
 
 				const char *type_names[] = {
-					"Projectile", "Deployable", "Movement", "Shield", "Healing"
+					"Projectile", "Deployable", "Movement", "Shield", "Healing", "Stealth"
 				};
 				SubroutineType type = Skillbar_get_sub_type(i);
 				snprintf(notifyText, sizeof(notifyText),

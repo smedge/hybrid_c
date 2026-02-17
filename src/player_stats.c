@@ -308,6 +308,11 @@ bool PlayerStats_is_dead(void)
 	return dead;
 }
 
+double PlayerStats_get_feedback(void)
+{
+	return feedback;
+}
+
 void PlayerStats_reset(void)
 {
 	integrity = INTEGRITY_MAX;

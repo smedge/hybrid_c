@@ -8,6 +8,7 @@
 #include "progression.h"
 #include "player_stats.h"
 #include "ship.h"
+#include "sub_stealth.h"
 #include "view.h"
 #include "render.h"
 #include "color.h"
@@ -270,6 +271,7 @@ Collision Hunter_collide(void *state, const PlaceableComponent *placeable, const
 	if (Collision_aabb_test(transformed, boundingBox)) {
 		collision.collisionDetected = true;
 		collision.solid = true;
+		Sub_Stealth_break();
 	}
 
 	return collision;
@@ -291,26 +293,20 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 	PlaceableComponent *pl = &placeables[idx];
 	double dt = ticks / 1000.0;
 
+	if (h->alive)
+		Enemy_check_stealth_proximity(pl->position, h->facing);
+
 	/* --- Check for incoming player projectiles (if alive and not dying) --- */
 	if (h->alive && h->aiState != HUNTER_DYING) {
 		Rectangle body = {-BODY_SIZE, BODY_SIZE, BODY_SIZE, -BODY_SIZE};
 		Rectangle hitBox = Collision_transform_bounding_box(pl->position, body);
 
 		/* Check all player weapon types */
-		bool hit = false;
-		bool shielded = Defender_is_protecting(pl->position);
-		if (Sub_Pea_check_hit(hitBox)) {
-			if (!shielded) h->hp -= 50.0;
-			hit = true;
-		}
-		if (Sub_Mgun_check_hit(hitBox)) {
-			if (!shielded) h->hp -= 20.0;
-			hit = true;
-		}
-		if (Sub_Mine_check_hit(hitBox)) {
-			if (!shielded) h->hp -= 100.0;
-			hit = true;
-		}
+		PlayerDamageResult dmg = Enemy_check_player_damage(hitBox, pl->position);
+		bool shielded = Defender_is_protecting(pl->position) && !dmg.ambush;
+		bool hit = dmg.hit;
+		if (hit && !shielded)
+			h->hp -= dmg.damage + dmg.mine_damage;
 
 		if (hit) {
 			activate_spark(pl->position, shielded);
@@ -329,6 +325,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			h->deathTimer = 0;
 			h->killedByPlayer = true;
 			Audio_play_sample(&sampleDeath);
+			Enemy_on_player_kill(&dmg);
 		}
 	}
 
@@ -347,7 +344,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 		double dist = Enemy_distance_between(pl->position, shipPos);
 		bool nearbyShot = Sub_Pea_check_nearby(pl->position, 200.0)
 						|| Sub_Mgun_check_nearby(pl->position, 200.0);
-		if (!Ship_is_destroyed() &&
+		if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed() &&
 			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			h->aiState = HUNTER_CHASING;
 			h->cooldownTimer = 0;
@@ -362,8 +359,8 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 		double dist = Enemy_distance_between(pl->position, shipPos);
 		bool los = Enemy_has_line_of_sight(pl->position, shipPos);
 
-		/* De-aggro: out of range, lost line of sight, or ship dead */
-		if (Ship_is_destroyed() || dist > DEAGGRO_RANGE || !los) {
+		/* De-aggro: out of range, lost line of sight, ship dead, or stealthed */
+		if (Ship_is_destroyed() || Sub_Stealth_is_stealthed() || dist > DEAGGRO_RANGE || !los) {
 			h->aiState = HUNTER_IDLE;
 			pick_wander_target(h);
 			break;
@@ -402,9 +399,9 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			h->cooldownTimer = BURST_COOLDOWN;
 		}
 
-		/* De-aggro: out of range, lost line of sight, or ship dead */
+		/* De-aggro: out of range, lost line of sight, ship dead, or stealthed */
 		double dist = Enemy_distance_between(pl->position, shipPos);
-		if (Ship_is_destroyed() || dist > DEAGGRO_RANGE || !Enemy_has_line_of_sight(pl->position, shipPos)) {
+		if (Ship_is_destroyed() || Sub_Stealth_is_stealthed() || dist > DEAGGRO_RANGE || !Enemy_has_line_of_sight(pl->position, shipPos)) {
 			h->aiState = HUNTER_IDLE;
 			pick_wander_target(h);
 		}

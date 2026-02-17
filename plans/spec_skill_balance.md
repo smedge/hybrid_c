@@ -34,7 +34,7 @@ Every subroutine falls into one of three activation categories. This is a fundam
 - **Cooldown is the primary gating mechanism** — short cooldown = spammable, long cooldown = strategic
 - **Budget consideration**: Power is delivered in bursts. The cooldown determines how often those bursts happen. DPS/HPS over time is what matters, not per-hit numbers in isolation.
 
-**Current examples**: sub_pea, sub_mgun, sub_mine, sub_egress, sub_mend, sub_aegis
+**Current examples**: sub_pea, sub_mgun, sub_mine, sub_egress, sub_mend, sub_aegis, sub_stealth
 
 **Future examples**: AoE blasts, teleports, summon commands, cleanse/purify, gravity wells
 
@@ -371,6 +371,75 @@ Each attribute tier contributes points to the skill's total budget. The total is
 
 ---
 
+### sub_stealth — Stealth (Instant, Normal)
+
+#### Design Identity
+Cloak and ambush. Go invisible, position for a devastating opening strike, then fade back into combat.
+
+#### Stat Block
+| Attribute | Value |
+|-----------|-------|
+| Category | Instant |
+| Tier | Normal |
+| Feedback cost | 0 (but requires 0 feedback to activate) |
+| Cooldown | 15000ms (starts on unstealth, not on activation) |
+| Speed reduction | 0.5x while stealthed |
+| Ambush damage | 5x multiplier within 500 units for 1000ms after attack-breaking stealth |
+| Ambush shield pierce | Ignores all shields (defender aegis + defender protection) |
+| Ambush kill reset | Killing during ambush window resets stealth cooldown to 0 |
+| Stealth break | Attacking, physical contact with enemy/mine body, manual toggle (press key again), or enemy vision cone detection |
+| Detection bypass | Enemies lose aggro, mine detection radius ignored (mine body contact still triggers instant explosion) |
+| Enemy vision cone | Enemies detect player within 100 units AND inside 90° forward vision cone (±45° from facing) |
+| Player mine self-damage | Player's own deployed mines deal 100 damage to player if in blast radius |
+
+#### Score Card
+| Attribute | Value | Tier | Points |
+|-----------|-------|------|--------|
+| Feedback cost | 0 (gated by 0-feedback requirement) | Free (conditional) | +3 |
+| Cooldown | 15000ms (starts on unstealth) | Slow | 0 |
+| Duration | Unlimited (until break) | Unlimited | +4 |
+| Damage multiplier | 5x for 1s ambush window | — | +3 |
+| Shield piercing | Ambush ignores all shields | Modifier | +1 |
+| Cooldown reset on kill | Ambush kill → instant reset | Modifier | +2 |
+| Speed reduction | 0.5x while stealthed | Drawback | -1 |
+| Feedback gate | Must have 0 feedback to activate | Drawback | -2 |
+| Breaks on attack | First attack ends stealth | Drawback | -1 |
+| Breaks on contact | Physical collision with enemy/mine body ends stealth | Drawback | -1 |
+| Vision cone detection | Enemies spot player in 90° forward cone within 100 units | Drawback | -1 |
+| **TOTAL** | | | **7** |
+
+#### Balance Notes
+Sub_stealth is a high-skill-ceiling ability with a unique power curve. The 0-feedback gate is a severe activation constraint — you can't stealth mid-combat while feedback is decaying, forcing disengagement before cloaking. This makes it a strategic tool for initiating fights, not escaping them.
+
+The ambush window (5x damage, shield pierce, 1s duration) makes the opening strike devastating. Against a 100HP hunter within 500 units, a single pea shot deals 250 damage — instant kill. The cooldown reset on ambush kill enables chain assassinations if positioned well.
+
+The speed penalty (0.5x) prevents stealth from doubling as a movement ability and creates a real cost to staying cloaked — you're slow and vulnerable to stumbling into enemies. The vision cone detection adds positional gameplay — you must approach from the sides or behind to avoid being spotted.
+
+The cooldown doesn't start ticking until stealth breaks. This means longer stealth durations don't reduce effective cooldown — you always pay the full 15s after unstealthing regardless of how long you were cloaked.
+
+**Scoring notes**:
+- Feedback cost scored at +3 (not +4) because the 0-feedback gate is a meaningful restriction — it's "free" only when you're out of combat
+- Feedback gate scored at -2 because it's a harder restriction than typical drawbacks — it prevents activation entirely in many situations
+- The 5x ambush multiplier is scored at +3 (devastating tier equivalent) since it turns any weapon into a one-shot tool at close range
+- Cooldown reset is +2 because it enables chain kills but requires execution (must actually get the kill within the ambush window)
+- Vision cone detection scored at -1 because it adds a meaningful spatial awareness requirement — you can't just walk anywhere, you must read enemy facing
+
+**Comparison to similar skills**: Stealth occupies a unique niche — no other skill combines invisibility with a damage amplifier. The closest comparison is sub_aegis (also defensive, also long cooldown) but stealth rewards aggression where aegis rewards survival. At budget 7, stealth is 3 under cap, which may be appropriate given the qualitative power of "enemies can't see you" — similar to how aegis's invulnerability may exceed its point value.
+
+**Mine interactions**:
+- Deploying a mine breaks stealth (attack action)
+- Pre-placed mines detonating while stealthed do NOT break stealth — intended setup play
+- Mine detection radius is bypassed while stealthed (walk through safely)
+- Direct contact with mine body: instant explosion + stealth break (stealthed or not)
+- Player's own deployed mines damage the player (100 damage) if caught in blast radius
+
+**Potential concerns**:
+- Ambush kill reset could enable degenerate chain-assassination loops in dense enemy groups. Monitor during playtesting — may need a minimum cooldown (e.g., 3s even after reset) if it trivializes encounters
+- The 0-feedback gate means stealth synergizes strongly with low-feedback weapons (sub_pea at 1 feedback). High-feedback loadouts effectively can't use stealth, which may be intentional class differentiation
+- Vision cone creates interesting counterplay with enemy AI patterns — wandering enemies are harder to sneak past than stationary ones. Future "alert" states could widen the cone or add 360° detection when enemies are in combat
+
+---
+
 ## Balance Summary
 
 | Skill | Category | Tier | Score | Cap | Status |
@@ -379,6 +448,7 @@ Each attribute tier contributes points to the skill's total budget. The total is
 | sub_mgun | Instant | Normal | 11 | 10 | +1 over (starter privilege) |
 | sub_mine | Instant | Normal | 11 | 10 | +1 over (fuse drawback may warrant -2) |
 | sub_boost | Toggle | Elite | 15 | 14 | +1 over (elite flagship) |
+| sub_stealth | Instant | Normal | 7 | 10 | -3 under (invisibility may exceed point value) |
 | sub_egress | Instant | Normal | 6 | 10 | **-4 under (candidate for buff)** |
 | sub_mend | Instant | Normal | 3 | 10 | **-7 under (significantly underpowered)** |
 | sub_aegis | Instant | Normal | 4 | 10 | **-6 under (invuln may exceed point value)** |

@@ -8,6 +8,7 @@
 #include "progression.h"
 #include "player_stats.h"
 #include "ship.h"
+#include "sub_stealth.h"
 #include "view.h"
 #include "render.h"
 #include "color.h"
@@ -252,6 +253,7 @@ Collision Seeker_collide(void *state, const PlaceableComponent *placeable, const
 		/* Solid contact only during dash (deals damage via update check) */
 		if (s->aiState == SEEKER_DASHING)
 			collision.solid = true;
+		Sub_Stealth_break();
 	}
 
 	return collision;
@@ -270,25 +272,19 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 	PlaceableComponent *pl = &placeables[idx];
 	double dt = ticks / 1000.0;
 
+	if (s->alive)
+		Enemy_check_stealth_proximity(pl->position, s->facing);
+
 	/* --- Check for incoming player projectiles (if alive and not dying) --- */
 	if (s->alive && s->aiState != SEEKER_DYING) {
 		Rectangle body = {-BODY_WIDTH, BODY_LENGTH, BODY_WIDTH, -BODY_LENGTH};
 		Rectangle hitBox = Collision_transform_bounding_box(pl->position, body);
 
-		bool hit = false;
-		bool shielded = Defender_is_protecting(pl->position);
-		if (Sub_Pea_check_hit(hitBox)) {
-			if (!shielded) s->hp -= 50.0;
-			hit = true;
-		}
-		if (Sub_Mgun_check_hit(hitBox)) {
-			if (!shielded) s->hp -= 20.0;
-			hit = true;
-		}
-		if (Sub_Mine_check_hit(hitBox)) {
-			if (!shielded) s->hp -= 100.0;
-			hit = true;
-		}
+		PlayerDamageResult dmg = Enemy_check_player_damage(hitBox, pl->position);
+		bool shielded = Defender_is_protecting(pl->position) && !dmg.ambush;
+		bool hit = dmg.hit;
+		if (hit && !shielded)
+			s->hp -= dmg.damage + dmg.mine_damage;
 
 		if (hit) {
 			activate_spark(pl->position, shielded);
@@ -306,6 +302,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			s->deathTimer = 0;
 			s->killedByPlayer = true;
 			Audio_play_sample(&sampleDeath);
+			Enemy_on_player_kill(&dmg);
 		}
 	}
 
@@ -323,7 +320,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		double dist = Enemy_distance_between(pl->position, shipPos);
 		bool nearbyShot = Sub_Pea_check_nearby(pl->position, NEAR_MISS_RADIUS)
 						|| Sub_Mgun_check_nearby(pl->position, NEAR_MISS_RADIUS);
-		if (!Ship_is_destroyed() &&
+		if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed() &&
 			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			s->aiState = SEEKER_STALKING;
 		}
@@ -337,7 +334,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		bool los = Enemy_has_line_of_sight(pl->position, shipPos);
 
 		/* De-aggro */
-		if (Ship_is_destroyed() || dist > DEAGGRO_RANGE || !los) {
+		if (Ship_is_destroyed() || Sub_Stealth_is_stealthed() || dist > DEAGGRO_RANGE || !los) {
 			s->aiState = SEEKER_IDLE;
 			pick_wander_target(s);
 			break;
@@ -364,7 +361,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		double dist = Enemy_distance_between(pl->position, shipPos);
 
 		/* De-aggro */
-		if (Ship_is_destroyed() || dist > DEAGGRO_RANGE ||
+		if (Ship_is_destroyed() || Sub_Stealth_is_stealthed() || dist > DEAGGRO_RANGE ||
 			!Enemy_has_line_of_sight(pl->position, shipPos)) {
 			s->aiState = SEEKER_IDLE;
 			pick_wander_target(s);
@@ -490,7 +487,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 
 		if (s->recoverTimer >= RECOVER_MS) {
 			/* Back to stalking if player still in range, otherwise idle */
-			if (!Ship_is_destroyed()) {
+			if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed()) {
 				Position shipPos = Ship_get_position();
 				double dist = Enemy_distance_between(pl->position, shipPos);
 				if (dist < DEAGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) {

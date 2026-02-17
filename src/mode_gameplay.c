@@ -317,8 +317,13 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	if (input->keyO) {
 		godModeActive = !godModeActive;
 		Ship_set_god_mode(godModeActive);
-		if (!godModeActive)
+		if (godModeActive) {
+			View_set_min_zoom(0.01);
+		} else {
 			Zone_save_if_dirty();
+			View_set_min_zoom(0.25);
+			View_set_scale(0.5);
+		}
 	}
 
 	if (godModeActive) {

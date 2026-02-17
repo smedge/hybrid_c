@@ -3,8 +3,27 @@
 
 #include <stdbool.h>
 #include "entity.h"
+#include "collision.h"
 
 #define PI 3.14159265358979323846
+
+typedef struct {
+	bool hit;
+	bool mine_hit;
+	bool ambush;
+	double damage;
+	double mine_damage;
+} PlayerDamageResult;
+
+/* Check all player weapons against hitBox, apply ambush multiplier based on
+   distance from enemyPos to ship. Returns damage split: non-mine vs mine. */
+PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos);
+
+/* Call when an enemy is killed by the player. Handles ambush kill rewards. */
+void Enemy_on_player_kill(const PlayerDamageResult *dmg);
+
+/* Break stealth if player is within 100 units and inside the enemy's 90° vision cone. */
+void Enemy_check_stealth_proximity(Position enemyPos, double facingDegrees);
 
 double Enemy_distance_between(Position a, Position b);
 bool Enemy_has_line_of_sight(Position from, Position to);

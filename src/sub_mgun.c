@@ -9,6 +9,7 @@
 #include "view.h"
 #include "shipstate.h"
 #include "skillbar.h"
+#include "sub_stealth.h"
 #include "player_stats.h"
 
 #include <math.h>
@@ -75,6 +76,7 @@ void Sub_Mgun_update(const Input *userInput, const unsigned int ticks, Placeable
 
 	if (userInput->mouseLeft && cooldownTimer <= 0 && !state->destroyed
 			&& Skillbar_is_active(SUB_ID_MGUN)) {
+		Sub_Stealth_break_attack();
 		cooldownTimer = FIRE_COOLDOWN;
 
 		/* Find an inactive slot */

@@ -28,7 +28,8 @@ static const char *tab_names[SUB_TYPE_COUNT] = {
 	"Deployable",
 	"Movement",
 	"Shield",
-	"Healing"
+	"Healing",
+	"Stealth"
 };
 
 /* State */

@@ -8,6 +8,7 @@
 #include "progression.h"
 #include "player_stats.h"
 #include "ship.h"
+#include "sub_stealth.h"
 #include "view.h"
 #include "render.h"
 #include "color.h"
@@ -346,6 +347,7 @@ Collision Defender_collide(void *state, const PlaceableComponent *placeable, con
 	if (Collision_aabb_test(transformed, boundingBox)) {
 		collision.collisionDetected = true;
 		collision.solid = true;
+		Sub_Stealth_break();
 	}
 
 	return collision;
@@ -394,34 +396,23 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	if (d->shieldBreakGrace > 0)
 		d->shieldBreakGrace -= ticks;
 
+	if (d->alive)
+		Enemy_check_stealth_proximity(pl->position, d->facing);
+
 	/* --- Check for incoming player projectiles --- */
 	if (d->alive && d->aiState != DEFENDER_DYING && d->shieldBreakGrace <= 0) {
 		Rectangle body = {-BODY_SIZE, BODY_SIZE, BODY_SIZE, -BODY_SIZE};
 		Rectangle hitBox = Collision_transform_bounding_box(pl->position, body);
 
-		bool hit = false;
-		bool mineHit = false;
-		double damage = 0.0;
-		if (Sub_Pea_check_hit(hitBox)) {
-			damage += 50.0;
-			hit = true;
-		}
-		if (Sub_Mgun_check_hit(hitBox)) {
-			damage += 20.0;
-			hit = true;
-		}
-		if (Sub_Mine_check_hit(hitBox)) {
-			hit = true;
-			mineHit = true;
-			if (!d->aegisActive)
-				damage += 100.0;
-		}
+		PlayerDamageResult dmg = Enemy_check_player_damage(hitBox, pl->position);
+		bool hit = dmg.hit;
 
 		if (hit) {
-			activate_spark(pl->position, d->aegisActive);
+			bool shielded = d->aegisActive && !dmg.ambush;
+			activate_spark(pl->position, shielded);
 
-			if (d->aegisActive) {
-				if (mineHit) {
+			if (shielded) {
+				if (dmg.mine_hit) {
 					/* Mine breaks aegis shield — no damage, grace outlasts explosion */
 					d->aegisActive = false;
 					d->aegisCooldown = AEGIS_COOLDOWN_MS;
@@ -429,11 +420,12 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				}
 				Audio_play_sample(&sampleShieldHit);
 			} else {
-				d->hp -= damage;
+				d->hp -= dmg.damage + (dmg.mine_hit ? dmg.mine_damage : 0.0);
 				Audio_play_sample(&sampleHit);
 
 				/* Self-shield reaction — pop aegis after taking damage */
-				activate_aegis(d);
+				if (!dmg.ambush)
+					activate_aegis(d);
 
 				/* Getting hit while idle triggers flee */
 				if (d->aiState == DEFENDER_IDLE) {
@@ -442,12 +434,13 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			}
 		}
 
-		if (!d->aegisActive && hit && d->hp <= 0.0) {
+		if ((!d->aegisActive || dmg.ambush) && hit && d->hp <= 0.0) {
 			d->alive = false;
 			d->aiState = DEFENDER_DYING;
 			d->deathTimer = 0;
 			d->killedByPlayer = true;
 			Audio_play_sample(&sampleDeath);
+			Enemy_on_player_kill(&dmg);
 		}
 	}
 
@@ -489,7 +482,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		double dist = Enemy_distance_between(pl->position, shipPos);
 		bool nearbyShot = Sub_Pea_check_nearby(pl->position, 200.0)
 						|| Sub_Mgun_check_nearby(pl->position, 200.0);
-		if (!Ship_is_destroyed() &&
+		if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed() &&
 			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			d->aiState = DEFENDER_SUPPORTING;
 		}
@@ -502,7 +495,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		double shipDist = Enemy_distance_between(pl->position, shipPos);
 
 		/* De-aggro check */
-		if (Ship_is_destroyed() || shipDist > DEAGGRO_RANGE) {
+		if (Ship_is_destroyed() || Sub_Stealth_is_stealthed() || shipDist > DEAGGRO_RANGE) {
 			d->aiState = DEFENDER_IDLE;
 			pick_wander_target(d);
 			break;
@@ -616,7 +609,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		double shipDist = Enemy_distance_between(pl->position, shipPos);
 
 		/* De-aggro */
-		if (Ship_is_destroyed() || shipDist > DEAGGRO_RANGE) {
+		if (Ship_is_destroyed() || Sub_Stealth_is_stealthed() || shipDist > DEAGGRO_RANGE) {
 			d->aiState = DEFENDER_IDLE;
 			pick_wander_target(d);
 			break;

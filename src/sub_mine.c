@@ -8,6 +8,7 @@
 #include "color.h"
 #include "view.h"
 #include "skillbar.h"
+#include "sub_stealth.h"
 #include "player_stats.h"
 
 #include <SDL2/SDL_mixer.h>
@@ -72,6 +73,7 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 
 	if (userInput->keySpace && cooldownTimer <= 0
 			&& Skillbar_is_active(SUB_ID_MINE)) {
+		Sub_Stealth_break_attack();
 		/* Only place if there's a free slot — 3 max, no overwriting */
 		int slot = -1;
 		for (int i = 0; i < MAX_PLAYER_MINES; i++) {
@@ -108,6 +110,14 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 				m->phaseTicks = 0;
 				Audio_play_sample(&sampleExplode);
 				PlayerStats_add_feedback(15.0);
+
+				/* Player's own mines hurt the player */
+				Position shipPos = Ship_get_position();
+				double dx = shipPos.x - m->position.x;
+				double dy = shipPos.y - m->position.y;
+				if (dx >= -EXPLOSION_SIZE && dx <= EXPLOSION_SIZE
+						&& dy >= -EXPLOSION_SIZE && dy <= EXPLOSION_SIZE)
+					PlayerStats_damage(100.0);
 			}
 			break;
 

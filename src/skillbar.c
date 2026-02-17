@@ -10,6 +10,7 @@
 #include "sub_egress.h"
 #include "sub_mend.h"
 #include "sub_aegis.h"
+#include "sub_stealth.h"
 
 #include <math.h>
 #ifndef M_PI
@@ -46,6 +47,8 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Instant heal. Restores 50 integrity.", false },
 	[SUB_ID_AEGIS]  = { SUB_ID_AEGIS,  SUB_TYPE_SHIELD,     "sub_aegis",  "AEGIS",
 		"Damage shield. Invulnerable for 10 seconds.", false },
+	[SUB_ID_STEALTH] = { SUB_ID_STEALTH, SUB_TYPE_STEALTH, "sub_stealth", "STEALTH",
+		"Cloak. Undetectable until you attack. 15s cooldown.", false },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -62,6 +65,15 @@ static void toggle_slot(int slot)
 {
 	int id = slots[slot];
 	if (id == SUB_NONE) return;
+
+	/* Stealth: slot key activates the ability, border tracks stealth state */
+	if (id == SUB_ID_STEALTH) {
+		Sub_Stealth_try_activate();
+		if (Sub_Stealth_is_stealthed())
+			active_sub[SUB_TYPE_STEALTH] = SUB_ID_STEALTH;
+		return;
+	}
+
 	SubroutineType type = sub_registry[id].type;
 	active_sub[type] = (active_sub[type] == id) ? SUB_NONE : id;
 }
@@ -99,6 +111,11 @@ void Skillbar_cleanup(void)
 void Skillbar_update(const Input *input, const unsigned int ticks)
 {
 	(void)ticks;
+
+	/* Sync stealth border with actual stealth state (clears on break) */
+	if (active_sub[SUB_TYPE_STEALTH] == SUB_ID_STEALTH
+			&& !Sub_Stealth_is_stealthed())
+		active_sub[SUB_TYPE_STEALTH] = SUB_NONE;
 
 	clickConsumed = false;
 
@@ -254,9 +271,10 @@ void Skillbar_auto_equip(SubroutineId id)
 
 	slots[slot] = id;
 
-	/* Auto-activate if no other sub of this type is active */
+	/* Auto-activate if no other sub of this type is active.
+	   Stealth is ability-activated, not toggle-activated — never auto-activate. */
 	SubroutineType type = sub_registry[id].type;
-	if (active_sub[type] == SUB_NONE)
+	if (type != SUB_TYPE_STEALTH && active_sub[type] == SUB_NONE)
 		active_sub[type] = id;
 }
 
@@ -368,6 +386,28 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		}
 		break;
 	}
+	case SUB_ID_STEALTH: {
+		/* Eye shape — two arcs forming an eye, with a dot pupil */
+		float r = 8.0f;
+		float t = 1.5f;
+		/* Upper lid arc */
+		Render_thick_line(cx - r, cy, cx - r * 0.4f, cy + r * 0.6f, t,
+			0.6f, 0.3f, 0.8f, alpha);
+		Render_thick_line(cx - r * 0.4f, cy + r * 0.6f, cx + r * 0.4f, cy + r * 0.6f, t,
+			0.6f, 0.3f, 0.8f, alpha);
+		Render_thick_line(cx + r * 0.4f, cy + r * 0.6f, cx + r, cy, t,
+			0.6f, 0.3f, 0.8f, alpha);
+		/* Lower lid arc */
+		Render_thick_line(cx - r, cy, cx - r * 0.4f, cy - r * 0.6f, t,
+			0.6f, 0.3f, 0.8f, alpha);
+		Render_thick_line(cx - r * 0.4f, cy - r * 0.6f, cx + r * 0.4f, cy - r * 0.6f, t,
+			0.6f, 0.3f, 0.8f, alpha);
+		Render_thick_line(cx + r * 0.4f, cy - r * 0.6f, cx + r, cy, t,
+			0.6f, 0.3f, 0.8f, alpha);
+		/* Pupil */
+		Render_filled_circle(cx, cy, 2.5f, 6, 0.6f, 0.3f, 0.8f, alpha);
+		break;
+	}
 	default:
 		break;
 	}
@@ -383,6 +423,7 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_MGUN:   return Sub_Mgun_get_cooldown_fraction();
 	case SUB_ID_MEND:   return Sub_Mend_get_cooldown_fraction();
 	case SUB_ID_AEGIS:  return Sub_Aegis_get_cooldown_fraction();
+	case SUB_ID_STEALTH: return Sub_Stealth_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

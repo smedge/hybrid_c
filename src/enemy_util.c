@@ -3,9 +3,70 @@
 #include "map.h"
 #include "render.h"
 #include "color.h"
+#include "ship.h"
+#include "sub_pea.h"
+#include "sub_mgun.h"
+#include "sub_mine.h"
+#include "sub_stealth.h"
 
 #include <math.h>
 #include <stdlib.h>
+
+PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos)
+{
+	PlayerDamageResult r = {false, false, false, 0.0, 0.0};
+	double dist = Enemy_distance_between(enemyPos, Ship_get_position());
+	double mul = Sub_Stealth_get_damage_multiplier(dist);
+	r.ambush = (mul > 1.0);
+
+	if (Sub_Pea_check_hit(hitBox)) {
+		r.damage += 50.0 * mul;
+		r.hit = true;
+	}
+	if (Sub_Mgun_check_hit(hitBox)) {
+		r.damage += 20.0 * mul;
+		r.hit = true;
+	}
+	if (Sub_Mine_check_hit(hitBox)) {
+		r.mine_damage = 100.0 * mul;
+		r.mine_hit = true;
+		r.hit = true;
+	}
+
+	return r;
+}
+
+void Enemy_on_player_kill(const PlayerDamageResult *dmg)
+{
+	if (dmg->ambush)
+		Sub_Stealth_notify_kill();
+}
+
+#define STEALTH_DETECT_RANGE 100.0
+#define STEALTH_DETECT_HALF_CONE 45.0  /* 90° cone = ±45° from facing */
+
+void Enemy_check_stealth_proximity(Position enemyPos, double facingDegrees)
+{
+	if (!Sub_Stealth_is_stealthed())
+		return;
+
+	Position shipPos = Ship_get_position();
+	if (Enemy_distance_between(enemyPos, shipPos) >= STEALTH_DETECT_RANGE)
+		return;
+
+	/* Angle from enemy to player */
+	double dx = shipPos.x - enemyPos.x;
+	double dy = shipPos.y - enemyPos.y;
+	double angleToPlayer = atan2(dx, dy) * 180.0 / PI;
+
+	/* Shortest angular difference */
+	double diff = angleToPlayer - facingDegrees;
+	while (diff > 180.0) diff -= 360.0;
+	while (diff < -180.0) diff += 360.0;
+
+	if (fabs(diff) <= STEALTH_DETECT_HALF_CONE)
+		Sub_Stealth_break();
+}
 
 double Enemy_distance_between(Position a, Position b)
 {

@@ -16,6 +16,7 @@ bool PlayerStats_is_dead(void);
 bool PlayerStats_is_shielded(void);
 void PlayerStats_set_shielded(bool shielded);
 void PlayerStats_reset(void);
+double PlayerStats_get_feedback(void);
 
 /* Snapshot/restore for zone transitions */
 typedef struct {

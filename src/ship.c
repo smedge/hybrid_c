@@ -8,6 +8,7 @@
 #include "sub_egress.h"
 #include "sub_mend.h"
 #include "sub_aegis.h"
+#include "sub_stealth.h"
 #include "color.h"
 #include "shipstate.h"
 #include "audio.h"
@@ -99,6 +100,7 @@ void Ship_initialize()
 	Sub_Egress_initialize();
 	Sub_Mend_initialize();
 	Sub_Aegis_initialize();
+	Sub_Stealth_initialize();
 }
 
 void Ship_cleanup()
@@ -110,6 +112,7 @@ void Ship_cleanup()
 	Sub_Egress_cleanup();
 	Sub_Mend_cleanup();
 	Sub_Aegis_cleanup();
+	Sub_Stealth_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -196,6 +199,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Egress_initialize();
 			Sub_Mend_initialize();
 			Sub_Aegis_initialize();
+			Sub_Stealth_initialize();
 			PlayerStats_reset();
 			Hunter_reset_all();
 			Seeker_reset_all();
@@ -240,6 +244,9 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 				maxSpeed = SLOW_VELOCITY;
 			else
 				maxSpeed = NORMAL_VELOCITY;
+
+			if (Sub_Stealth_is_stealthed())
+				maxSpeed *= 0.5;
 
 			/* Target velocity from input */
 			double target_vx = 0.0, target_vy = 0.0;
@@ -290,6 +297,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	Sub_Mine_update(userInput, ticks);
 	Sub_Mend_update(userInput, ticks);
 	Sub_Aegis_update(userInput, ticks);
+	Sub_Stealth_update(ticks);
 }
 
 void Ship_render(const void *state, const PlaceableComponent *placeable)
@@ -297,6 +305,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	if (!shipState.destroyed) {
 		/* Motion trail when boosting */
 		if (isBoosting) {
+			float stealthAlpha = Sub_Stealth_get_ship_alpha();
 			double dx = placeable->position.x - prevPosition.x;
 			double dy = placeable->position.y - prevPosition.y;
 			for (int i = TRAIL_GHOSTS; i >= 1; i--) {
@@ -304,7 +313,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 				Position ghost;
 				ghost.x = placeable->position.x - dx * TRAIL_LENGTH * t;
 				ghost.y = placeable->position.y - dy * TRAIL_LENGTH * t;
-				float alpha = (1.0f - t) * 0.4f;
+				float alpha = (1.0f - t) * 0.4f * stealthAlpha;
 				ColorFloat ghostColor = {color.red, color.green, color.blue, alpha};
 				Render_triangle(&ghost, placeable->heading, &ghostColor);
 			}
@@ -312,10 +321,13 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 
 		View view =  View_get_view();
 
+		ColorFloat shipColor = color;
+		shipColor.alpha = Sub_Stealth_get_ship_alpha();
+
 		if (view.scale > 0.09)
-			Render_triangle(&placeable->position, placeable->heading, &color);
+			Render_triangle(&placeable->position, placeable->heading, &shipColor);
 		else
-			Render_point(&placeable->position, 2.0, &color);
+			Render_point(&placeable->position, 2.0, &shipColor);
 
 		//Render_bounding_box(&placeable->position, &collidable.boundingBox);
 	}
@@ -336,7 +348,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 
 void Ship_render_bloom_source(void)
 {
-	if (!shipState.destroyed) {
+	if (!shipState.destroyed && !Sub_Stealth_is_stealthed()) {
 		if (isBoosting) {
 			double dx = placeable.position.x - prevPosition.x;
 			double dy = placeable.position.y - prevPosition.y;

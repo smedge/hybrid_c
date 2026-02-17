@@ -2,10 +2,11 @@
 #include <math.h>
 
 const double MAX_ZOOM = 4.0;
-const double MIN_ZOOM = 0.25;
+const double DEFAULT_minZoom = 0.25;
 const double ZOOM_IN_RATE = 1.05;
 const double ZOOM_OUT_RATE = 0.95;
 
+static double minZoom = 0.25;
 static View view;
 
 void View_initialize()
@@ -19,13 +20,13 @@ void View_update(const Input *input, const unsigned int ticks)
 {
 	if (view.scale <= MAX_ZOOM && input->mouseWheelUp)
 		view.scale *= ZOOM_IN_RATE;
-	if (view.scale >= MIN_ZOOM && input->mouseWheelDown)
+	if (view.scale >= minZoom && input->mouseWheelDown)
 		view.scale *= ZOOM_OUT_RATE;
 
 	if (view.scale > MAX_ZOOM)
 		view.scale = MAX_ZOOM;
-	else if (view.scale < MIN_ZOOM)
-		view.scale = MIN_ZOOM;
+	else if (view.scale < minZoom)
+		view.scale = minZoom;
 }
 
 Mat4 View_get_transform(const Screen *screen)
@@ -72,4 +73,9 @@ void View_set_position(const Position position)
 void View_set_scale(double scale)
 {
 	view.scale = scale;
+}
+
+void View_set_min_zoom(double zoom)
+{
+	minZoom = zoom;
 }
