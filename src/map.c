@@ -5,6 +5,7 @@
 #include "render.h"
 #include "color.h"
 
+
 static MapCell *map[MAP_SIZE][MAP_SIZE];
 
 static MapCell emptyCell = {true, false, {0,0,0,0}, {0,0,0,0}};
@@ -901,4 +902,77 @@ static void render_cell(int x, int y, float outlineThickness)
 			ax, ay + chamf, ax + chamf, ay + t,
 			ax + t, ay + chamf, or_, og, ob, oa);
 	}
+}
+
+/* --- Stencil mask: fill quads only (for cloud reflection pass) --- */
+
+static void render_cell_stencil(int x, int y)
+{
+	const MapCell *me = get_cell_fast(x, y);
+	if (me->empty || me->circuitPattern) return;
+
+	float ax = (float)(x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	float ay = (float)(y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	float bx = ax + MAP_CELL_SIZE;
+	float by = ay + MAP_CELL_SIZE;
+
+	/* Simple quad — solid cells never have chamfering (that's circuit-only) */
+	Render_quad_absolute(ax, ay, bx, by, 1.0f, 1.0f, 1.0f, 1.0f);
+}
+
+void Map_render_stencil_mask(void)
+{
+	View view = View_get_view();
+	Screen screen = Graphics_get_screen();
+	float half_w = (float)screen.width * 0.5f / (float)view.scale;
+	float half_h = (float)screen.height * 0.5f / (float)view.scale;
+	float cx = (float)view.position.x;
+	float cy = (float)view.position.y;
+
+	int minX = correctTruncation((cx - half_w) / MAP_CELL_SIZE) + HALF_MAP_SIZE - 1;
+	int maxX = correctTruncation((cx + half_w) / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
+	int minY = correctTruncation((cy - half_h) / MAP_CELL_SIZE) + HALF_MAP_SIZE - 1;
+	int maxY = correctTruncation((cy + half_h) / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
+
+	if (minX < 0) minX = 0;
+	if (minY < 0) minY = 0;
+	if (maxX >= MAP_SIZE) maxX = MAP_SIZE - 1;
+	if (maxY >= MAP_SIZE) maxY = MAP_SIZE - 1;
+
+	/* Also mask boundary fill areas */
+	if (!boundaryCell.empty) {
+		float map_left = (float)(-HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		float map_right = (float)(MAP_SIZE - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		float map_bottom = map_left;
+		float map_top = map_right;
+
+		float vl = cx - half_w, vr = cx + half_w;
+		float vb = cy - half_h, vt = cy + half_h;
+
+		if (vt > map_top)
+			Render_quad_absolute(vl, map_top > vb ? map_top : vb,
+				vr, vt, 1.0f, 1.0f, 1.0f, 1.0f);
+		if (vb < map_bottom)
+			Render_quad_absolute(vl, vb,
+				vr, map_bottom < vt ? map_bottom : vt,
+				1.0f, 1.0f, 1.0f, 1.0f);
+		if (vl < map_left) {
+			float y0 = vb > map_bottom ? vb : map_bottom;
+			float y1 = vt < map_top ? vt : map_top;
+			if (y1 > y0)
+				Render_quad_absolute(vl, y0, map_left, y1,
+					1.0f, 1.0f, 1.0f, 1.0f);
+		}
+		if (vr > map_right) {
+			float y0 = vb > map_bottom ? vb : map_bottom;
+			float y1 = vt < map_top ? vt : map_top;
+			if (y1 > y0)
+				Render_quad_absolute(map_right, y0, vr, y1,
+					1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
+
+	for (int x = minX; x <= maxX; x++)
+		for (int y = minY; y <= maxY; y++)
+			render_cell_stencil(x, y);
 }

@@ -17,6 +17,7 @@
 #include "defender.h"
 #include "sub_aegis.h"
 #include "sub_disintegrate.h"
+#include "map_reflect.h"
 #include "savepoint.h"
 #include "portal.h"
 #include "fragment.h"
@@ -428,6 +429,13 @@ void Mode_Gameplay_render(void)
 		god_mode_render_cursor();
 	}
 	Render_flush(&world_proj, &view);
+
+	/* Cloud reflection on solid blocks */
+	{
+		int draw_w, draw_h;
+		Graphics_get_drawable_size(&draw_w, &draw_h);
+		MapReflect_render(&world_proj, &view, draw_w, draw_h);
+	}
 
 	/* God mode labels (world-space text) */
 	if (godModeActive) {

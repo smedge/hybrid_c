@@ -1,4 +1,5 @@
 #include "graphics.h"
+#include "map_reflect.h"
 
 #include <OpenGL/gl3.h>
 
@@ -27,6 +28,7 @@ void Graphics_initialize(void)
 		SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
 		SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	create_window();
 	initialize_gl();
 	Graphics_clear();
@@ -35,6 +37,7 @@ void Graphics_initialize(void)
 
 void Graphics_cleanup(void)
 {
+	MapReflect_cleanup();
 	Bloom_cleanup(&disint_bloom);
 	Bloom_cleanup(&bg_bloom);
 	Bloom_cleanup(&bloom);
@@ -68,7 +71,7 @@ void Graphics_toggle_fullscreen(void)
 
 void Graphics_clear(void)
 {
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 }
 
 void Graphics_flip(void)
@@ -202,6 +205,7 @@ static void initialize_gl(void)
 	disint_bloom.intensity = 3.0f;
 	disint_bloom.blur_passes = 7;
 	Bloom_resize(&disint_bloom, draw_w, draw_h);
+	MapReflect_initialize();
 }
 
 static void destroy_window(void)

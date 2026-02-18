@@ -559,7 +559,8 @@ More types will be added as new cell types, enemy types, and world features are 
 - Cursor (red dot + white crosshair)
 - 7 gameplay music tracks (random selection) + menu music
 - OpenGL 3.3 Core Profile rendering pipeline
-- FBO post-process bloom (foreground entity glow + background diffuse clouds)
+- FBO post-process bloom (foreground entity glow + background diffuse clouds + disintegrate beam)
+- Stencil-based cloud reflection on solid map blocks (parallax mirrored sky)
 - Motion trails (ship boost ghost triangles, projectile thick line trails)
 - Background parallax cloud system (3 layers, tiled, pulsing, drifting)
 - Background zoom parallax (half-rate zoom for depth perception)
@@ -734,12 +735,13 @@ Two-instance bloom system replacing the old geometry-based glow (which hit verte
 - Embedded GLSL 330 core shaders: fullscreen vertex, 9-tap separable gaussian blur, additive composite
 - Fullscreen quad VAO/VBO for post-process passes
 
-**Two bloom instances** (initialized in `graphics.c`):
+**Three bloom instances** (initialized in `graphics.c`):
 
 | Instance | Purpose | Divisor | Intensity | Blur Passes |
 |----------|---------|---------|-----------|-------------|
 | bloom (foreground) | Neon halos on entities | 2 (half-res) | 2.0 | 5 |
-| bg_bloom (background) | Diffuse ethereal clouds | 8 (eighth-res) | 1.5 | 10 |
+| bg_bloom (background) | Diffuse ethereal clouds + block reflection source | 8 (eighth-res) | 2.5 | 20 |
+| disint_bloom (disintegrate) | Purple beam halo | 2 (half-res) | 3.0 | 7 |
 
 **Bloom sources**: Map cells, ship, ship death spark, sub_pea/sub_mgun projectiles + sparks, sub_inferno fire blobs (1.5x brightness), sub_aegis shield ring, mine blink/explosion, hunter body + projectiles, seeker body + dash trail, defender body + aegis ring + heal beams, portals, save points, fragments. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
 
@@ -750,6 +752,23 @@ Two-instance bloom system replacing the old geometry-based glow (which hit verte
 - `Bloom_end_source(bloom, draw_w, draw_h)` — unbind, restore viewport
 - `Bloom_blur(bloom)` — ping-pong gaussian blur passes
 - `Bloom_composite(bloom, draw_w, draw_h)` — fullscreen quad with additive blend, restore viewport and blend mode
+
+### Cloud Reflection on Solid Blocks
+
+Solid (non-circuit) map blocks act as polished metallic surfaces reflecting the cloud sky above. The blurred cloud texture from `bg_bloom` is sampled through a stencil mask and composited with additive blending, creating a subtle luminous sheen that slides across block surfaces as the camera moves.
+
+**Architecture** (`map_reflect.c` / `map_reflect.h`):
+- Stencil buffer (8-bit) requested via SDL, cleared each frame
+- **Stencil write pass**: Renders fill quads for solid cells (no circuit cells, no outlines) and boundary areas into the stencil buffer with color writes disabled
+- **Reflection pass**: Fullscreen quad samples `bg_bloom->pong_tex` with mirrored UVs and parallax camera offset, drawn with additive blend where stencil == 1
+- Dedicated GLSL 330 core shader for reflection sampling
+- Texture temporarily set to `GL_MIRRORED_REPEAT` during reflection to avoid UV seams
+
+**Tunables** (constants in `map_reflect.c`):
+- `REFLECT_PARALLAX` (0.001) — UV offset scale per camera pixel
+- `REFLECT_INTENSITY` (3.0) — cloud brightness multiplier
+
+**Pipeline position**: After world geometry flush, before disintegrate bloom pass.
 
 ### Motion Trails
 
