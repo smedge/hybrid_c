@@ -10,6 +10,7 @@
 #include "skillbar.h"
 #include "sub_stealth.h"
 #include "player_stats.h"
+#include "particle_instance.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -31,7 +32,7 @@
 #define BEAM_BLOB_BASE_SIZE 14.0f
 #define BEAM_SCROLL_SPEED   3500.0f   /* units/sec — blob flow along beam */
 #define WIDTH_PULSE_SPEED   40.0f     /* rad/sec — ~6Hz for 100-160ms cycle */
-#define WIDTH_PULSE_AMOUNT  0.12f     /* ±12% size variation */
+#define WIDTH_PULSE_AMOUNT  0.12f     /* +/-12% size variation */
 #define LATERAL_JITTER_MAX  3.0f      /* max perpendicular offset */
 #define TIP_FADE_LENGTH     120.0f    /* world units for tip dissipation */
 #define TIP_FLICKER_SPEED   25.0f
@@ -40,16 +41,18 @@
 #define SPLASH_COUNT        64
 #define SPLASH_SPAWN_MS     8       /* spawn interval (~125/sec while hitting wall) */
 #define SPLASH_TTL_BASE     200     /* base lifetime ms */
-#define SPLASH_TTL_VARY     100     /* ±random variation */
+#define SPLASH_TTL_VARY     100     /* +/-random variation */
 #define SPLASH_SPEED        900.0   /* units/sec outward */
 #define SPLASH_BASE_SIZE    13.0f
 #define SPLASH_SPREAD_DEG   200.0   /* wide cone — wraps around impact point */
+
+#define MAX_INSTANCES ((BEAM_BLOB_COUNT + SPLASH_COUNT) * 3)
 
 typedef struct {
 	float rotation;
 	float sizeScale;      /* 0.7 - 1.3 */
 	bool mirror;
-	float lateralOffset;  /* ±LATERAL_JITTER_MAX perpendicular to beam */
+	float lateralOffset;  /* +/-LATERAL_JITTER_MAX perpendicular to beam */
 } BlobProp;
 
 typedef struct {
@@ -79,6 +82,8 @@ static float widthPulseTimer;
 static SplashParticle splash[SPLASH_COUNT]; /* 64 */
 static bool beamHitWall;
 static int splashSpawnTimer;
+
+static ParticleInstanceData instances[MAX_INSTANCES];
 
 static Mix_Chunk *sampleFire = 0;
 
@@ -125,6 +130,7 @@ void Sub_Disintegrate_initialize(Entity *p)
 
 void Sub_Disintegrate_cleanup(void)
 {
+	ParticleInstance_cleanup();
 	Audio_unload_sample(&sampleFire);
 }
 
@@ -268,46 +274,9 @@ void Sub_Disintegrate_update(const Input *userInput, unsigned int ticks, Placeab
 
 }
 
-/* Render splash particles at beam impact point */
-static void render_splash(float bloomBoost)
-{
-	for (int i = 0; i < SPLASH_COUNT; i++) {
-		SplashParticle *sp = &splash[i];
-		if (!sp->active) continue;
-
-		float t = (float)sp->age / (float)sp->ttl; /* 0 = young, 1 = dead */
-		float fade = 1.0f - t;
-		if (fade <= 0.01f) continue;
-
-		float size = SPLASH_BASE_SIZE * sp->sizeScale * (1.0f - t * 0.3f);
-		float angle2 = sp->mirror ? sp->rotation - 55.0f : sp->rotation + 55.0f;
-
-		/* Purple outer — big and hot */
-		float outerSz = size * 1.6f;
-		Rectangle outerRect = {-outerSz, outerSz, outerSz, -outerSz};
-		ColorFloat outerColor = {0.6f * bloomBoost, 0.2f * bloomBoost,
-			0.9f * bloomBoost, 0.4f * fade};
-		Render_quad(&sp->position, sp->rotation, outerRect, &outerColor);
-
-		/* Light purple mid */
-		float midSz = size * 0.85f;
-		Rectangle midRect = {-midSz, midSz, midSz, -midSz};
-		ColorFloat midColor = {0.8f * bloomBoost, 0.5f * bloomBoost,
-			1.0f * bloomBoost, 0.8f * fade};
-		Render_quad(&sp->position, angle2, midRect, &midColor);
-
-		/* White-hot core */
-		float coreSz = size * 0.4f;
-		Rectangle coreRect = {-coreSz, coreSz, coreSz, -coreSz};
-		ColorFloat coreColor = {1.0f * bloomBoost, 0.95f * bloomBoost,
-			1.0f * bloomBoost, 0.95f * fade};
-		Render_quad(&sp->position, sp->rotation + 22.5f, coreRect, &coreColor);
-	}
-}
-
-/* Shared blob rendering logic used by both render and bloom source.
-   bloomBoost > 1.0 for bloom pass brightness, 1.0 for normal render. */
-static void render_beam_blobs(float bloomBoost, float sizeBoost)
+/* Fill beam blob instances, returns count added */
+static int fill_beam_instances(ParticleInstanceData *out, int start,
+	float bloomBoost, float sizeBoost)
 {
 	float len = (float)beamLength;
 	float sx = (float)beamStart.x;
@@ -330,6 +299,7 @@ static void render_beam_blobs(float bloomBoost, float sizeBoost)
 	float scrollFrac = fmodf(beamScrollOffset, spacing);
 	int scrollIdx = (int)(beamScrollOffset / spacing);
 
+	int count = start;
 	for (int i = 0; i < BEAM_BLOB_COUNT; i++) {
 		float dist = (float)i * spacing + scrollFrac;
 		if (dist > len || dist < 0.0f) continue;
@@ -354,47 +324,143 @@ static void render_beam_blobs(float bloomBoost, float sizeBoost)
 		}
 
 		/* Position along beam + lateral jitter */
-		Position blobPos;
-		blobPos.x = sx + dirX * dist + perpX * bp->lateralOffset;
-		blobPos.y = sy + dirY * dist + perpY * bp->lateralOffset;
+		float px = sx + dirX * dist + perpX * bp->lateralOffset;
+		float py = sy + dirY * dist + perpY * bp->lateralOffset;
 
 		float angle2 = bp->mirror ? bp->rotation - 55.0f : bp->rotation + 55.0f;
 
 		/* Layer 1: purple outer glow */
-		float outerSz = size * 1.4f;
-		Rectangle outerRect = {-outerSz, outerSz, outerSz, -outerSz};
-		float pr = 0.6f * bloomBoost, pg = 0.2f * bloomBoost, pb = 0.9f * bloomBoost;
-		ColorFloat outerColor = {pr, pg, pb, 0.25f * tipFade};
-		Render_quad(&blobPos, bp->rotation, outerRect, &outerColor);
+		ParticleInstanceData *inst = &out[count++];
+		inst->x = px;
+		inst->y = py;
+		inst->size = size * 1.4f;
+		inst->rotation = bp->rotation;
+		inst->stretch = 1.0f;
+		inst->r = 0.6f * bloomBoost;
+		inst->g = 0.2f * bloomBoost;
+		inst->b = 0.9f * bloomBoost;
+		inst->a = 0.25f * tipFade;
 
-		/* Layer 2: light purple mid (mirrored quad like inferno) */
-		float midSz = size * 0.8f;
-		Rectangle midRect = {-midSz, midSz, midSz, -midSz};
-		float mr = 0.8f * bloomBoost, mg = 0.5f * bloomBoost, mb = 1.0f * bloomBoost;
-		ColorFloat midColor = {mr, mg, mb, 0.7f * tipFade};
-		Render_quad(&blobPos, angle2, midRect, &midColor);
+		/* Layer 2: light purple mid (mirrored quad) */
+		inst = &out[count++];
+		inst->x = px;
+		inst->y = py;
+		inst->size = size * 0.8f;
+		inst->rotation = angle2;
+		inst->stretch = 1.0f;
+		inst->r = 0.8f * bloomBoost;
+		inst->g = 0.5f * bloomBoost;
+		inst->b = 1.0f * bloomBoost;
+		inst->a = 0.7f * tipFade;
 
 		/* Layer 3: white-hot core */
-		float coreSz = size * 0.35f;
-		Rectangle coreRect = {-coreSz, coreSz, coreSz, -coreSz};
-		float cr = 1.0f * bloomBoost, cg = 0.95f * bloomBoost, cb = 1.0f * bloomBoost;
-		ColorFloat coreColor = {cr, cg, cb, 0.95f * tipFade};
-		Render_quad(&blobPos, bp->rotation + 22.5f, coreRect, &coreColor);
+		inst = &out[count++];
+		inst->x = px;
+		inst->y = py;
+		inst->size = size * 0.35f;
+		inst->rotation = bp->rotation + 22.5f;
+		inst->stretch = 1.0f;
+		inst->r = 1.0f * bloomBoost;
+		inst->g = 0.95f * bloomBoost;
+		inst->b = 1.0f * bloomBoost;
+		inst->a = 0.95f * tipFade;
+
+		if (count >= MAX_INSTANCES) return count;
 	}
+	return count;
+}
+
+/* Fill splash particle instances, returns count (total from start) */
+static int fill_splash_instances(ParticleInstanceData *out, int start,
+	float bloomBoost)
+{
+	int count = start;
+	for (int i = 0; i < SPLASH_COUNT; i++) {
+		SplashParticle *sp = &splash[i];
+		if (!sp->active) continue;
+
+		float t = (float)sp->age / (float)sp->ttl; /* 0 = young, 1 = dead */
+		float fade = 1.0f - t;
+		if (fade <= 0.01f) continue;
+
+		float size = SPLASH_BASE_SIZE * sp->sizeScale * (1.0f - t * 0.3f);
+		float angle2 = sp->mirror ? sp->rotation - 55.0f : sp->rotation + 55.0f;
+		float px = (float)sp->position.x;
+		float py = (float)sp->position.y;
+
+		/* Purple outer — big and hot */
+		ParticleInstanceData *inst = &out[count++];
+		inst->x = px;
+		inst->y = py;
+		inst->size = size * 1.6f;
+		inst->rotation = sp->rotation;
+		inst->stretch = 1.0f;
+		inst->r = 0.6f * bloomBoost;
+		inst->g = 0.2f * bloomBoost;
+		inst->b = 0.9f * bloomBoost;
+		inst->a = 0.4f * fade;
+
+		/* Light purple mid */
+		inst = &out[count++];
+		inst->x = px;
+		inst->y = py;
+		inst->size = size * 0.85f;
+		inst->rotation = angle2;
+		inst->stretch = 1.0f;
+		inst->r = 0.8f * bloomBoost;
+		inst->g = 0.5f * bloomBoost;
+		inst->b = 1.0f * bloomBoost;
+		inst->a = 0.8f * fade;
+
+		/* White-hot core */
+		inst = &out[count++];
+		inst->x = px;
+		inst->y = py;
+		inst->size = size * 0.4f;
+		inst->rotation = sp->rotation + 22.5f;
+		inst->stretch = 1.0f;
+		inst->r = 1.0f * bloomBoost;
+		inst->g = 0.95f * bloomBoost;
+		inst->b = 1.0f * bloomBoost;
+		inst->a = 0.95f * fade;
+
+		if (count >= MAX_INSTANCES) return count;
+	}
+	return count;
 }
 
 void Sub_Disintegrate_render(void)
 {
+	int count = 0;
 	if (channeling && beamLength >= 1.0)
-		render_beam_blobs(1.0f, 1.0f);
-	render_splash(1.0f);
+		count = fill_beam_instances(instances, count, 1.0f, 1.0f);
+	count = fill_splash_instances(instances, count, 1.0f);
+
+	if (count <= 0) return;
+
+	Mat4 world_proj = Graphics_get_world_projection();
+	Screen screen = Graphics_get_screen();
+	Mat4 view = View_get_transform(&screen);
+	Render_flush(&world_proj, &view);
+
+	ParticleInstance_draw(instances, count, &world_proj, &view, false);
 }
 
 void Sub_Disintegrate_render_bloom_source(void)
 {
+	int count = 0;
 	if (channeling && beamLength >= 1.0)
-		render_beam_blobs(1.5f, 1.2f);
-	render_splash(1.5f);
+		count = fill_beam_instances(instances, count, 1.5f, 1.2f);
+	count = fill_splash_instances(instances, count, 1.5f);
+
+	if (count <= 0) return;
+
+	Mat4 world_proj = Graphics_get_world_projection();
+	Screen screen = Graphics_get_screen();
+	Mat4 view = View_get_transform(&screen);
+	Render_flush(&world_proj, &view);
+
+	ParticleInstance_draw(instances, count, &world_proj, &view, false);
 }
 
 bool Sub_Disintegrate_check_hit(Rectangle target)

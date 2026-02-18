@@ -10,6 +10,7 @@
 #include "skillbar.h"
 #include "sub_stealth.h"
 #include "player_stats.h"
+#include "particle_instance.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -25,6 +26,8 @@
 #define SPREAD_DEGREES 5.0
 #define FEEDBACK_PER_SEC 25.0
 #define SOUND_INTERVAL_MS 150
+
+#define MAX_INSTANCES (BLOB_COUNT * 2)
 
 typedef struct {
 	bool active;
@@ -44,6 +47,8 @@ static bool channeling;
 static int spawnTimer;
 static int soundTimer;
 static bool wasChanneling;
+
+static ParticleInstanceData instances[MAX_INSTANCES];
 
 static Mix_Chunk *sampleFire = 0;
 
@@ -86,46 +91,49 @@ static void blob_color(float t, float *r, float *g, float *b, float *a)
 	}
 }
 
-static void render_blob(const Blob *bl)
+/* Fill instance data for all active blobs, returns instance count */
+static int fill_inferno_instances(ParticleInstanceData *out,
+	float colorBoost, float sizeBoost)
 {
-	float t = (float)bl->age / bl->ttl;
-	float r, g, b, a;
-	blob_color(t, &r, &g, &b, &a);
-	if (a <= 0.01f) return;
+	int count = 0;
+	for (int i = 0; i < BLOB_COUNT; i++) {
+		Blob *bl = &blobs[i];
+		if (!bl->active) continue;
 
-	ColorFloat c = {r, g, b, a};
-	float sz = BLOB_BASE_SIZE * bl->sizeScale;
+		float t = (float)bl->age / bl->ttl;
+		float r, g, b, a;
+		blob_color(t, &r, &g, &b, &a);
+		if (a <= 0.01f) continue;
 
-	/* Primary quad — larger */
-	Rectangle rect1 = {-sz, sz, sz, -sz};
-	Render_quad(&bl->position, bl->rotation, rect1, &c);
+		float sz = BLOB_BASE_SIZE * bl->sizeScale * sizeBoost;
 
-	/* Secondary quad — smaller, rotated asymmetrically */
-	float sz2 = sz * 0.6f;
-	Rectangle rect2 = {-sz2, sz2, sz2, -sz2};
-	float angle2 = bl->mirror ? bl->rotation - 55.0f : bl->rotation + 55.0f;
-	Render_quad(&bl->position, angle2, rect2, &c);
-}
+		/* Primary quad */
+		ParticleInstanceData *inst = &out[count++];
+		inst->x = (float)bl->position.x;
+		inst->y = (float)bl->position.y;
+		inst->size = sz;
+		inst->rotation = bl->rotation;
+		inst->stretch = 1.0f;
+		inst->r = r * colorBoost;
+		inst->g = g * colorBoost;
+		inst->b = b * colorBoost;
+		inst->a = a;
 
-static void render_blob_bloom(const Blob *bl)
-{
-	float t = (float)bl->age / bl->ttl;
-	float r, g, b, a;
-	blob_color(t, &r, &g, &b, &a);
-	if (a <= 0.01f) return;
+		/* Secondary quad — smaller, rotated asymmetrically */
+		inst = &out[count++];
+		inst->x = (float)bl->position.x;
+		inst->y = (float)bl->position.y;
+		inst->size = sz * 0.6f;
+		inst->rotation = bl->mirror ? bl->rotation - 55.0f : bl->rotation + 55.0f;
+		inst->stretch = 1.0f;
+		inst->r = r * colorBoost;
+		inst->g = g * colorBoost;
+		inst->b = b * colorBoost;
+		inst->a = a;
 
-	/* Render at 1.5x brightness for extra bloom intensity */
-	float boost = 1.5f;
-	ColorFloat c = {r * boost, g * boost, b * boost, a};
-	float sz = BLOB_BASE_SIZE * bl->sizeScale * 1.2f; /* Slightly larger for bloom spread */
-
-	Rectangle rect1 = {-sz, sz, sz, -sz};
-	Render_quad(&bl->position, bl->rotation, rect1, &c);
-
-	float sz2 = sz * 0.6f;
-	Rectangle rect2 = {-sz2, sz2, sz2, -sz2};
-	float angle2 = bl->mirror ? bl->rotation - 55.0f : bl->rotation + 55.0f;
-	Render_quad(&bl->position, angle2, rect2, &c);
+		if (count >= MAX_INSTANCES) break;
+	}
+	return count;
 }
 
 void Sub_Inferno_initialize(Entity *p)
@@ -144,6 +152,7 @@ void Sub_Inferno_initialize(Entity *p)
 
 void Sub_Inferno_cleanup(void)
 {
+	ParticleInstance_cleanup();
 	Audio_unload_sample(&sampleFire);
 }
 
@@ -205,13 +214,13 @@ void Sub_Inferno_update(const Input *userInput, unsigned int ticks, PlaceableCom
 			bl->position = placeable->position;
 			bl->prevPosition = bl->position;
 
-			/* Per-blob TTL: ±30% of base so blobs expire at staggered distances */
+			/* Per-blob TTL: +/-30% of base so blobs expire at staggered distances */
 			bl->ttl = BLOB_TTL + (rand() % (BLOB_TTL * 6 / 10)) - BLOB_TTL * 3 / 10;
 
-			/* Spread: random offset ±SPREAD_DEGREES */
+			/* Spread: random offset +/-SPREAD_DEGREES */
 			double spread = ((rand() % 1000) / 1000.0 - 0.5) * 2.0 * SPREAD_DEGREES;
 			double rad = get_radians(heading + spread);
-			/* Speed variation: ±15% so blobs don't travel in lockstep */
+			/* Speed variation: +/-15% so blobs don't travel in lockstep */
 			double speed = BLOB_SPEED * (0.85 + (rand() % 300) / 1000.0);
 			bl->vx = sin(rad) * speed;
 			bl->vy = cos(rad) * speed;
@@ -257,18 +266,28 @@ void Sub_Inferno_update(const Input *userInput, unsigned int ticks, PlaceableCom
 
 void Sub_Inferno_render(void)
 {
-	for (int i = 0; i < BLOB_COUNT; i++) {
-		if (blobs[i].active)
-			render_blob(&blobs[i]);
-	}
+	int count = fill_inferno_instances(instances, 1.0f, 1.0f);
+	if (count <= 0) return;
+
+	Mat4 world_proj = Graphics_get_world_projection();
+	Screen screen = Graphics_get_screen();
+	Mat4 view = View_get_transform(&screen);
+	Render_flush(&world_proj, &view);
+
+	ParticleInstance_draw(instances, count, &world_proj, &view, false);
 }
 
 void Sub_Inferno_render_bloom_source(void)
 {
-	for (int i = 0; i < BLOB_COUNT; i++) {
-		if (blobs[i].active)
-			render_blob_bloom(&blobs[i]);
-	}
+	int count = fill_inferno_instances(instances, 1.5f, 1.2f);
+	if (count <= 0) return;
+
+	Mat4 world_proj = Graphics_get_world_projection();
+	Screen screen = Graphics_get_screen();
+	Mat4 view = View_get_transform(&screen);
+	Render_flush(&world_proj, &view);
+
+	ParticleInstance_draw(instances, count, &world_proj, &view, false);
 }
 
 bool Sub_Inferno_check_hit(Rectangle target)

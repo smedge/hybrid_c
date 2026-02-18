@@ -21,7 +21,8 @@ This is a **living document** — updated whenever a skill is added, modified, o
 | sub_mine | Deployable | Normal | Instant | **6** | 10 | ~75 | 15/boom | -4 under. Area denial utility, not a DPS weapon. |
 | sub_boost | Movement | **Elite** | Toggle | **15** | 15 | — | 0 | At cap. Free unlimited speed. The mobility fantasy. |
 | sub_inferno | Projectile | **Elite** | Channel | **15** | 15 | ~1250 | 25/sec | At cap. Melts everything. Self-destructs in ~4s from feedback. |
-| sub_disintegrate | Projectile | **Elite** | Channel | **15** | 15 | ~1200 | 22/sec | At cap. Finger of god. 2x range, hitscan sweep erases groups. |
+| sub_disintegrate | Projectile | **Elite** | Channel | **15** | 15 | ~900 | 22/sec | At cap. Finger of god. 2x range, hitscan sweep erases groups. |
+| sub_gravwell | Control | Normal | Instant | **10** | 10 | — | 25 | At cap. First CC skill. Pull + slow, no damage, pure force multiplier. |
 | sub_stealth | Stealth | Normal | Instant | **7** | 10 | — | 0 (gated) | -3 under. Invisibility power exceeds point value. High skill ceiling. |
 | sub_egress | Movement | Normal | Instant | **10** | 10 | — | 25 | At cap. I-frames + 50 contact damage. Dodge-attack. |
 | sub_mend | Healing | Normal | Instant | **7** | 10 | — | 20 | -3 under. Burst heal + 3x regen boost for 5s. Rewards clean play. |
@@ -31,6 +32,7 @@ This is a **living document** — updated whenever a skill is added, modified, o
 - **Normal weapons are honestly scored now**: pea and mgun at 7, mine at 6. The old system scored them at 10 by treating damage and fire rate as additive — but DPS is multiplicative. 100 DPS requiring precise aim against moving targets is NOT equivalent to 1250 DPS from a forgiving channeled beam. The 3-4 point gap below cap means these weapons have clear room for buffs.
 - **The DPS gap is real and properly captured**: 8 points between pea (7) and inferno (15) reflects the 12.5x DPS reality. The old 5-point gap (10 vs 15) was lying to us.
 - **All three elites at cap (15)**: boost (mobility), inferno (close-range chaos), disintegrate (long-range precision). Three distinct fantasies, all equally devastating. Disintegrate's carve sweep isn't a drawback — it's the mechanic that makes it "finger of god" against groups.
+- **Gravwell enters at cap (10)**: The first control-type skill. Zero damage, pure crowd control — massive AoE pull + slow that makes everything else in your loadout deadlier. A force multiplier, not a weapon.
 - **Defense/utility unchanged**: egress at cap (10) with i-frames + contact damage, mend at 7 with regen boost. Aegis (4) remains the outlier.
 - **Normal weapons need love**: pea, mgun, and mine all scoring well under cap is a signal. They either need buffs (more damage, faster fire rate, secondary effects) or the budget system confirms what playtesting shows — channeled elites outclass them by a wide margin.
 
@@ -60,9 +62,9 @@ Every subroutine falls into one of three activation categories. This is a fundam
 - **Cooldown is the primary gating mechanism** — short cooldown = spammable, long cooldown = strategic
 - **Budget consideration**: Power is delivered in bursts. The cooldown determines how often those bursts happen. DPS/HPS over time is what matters, not per-hit numbers in isolation.
 
-**Current examples**: sub_pea, sub_mgun, sub_mine, sub_egress, sub_mend, sub_aegis, sub_stealth
+**Current examples**: sub_pea, sub_mgun, sub_mine, sub_egress, sub_mend, sub_aegis, sub_stealth, sub_gravwell
 
-**Future examples**: AoE blasts, teleports, summon commands, cleanse/purify, gravity wells
+**Future examples**: AoE blasts, teleports, summon commands, cleanse/purify
 
 ### Passive
 
@@ -579,8 +581,8 @@ Finger of god. A focused hitscan laser that carves through everything in its pat
 | Tier | Elite |
 | Feedback cost | 22/sec while channeling |
 | Cooldown | None (channeled) |
-| Damage per frame | 20 |
-| Effective DPS | ~1200 (20 × 60fps) |
+| Damage per frame | 15 |
+| Effective DPS | ~900 (15 × 60fps) |
 | Range | 2600 units |
 | Collision width | 24 units (12 half-width) |
 | Carve speed | 120°/sec max rotation (snaps on first frame) |
@@ -594,7 +596,7 @@ Finger of god. A focused hitscan laser that carves through everything in its pat
 | Attribute | Value | Tier | Points |
 |-----------|-------|------|--------|
 | Feedback cost | 22/sec | Medium | +1 |
-| Effective DPS | ~1200 (20 dmg × 60fps) | Devastating | +5 |
+| Effective DPS | ~900 (15 dmg × 60fps) | Devastating | +5 |
 | Range | 2600 units | Long | +3 |
 | Duration/Uptime | Unlimited (while held) | Unlimited | +4 |
 | Piercing | Hitscan beam — all enemies on line take full damage simultaneously | Modifier | +1 |
@@ -605,21 +607,21 @@ Finger of god. A focused hitscan laser that carves through everything in its pat
 #### Balance Notes
 Sub_disintegrate is the third elite and the game's second channeled weapon. At budget 15 it sits right at elite cap — equal to boost and inferno. All three elites deliver different power fantasies at the same budget: unlimited mobility, close-range chaos, long-range annihilation.
 
-**Why the carve speed is NOT a drawback**: The previous scoring penalized the 120°/sec carve limit at -1, treating it as a restriction vs inferno's instant aim. Playtesting revealed the opposite — the carve sweep IS what makes disintegrate devastating. Sweeping the beam through a group of enemies means every single one on the line takes full 1200 DPS simultaneously. The carve isn't a limitation, it's the mechanic that turns "single-target laser" into "finger of god erasing swaths of enemies." Against 4 enemies in a line, that's 4800 effective group DPS. Inferno's blob scatter means far less consistent multi-target damage.
+**Why the carve speed is NOT a drawback**: The previous scoring penalized the 120°/sec carve limit at -1, treating it as a restriction vs inferno's instant aim. Playtesting revealed the opposite — the carve sweep IS what makes disintegrate devastating. Sweeping the beam through a group of enemies means every single one on the line takes full 900 DPS simultaneously. The carve isn't a limitation, it's the mechanic that turns "single-target laser" into "finger of god erasing swaths of enemies." Against 4 enemies in a line, that's 3600 effective group DPS. Inferno's blob scatter means far less consistent multi-target damage.
 
 **Comparison to sub_inferno**: Both are channeled projectile elites (mutually exclusive). The design identity split:
 - **Inferno**: close-range chaos. ±5° spray, 1250 DPS, 1250 unit range, instant aim. The flamethrower — get in their face and melt everything. Devastating at close range, blobs scatter and dilute at distance.
-- **Disintegrate**: long-range precision. Hitscan beam, 1200 DPS, 2600 unit range, 120°/sec carve. Finger of god — erase enemies from across the map. Perfect pierce means every target on the line takes full damage. Sweep clears corridors.
+- **Disintegrate**: long-range precision. Hitscan beam, 900 DPS, 2600 unit range, 120°/sec carve. Finger of god — erase enemies from across the map. Perfect pierce means every target on the line takes full damage. Sweep clears corridors.
 
-**The range gap is massive**: 2600 vs 1250 means disintegrate engages enemies before they can even aggro. You can sweep a corridor clean from complete safety. Inferno has to close to half that distance, putting you in danger. This alone justifies equal scoring despite slightly lower raw DPS.
+**The range gap is massive**: 2600 vs 1250 means disintegrate engages enemies before they can even aggro. You can sweep a corridor clean from complete safety. Inferno has to close to half that distance, putting you in danger. This alone justifies equal scoring despite lower raw DPS (900 vs 1250).
 
 **Hitscan vs projectile**: Disintegrate's damage is instant along the entire beam. Inferno's blobs travel at 2500 units/sec — at max range (1250 units), there's 500ms of travel time. Against moving targets at range, disintegrate's hitscan is categorically more reliable.
 
-**Pierce quality**: Both pierce, but disintegrate's is far more effective. Inferno blobs spread ±5°, so at range they scatter across and between targets. Disintegrate's beam is a perfect line — if 5 enemies are lined up, all 5 take full 1200 DPS simultaneously. The effective group DPS scales linearly with targets in the beam path.
+**Pierce quality**: Both pierce, but disintegrate's is far more effective. Inferno blobs spread ±5°, so at range they scatter across and between targets. Disintegrate's beam is a perfect line — if 5 enemies are lined up, all 5 take full 900 DPS simultaneously. The effective group DPS scales linearly with targets in the beam path.
 
 **Sustain advantage**: At 22 feedback/sec vs inferno's 25, disintegrate reaches spillover in ~4.5s vs ~4s. Half a second more channel time. Marginal per burst, but over repeated burst-and-recover cycles it adds up.
 
-**Stealth synergy**: 5x ambush multiplier on beam = 100 damage per frame for 1s = 6000 DPS. Comparable to inferno's ambush (6250 DPS). But disintegrate's hitscan means every frame of the ambush window hits at full power — no wasted blobs scattering past the target.
+**Stealth synergy**: 5x ambush multiplier on beam = 75 damage per frame for 1s = 4500 DPS. Comparable to inferno's ambush (6250 DPS). But disintegrate's hitscan means every frame of the ambush window hits at full power — no wasted blobs scattering past the target.
 
 **Scoring notes**:
 - Carve speed no longer scored as a drawback. The sweep mechanic is the skill's primary power against groups — penalizing it was like penalizing inferno for having spread. Both are aiming styles, not limitations.
@@ -633,6 +635,77 @@ Sub_disintegrate is the third elite and the game's second channeled weapon. At b
 
 ---
 
+### sub_gravwell — Control (Instant, Normal)
+
+#### Design Identity
+Gravity well. Deploy a vortex at cursor position that pulls enemies inward and slows them to a crawl. Zero damage — pure crowd control. The ultimate force multiplier: group enemies up, slow them down, then melt them with your weapon of choice.
+
+#### Stat Block
+| Attribute | Value |
+|-----------|-------|
+| Category | Instant |
+| Tier | Normal |
+| Type | Control (SUB_TYPE_CONTROL — first of its kind) |
+| Feedback cost | 25 |
+| Cooldown | 20000ms (20s) |
+| Duration | 8000ms (8s) with 2s fade-out |
+| Effect radius | 600 units |
+| Pull force | 20 u/s (edge) → 300 u/s (center), quadratic ramp |
+| Slow factor | 0.6x (edge) → 0.05x (center), quadratic ramp |
+| Damage | None |
+| Placement | Cursor world position (replaces existing well) |
+| Fade-out | Last 2s: pull/slow linearly ramp to zero, blobs collapse inward |
+| Stealth interaction | Breaks stealth on activation |
+
+#### Score Card
+| Attribute | Value | Tier | Points |
+|-----------|-------|------|--------|
+| Feedback cost | 25 | Medium | +1 |
+| Cooldown | 20000ms | Very Slow | -1 |
+| Range | Cursor placement (500-1000+ units) | Long | +3 |
+| AoE radius | 600 units | Large | +3 |
+| Duration | 8000ms | Medium | +2 |
+| Crowd control (pull + slow) | Drags + slows 60-95% | Special | +3 |
+| No damage | Zero direct damage | Drawback | -1 |
+| **TOTAL** | | | **10** |
+
+#### Balance Notes
+Sub_gravwell is the first control-type subroutine and the first skill with zero damage output. At budget 10 it sits right at normal cap. Its power is entirely indirect — it makes every other skill in your loadout dramatically more effective.
+
+**The force multiplier identity**: Gravwell's value scales with what you pair it with. Gravwell + inferno = enemies get dragged into the fire stream. Gravwell + disintegrate = enemies clumped together for a single sweep to erase. Gravwell + mine = place mines in the well, enemies get pulled onto them. Gravwell alone does nothing. Gravwell with a weapon is devastating.
+
+**Why zero damage earns -1**: A skill that deals no damage has a hard cap on what it can accomplish alone. You can trap enemies indefinitely, but you need another skill to actually kill them. This is a real limitation that prevents gravwell from being self-sufficient, which is the defining characteristic of a support/control skill. The -1 captures this.
+
+**Crowd control scoring (+3)**: The pull + slow combination is scored as a single +3 effect ("fight-changing utility"). The pull itself is powerful — 300 u/s at center means enemies near the core are barely moving and continuously dragged back if they try to escape. The slow (0.05x at center = 95% speed reduction) means even if enemies resist the pull, they're crawling. Together, this is the strongest positional control in the game — enemies in the well are functionally trapped.
+
+**The 20s cooldown tax**: At 20s cooldown (-1) with 8s duration, gravwell has 29% uptime. You get one well per engagement. This prevents "permanent crowd control" — you must choose WHEN to deploy for maximum impact. The cooldown starts when you activate, not when the well expires, so if the well lasts the full 8s, you're waiting 12s after it fades for the next one.
+
+**Placement flexibility**: Cursor-based placement (Long range, +3) means you can drop the well into a group of enemies from safety. This is a major advantage over self-targeted skills (mine, aegis) — you don't have to be IN the danger zone to control it. However, the well is placed once and doesn't move — misplacement wastes the entire 20s cooldown.
+
+**Fade-out design**: The 2s fade-out at end of duration is a grace mechanic — pull/slow ramp to zero instead of cutting abruptly. Enemies don't suddenly snap back to full speed. This also provides a visual countdown (blobs collapse inward, radius shrinks) so the player knows the well is expiring.
+
+**Comparison to other normal skills at cap**: Egress (10) is the other normal at cap. Egress is a personal combat tool — dodge + damage in one button press. Gravwell is a strategic tool — deploy to control a fight. Both earn their 10 through different paths: egress through concentrated personal power, gravwell through broad positional control.
+
+**Scoring notes**:
+- Feedback scored at +1 (Medium) for 25 per activation. Same tier as egress (25) and inferno (25/sec). One-time cost vs sustained drain — but the 20s cooldown means you're paying 25 feedback once per fight, which is a lighter drain than channeled weapons.
+- Cooldown at -1 (Very Slow) for 20s. This is the heaviest cooldown of any non-aegis skill. The long cooldown is the primary balance lever — gravwell would be oppressive at 10s, game-breaking at 5s.
+- No damage scored at -1 (custom drawback). No existing drawback captures "this skill literally cannot kill anything." The -1 is conservative — it could arguably be -2, but the crowd control value compensates.
+
+**Synergies**:
+- **Gravwell + Inferno**: Pull enemies into a tight cluster, then hose them down. The slow keeps them in the fire stream. Devastating combo.
+- **Gravwell + Disintegrate**: Enemies clumped together = one sweep erases the group. The slow prevents scatter. Perfect for corridor control.
+- **Gravwell + Mine**: Place mines inside the well radius. Enemies get pulled onto the mines. Area denial squared.
+- **Gravwell + Stealth**: Drop the well as a distraction, then stealth flank for an ambush. The well holds enemy attention and position while you reposition.
+- **Gravwell + Egress**: Dash through the clustered enemies for multi-target contact damage. The slow prevents them from scattering before you arrive.
+
+**Potential concerns**:
+- Gravwell + channeled elite may trivialize encounters where enemies spawn in groups. The combo is intentionally powerful — it costs 2 of 10 skill slots and a 20s cooldown. If it's still too strong, the cooldown is the tuning lever.
+- No damage means gravwell is dead weight against single tough enemies (bosses). This is by design — control skills should be encounter-dependent, not universally useful.
+- The 600-unit radius is massive. Enemies at the edge experience modest pull (20 u/s) and modest slow (0.6x), but the center is essentially a trap. Monitor whether the effective trap radius is too generous.
+- The "replaces existing well" mechanic means you can't stack wells. This prevents degenerate permanent-CC chains with cooldown reduction (if that ever exists).
+
+---
+
 ## Balance Summary
 
 | Skill | Category | Tier | Score | Cap | Status |
@@ -642,7 +715,8 @@ Sub_disintegrate is the third elite and the game's second channeled weapon. At b
 | sub_mine | Instant | Normal | 6 | 10 | -4 under (area denial utility, unreliable DPS) |
 | sub_boost | Toggle | Elite | 15 | 15 | At cap (elite flagship) |
 | sub_inferno | Channel | Elite | 15 | 15 | At cap (elite flagship) |
-| sub_disintegrate | Channel | Elite | 15 | 15 | At cap (finger of god — hitscan sweep) |
+| sub_disintegrate | Channel | Elite | 15 | 15 | At cap (finger of god — hitscan sweep, ~900 DPS) |
+| sub_gravwell | Instant | Normal | 10 | 10 | At cap (first CC skill — pull + slow, zero damage) |
 | sub_stealth | Instant | Normal | 7 | 10 | -3 under (invisibility may exceed point value) |
 | sub_egress | Instant | Normal | 10 | 10 | At cap (i-frames + contact damage) |
 | sub_mend | Instant | Normal | 7 | 10 | -3 under (burst heal + 3x regen boost) |
@@ -652,13 +726,13 @@ Sub_disintegrate is the third elite and the game's second channeled weapon. At b
 
 1. **Normal weapons were over-scored — now honest**: The old system rated pea, mgun, and mine all at 10 ("at cap") by scoring damage and fire rate additively. But DPS is multiplicative: 50 damage × 2 shots/sec = 100 DPS, not "2+2=4 points." The composite DPS scoring reveals that normal weapons score 6-7, well below cap. This matches the gameplay reality — channeled elites clear screens while aimed weapons struggle to kill a couple enemies.
 
-2. **The DPS gap is properly captured**: 8 points between pea (7) and inferno (15) reflects the ~12.5x DPS difference. The old 5-point gap (10 vs 15) disguised the magnitude. The new scoring makes it obvious: channeled elites are in a completely different damage tier than aimed instants.
+2. **The DPS gap is properly captured**: 8 points between pea (7) and inferno (15) reflects the massive DPS difference (~12.5x for inferno, ~9x for disintegrate). The old 5-point gap (10 vs 15) disguised the magnitude. The new scoring makes it obvious: channeled elites are in a completely different damage tier than aimed instants.
 
 3. **Normal weapons have room to grow**: Pea and mgun at 7/10 have 3 points of budget room. Mine at 6/10 has 4 points. This is actionable design information — these weapons can be buffed without exceeding their tier cap. Options include: damage increases, fire rate buffs, secondary effects (slow, armor shred, ricochet), or targeting improvements (slight homing, wider hitbox).
 
 4. **All three elites at cap**: Boost, inferno, and disintegrate all score 15. Three distinct fantasies — unlimited mobility, close-range chaos, long-range annihilation. The one-elite-per-bar exclusivity makes this a defining build choice. Disintegrate's carve sweep is a power mechanic, not a drawback — it's what turns a laser into finger of god against groups.
 
-5. **Egress is the only normal skill at cap**: At 10/10, egress earns its budget with a unique combination of defensive (i-frames) and offensive (50 contact damage) utility. It's the gold standard for what a well-designed normal skill looks like at cap.
+5. **Two normal skills at cap**: Egress (10/10) with i-frames + contact damage, and gravwell (10/10) with AoE crowd control. Both earn their budget through unique combinations — egress through concentrated personal combat power, gravwell through broad positional control. These are the gold standards for what well-designed normal skills look like at cap.
 
 6. **Binary effects defy point budgets**: Stealth (7) and aegis (4) both score low but have qualitatively unique power. "Enemies can't see you" and "you can't take damage" are on/off states — there's no half-measure. The point system inherently undervalues binary effects because it scores magnitude, not the strategic value of absolutes.
 
@@ -667,6 +741,8 @@ Sub_disintegrate is the third elite and the game's second channeled weapon. At b
 8. **Damage-to-feedback (0.5x) creates hidden value in defensive skills**: Aegis and egress i-frames prevent both integrity loss AND feedback generation. This hidden value isn't captured in the point budget but significantly increases the practical worth of defensive abilities.
 
 9. **No passives exist yet**: The first passive added will test whether slot cost alone is a sufficient budget constraint, or whether passives need explicit budget penalties.
+
+10. **Control skills are force multipliers**: Gravwell's zero-damage design means its value is entirely dependent on loadout composition. It scores 10 because the crowd control is massive, but it's useless alone. This confirms the design philosophy — control skills earn budget through enabling other skills, not through standalone power. Future control skills (slows, roots, enemy debuffs) should follow this pattern: high positional/tactical value, zero or negligible direct damage.
 
 ### Recommended Adjustments (Subject to Playtesting)
 

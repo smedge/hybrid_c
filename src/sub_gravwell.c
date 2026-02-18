@@ -8,11 +8,10 @@
 #include "view.h"
 #include "sub_stealth.h"
 #include "skillbar.h"
+#include "particle_instance.h"
 
-#include <OpenGL/gl3.h>
 #include <math.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -50,60 +49,6 @@ typedef struct {
 	float size;          /* base size multiplier */
 } WhirlpoolBlob;
 
-/* Per-instance GPU data: 9 floats = 36 bytes */
-typedef struct {
-	float x, y;          /* world position */
-	float size;          /* radius */
-	float rotation;      /* radians */
-	float stretch;       /* elongation along local X */
-	float r, g, b, a;   /* color */
-} InstanceData;
-
-/* Instanced renderer GL resources */
-static GLuint gwShaderProgram;
-static GLint gwLocProjection;
-static GLint gwLocView;
-static GLuint gwVAO;
-static GLuint gwTemplateVBO;
-static GLuint gwInstanceVBO;
-static bool gwGLInitialized;
-
-/* Embedded shaders */
-static const char *gw_vert_src =
-	"#version 330 core\n"
-	"layout(location = 0) in vec2 a_vertex;\n"
-	"layout(location = 1) in vec2 a_position;\n"
-	"layout(location = 2) in float a_size;\n"
-	"layout(location = 3) in float a_rotation;\n"
-	"layout(location = 4) in float a_stretch;\n"
-	"layout(location = 5) in vec4 a_color;\n"
-	"uniform mat4 u_projection;\n"
-	"uniform mat4 u_view;\n"
-	"out vec2 v_uv;\n"
-	"out vec4 v_color;\n"
-	"void main() {\n"
-	"    vec2 scaled = vec2(a_vertex.x * a_stretch, a_vertex.y) * a_size;\n"
-	"    float c = cos(a_rotation);\n"
-	"    float s = sin(a_rotation);\n"
-	"    vec2 rotated = vec2(scaled.x * c - scaled.y * s,\n"
-	"                        scaled.x * s + scaled.y * c);\n"
-	"    vec2 world = rotated + a_position;\n"
-	"    gl_Position = u_projection * u_view * vec4(world, 0.0, 1.0);\n"
-	"    v_uv = a_vertex;\n"
-	"    v_color = a_color;\n"
-	"}\n";
-
-static const char *gw_frag_src =
-	"#version 330 core\n"
-	"in vec2 v_uv;\n"
-	"in vec4 v_color;\n"
-	"out vec4 fragColor;\n"
-	"void main() {\n"
-	"    float d = length(v_uv);\n"
-	"    float alpha = smoothstep(1.0, 0.2, d);\n"
-	"    fragColor = vec4(v_color.rgb, v_color.a * alpha);\n"
-	"}\n";
-
 /* State */
 static bool wellActive;
 static Position wellPosition;
@@ -115,150 +60,10 @@ static float animTimer;
 static Position cachedCursorWorld;
 
 static WhirlpoolBlob blobs[BLOB_COUNT];
-static InstanceData instanceData[MAX_INSTANCES];
+static ParticleInstanceData instanceData[MAX_INSTANCES];
 
 static Mix_Chunk *samplePlace = 0;
 static Mix_Chunk *sampleExpire = 0;
-
-/* ================================================================
- * GL resource management
- * ================================================================ */
-
-static GLuint gw_compile_shader(GLenum type, const char *source)
-{
-	GLuint shader = glCreateShader(type);
-	glShaderSource(shader, 1, &source, NULL);
-	glCompileShader(shader);
-
-	GLint ok;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-	if (!ok) {
-		char log[512];
-		glGetShaderInfoLog(shader, sizeof(log), NULL, log);
-		fprintf(stderr, "Gravwell shader compile error: %s\n", log);
-		exit(1);
-	}
-	return shader;
-}
-
-static void gw_init_gl(void)
-{
-	if (gwGLInitialized) return;
-	gwGLInitialized = true;
-
-	/* Compile & link shader program */
-	GLuint vert = gw_compile_shader(GL_VERTEX_SHADER, gw_vert_src);
-	GLuint frag = gw_compile_shader(GL_FRAGMENT_SHADER, gw_frag_src);
-
-	gwShaderProgram = glCreateProgram();
-	glAttachShader(gwShaderProgram, vert);
-	glAttachShader(gwShaderProgram, frag);
-	glLinkProgram(gwShaderProgram);
-
-	GLint ok;
-	glGetProgramiv(gwShaderProgram, GL_LINK_STATUS, &ok);
-	if (!ok) {
-		char log[512];
-		glGetProgramInfoLog(gwShaderProgram, sizeof(log), NULL, log);
-		fprintf(stderr, "Gravwell shader link error: %s\n", log);
-		exit(1);
-	}
-	glDeleteShader(vert);
-	glDeleteShader(frag);
-
-	gwLocProjection = glGetUniformLocation(gwShaderProgram, "u_projection");
-	gwLocView = glGetUniformLocation(gwShaderProgram, "u_view");
-
-	/* Template quad: unit quad from (-1,-1) to (1,1), 6 vertices */
-	float quad[] = {
-		-1.0f, -1.0f,
-		 1.0f, -1.0f,
-		 1.0f,  1.0f,
-		-1.0f, -1.0f,
-		 1.0f,  1.0f,
-		-1.0f,  1.0f,
-	};
-
-	glGenBuffers(1, &gwTemplateVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, gwTemplateVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-
-	/* Instance data VBO (dynamic) */
-	glGenBuffers(1, &gwInstanceVBO);
-
-	/* VAO */
-	glGenVertexArrays(1, &gwVAO);
-	glBindVertexArray(gwVAO);
-
-	/* Attribute 0: template quad vertex (per-vertex) */
-	glBindBuffer(GL_ARRAY_BUFFER, gwTemplateVBO);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-	glVertexAttribDivisor(0, 0);
-
-	/* Attributes 1-5: per-instance data */
-	glBindBuffer(GL_ARRAY_BUFFER, gwInstanceVBO);
-	int stride = sizeof(InstanceData);
-
-	/* location 1: a_position (vec2) — offset 0 */
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *)0);
-	glVertexAttribDivisor(1, 1);
-
-	/* location 2: a_size (float) — offset 8 */
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, stride, (void *)(2 * sizeof(float)));
-	glVertexAttribDivisor(2, 1);
-
-	/* location 3: a_rotation (float) — offset 12 */
-	glEnableVertexAttribArray(3);
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, stride, (void *)(3 * sizeof(float)));
-	glVertexAttribDivisor(3, 1);
-
-	/* location 4: a_stretch (float) — offset 16 */
-	glEnableVertexAttribArray(4);
-	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride, (void *)(4 * sizeof(float)));
-	glVertexAttribDivisor(4, 1);
-
-	/* location 5: a_color (vec4) — offset 20 */
-	glEnableVertexAttribArray(5);
-	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, stride, (void *)(5 * sizeof(float)));
-	glVertexAttribDivisor(5, 1);
-
-	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-static void gw_cleanup_gl(void)
-{
-	if (!gwGLInitialized) return;
-	glDeleteProgram(gwShaderProgram);
-	glDeleteVertexArrays(1, &gwVAO);
-	glDeleteBuffers(1, &gwTemplateVBO);
-	glDeleteBuffers(1, &gwInstanceVBO);
-	gwGLInitialized = false;
-}
-
-/* Draw instances with current projection/view matrices */
-static void gw_draw_instanced(const InstanceData *data, int count,
-	const Mat4 *projection, const Mat4 *view)
-{
-	if (count <= 0) return;
-
-	glUseProgram(gwShaderProgram);
-	glUniformMatrix4fv(gwLocProjection, 1, GL_FALSE, projection->m);
-	glUniformMatrix4fv(gwLocView, 1, GL_FALSE, view->m);
-
-	glBindVertexArray(gwVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, gwInstanceVBO);
-	glBufferData(GL_ARRAY_BUFFER, count * sizeof(InstanceData),
-		data, GL_DYNAMIC_DRAW);
-
-	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, count);
-
-	glBindVertexArray(0);
-	glUseProgram(0);
-}
 
 /* ================================================================
  * Blob particle system
@@ -281,7 +86,7 @@ static void init_blob(WhirlpoolBlob *b)
 	b->radius_frac = 0.06f + (float)(rand() % 940) / 1000.0f;
 }
 
-/* Thin bright rim → swirling blues/indigos → deep black core */
+/* Thin bright rim -> swirling blues/indigos -> deep black core */
 static void blob_color_by_radius(float radius_frac, float fade,
 	float *r, float *g, float *b, float *a)
 {
@@ -316,7 +121,7 @@ static void blob_color_by_radius(float radius_frac, float fade,
 }
 
 /* Fill instance data array with ghost trails, returns count */
-static int build_instance_data(InstanceData *out, float brightness_boost,
+static int build_instance_data(ParticleInstanceData *out, float brightness_boost,
 	float min_radius_frac)
 {
 	float fade = 1.0f;
@@ -362,11 +167,11 @@ static int build_instance_data(InstanceData *out, float brightness_boost,
 			/* Tangent direction (counterclockwise = +PI/2) */
 			float tangent_angle = ghost_angle + (float)M_PI * 0.5f;
 
-			InstanceData *inst = &out[count++];
+			ParticleInstanceData *inst = &out[count++];
 			inst->x = px;
 			inst->y = py;
 			inst->size = bl->size;
-			inst->rotation = tangent_angle;
+			inst->rotation = tangent_angle * (180.0f / (float)M_PI);
 			inst->stretch = 1.5f;
 			inst->r = cr * brightness_boost;
 			inst->g = cg * brightness_boost;
@@ -389,7 +194,6 @@ void Sub_Gravwell_initialize(void)
 	durationMs = 0;
 	cooldownMs = 0;
 	animTimer = 0.0f;
-	gwGLInitialized = false;
 	cachedCursorWorld.x = 0.0;
 	cachedCursorWorld.y = 0.0;
 
@@ -404,7 +208,7 @@ void Sub_Gravwell_cleanup(void)
 {
 	wellActive = false;
 	cooldownMs = 0;
-	gw_cleanup_gl();
+	ParticleInstance_cleanup();
 	Audio_unload_sample(&samplePlace);
 	Audio_unload_sample(&sampleExpire);
 }
@@ -516,8 +320,6 @@ void Sub_Gravwell_render(void)
 	if (!wellActive)
 		return;
 
-	gw_init_gl();
-
 	float fade = 1.0f;
 	if (durationMs < FADE_MS)
 		fade = (float)durationMs / FADE_MS;
@@ -538,15 +340,13 @@ void Sub_Gravwell_render(void)
 	int count = build_instance_data(instanceData, 1.0f, 0.0f);
 
 	/* Draw instanced */
-	gw_draw_instanced(instanceData, count, &world_proj, &view);
+	ParticleInstance_draw(instanceData, count, &world_proj, &view, true);
 }
 
 void Sub_Gravwell_render_bloom_source(void)
 {
 	if (!wellActive)
 		return;
-
-	gw_init_gl();
 
 	/* Flush pending batch geometry in the bloom FBO */
 	Mat4 world_proj = Graphics_get_world_projection();
@@ -557,7 +357,7 @@ void Sub_Gravwell_render_bloom_source(void)
 	/* Only outer blobs (radius_frac > 0.5) at 1.5x brightness for bloom */
 	int count = build_instance_data(instanceData, 1.5f, 0.5f);
 
-	gw_draw_instanced(instanceData, count, &world_proj, &view);
+	ParticleInstance_draw(instanceData, count, &world_proj, &view, true);
 }
 
 /* ================================================================
