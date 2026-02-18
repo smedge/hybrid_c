@@ -426,7 +426,8 @@ void Mode_Gameplay_render(void)
 	}
 
 	/* Map + grid render first (separate flush so lighting composites under entities) */
-	Entity_render_system();
+	Map_render(NULL, NULL);
+	Grid_render(NULL, NULL);
 	Render_flush(&world_proj, &view);
 
 	/* Cloud reflection on solid blocks (also writes stencil for lighting) */
@@ -461,9 +462,7 @@ void Mode_Gameplay_render(void)
 		MapLighting_render(draw_w, draw_h);
 	}
 
-	/* Entities render on top of lit map cells (map+grid skip since already drawn) */
-	Map_set_render_disabled(true);
-	Grid_set_render_disabled(true);
+	/* Entities render on top of lit map cells */
 	Portal_render_deactivated();
 	Entity_render_system();
 	Fragment_render();
@@ -472,8 +471,6 @@ void Mode_Gameplay_render(void)
 		god_mode_render_cursor();
 	}
 	Render_flush(&world_proj, &view);
-	Map_set_render_disabled(false);
-	Grid_set_render_disabled(false);
 
 	/* God mode labels (world-space text) */
 	if (godModeActive) {
@@ -504,7 +501,7 @@ void Mode_Gameplay_render(void)
 		Bloom *bloom = Graphics_get_bloom();
 
 		Bloom_begin_source(bloom);
-		Map_render(NULL, NULL);
+		Map_render_bloom_source();
 		Ship_render_bloom_source();
 		Mine_render_bloom_source();
 		Hunter_render_bloom_source();

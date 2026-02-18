@@ -17,8 +17,6 @@ static MapCell cellPool[CELL_POOL_SIZE];
 static int cellPoolCount = 0;
 
 static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
-static RenderableComponent renderable = {Map_render};
-static bool renderDisabled = false;
 static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false,
 	COLLISION_LAYER_TERRAIN, 0,
 	Map_collide};
@@ -97,7 +95,6 @@ static void initialize_map_entity(void)
 {
 	Entity entity = Entity_initialize_entity();
 	entity.placeable = &placeable;
-	entity.renderable = &renderable;
 	entity.collidable = &collidable;
 
 	Entity_add_entity(entity);
@@ -202,16 +199,12 @@ static bool cells_match_visual(const MapCell *a, const MapCell *b)
 		memcmp(&a->outlineColor, &b->outlineColor, sizeof(ColorRGB)) == 0;
 }
 
-void Map_set_render_disabled(bool disabled)
-{
-	renderDisabled = disabled;
-}
+static bool bloomSourceMode = false;
 
 void Map_render(const void *state, const PlaceableComponent *placeable)
 {
 	(void)state;
 	(void)placeable;
-	if (renderDisabled) return;
 
 	View view = View_get_view();
 	float outlineThickness = 2.0f / (float)view.scale;
@@ -367,6 +360,13 @@ void Map_render(const void *state, const PlaceableComponent *placeable)
 	for (int x = minX; x <= maxX; x++)
 		for (int y = minY; y <= maxY; y++)
 			render_cell(x, y, outlineThickness);
+}
+
+void Map_render_bloom_source(void)
+{
+	bloomSourceMode = true;
+	Map_render(NULL, NULL);
+	bloomSourceMode = false;
 }
 
 void Map_render_minimap(float center_x, float center_y,
@@ -805,7 +805,7 @@ static void render_cell(int x, int y, float outlineThickness)
 	}
 
 	/* Circuit board pattern */
-	if (mapCell.circuitPattern) {
+	if (!bloomSourceMode && mapCell.circuitPattern) {
 		View view = View_get_view();
 		if (view.scale >= 0.15) {
 			int adjN = !nPtr->empty;
