@@ -1,10 +1,5 @@
 #include "hunter.h"
 #include "enemy_util.h"
-#include "sub_pea.h"
-#include "sub_mgun.h"
-#include "sub_mine.h"
-#include "sub_inferno.h"
-#include "sub_disintegrate.h"
 #include "defender.h"
 #include "fragment.h"
 #include "progression.h"
@@ -344,10 +339,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 		/* Check aggro — requires line of sight and ship alive */
 		Position shipPos = Ship_get_position();
 		double dist = Enemy_distance_between(pl->position, shipPos);
-		bool nearbyShot = Sub_Pea_check_nearby(pl->position, 200.0)
-						|| Sub_Mgun_check_nearby(pl->position, 200.0)
-						|| Sub_Inferno_check_nearby(pl->position, 200.0)
-						|| Sub_Disintegrate_check_nearby(pl->position, 200.0);
+		bool nearbyShot = Enemy_check_any_nearby(pl->position, 200.0);
 		if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed() &&
 			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			h->aiState = HUNTER_CHASING;

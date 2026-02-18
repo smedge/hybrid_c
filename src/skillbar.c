@@ -300,6 +300,15 @@ void Skillbar_equip(int slot, SubroutineId id)
 	if (id < 0 || id >= SUB_ID_COUNT)
 		return;
 
+	SubroutineType new_type = sub_registry[id].type;
+
+	/* Check if the skill being replaced was active for the same type */
+	int old_id = slots[slot];
+	bool inherit_active = false;
+	if (old_id != SUB_NONE && sub_registry[old_id].type == new_type
+			&& active_sub[new_type] == old_id)
+		inherit_active = true;
+
 	/* Clear any existing slot that has this id to prevent duplicates */
 	for (int i = 0; i < SKILLBAR_SLOTS; i++) {
 		if (slots[i] == id)
@@ -311,14 +320,21 @@ void Skillbar_equip(int slot, SubroutineId id)
 		for (int i = 0; i < SKILLBAR_SLOTS; i++) {
 			if (slots[i] != SUB_NONE && sub_registry[slots[i]].elite) {
 				SubroutineType oldType = sub_registry[slots[i]].type;
-				if (active_sub[oldType] == slots[i])
+				if (active_sub[oldType] == slots[i]) {
+					if (oldType == new_type)
+						inherit_active = true;
 					active_sub[oldType] = SUB_NONE;
+				}
 				slots[i] = SUB_NONE;
 			}
 		}
 	}
 
 	slots[slot] = id;
+
+	/* Inherit active state from the displaced same-type skill */
+	if (inherit_active)
+		active_sub[new_type] = id;
 }
 
 void Skillbar_clear_slot(int slot)

@@ -1,16 +1,11 @@
 #include "defender.h"
 #include "enemy_util.h"
 #include "enemy_registry.h"
-#include "sub_pea.h"
-#include "sub_mgun.h"
-#include "sub_mine.h"
 #include "fragment.h"
 #include "progression.h"
 #include "player_stats.h"
 #include "ship.h"
 #include "sub_stealth.h"
-#include "sub_inferno.h"
-#include "sub_disintegrate.h"
 #include "view.h"
 #include "render.h"
 #include "color.h"
@@ -450,10 +445,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	/* In SUPPORTING, aegis is managed by the relay logic — don't preemptively pop */
 	if (d->alive && d->aiState != DEFENDER_DYING && d->aiState != DEFENDER_DEAD
 			&& d->aiState != DEFENDER_SUPPORTING) {
-		bool nearbyShot = Sub_Pea_check_nearby(pl->position, 200.0)
-						|| Sub_Mgun_check_nearby(pl->position, 200.0)
-						|| Sub_Inferno_check_nearby(pl->position, 200.0)
-						|| Sub_Disintegrate_check_nearby(pl->position, 200.0);
+		bool nearbyShot = Enemy_check_any_nearby(pl->position, 200.0);
 		if (nearbyShot && !Sub_Stealth_is_ambush_active())
 			activate_aegis(d);
 	}
@@ -484,10 +476,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		/* Check aggro — player proximity triggers awareness */
 		Position shipPos = Ship_get_position();
 		double dist = Enemy_distance_between(pl->position, shipPos);
-		bool nearbyShot = Sub_Pea_check_nearby(pl->position, 200.0)
-						|| Sub_Mgun_check_nearby(pl->position, 200.0)
-						|| Sub_Inferno_check_nearby(pl->position, 200.0)
-						|| Sub_Disintegrate_check_nearby(pl->position, 200.0);
+		bool nearbyShot = Enemy_check_any_nearby(pl->position, 200.0);
 		if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed() &&
 			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			d->aiState = DEFENDER_SUPPORTING;

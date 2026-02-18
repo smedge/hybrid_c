@@ -340,10 +340,10 @@ static void render_beam_blobs(float bloomBoost, float sizeBoost)
 
 		float size = BEAM_BLOB_BASE_SIZE * bp->sizeScale * pulseMul * sizeBoost;
 
-		/* Tip fade: last TIP_FADE_LENGTH units shrink + fade */
+		/* Tip fade: last TIP_FADE_LENGTH units shrink + fade (only at max range, not wall hits) */
 		float tipFade = 1.0f;
 		float tipDist = len - dist;
-		if (tipDist < TIP_FADE_LENGTH) {
+		if (!beamHitWall && tipDist < TIP_FADE_LENGTH) {
 			tipFade = tipDist / TIP_FADE_LENGTH;
 			/* Per-blob flicker near tip */
 			float flicker = 0.7f + 0.3f * sinf(

@@ -198,3 +198,21 @@ void Enemy_render_spark(Position sparkPosition, int sparkTicksLeft, int sparkDur
 	Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
 	Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
 }
+
+bool Enemy_check_any_nearby(Position pos, double radius)
+{
+	return Sub_Pea_check_nearby(pos, radius)
+		|| Sub_Mgun_check_nearby(pos, radius)
+		|| Sub_Inferno_check_nearby(pos, radius)
+		|| Sub_Disintegrate_check_nearby(pos, radius);
+}
+
+bool Enemy_check_any_hit(Rectangle hitBox)
+{
+	return Sub_Pea_check_hit(hitBox)
+		|| Sub_Mgun_check_hit(hitBox)
+		|| Sub_Mine_check_hit(hitBox)
+		|| Sub_Inferno_check_hit(hitBox)
+		|| Sub_Disintegrate_check_hit(hitBox)
+		|| Sub_Egress_check_hit(hitBox);
+}

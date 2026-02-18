@@ -35,4 +35,8 @@ void Enemy_pick_wander_target(Position spawnPoint, double radius, int baseInterv
 void Enemy_render_death_flash(const PlaceableComponent *pl, float deathTimer, float deathDuration);
 void Enemy_render_spark(Position sparkPosition, int sparkTicksLeft, int sparkDuration, float sparkSize, bool sparkShielded, float normalR, float normalG, float normalB);
 
+/* Centralized weapon proximity/hit checks — add new weapons here, not in enemy files */
+bool Enemy_check_any_nearby(Position pos, double radius);
+bool Enemy_check_any_hit(Rectangle hitBox);
+
 #endif

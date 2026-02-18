@@ -1,10 +1,5 @@
 #include "seeker.h"
 #include "enemy_util.h"
-#include "sub_pea.h"
-#include "sub_mgun.h"
-#include "sub_mine.h"
-#include "sub_inferno.h"
-#include "sub_disintegrate.h"
 #include "defender.h"
 #include "fragment.h"
 #include "progression.h"
@@ -320,10 +315,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		/* Check aggro */
 		Position shipPos = Ship_get_position();
 		double dist = Enemy_distance_between(pl->position, shipPos);
-		bool nearbyShot = Sub_Pea_check_nearby(pl->position, NEAR_MISS_RADIUS)
-						|| Sub_Mgun_check_nearby(pl->position, NEAR_MISS_RADIUS)
-						|| Sub_Inferno_check_nearby(pl->position, NEAR_MISS_RADIUS)
-						|| Sub_Disintegrate_check_nearby(pl->position, NEAR_MISS_RADIUS);
+		bool nearbyShot = Enemy_check_any_nearby(pl->position, NEAR_MISS_RADIUS);
 		if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed() &&
 			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			s->aiState = SEEKER_STALKING;

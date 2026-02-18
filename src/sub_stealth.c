@@ -158,7 +158,7 @@ bool Sub_Stealth_is_available(void)
 float Sub_Stealth_get_cooldown_fraction(void)
 {
 	if (state == STEALTH_ACTIVE)
-		return 1.0f;
+		return 0.0f;
 	if (state == STEALTH_COOLDOWN)
 		return (float)cooldownMs / COOLDOWN_MS;
 	/* Show blocked state when feedback > 0 */
