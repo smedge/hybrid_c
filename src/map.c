@@ -15,6 +15,7 @@ static MapCell boundaryCell = {true, false, {0,0,0,0}, {0,0,0,0}};
 static MapCell cellPool[CELL_POOL_SIZE];
 static int cellPoolCount = 0;
 
+static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 static RenderableComponent renderable = {Map_render};
 static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false,
 	COLLISION_LAYER_TERRAIN, 0,
@@ -93,6 +94,7 @@ void Map_clear_boundary_cell(void)
 static void initialize_map_entity(void)
 {
 	Entity entity = Entity_initialize_entity();
+	entity.placeable = &placeable;
 	entity.renderable = &renderable;
 	entity.collidable = &collidable;
 

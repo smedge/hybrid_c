@@ -21,7 +21,7 @@ This is a **living document** — updated whenever a skill is added, modified, o
 | sub_mine | Deployable | Normal | Instant | **6** | 10 | ~75 | 15/boom | -4 under. Area denial utility, not a DPS weapon. |
 | sub_boost | Movement | **Elite** | Toggle | **15** | 15 | — | 0 | At cap. Free unlimited speed. The mobility fantasy. |
 | sub_inferno | Projectile | **Elite** | Channel | **15** | 15 | ~1250 | 25/sec | At cap. Melts everything. Self-destructs in ~4s from feedback. |
-| sub_disintegrate | Projectile | **Elite** | Channel | **14** | 15 | ~1200 | 22/sec | -1 under. Precision laser. 2x range, carve speed drawback. |
+| sub_disintegrate | Projectile | **Elite** | Channel | **15** | 15 | ~1200 | 22/sec | At cap. Finger of god. 2x range, hitscan sweep erases groups. |
 | sub_stealth | Stealth | Normal | Instant | **7** | 10 | — | 0 (gated) | -3 under. Invisibility power exceeds point value. High skill ceiling. |
 | sub_egress | Movement | Normal | Instant | **10** | 10 | — | 25 | At cap. I-frames + 50 contact damage. Dodge-attack. |
 | sub_mend | Healing | Normal | Instant | **7** | 10 | — | 20 | -3 under. Burst heal + 3x regen boost for 5s. Rewards clean play. |
@@ -30,7 +30,7 @@ This is a **living document** — updated whenever a skill is added, modified, o
 **Key takeaways**:
 - **Normal weapons are honestly scored now**: pea and mgun at 7, mine at 6. The old system scored them at 10 by treating damage and fire rate as additive — but DPS is multiplicative. 100 DPS requiring precise aim against moving targets is NOT equivalent to 1250 DPS from a forgiving channeled beam. The 3-4 point gap below cap means these weapons have clear room for buffs.
 - **The DPS gap is real and properly captured**: 8 points between pea (7) and inferno (15) reflects the 12.5x DPS reality. The old 5-point gap (10 vs 15) was lying to us.
-- **Elites are properly differentiated**: boost (15), inferno (15), disintegrate (14). Three distinct fantasies — mobility, chaos, precision. Disintegrate pays for its 2x range with the carve speed tax.
+- **All three elites at cap (15)**: boost (mobility), inferno (close-range chaos), disintegrate (long-range precision). Three distinct fantasies, all equally devastating. Disintegrate's carve sweep isn't a drawback — it's the mechanic that makes it "finger of god" against groups.
 - **Defense/utility unchanged**: egress at cap (10) with i-frames + contact damage, mend at 7 with regen boost. Aegis (4) remains the outlier.
 - **Normal weapons need love**: pea, mgun, and mine all scoring well under cap is a signal. They either need buffs (more damage, faster fire rate, secondary effects) or the budget system confirms what playtesting shows — channeled elites outclass them by a wide margin.
 
@@ -570,7 +570,7 @@ The revised scoring makes the DPS gap crystal clear: inferno's Devastating DPS (
 ### sub_disintegrate — Projectile (Channel, Elite)
 
 #### Design Identity
-Precision channeled beam. A focused laser that carves through everything in its path — the sniper rifle to inferno's flamethrower. Double the range, deliberate sweep, clean pierce.
+Finger of god. A focused hitscan laser that carves through everything in its path — sweep it across a group and watch them evaporate. Double inferno's range, deliberate sweep, perfect pierce. The sniper cannon to inferno's flamethrower.
 
 #### Stat Block
 | Attribute | Value |
@@ -584,11 +584,11 @@ Precision channeled beam. A focused laser that carves through everything in its 
 | Range | 2600 units |
 | Collision width | 24 units (12 half-width) |
 | Carve speed | 120°/sec max rotation (snaps on first frame) |
-| Piercing | Yes — beam hits all enemies on the line simultaneously |
-| Wall collision | Beam terminates at wall impact |
+| Piercing | Yes — hitscan beam hits all enemies on the line simultaneously |
+| Wall collision | Beam terminates at wall impact (with particle splash) |
 | Stealth interaction | Breaks stealth on first frame (with ambush bonus) |
 | Sustain window | ~4.5s before feedback spillover (at 0 initial feedback) |
-| Visual | 3-layer beam (purple glow → light purple → white-hot core) with dedicated bloom FBO |
+| Visual | Blob particle beam (purple glow → light purple → white-hot core) with dedicated bloom FBO, wall splash particles |
 
 #### Score Card
 | Attribute | Value | Tier | Points |
@@ -597,38 +597,39 @@ Precision channeled beam. A focused laser that carves through everything in its 
 | Effective DPS | ~1200 (20 dmg × 60fps) | Devastating | +5 |
 | Range | 2600 units | Long | +3 |
 | Duration/Uptime | Unlimited (while held) | Unlimited | +4 |
-| Piercing | Beam hits all enemies on line | Modifier | +1 |
+| Piercing | Hitscan beam — all enemies on line take full damage simultaneously | Modifier | +1 |
 | Full control during | Can move + aim freely | Modifier | +1 |
 | Targeting | Beam is forgiving once on target | Forgiving | 0 |
-| Carve speed limit | 120°/sec max rotation, can't snap to new targets | Drawback | -1 |
-| **TOTAL** | | | **14** |
+| **TOTAL** | | | **15** |
 
 #### Balance Notes
-Sub_disintegrate is the third elite and the game's second channeled weapon. At budget 14 it sits 1 under elite cap (15) — the carve speed drawback costs it a point vs boost and inferno. This is appropriate: disintegrate is powerful but has a meaningful aiming restriction that neither of them share.
+Sub_disintegrate is the third elite and the game's second channeled weapon. At budget 15 it sits right at elite cap — equal to boost and inferno. All three elites deliver different power fantasies at the same budget: unlimited mobility, close-range chaos, long-range annihilation.
+
+**Why the carve speed is NOT a drawback**: The previous scoring penalized the 120°/sec carve limit at -1, treating it as a restriction vs inferno's instant aim. Playtesting revealed the opposite — the carve sweep IS what makes disintegrate devastating. Sweeping the beam through a group of enemies means every single one on the line takes full 1200 DPS simultaneously. The carve isn't a limitation, it's the mechanic that turns "single-target laser" into "finger of god erasing swaths of enemies." Against 4 enemies in a line, that's 4800 effective group DPS. Inferno's blob scatter means far less consistent multi-target damage.
 
 **Comparison to sub_inferno**: Both are channeled projectile elites (mutually exclusive). The design identity split:
-- **Inferno**: close-range chaos. ±5° spray, 1250 DPS, 1250 unit range, instant aim. The flamethrower — point in their general direction and melt.
-- **Disintegrate**: long-range precision. Zero-width beam, 1200 DPS, 2600 unit range, 120°/sec carve. The laser cannon — rewards deliberate sweeping and positioning.
+- **Inferno**: close-range chaos. ±5° spray, 1250 DPS, 1250 unit range, instant aim. The flamethrower — get in their face and melt everything. Devastating at close range, blobs scatter and dilute at distance.
+- **Disintegrate**: long-range precision. Hitscan beam, 1200 DPS, 2600 unit range, 120°/sec carve. Finger of god — erase enemies from across the map. Perfect pierce means every target on the line takes full damage. Sweep clears corridors.
 
-The DPS is comparable (~1200 vs ~1250) but the delivery is opposite. Inferno's spread means partial hits are common — blobs scatter across the target. Disintegrate is all-or-nothing: the beam is either on target (full 1200 DPS) or it's not (zero). The carve speed means you can't flick between targets like inferno's instant aim — sweeping from one enemy to another takes real time, during which you're dealing zero damage to either.
+**The range gap is massive**: 2600 vs 1250 means disintegrate engages enemies before they can even aggro. You can sweep a corridor clean from complete safety. Inferno has to close to half that distance, putting you in danger. This alone justifies equal scoring despite slightly lower raw DPS.
 
-**The carve speed tax**: 120°/sec means a 180° turn takes 1.5 seconds. An enemy that flanks you is safe for nearly a second while you carve toward them. Inferno would be hitting them instantly. This is the key balance lever — disintegrate's superior range (2x inferno) is paid for by the inability to snap to threats.
+**Hitscan vs projectile**: Disintegrate's damage is instant along the entire beam. Inferno's blobs travel at 2500 units/sec — at max range (1250 units), there's 500ms of travel time. Against moving targets at range, disintegrate's hitscan is categorically more reliable.
 
-**Sustain advantage**: At 22 feedback/sec vs inferno's 25, disintegrate reaches spillover in ~4.5s vs ~4s. Half a second more channel time. Marginal, but over repeated burst-and-recover cycles it adds up.
+**Pierce quality**: Both pierce, but disintegrate's is far more effective. Inferno blobs spread ±5°, so at range they scatter across and between targets. Disintegrate's beam is a perfect line — if 5 enemies are lined up, all 5 take full 1200 DPS simultaneously. The effective group DPS scales linearly with targets in the beam path.
 
-**Pierce vs splash**: Both pierce. But inferno's blob spread means pierce is somewhat redundant (blobs naturally scatter). Disintegrate's pierce is meaningful — a line of enemies all take full damage simultaneously. Against clustered groups, disintegrate rewards positioning the beam through maximum targets.
+**Sustain advantage**: At 22 feedback/sec vs inferno's 25, disintegrate reaches spillover in ~4.5s vs ~4s. Half a second more channel time. Marginal per burst, but over repeated burst-and-recover cycles it adds up.
 
-**Stealth synergy**: 5x ambush multiplier on beam = 100 damage per frame for 1s = 6000 DPS. Comparable to inferno's ambush (6250 DPS). But disintegrate's precision means every frame of the ambush window hits at full power — no wasted blobs scattering past the target.
+**Stealth synergy**: 5x ambush multiplier on beam = 100 damage per frame for 1s = 6000 DPS. Comparable to inferno's ambush (6250 DPS). But disintegrate's hitscan means every frame of the ambush window hits at full power — no wasted blobs scattering past the target.
 
 **Scoring notes**:
-- Carve speed scored at -1 because it's a genuine aiming restriction with no equivalent in inferno. You can't panic-flick to a new threat. This keeps it at cap (14) instead of over (15).
-- Range scored at +3 (Long) for 2600 units — double inferno's range. This is the primary selling point vs inferno.
-- Damage scored at +1 (Low per frame) consistent with inferno's per-blob scoring. The fire rate is captured by the +4 cooldown score.
+- Carve speed no longer scored as a drawback. The sweep mechanic is the skill's primary power against groups — penalizing it was like penalizing inferno for having spread. Both are aiming styles, not limitations.
+- Range scored at +3 (Long) for 2600 units. Both disintegrate and inferno score Long, but the 2x range gap is captured qualitatively in the balance notes — it's a massive practical advantage that the point system's bucketing underrepresents.
+- Hitscan pierce is qualitatively superior to projectile pierce. Both score +1, but disintegrate's perfect-line simultaneous damage vs inferno's scattered blob hits is a real gap the modifier doesn't fully capture.
 
 **Potential concerns**:
-- 2600 range may allow engaging enemies before they aggro. If this trivializes patrol encounters, consider reducing range or adding a minimum engagement distance before beam deals full damage.
-- Full pierce + 2600 range means a well-positioned beam could hit 4-5 enemies simultaneously. Monitor for encounter-trivializing sweep patterns.
-- The carve speed may feel sluggish to players accustomed to inferno's instant aim. This is intentional — disintegrate rewards prediction and positioning, not twitch aim. But if it feels BAD rather than DIFFERENT, consider bumping to 150°/sec.
+- 2600 range allows engaging enemies before they aggro. This is a feature, not a bug — it's the elite fantasy. If it trivializes patrol encounters, the answer is encounter design (flanking spawns, ambush triggers) not nerfing the beam.
+- Full hitscan pierce + 2600 range + carve sweep means a single sweep can delete an entire group. Monitor for encounter-trivializing patterns, but this is intended to feel godlike — it's an elite.
+- The carve speed creates counterplay: enemies that flank or scatter force the player to choose targets, and a 180° turn takes 1.5s. Fast enemies (seekers) can exploit this window.
 
 ---
 
@@ -641,7 +642,7 @@ The DPS is comparable (~1200 vs ~1250) but the delivery is opposite. Inferno's s
 | sub_mine | Instant | Normal | 6 | 10 | -4 under (area denial utility, unreliable DPS) |
 | sub_boost | Toggle | Elite | 15 | 15 | At cap (elite flagship) |
 | sub_inferno | Channel | Elite | 15 | 15 | At cap (elite flagship) |
-| sub_disintegrate | Channel | Elite | 14 | 15 | -1 under (carve speed drawback) |
+| sub_disintegrate | Channel | Elite | 15 | 15 | At cap (finger of god — hitscan sweep) |
 | sub_stealth | Instant | Normal | 7 | 10 | -3 under (invisibility may exceed point value) |
 | sub_egress | Instant | Normal | 10 | 10 | At cap (i-frames + contact damage) |
 | sub_mend | Instant | Normal | 7 | 10 | -3 under (burst heal + 3x regen boost) |
@@ -655,7 +656,7 @@ The DPS is comparable (~1200 vs ~1250) but the delivery is opposite. Inferno's s
 
 3. **Normal weapons have room to grow**: Pea and mgun at 7/10 have 3 points of budget room. Mine at 6/10 has 4 points. This is actionable design information — these weapons can be buffed without exceeding their tier cap. Options include: damage increases, fire rate buffs, secondary effects (slow, armor shred, ricochet), or targeting improvements (slight homing, wider hitbox).
 
-4. **Elites are properly differentiated**: Boost and inferno at 15 (cap), disintegrate at 14 (-1). Three distinct fantasies — unlimited mobility, close-range chaos, precision long-range. The one-elite-per-bar exclusivity makes this a defining build choice.
+4. **All three elites at cap**: Boost, inferno, and disintegrate all score 15. Three distinct fantasies — unlimited mobility, close-range chaos, long-range annihilation. The one-elite-per-bar exclusivity makes this a defining build choice. Disintegrate's carve sweep is a power mechanic, not a drawback — it's what turns a laser into finger of god against groups.
 
 5. **Egress is the only normal skill at cap**: At 10/10, egress earns its budget with a unique combination of defensive (i-frames) and offensive (50 contact damage) utility. It's the gold standard for what a well-designed normal skill looks like at cap.
 

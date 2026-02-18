@@ -154,7 +154,10 @@ void Ship_resolve(void *state, const Collision collision)
 
 	if (collision.solid)
 	{
-		PlayerStats_wall_kill();
+		/* Walls kill unconditionally — strip defenses before force_kill */
+		PlayerStats_set_iframes(0);
+		PlayerStats_set_shielded(false);
+		PlayerStats_force_kill();
 	}
 }
 

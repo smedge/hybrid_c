@@ -11,6 +11,7 @@ void Sub_Disintegrate_update(const Input *userInput, unsigned int ticks, Placeab
 void Sub_Disintegrate_render(void);
 void Sub_Disintegrate_render_bloom_source(void);
 bool Sub_Disintegrate_check_hit(Rectangle target);
+bool Sub_Disintegrate_check_nearby(Position pos, double radius);
 void Sub_Disintegrate_deactivate_all(void);
 float Sub_Disintegrate_get_cooldown_fraction(void);
 

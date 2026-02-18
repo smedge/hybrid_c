@@ -433,6 +433,32 @@ bool Sub_Disintegrate_check_hit(Rectangle target)
 	return dist < (BEAM_HALF_WIDTH + targetHalfSize);
 }
 
+bool Sub_Disintegrate_check_nearby(Position pos, double radius)
+{
+	if (!channeling || beamLength < 1.0)
+		return false;
+
+	/* Point-to-line-segment distance: pos vs beam centerline */
+	double ax = beamStart.x, ay = beamStart.y;
+	double bx = beamEnd.x,   by = beamEnd.y;
+	double abx = bx - ax, aby = by - ay;
+	double acx = pos.x - ax, acy = pos.y - ay;
+
+	double ab2 = abx * abx + aby * aby;
+	if (ab2 < 0.001) return false;
+
+	double t = (acx * abx + acy * aby) / ab2;
+	if (t < 0.0) t = 0.0;
+	if (t > 1.0) t = 1.0;
+
+	double closestX = ax + abx * t;
+	double closestY = ay + aby * t;
+	double dx = pos.x - closestX;
+	double dy = pos.y - closestY;
+
+	return (dx * dx + dy * dy) < (radius * radius);
+}
+
 void Sub_Disintegrate_deactivate_all(void)
 {
 	channeling = false;

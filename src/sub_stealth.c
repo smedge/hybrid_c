@@ -126,7 +126,8 @@ void Sub_Stealth_break_attack(void)
 
 double Sub_Stealth_get_damage_multiplier(double distance)
 {
-	if (ambushMs > 0 && distance <= AMBUSH_RANGE)
+	(void)distance;
+	if (ambushMs > 0)
 		return AMBUSH_MULTIPLIER;
 	return 1.0;
 }
