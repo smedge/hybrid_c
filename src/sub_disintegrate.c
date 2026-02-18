@@ -36,12 +36,32 @@
 #define TIP_FADE_LENGTH     120.0f    /* world units for tip dissipation */
 #define TIP_FLICKER_SPEED   25.0f
 
+/* --- Wall splash particles --- */
+#define SPLASH_COUNT        64
+#define SPLASH_SPAWN_MS     8       /* spawn interval (~125/sec while hitting wall) */
+#define SPLASH_TTL_BASE     200     /* base lifetime ms */
+#define SPLASH_TTL_VARY     100     /* ±random variation */
+#define SPLASH_SPEED        900.0   /* units/sec outward */
+#define SPLASH_BASE_SIZE    13.0f
+#define SPLASH_SPREAD_DEG   200.0   /* wide cone — wraps around impact point */
+
 typedef struct {
 	float rotation;
 	float sizeScale;      /* 0.7 - 1.3 */
 	bool mirror;
 	float lateralOffset;  /* ±LATERAL_JITTER_MAX perpendicular to beam */
 } BlobProp;
+
+typedef struct {
+	bool active;
+	Position position;
+	double vx, vy;
+	int age;
+	int ttl;
+	float rotation;
+	float sizeScale;
+	bool mirror;
+} SplashParticle;
 
 static Entity *parent;
 static bool channeling;
@@ -55,6 +75,10 @@ static int soundTimer;
 static BlobProp blobProps[BEAM_BLOB_COUNT];
 static float beamScrollOffset;
 static float widthPulseTimer;
+
+static SplashParticle splash[SPLASH_COUNT]; /* 64 */
+static bool beamHitWall;
+static int splashSpawnTimer;
 
 static Mix_Chunk *sampleFire = 0;
 
@@ -82,6 +106,10 @@ void Sub_Disintegrate_initialize(Entity *p)
 	soundTimer = 0;
 	beamScrollOffset = 0.0f;
 	widthPulseTimer = 0.0f;
+	beamHitWall = false;
+	splashSpawnTimer = 0;
+	for (int i = 0; i < SPLASH_COUNT; i++)
+		splash[i].active = false;
 
 	/* Pre-generate random visual properties for each blob slot */
 	for (int i = 0; i < BEAM_BLOB_COUNT; i++) {
@@ -154,7 +182,8 @@ void Sub_Disintegrate_update(const Input *userInput, unsigned int ticks, Placeab
 		double endY = placeable->position.y + dy * BEAM_MAX_RANGE;
 
 		double hx, hy;
-		if (Map_line_test_hit(beamStart.x, beamStart.y, endX, endY, &hx, &hy)) {
+		beamHitWall = Map_line_test_hit(beamStart.x, beamStart.y, endX, endY, &hx, &hy);
+		if (beamHitWall) {
 			beamEnd.x = hx;
 			beamEnd.y = hy;
 		} else {
@@ -171,13 +200,109 @@ void Sub_Disintegrate_update(const Input *userInput, unsigned int ticks, Placeab
 		widthPulseTimer += (float)(dt * WIDTH_PULSE_SPEED);
 		if (widthPulseTimer > 2.0f * (float)M_PI)
 			widthPulseTimer -= 2.0f * (float)M_PI;
+
+		/* Spawn splash particles when beam hits a wall */
+		if (beamHitWall) {
+			splashSpawnTimer -= (int)ticks;
+			while (splashSpawnTimer <= 0) {
+				splashSpawnTimer += SPLASH_SPAWN_MS;
+
+				/* Find inactive slot or recycle oldest */
+				int slot = -1;
+				for (int si = 0; si < SPLASH_COUNT; si++) {
+					if (!splash[si].active) { slot = si; break; }
+				}
+				if (slot < 0) {
+					int oldest = 0;
+					for (int si = 1; si < SPLASH_COUNT; si++) {
+						if (splash[si].age > splash[oldest].age)
+							oldest = si;
+					}
+					slot = oldest;
+				}
+
+				SplashParticle *sp = &splash[slot];
+				sp->active = true;
+				sp->age = 0;
+				sp->ttl = SPLASH_TTL_BASE
+					+ (rand() % (SPLASH_TTL_VARY * 2 + 1)) - SPLASH_TTL_VARY;
+				if (sp->ttl < 50) sp->ttl = 50;
+				sp->position = beamEnd;
+
+				/* Spray in a cone away from beam direction */
+				double reverseAngle = beamAngle + 180.0;
+				double spread = ((rand() % 1000) / 1000.0 - 0.5)
+					* SPLASH_SPREAD_DEG;
+				double sprayRad = deg_to_rad(reverseAngle + spread);
+				double spd = SPLASH_SPEED * (0.5 + (rand() % 1000) / 1000.0);
+				sp->vx = sin(sprayRad) * spd;
+				sp->vy = cos(sprayRad) * spd;
+
+				sp->rotation = (float)(rand() % 360);
+				sp->sizeScale = 0.6f + (float)(rand() % 800) / 1000.0f;
+				sp->mirror = (rand() % 2) == 0;
+			}
+		} else {
+			splashSpawnTimer = 0;
+		}
 	} else {
 		soundTimer = 0;
 		beamLength = 0.0;
+		beamHitWall = false;
+	}
+
+	/* Update splash particles (even when not channeling — let existing ones fade) */
+	for (int i = 0; i < SPLASH_COUNT; i++) {
+		SplashParticle *sp = &splash[i];
+		if (!sp->active) continue;
+		sp->age += ticks;
+		if (sp->age > sp->ttl) {
+			sp->active = false;
+			continue;
+		}
+		sp->position.x += sp->vx * dt;
+		sp->position.y += sp->vy * dt;
 	}
 
 	wasChanneling = channeling;
 
+}
+
+/* Render splash particles at beam impact point */
+static void render_splash(float bloomBoost)
+{
+	for (int i = 0; i < SPLASH_COUNT; i++) {
+		SplashParticle *sp = &splash[i];
+		if (!sp->active) continue;
+
+		float t = (float)sp->age / (float)sp->ttl; /* 0 = young, 1 = dead */
+		float fade = 1.0f - t;
+		if (fade <= 0.01f) continue;
+
+		float size = SPLASH_BASE_SIZE * sp->sizeScale * (1.0f - t * 0.3f);
+		float angle2 = sp->mirror ? sp->rotation - 55.0f : sp->rotation + 55.0f;
+
+		/* Purple outer — big and hot */
+		float outerSz = size * 1.6f;
+		Rectangle outerRect = {-outerSz, outerSz, outerSz, -outerSz};
+		ColorFloat outerColor = {0.6f * bloomBoost, 0.2f * bloomBoost,
+			0.9f * bloomBoost, 0.4f * fade};
+		Render_quad(&sp->position, sp->rotation, outerRect, &outerColor);
+
+		/* Light purple mid */
+		float midSz = size * 0.85f;
+		Rectangle midRect = {-midSz, midSz, midSz, -midSz};
+		ColorFloat midColor = {0.8f * bloomBoost, 0.5f * bloomBoost,
+			1.0f * bloomBoost, 0.8f * fade};
+		Render_quad(&sp->position, angle2, midRect, &midColor);
+
+		/* White-hot core */
+		float coreSz = size * 0.4f;
+		Rectangle coreRect = {-coreSz, coreSz, coreSz, -coreSz};
+		ColorFloat coreColor = {1.0f * bloomBoost, 0.95f * bloomBoost,
+			1.0f * bloomBoost, 0.95f * fade};
+		Render_quad(&sp->position, sp->rotation + 22.5f, coreRect, &coreColor);
+	}
 }
 
 /* Shared blob rendering logic used by both render and bloom source.
@@ -260,16 +385,16 @@ static void render_beam_blobs(float bloomBoost, float sizeBoost)
 
 void Sub_Disintegrate_render(void)
 {
-	if (!channeling || beamLength < 1.0)
-		return;
-	render_beam_blobs(1.0f, 1.0f);
+	if (channeling && beamLength >= 1.0)
+		render_beam_blobs(1.0f, 1.0f);
+	render_splash(1.0f);
 }
 
 void Sub_Disintegrate_render_bloom_source(void)
 {
-	if (!channeling || beamLength < 1.0)
-		return;
-	render_beam_blobs(1.5f, 1.2f);
+	if (channeling && beamLength >= 1.0)
+		render_beam_blobs(1.5f, 1.2f);
+	render_splash(1.5f);
 }
 
 bool Sub_Disintegrate_check_hit(Rectangle target)
@@ -313,6 +438,9 @@ void Sub_Disintegrate_deactivate_all(void)
 	channeling = false;
 	wasChanneling = false;
 	beamLength = 0.0;
+	beamHitWall = false;
+	for (int i = 0; i < SPLASH_COUNT; i++)
+		splash[i].active = false;
 }
 
 float Sub_Disintegrate_get_cooldown_fraction(void)
