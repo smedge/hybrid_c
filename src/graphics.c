@@ -11,6 +11,7 @@ static TextRenderer text_renderer;
 static TextRenderer title_text_renderer;
 static Bloom bloom;
 static Bloom bg_bloom;
+static Bloom disint_bloom;
 
 static void create_window(void);
 static void create_fullscreen_window(void);
@@ -34,6 +35,7 @@ void Graphics_initialize(void)
 
 void Graphics_cleanup(void)
 {
+	Bloom_cleanup(&disint_bloom);
 	Bloom_cleanup(&bg_bloom);
 	Bloom_cleanup(&bloom);
 	Text_cleanup(&title_text_renderer);
@@ -54,6 +56,7 @@ void Graphics_resize_window(const unsigned int width,
 	glViewport(0, 0, draw_w, draw_h);
 	Bloom_resize(&bloom, draw_w, draw_h);
 	Bloom_resize(&bg_bloom, draw_w, draw_h);
+	Bloom_resize(&disint_bloom, draw_w, draw_h);
 }
 
 void Graphics_toggle_fullscreen(void)
@@ -118,6 +121,11 @@ Bloom *Graphics_get_bloom(void)
 Bloom *Graphics_get_bg_bloom(void)
 {
 	return &bg_bloom;
+}
+
+Bloom *Graphics_get_disint_bloom(void)
+{
+	return &disint_bloom;
 }
 
 void Graphics_get_drawable_size(int *w, int *h)
@@ -189,6 +197,11 @@ static void initialize_gl(void)
 	bg_bloom.intensity = 2.5f;
 	bg_bloom.blur_passes = 20;
 	Bloom_resize(&bg_bloom, draw_w, draw_h);
+	Bloom_initialize(&disint_bloom, draw_w, draw_h);
+	disint_bloom.divisor = 2;
+	disint_bloom.intensity = 3.0f;
+	disint_bloom.blur_passes = 7;
+	Bloom_resize(&disint_bloom, draw_w, draw_h);
 }
 
 static void destroy_window(void)

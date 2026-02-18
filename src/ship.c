@@ -10,6 +10,7 @@
 #include "sub_aegis.h"
 #include "sub_stealth.h"
 #include "sub_inferno.h"
+#include "sub_disintegrate.h"
 #include "color.h"
 #include "shipstate.h"
 #include "audio.h"
@@ -103,6 +104,7 @@ void Ship_initialize()
 	Sub_Aegis_initialize();
 	Sub_Stealth_initialize();
 	Sub_Inferno_initialize(liveEntity);
+	Sub_Disintegrate_initialize(liveEntity);
 }
 
 void Ship_cleanup()
@@ -116,6 +118,7 @@ void Ship_cleanup()
 	Sub_Aegis_cleanup();
 	Sub_Stealth_cleanup();
 	Sub_Inferno_cleanup();
+	Sub_Disintegrate_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -151,7 +154,7 @@ void Ship_resolve(void *state, const Collision collision)
 
 	if (collision.solid)
 	{
-		PlayerStats_force_kill();
+		PlayerStats_wall_kill();
 	}
 }
 
@@ -302,6 +305,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 	Sub_Aegis_update(userInput, ticks);
 	Sub_Stealth_update(ticks);
 	Sub_Inferno_update(userInput, ticks, placeable);
+	Sub_Disintegrate_update(userInput, ticks, placeable);
 }
 
 void Ship_render(const void *state, const PlaceableComponent *placeable)
@@ -349,6 +353,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Mine_render();
 	Sub_Aegis_render();
 	Sub_Inferno_render();
+	Sub_Disintegrate_render();
 }
 
 void Ship_render_bloom_source(void)
@@ -382,6 +387,7 @@ void Ship_render_bloom_source(void)
 	Sub_Mgun_render_bloom_source();
 	Sub_Mine_render_bloom_source();
 	Sub_Inferno_render_bloom_source();
+	/* Sub_Disintegrate has its own dedicated FBO bloom pass in mode_gameplay */
 }
 
 Position Ship_get_position()

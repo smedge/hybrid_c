@@ -31,6 +31,7 @@ static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_AEGIS]  = { "AEGIS",  "sub_aegis",  FRAG_TYPE_AEGIS,  5, false },
 	[SUB_ID_STEALTH] = { "STEALTH", "sub_stealth", FRAG_TYPE_MINE, 0, false },
 	[SUB_ID_INFERNO] = { "INFERNO", "sub_inferno", FRAG_TYPE_MINE, 0, false },
+	[SUB_ID_DISINTEGRATE] = { "DISINTEGRATE", "sub_disintegrate", FRAG_TYPE_MINE, 0, false },
 };
 
 /* Notification state */

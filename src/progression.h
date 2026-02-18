@@ -15,6 +15,7 @@ typedef enum {
 	SUB_ID_AEGIS,
 	SUB_ID_STEALTH,
 	SUB_ID_INFERNO,
+	SUB_ID_DISINTEGRATE,
 	SUB_ID_COUNT
 } SubroutineId;
 

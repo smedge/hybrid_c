@@ -318,6 +318,13 @@ void PlayerStats_force_kill(void)
 	timeSinceLastDamage = 0;
 }
 
+void PlayerStats_wall_kill(void)
+{
+	/* Walls kill unconditionally — no i-frames, no shields */
+	integrity = 0.0;
+	timeSinceLastDamage = 0;
+}
+
 void PlayerStats_heal(double amount)
 {
 	integrity += amount;

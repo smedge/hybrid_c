@@ -32,6 +32,7 @@ typedef struct {
 	Position prevPosition;
 	double vx, vy;
 	int age;
+	int ttl;            /* per-blob lifetime (randomized around BLOB_TTL) */
 	float rotation;     /* random orientation per blob */
 	float sizeScale;    /* random size variation 0.7 - 1.3 */
 	bool mirror;        /* flip secondary quad angle */
@@ -87,7 +88,7 @@ static void blob_color(float t, float *r, float *g, float *b, float *a)
 
 static void render_blob(const Blob *bl)
 {
-	float t = (float)bl->age / BLOB_TTL;
+	float t = (float)bl->age / bl->ttl;
 	float r, g, b, a;
 	blob_color(t, &r, &g, &b, &a);
 	if (a <= 0.01f) return;
@@ -108,7 +109,7 @@ static void render_blob(const Blob *bl)
 
 static void render_blob_bloom(const Blob *bl)
 {
-	float t = (float)bl->age / BLOB_TTL;
+	float t = (float)bl->age / bl->ttl;
 	float r, g, b, a;
 	blob_color(t, &r, &g, &b, &a);
 	if (a <= 0.01f) return;
@@ -204,11 +205,16 @@ void Sub_Inferno_update(const Input *userInput, unsigned int ticks, PlaceableCom
 			bl->position = placeable->position;
 			bl->prevPosition = bl->position;
 
+			/* Per-blob TTL: ±30% of base so blobs expire at staggered distances */
+			bl->ttl = BLOB_TTL + (rand() % (BLOB_TTL * 6 / 10)) - BLOB_TTL * 3 / 10;
+
 			/* Spread: random offset ±SPREAD_DEGREES */
 			double spread = ((rand() % 1000) / 1000.0 - 0.5) * 2.0 * SPREAD_DEGREES;
 			double rad = get_radians(heading + spread);
-			bl->vx = sin(rad) * BLOB_SPEED;
-			bl->vy = cos(rad) * BLOB_SPEED;
+			/* Speed variation: ±15% so blobs don't travel in lockstep */
+			double speed = BLOB_SPEED * (0.85 + (rand() % 300) / 1000.0);
+			bl->vx = sin(rad) * speed;
+			bl->vy = cos(rad) * speed;
 
 			/* Random visual properties */
 			bl->rotation = (float)(rand() % 360);
@@ -229,7 +235,7 @@ void Sub_Inferno_update(const Input *userInput, unsigned int ticks, PlaceableCom
 			continue;
 
 		bl->age += ticks;
-		if (bl->age > BLOB_TTL) {
+		if (bl->age > bl->ttl) {
 			bl->active = false;
 			continue;
 		}

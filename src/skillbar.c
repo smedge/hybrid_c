@@ -12,6 +12,7 @@
 #include "sub_aegis.h"
 #include "sub_stealth.h"
 #include "sub_inferno.h"
+#include "sub_disintegrate.h"
 
 #include <math.h>
 #ifndef M_PI
@@ -52,6 +53,8 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Cloak. Undetectable until you attack. 15s cooldown.", false },
 	[SUB_ID_INFERNO] = { SUB_ID_INFERNO, SUB_TYPE_PROJECTILE, "sub_inferno", "INFERNO",
 		"Channel a devastating beam of fire. Melts everything.", true },
+	[SUB_ID_DISINTEGRATE] = { SUB_ID_DISINTEGRATE, SUB_TYPE_PROJECTILE, "sub_disintegrate", "DISINT",
+		"Precision beam. Carves through all targets in its path.", true },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -448,6 +451,19 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Render_filled_circle(cx, cy, 3.0f, 6, 1.0f, 1.0f, 0.7f, alpha);
 		break;
 	}
+	case SUB_ID_DISINTEGRATE: {
+		/* Converging lines → focus point → beam extending right */
+		float t = 1.5f;
+		/* Converging purple lines from left */
+		Render_thick_line(cx - 10, cy - 6, cx - 2, cy, t, 0.6f, 0.2f, 0.9f, alpha);
+		Render_thick_line(cx - 10, cy + 6, cx - 2, cy, t, 0.6f, 0.2f, 0.9f, alpha);
+		/* White focus point */
+		Render_filled_circle(cx - 2, cy, 2.5f, 6, 1.0f, 0.95f, 1.0f, alpha);
+		/* Beam extending right — purple to white */
+		Render_thick_line(cx - 2, cy, cx + 10, cy, 3.0f, 0.8f, 0.5f, 1.0f, alpha * 0.7f);
+		Render_thick_line(cx - 2, cy, cx + 10, cy, 1.5f, 1.0f, 0.95f, 1.0f, alpha);
+		break;
+	}
 	default:
 		break;
 	}
@@ -465,6 +481,7 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_AEGIS:  return Sub_Aegis_get_cooldown_fraction();
 	case SUB_ID_STEALTH: return Sub_Stealth_get_cooldown_fraction();
 	case SUB_ID_INFERNO: return Sub_Inferno_get_cooldown_fraction();
+	case SUB_ID_DISINTEGRATE: return Sub_Disintegrate_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

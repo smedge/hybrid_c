@@ -16,6 +16,7 @@
 #include "seeker.h"
 #include "defender.h"
 #include "sub_aegis.h"
+#include "sub_disintegrate.h"
 #include "savepoint.h"
 #include "portal.h"
 #include "fragment.h"
@@ -433,6 +434,21 @@ void Mode_Gameplay_render(void)
 		god_mode_render_spawn_labels();
 		Portal_render_god_labels();
 		Savepoint_render_god_labels();
+	}
+
+	/* Disintegrate bloom pass (dedicated purple FBO) */
+	{
+		int draw_w, draw_h;
+		Graphics_get_drawable_size(&draw_w, &draw_h);
+		Bloom *disint_bloom = Graphics_get_disint_bloom();
+
+		Bloom_begin_source(disint_bloom);
+		Sub_Disintegrate_render_bloom_source();
+		Render_flush(&world_proj, &view);
+		Bloom_end_source(disint_bloom, draw_w, draw_h);
+
+		Bloom_blur(disint_bloom);
+		Bloom_composite(disint_bloom, draw_w, draw_h);
 	}
 
 	/* FBO bloom pass */
