@@ -11,7 +11,7 @@
 
 /* Tunable constants */
 #define REFLECT_PARALLAX  0.001f
-#define REFLECT_INTENSITY 2.0f
+#define REFLECT_INTENSITY 2.5f
 
 /* --- Embedded GLSL 330 core shaders --- */
 
