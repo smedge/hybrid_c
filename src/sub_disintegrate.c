@@ -12,20 +12,36 @@
 #include "player_stats.h"
 
 #include <math.h>
+#include <stdlib.h>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+/* --- Beam mechanics --- */
 #define BEAM_MAX_RANGE    2600.0
 #define BEAM_HALF_WIDTH   12.0
 #define CARVE_SPEED_DEG   120.0
 #define FEEDBACK_PER_SEC  22.0
 #define DAMAGE_PER_FRAME  15.0
 #define SOUND_INTERVAL_MS 150
-#define PULSE_SPEED       10.0f
 #define BEAM_ORIGIN_OFFSET 10.0
-#define TIP_FADE_LENGTH   120.0f  /* world units over which the tip dissipates */
-#define TIP_FLICKER_SPEED 25.0f
+
+/* --- Blob visual rendering --- */
+#define BEAM_BLOB_COUNT     80
+#define BEAM_BLOB_BASE_SIZE 14.0f
+#define BEAM_SCROLL_SPEED   3500.0f   /* units/sec — blob flow along beam */
+#define WIDTH_PULSE_SPEED   40.0f     /* rad/sec — ~6Hz for 100-160ms cycle */
+#define WIDTH_PULSE_AMOUNT  0.12f     /* ±12% size variation */
+#define LATERAL_JITTER_MAX  3.0f      /* max perpendicular offset */
+#define TIP_FADE_LENGTH     120.0f    /* world units for tip dissipation */
+#define TIP_FLICKER_SPEED   25.0f
+
+typedef struct {
+	float rotation;
+	float sizeScale;      /* 0.7 - 1.3 */
+	bool mirror;
+	float lateralOffset;  /* ±LATERAL_JITTER_MAX perpendicular to beam */
+} BlobProp;
 
 static Entity *parent;
 static bool channeling;
@@ -34,8 +50,11 @@ static double beamAngle;      /* degrees, 0 = north */
 static Position beamStart;
 static Position beamEnd;
 static double beamLength;
-static float pulseTimer;
 static int soundTimer;
+
+static BlobProp blobProps[BEAM_BLOB_COUNT];
+static float beamScrollOffset;
+static float widthPulseTimer;
 
 static Mix_Chunk *sampleFire = 0;
 
@@ -60,8 +79,18 @@ void Sub_Disintegrate_initialize(Entity *p)
 	beamStart = (Position){0, 0};
 	beamEnd = (Position){0, 0};
 	beamLength = 0.0;
-	pulseTimer = 0.0f;
 	soundTimer = 0;
+	beamScrollOffset = 0.0f;
+	widthPulseTimer = 0.0f;
+
+	/* Pre-generate random visual properties for each blob slot */
+	for (int i = 0; i < BEAM_BLOB_COUNT; i++) {
+		blobProps[i].rotation = (float)(rand() % 360);
+		blobProps[i].sizeScale = 0.7f + (float)(rand() % 600) / 1000.0f;
+		blobProps[i].mirror = (rand() % 2) == 0;
+		blobProps[i].lateralOffset = ((float)(rand() % 1000) / 500.0f - 1.0f)
+			* LATERAL_JITTER_MAX;
+	}
 
 	Audio_load_sample(&sampleFire, "resources/sounds/bomb_explode.wav");
 }
@@ -137,10 +166,11 @@ void Sub_Disintegrate_update(const Input *userInput, unsigned int ticks, Placeab
 		double by = beamEnd.y - beamStart.y;
 		beamLength = sqrt(bx * bx + by * by);
 
-		/* Pulse timer */
-		pulseTimer += (float)(dt * PULSE_SPEED);
-		if (pulseTimer > 2.0f * (float)M_PI)
-			pulseTimer -= 2.0f * (float)M_PI;
+		/* Scroll blobs along beam + width pulse */
+		beamScrollOffset += (float)(dt * BEAM_SCROLL_SPEED);
+		widthPulseTimer += (float)(dt * WIDTH_PULSE_SPEED);
+		if (widthPulseTimer > 2.0f * (float)M_PI)
+			widthPulseTimer -= 2.0f * (float)M_PI;
 	} else {
 		soundTimer = 0;
 		beamLength = 0.0;
@@ -150,128 +180,96 @@ void Sub_Disintegrate_update(const Input *userInput, unsigned int ticks, Placeab
 
 }
 
-void Sub_Disintegrate_render(void)
+/* Shared blob rendering logic used by both render and bloom source.
+   bloomBoost > 1.0 for bloom pass brightness, 1.0 for normal render. */
+static void render_beam_blobs(float bloomBoost, float sizeBoost)
 {
-	if (!channeling || beamLength < 1.0)
-		return;
-
-	float pulse = 1.0f + 0.15f * sinf(pulseTimer);
 	float len = (float)beamLength;
-
 	float sx = (float)beamStart.x;
 	float sy = (float)beamStart.y;
 	float ex = (float)beamEnd.x;
 	float ey = (float)beamEnd.y;
 
-	/* Direction unit vector */
+	/* Direction + perpendicular unit vectors */
 	float dirX = (ex - sx) / len;
 	float dirY = (ey - sy) / len;
+	float perpX = -dirY;
+	float perpY = dirX;
 
-	/* Split into main body and fading tip */
-	float tipLen = TIP_FADE_LENGTH;
-	if (tipLen > len) tipLen = len;
-	float bodyLen = len - tipLen;
+	/* Width pulse: subtle breathing ~6Hz */
+	float pulseMul = 1.0f + WIDTH_PULSE_AMOUNT * sinf(widthPulseTimer);
 
-	float mx = sx + dirX * bodyLen;  /* main/tip boundary */
-	float my = sy + dirY * bodyLen;
+	float spacing = len / BEAM_BLOB_COUNT;
+	if (spacing < 1.0f) spacing = 1.0f;
+	/* Scroll wraps per spacing so blob properties cycle smoothly */
+	float scrollFrac = fmodf(beamScrollOffset, spacing);
+	int scrollIdx = (int)(beamScrollOffset / spacing);
 
-	/* Main body — full intensity */
-	if (bodyLen > 1.0f) {
-		Render_thick_line(sx, sy, mx, my,
-			18.0f * pulse, 0.6f, 0.2f, 0.9f, 0.25f);
-		Render_thick_line(sx, sy, mx, my,
-			10.0f * pulse, 0.8f, 0.5f, 1.0f, 0.7f);
-		Render_thick_line(sx, sy, mx, my,
-			4.0f * pulse, 1.0f, 0.95f, 1.0f, 0.95f);
+	for (int i = 0; i < BEAM_BLOB_COUNT; i++) {
+		float dist = (float)i * spacing + scrollFrac;
+		if (dist > len || dist < 0.0f) continue;
+
+		/* Index into pre-generated properties — shifts with scroll for organic motion */
+		int propIdx = (unsigned int)(i + scrollIdx) % BEAM_BLOB_COUNT;
+		BlobProp *bp = &blobProps[propIdx];
+
+		float size = BEAM_BLOB_BASE_SIZE * bp->sizeScale * pulseMul * sizeBoost;
+
+		/* Tip fade: last TIP_FADE_LENGTH units shrink + fade */
+		float tipFade = 1.0f;
+		float tipDist = len - dist;
+		if (tipDist < TIP_FADE_LENGTH) {
+			tipFade = tipDist / TIP_FADE_LENGTH;
+			/* Per-blob flicker near tip */
+			float flicker = 0.7f + 0.3f * sinf(
+				widthPulseTimer * TIP_FLICKER_SPEED + (float)propIdx * 2.3f);
+			tipFade *= flicker;
+			if (tipFade < 0.0f) tipFade = 0.0f;
+			size *= (0.4f + 0.6f * tipFade);
+		}
+
+		/* Position along beam + lateral jitter */
+		Position blobPos;
+		blobPos.x = sx + dirX * dist + perpX * bp->lateralOffset;
+		blobPos.y = sy + dirY * dist + perpY * bp->lateralOffset;
+
+		float angle2 = bp->mirror ? bp->rotation - 55.0f : bp->rotation + 55.0f;
+
+		/* Layer 1: purple outer glow */
+		float outerSz = size * 1.4f;
+		Rectangle outerRect = {-outerSz, outerSz, outerSz, -outerSz};
+		float pr = 0.6f * bloomBoost, pg = 0.2f * bloomBoost, pb = 0.9f * bloomBoost;
+		ColorFloat outerColor = {pr, pg, pb, 0.25f * tipFade};
+		Render_quad(&blobPos, bp->rotation, outerRect, &outerColor);
+
+		/* Layer 2: light purple mid (mirrored quad like inferno) */
+		float midSz = size * 0.8f;
+		Rectangle midRect = {-midSz, midSz, midSz, -midSz};
+		float mr = 0.8f * bloomBoost, mg = 0.5f * bloomBoost, mb = 1.0f * bloomBoost;
+		ColorFloat midColor = {mr, mg, mb, 0.7f * tipFade};
+		Render_quad(&blobPos, angle2, midRect, &midColor);
+
+		/* Layer 3: white-hot core */
+		float coreSz = size * 0.35f;
+		Rectangle coreRect = {-coreSz, coreSz, coreSz, -coreSz};
+		float cr = 1.0f * bloomBoost, cg = 0.95f * bloomBoost, cb = 1.0f * bloomBoost;
+		ColorFloat coreColor = {cr, cg, cb, 0.95f * tipFade};
+		Render_quad(&blobPos, bp->rotation + 22.5f, coreRect, &coreColor);
 	}
+}
 
-	/* Tip — dissipates in segments with flicker */
-	int tipSegs = 5;
-	float segLen = tipLen / tipSegs;
-	for (int i = 0; i < tipSegs; i++) {
-		float t0 = (float)i / tipSegs;
-		float t1 = (float)(i + 1) / tipSegs;
-		float fade = 1.0f - (t0 + t1) * 0.5f;  /* 1.0 at base, 0.0 at tip */
-
-		/* Per-segment flicker — hash from segment index + timer */
-		float flicker = 0.7f + 0.3f * sinf(pulseTimer * TIP_FLICKER_SPEED + (float)i * 2.3f);
-		fade *= flicker;
-		if (fade < 0.0f) fade = 0.0f;
-
-		/* Width narrows toward tip */
-		float widthMul = 1.0f - t0 * 0.6f;
-
-		float x0 = mx + dirX * segLen * (float)i;
-		float y0 = my + dirY * segLen * (float)i;
-		float x1 = mx + dirX * segLen * (float)(i + 1);
-		float y1 = my + dirY * segLen * (float)(i + 1);
-
-		Render_thick_line(x0, y0, x1, y1,
-			18.0f * pulse * widthMul, 0.6f, 0.2f, 0.9f, 0.25f * fade);
-		Render_thick_line(x0, y0, x1, y1,
-			10.0f * pulse * widthMul, 0.8f, 0.5f, 1.0f, 0.7f * fade);
-		Render_thick_line(x0, y0, x1, y1,
-			4.0f * pulse * widthMul, 1.0f, 0.95f, 1.0f, 0.95f * fade);
-	}
+void Sub_Disintegrate_render(void)
+{
+	if (!channeling || beamLength < 1.0)
+		return;
+	render_beam_blobs(1.0f, 1.0f);
 }
 
 void Sub_Disintegrate_render_bloom_source(void)
 {
 	if (!channeling || beamLength < 1.0)
 		return;
-
-	float pulse = 1.0f + 0.15f * sinf(pulseTimer);
-	float len = (float)beamLength;
-
-	float sx = (float)beamStart.x;
-	float sy = (float)beamStart.y;
-	float ex = (float)beamEnd.x;
-	float ey = (float)beamEnd.y;
-
-	float dirX = (ex - sx) / len;
-	float dirY = (ey - sy) / len;
-
-	float tipLen = TIP_FADE_LENGTH;
-	if (tipLen > len) tipLen = len;
-	float bodyLen = len - tipLen;
-
-	float mx = sx + dirX * bodyLen;
-	float my = sy + dirY * bodyLen;
-
-	/* Main body bloom */
-	if (bodyLen > 1.0f) {
-		Render_thick_line(sx, sy, mx, my,
-			24.0f * pulse, 0.7f, 0.3f, 1.0f, 0.6f);
-		Render_thick_line(sx, sy, mx, my,
-			14.0f * pulse, 0.9f, 0.7f, 1.0f, 0.8f);
-		Render_thick_line(sx, sy, mx, my,
-			6.0f * pulse, 1.0f, 1.0f, 1.0f, 1.0f);
-	}
-
-	/* Tip bloom — fades + flickers to match render */
-	int tipSegs = 5;
-	float segLen = tipLen / tipSegs;
-	for (int i = 0; i < tipSegs; i++) {
-		float t0 = (float)i / tipSegs;
-		float t1 = (float)(i + 1) / tipSegs;
-		float fade = 1.0f - (t0 + t1) * 0.5f;
-		float flicker = 0.7f + 0.3f * sinf(pulseTimer * TIP_FLICKER_SPEED + (float)i * 2.3f);
-		fade *= flicker;
-		if (fade < 0.0f) fade = 0.0f;
-		float widthMul = 1.0f - t0 * 0.6f;
-
-		float x0 = mx + dirX * segLen * (float)i;
-		float y0 = my + dirY * segLen * (float)i;
-		float x1 = mx + dirX * segLen * (float)(i + 1);
-		float y1 = my + dirY * segLen * (float)(i + 1);
-
-		Render_thick_line(x0, y0, x1, y1,
-			24.0f * pulse * widthMul, 0.7f, 0.3f, 1.0f, 0.6f * fade);
-		Render_thick_line(x0, y0, x1, y1,
-			14.0f * pulse * widthMul, 0.9f, 0.7f, 1.0f, 0.8f * fade);
-		Render_thick_line(x0, y0, x1, y1,
-			6.0f * pulse * widthMul, 1.0f, 1.0f, 1.0f, 1.0f * fade);
-	}
+	render_beam_blobs(1.5f, 1.2f);
 }
 
 bool Sub_Disintegrate_check_hit(Rectangle target)
