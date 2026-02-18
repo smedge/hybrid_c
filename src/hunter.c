@@ -621,6 +621,26 @@ void Hunter_render_bloom_source(void)
 	}
 }
 
+void Hunter_render_light_source(void)
+{
+	for (int i = 0; i < PROJ_COUNT; i++) {
+		if (!projectiles[i].active) continue;
+		Render_filled_circle(
+			(float)projectiles[i].position.x,
+			(float)projectiles[i].position.y,
+			180.0f, 12, 1.0f, 0.5f, 0.1f, 0.7f);
+	}
+
+	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+		if (sparks[si].active) {
+			Render_filled_circle(
+				(float)sparks[si].position.x,
+				(float)sparks[si].position.y,
+				300.0f, 12, 1.0f, 0.5f, 0.1f, 0.6f);
+		}
+	}
+}
+
 void Hunter_deaggro_all(void)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {

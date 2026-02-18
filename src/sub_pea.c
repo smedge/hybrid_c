@@ -191,6 +191,22 @@ void Sub_Pea_render_bloom_source(void)
 	Sub_Pea_render();
 }
 
+void Sub_Pea_render_light_source(void)
+{
+	for (int i = 0; i < MAX_PROJECTILES; i++) {
+		if (!projectiles[i].active) continue;
+		Render_filled_circle(
+			(float)projectiles[i].position.x,
+			(float)projectiles[i].position.y,
+			60.0f, 12, 1.0f, 1.0f, 1.0f, 0.7f);
+	}
+	if (sparkActive) {
+		Render_filled_circle(
+			(float)sparkPosition.x, (float)sparkPosition.y,
+			90.0f, 12, 1.0f, 1.0f, 0.8f, 0.6f);
+	}
+}
+
 bool Sub_Pea_check_hit(Rectangle target)
 {
 	for (int i = 0; i < MAX_PROJECTILES; i++) {

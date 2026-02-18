@@ -42,6 +42,7 @@ TextRenderer *Graphics_get_title_text_renderer(void);
 Bloom *Graphics_get_bloom(void);
 Bloom *Graphics_get_bg_bloom(void);
 Bloom *Graphics_get_disint_bloom(void);
+Bloom *Graphics_get_light_bloom(void);
 void Graphics_get_drawable_size(int *w, int *h);
 
 #endif

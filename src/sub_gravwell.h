@@ -11,6 +11,7 @@ void Sub_Gravwell_cleanup(void);
 void Sub_Gravwell_update(const Input *userInput, unsigned int ticks);
 void Sub_Gravwell_render(void);
 void Sub_Gravwell_render_bloom_source(void);
+void Sub_Gravwell_render_light_source(void);
 void Sub_Gravwell_deactivate_all(void);
 float Sub_Gravwell_get_cooldown_fraction(void);
 void Sub_Gravwell_try_activate(void);

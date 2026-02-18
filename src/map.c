@@ -18,6 +18,7 @@ static int cellPoolCount = 0;
 
 static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
 static RenderableComponent renderable = {Map_render};
+static bool renderDisabled = false;
 static CollidableComponent collidable = {{0.0, 0.0, 0.0, 0.0}, false,
 	COLLISION_LAYER_TERRAIN, 0,
 	Map_collide};
@@ -201,10 +202,16 @@ static bool cells_match_visual(const MapCell *a, const MapCell *b)
 		memcmp(&a->outlineColor, &b->outlineColor, sizeof(ColorRGB)) == 0;
 }
 
+void Map_set_render_disabled(bool disabled)
+{
+	renderDisabled = disabled;
+}
+
 void Map_render(const void *state, const PlaceableComponent *placeable)
 {
 	(void)state;
 	(void)placeable;
+	if (renderDisabled) return;
 
 	View view = View_get_view();
 	float outlineThickness = 2.0f / (float)view.scale;
@@ -975,4 +982,122 @@ void Map_render_stencil_mask(void)
 	for (int x = minX; x <= maxX; x++)
 		for (int y = minY; y <= maxY; y++)
 			render_cell_stencil(x, y);
+}
+
+/* --- Multi-value stencil mask: circuit=1, solid=2 (for lighting + reflection) --- */
+
+#include <OpenGL/gl3.h>
+
+static void render_cell_stencil_circuit(int x, int y)
+{
+	const MapCell *me = get_cell_fast(x, y);
+	if (me->empty || !me->circuitPattern) return;
+
+	float ax = (float)(x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	float ay = (float)(y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	float bx = ax + MAP_CELL_SIZE;
+	float by = ay + MAP_CELL_SIZE;
+
+	/* Chamfer NE and SW corners when both edges face empty (same as render_cell) */
+	const MapCell *nPtr = get_cell_fast(x, y + 1);
+	const MapCell *ePtr = get_cell_fast(x + 1, y);
+	const MapCell *sPtr = get_cell_fast(x, y - 1);
+	const MapCell *wPtr = get_cell_fast(x - 1, y);
+
+	float chamf = MAP_CELL_SIZE * 0.17f;
+	int chamfer_ne = nPtr->empty && ePtr->empty;
+	int chamfer_sw = sPtr->empty && wPtr->empty;
+
+	if (chamfer_ne || chamfer_sw) {
+		float vx[6], vy[6];
+		int n = 0;
+		vx[n] = bx; vy[n] = ay; n++;
+		if (chamfer_ne) {
+			vx[n] = bx;         vy[n] = by - chamf; n++;
+			vx[n] = bx - chamf; vy[n] = by;         n++;
+		} else {
+			vx[n] = bx; vy[n] = by; n++;
+		}
+		vx[n] = ax; vy[n] = by; n++;
+		if (chamfer_sw) {
+			vx[n] = ax;         vy[n] = ay + chamf; n++;
+			vx[n] = ax + chamf; vy[n] = ay;         n++;
+		} else {
+			vx[n] = ax; vy[n] = ay; n++;
+		}
+		BatchRenderer *batch = Graphics_get_batch();
+		for (int i = 1; i < n - 1; i++)
+			Batch_push_triangle_vertices(batch,
+				vx[0], vy[0], vx[i], vy[i], vx[i+1], vy[i+1],
+				1.0f, 1.0f, 1.0f, 1.0f);
+	} else {
+		Render_quad_absolute(ax, ay, bx, by, 1.0f, 1.0f, 1.0f, 1.0f);
+	}
+}
+
+void Map_render_stencil_mask_all(const Mat4 *proj, const Mat4 *view_mat)
+{
+	View view = View_get_view();
+	Screen screen = Graphics_get_screen();
+	float half_w = (float)screen.width * 0.5f / (float)view.scale;
+	float half_h = (float)screen.height * 0.5f / (float)view.scale;
+	float cx = (float)view.position.x;
+	float cy = (float)view.position.y;
+
+	int minX = correctTruncation((cx - half_w) / MAP_CELL_SIZE) + HALF_MAP_SIZE - 1;
+	int maxX = correctTruncation((cx + half_w) / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
+	int minY = correctTruncation((cy - half_h) / MAP_CELL_SIZE) + HALF_MAP_SIZE - 1;
+	int maxY = correctTruncation((cy + half_h) / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
+
+	if (minX < 0) minX = 0;
+	if (minY < 0) minY = 0;
+	if (maxX >= MAP_SIZE) maxX = MAP_SIZE - 1;
+	if (maxY >= MAP_SIZE) maxY = MAP_SIZE - 1;
+
+	/* Pass 1: Circuit cells → stencil ref=1 */
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	for (int x = minX; x <= maxX; x++)
+		for (int y = minY; y <= maxY; y++)
+			render_cell_stencil_circuit(x, y);
+	Render_flush(proj, view_mat);
+
+	/* Pass 2: Solid cells + boundary → stencil ref=2 (overwrites any overlap) */
+	glStencilFunc(GL_ALWAYS, 2, 0xFF);
+
+	if (!boundaryCell.empty) {
+		float map_left = (float)(-HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		float map_right = (float)(MAP_SIZE - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		float map_bottom = map_left;
+		float map_top = map_right;
+
+		float vl = cx - half_w, vr = cx + half_w;
+		float vb = cy - half_h, vt = cy + half_h;
+
+		if (vt > map_top)
+			Render_quad_absolute(vl, map_top > vb ? map_top : vb,
+				vr, vt, 1.0f, 1.0f, 1.0f, 1.0f);
+		if (vb < map_bottom)
+			Render_quad_absolute(vl, vb,
+				vr, map_bottom < vt ? map_bottom : vt,
+				1.0f, 1.0f, 1.0f, 1.0f);
+		if (vl < map_left) {
+			float y0 = vb > map_bottom ? vb : map_bottom;
+			float y1 = vt < map_top ? vt : map_top;
+			if (y1 > y0)
+				Render_quad_absolute(vl, y0, map_left, y1,
+					1.0f, 1.0f, 1.0f, 1.0f);
+		}
+		if (vr > map_right) {
+			float y0 = vb > map_bottom ? vb : map_bottom;
+			float y1 = vt < map_top ? vt : map_top;
+			if (y1 > y0)
+				Render_quad_absolute(map_right, y0, vr, y1,
+					1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
+
+	for (int x = minX; x <= maxX; x++)
+		for (int y = minY; y <= maxY; y++)
+			render_cell_stencil(x, y);
+	Render_flush(proj, view_mat);
 }

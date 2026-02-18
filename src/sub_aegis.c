@@ -142,6 +142,17 @@ void Sub_Aegis_render_bloom_source(void)
 	}
 }
 
+void Sub_Aegis_render_light_source(void)
+{
+	if (state != AEGIS_ACTIVE) return;
+
+	Position shipPos = Ship_get_position();
+	float pulse = 0.5f + 0.3f * sinf(pulseTimer * PULSE_SPEED);
+	Render_filled_circle(
+		(float)shipPos.x, (float)shipPos.y,
+		90.0f, 16, 0.6f, 0.9f, 1.0f, pulse);
+}
+
 float Sub_Aegis_get_cooldown_fraction(void)
 {
 	if (state == AEGIS_ACTIVE)

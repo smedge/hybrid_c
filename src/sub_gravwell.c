@@ -360,6 +360,19 @@ void Sub_Gravwell_render_bloom_source(void)
 	ParticleInstance_draw(instanceData, count, &world_proj, &view, true);
 }
 
+void Sub_Gravwell_render_light_source(void)
+{
+	if (!wellActive) return;
+
+	/* Large central glow + ring glow */
+	Render_filled_circle(
+		(float)wellPosition.x, (float)wellPosition.y,
+		(float)RADIUS * 0.7f, 24, 0.3f, 0.5f, 1.0f, 0.5f);
+	Render_filled_circle(
+		(float)wellPosition.x, (float)wellPosition.y,
+		(float)RADIUS, 24, 0.2f, 0.4f, 1.0f, 0.3f);
+}
+
 /* ================================================================
  * Public API — query / state
  * ================================================================ */

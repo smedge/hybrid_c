@@ -10,6 +10,7 @@ void Sub_Disintegrate_cleanup(void);
 void Sub_Disintegrate_update(const Input *userInput, unsigned int ticks, PlaceableComponent *placeable);
 void Sub_Disintegrate_render(void);
 void Sub_Disintegrate_render_bloom_source(void);
+void Sub_Disintegrate_render_light_source(void);
 bool Sub_Disintegrate_check_hit(Rectangle target);
 bool Sub_Disintegrate_check_nearby(Position pos, double radius);
 void Sub_Disintegrate_deactivate_all(void);

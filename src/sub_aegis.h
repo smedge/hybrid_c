@@ -8,6 +8,7 @@ void Sub_Aegis_cleanup(void);
 void Sub_Aegis_update(const Input *input, unsigned int ticks);
 void Sub_Aegis_render(void);
 void Sub_Aegis_render_bloom_source(void);
+void Sub_Aegis_render_light_source(void);
 float Sub_Aegis_get_cooldown_fraction(void);
 
 #endif

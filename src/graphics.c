@@ -1,5 +1,6 @@
 #include "graphics.h"
 #include "map_reflect.h"
+#include "map_lighting.h"
 
 #include <OpenGL/gl3.h>
 
@@ -13,6 +14,7 @@ static TextRenderer title_text_renderer;
 static Bloom bloom;
 static Bloom bg_bloom;
 static Bloom disint_bloom;
+static Bloom light_bloom;
 
 static void create_window(void);
 static void create_fullscreen_window(void);
@@ -37,7 +39,9 @@ void Graphics_initialize(void)
 
 void Graphics_cleanup(void)
 {
+	MapLighting_cleanup();
 	MapReflect_cleanup();
+	Bloom_cleanup(&light_bloom);
 	Bloom_cleanup(&disint_bloom);
 	Bloom_cleanup(&bg_bloom);
 	Bloom_cleanup(&bloom);
@@ -60,6 +64,7 @@ void Graphics_resize_window(const unsigned int width,
 	Bloom_resize(&bloom, draw_w, draw_h);
 	Bloom_resize(&bg_bloom, draw_w, draw_h);
 	Bloom_resize(&disint_bloom, draw_w, draw_h);
+	Bloom_resize(&light_bloom, draw_w, draw_h);
 }
 
 void Graphics_toggle_fullscreen(void)
@@ -129,6 +134,11 @@ Bloom *Graphics_get_bg_bloom(void)
 Bloom *Graphics_get_disint_bloom(void)
 {
 	return &disint_bloom;
+}
+
+Bloom *Graphics_get_light_bloom(void)
+{
+	return &light_bloom;
 }
 
 void Graphics_get_drawable_size(int *w, int *h)
@@ -205,7 +215,13 @@ static void initialize_gl(void)
 	disint_bloom.intensity = 3.0f;
 	disint_bloom.blur_passes = 7;
 	Bloom_resize(&disint_bloom, draw_w, draw_h);
+	Bloom_initialize(&light_bloom, draw_w, draw_h);
+	light_bloom.divisor = 8;
+	light_bloom.intensity = 1.0f;
+	light_bloom.blur_passes = 7;
+	Bloom_resize(&light_bloom, draw_w, draw_h);
 	MapReflect_initialize();
+	MapLighting_initialize();
 }
 
 static void destroy_window(void)

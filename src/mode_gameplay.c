@@ -17,7 +17,11 @@
 #include "defender.h"
 #include "sub_aegis.h"
 #include "sub_disintegrate.h"
+#include "sub_inferno.h"
+#include "sub_gravwell.h"
 #include "map_reflect.h"
+#include "map_lighting.h"
+#include "grid.h"
 #include "savepoint.h"
 #include "portal.h"
 #include "fragment.h"
@@ -421,6 +425,45 @@ void Mode_Gameplay_render(void)
 		Bloom_composite(bg_bloom, draw_w, draw_h);
 	}
 
+	/* Map + grid render first (separate flush so lighting composites under entities) */
+	Entity_render_system();
+	Render_flush(&world_proj, &view);
+
+	/* Cloud reflection on solid blocks (also writes stencil for lighting) */
+	{
+		int draw_w, draw_h;
+		Graphics_get_drawable_size(&draw_w, &draw_h);
+		MapReflect_render(&world_proj, &view, draw_w, draw_h);
+	}
+
+	/* Weapon lighting on map cells (stencil data written by MapReflect) */
+	{
+		int draw_w, draw_h;
+		Graphics_get_drawable_size(&draw_w, &draw_h);
+		Bloom *lb = Graphics_get_light_bloom();
+
+		Bloom_begin_source(lb);
+		Sub_Pea_render_light_source();
+		Sub_Mgun_render_light_source();
+		Sub_Mine_render_light_source();
+		Sub_Aegis_render_light_source();
+		Sub_Inferno_render_light_source();
+		Sub_Disintegrate_render_light_source();
+		Sub_Gravwell_render_light_source();
+		Mine_render_light_source();
+		Hunter_render_light_source();
+		Seeker_render_light_source();
+		Render_flush(&world_proj, &view);
+		Bloom_end_source(lb, draw_w, draw_h);
+
+		Bloom_blur(lb);
+
+		MapLighting_render(draw_w, draw_h);
+	}
+
+	/* Entities render on top of lit map cells (map+grid skip since already drawn) */
+	Map_set_render_disabled(true);
+	Grid_set_render_disabled(true);
 	Portal_render_deactivated();
 	Entity_render_system();
 	Fragment_render();
@@ -429,13 +472,8 @@ void Mode_Gameplay_render(void)
 		god_mode_render_cursor();
 	}
 	Render_flush(&world_proj, &view);
-
-	/* Cloud reflection on solid blocks */
-	{
-		int draw_w, draw_h;
-		Graphics_get_drawable_size(&draw_w, &draw_h);
-		MapReflect_render(&world_proj, &view, draw_w, draw_h);
-	}
+	Map_set_render_disabled(false);
+	Grid_set_render_disabled(false);
 
 	/* God mode labels (world-space text) */
 	if (godModeActive) {

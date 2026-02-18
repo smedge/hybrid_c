@@ -11,6 +11,7 @@ void Sub_Pea_cleanup();
 void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);
 void Sub_Pea_render();
 void Sub_Pea_render_bloom_source(void);
+void Sub_Pea_render_light_source(void);
 
 bool Sub_Pea_check_hit(Rectangle target);
 bool Sub_Pea_check_nearby(Position pos, double radius);

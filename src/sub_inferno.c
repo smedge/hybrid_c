@@ -290,6 +290,21 @@ void Sub_Inferno_render_bloom_source(void)
 	ParticleInstance_draw(instances, count, &world_proj, &view, false);
 }
 
+void Sub_Inferno_render_light_source(void)
+{
+	if (!channeling) return;
+
+	/* Large circles at every 8th active blob for broad light coverage */
+	for (int i = 0; i < BLOB_COUNT; i += 8) {
+		if (!blobs[i].active) continue;
+		float age_frac = (float)blobs[i].age / (float)blobs[i].ttl;
+		float alpha = (1.0f - age_frac) * 0.7f;
+		Render_filled_circle(
+			(float)blobs[i].position.x, (float)blobs[i].position.y,
+			210.0f, 12, 1.0f, 0.6f, 0.15f, alpha);
+	}
+}
+
 bool Sub_Inferno_check_hit(Rectangle target)
 {
 	for (int i = 0; i < BLOB_COUNT; i++) {

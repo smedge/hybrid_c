@@ -199,6 +199,24 @@ void Sub_Mine_render_bloom_source(void)
 	}
 }
 
+void Sub_Mine_render_light_source(void)
+{
+	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
+		PlayerMine *m = &mines[i];
+		if (!m->active) continue;
+
+		if (m->phase == MINE_ARMED) {
+			Render_filled_circle(
+				(float)m->position.x, (float)m->position.y,
+				180.0f, 12, 1.0f, 0.2f, 0.1f, 0.4f);
+		} else if (m->phase == MINE_EXPLODING) {
+			Render_filled_circle(
+				(float)m->position.x, (float)m->position.y,
+				750.0f, 16, 1.0f, 0.9f, 0.7f, 1.0f);
+		}
+	}
+}
+
 void Sub_Mine_deactivate_all(void)
 {
 	for (int i = 0; i < MAX_PLAYER_MINES; i++)

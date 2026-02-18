@@ -463,6 +463,48 @@ void Sub_Disintegrate_render_bloom_source(void)
 	ParticleInstance_draw(instances, count, &world_proj, &view, false);
 }
 
+void Sub_Disintegrate_render_light_source(void)
+{
+	/* Animated circles along beam — same scroll/jitter math as fill_beam_instances */
+	if (channeling && beamLength >= 1.0) {
+		float len = (float)beamLength;
+		float sx = (float)beamStart.x;
+		float sy = (float)beamStart.y;
+		float ex = (float)beamEnd.x;
+		float ey = (float)beamEnd.y;
+
+		float dirX = (ex - sx) / len;
+		float dirY = (ey - sy) / len;
+		float perpX = -dirY;
+		float perpY = dirX;
+
+		float spacing = len / BEAM_BLOB_COUNT;
+		if (spacing < 1.0f) spacing = 1.0f;
+		float scrollFrac = fmodf(beamScrollOffset, spacing);
+		int scrollIdx = (int)(beamScrollOffset / spacing);
+
+		for (int i = 0; i < BEAM_BLOB_COUNT; i += 8) {
+			float dist = (float)i * spacing + scrollFrac;
+			if (dist > len || dist < 0.0f) continue;
+
+			int propIdx = (unsigned int)(i + scrollIdx) % BEAM_BLOB_COUNT;
+			float lateral = blobProps[propIdx].lateralOffset;
+
+			float px = sx + dirX * dist + perpX * lateral;
+			float py = sy + dirY * dist + perpY * lateral;
+			Render_filled_circle(px, py,
+				240.0f, 12, 0.7f, 0.3f, 1.0f, 0.7f);
+		}
+	}
+
+	for (int i = 0; i < SPLASH_COUNT; i++) {
+		if (!splash[i].active) continue;
+		Render_filled_circle(
+			(float)splash[i].position.x, (float)splash[i].position.y,
+			180.0f, 12, 0.7f, 0.3f, 1.0f, 0.5f);
+	}
+}
+
 bool Sub_Disintegrate_check_hit(Rectangle target)
 {
 	if (!channeling || beamLength < 1.0)

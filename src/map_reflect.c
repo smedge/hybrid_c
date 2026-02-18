@@ -146,19 +146,18 @@ void MapReflect_render(const Mat4 *world_proj, const Mat4 *view,
 	Bloom *bg_bloom = Graphics_get_bg_bloom();
 	if (!bg_bloom->valid) return;
 
-	/* 1. Stencil write pass: render block fills into stencil only */
+	/* 1. Stencil write pass: circuit=1, solid=2 (shared with lighting) */
 	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 	glStencilMask(0xFF);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
-	Map_render_stencil_mask();
-	Render_flush(world_proj, view);
+	/* Map_render_stencil_mask_all manages stencilFunc refs and flushes internally */
+	Map_render_stencil_mask_all(world_proj, view);
 
-	/* 2. Reflection pass: draw fullscreen quad where stencil == 1 */
+	/* 2. Reflection pass: draw fullscreen quad where stencil == 2 (solid only) */
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glStencilFunc(GL_EQUAL, 1, 0xFF);
+	glStencilFunc(GL_EQUAL, 2, 0xFF);
 	glStencilMask(0x00);
 
 	/* Additive blend */
@@ -188,7 +187,8 @@ void MapReflect_render(const Mat4 *world_proj, const Mat4 *view,
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	/* 3. Restore state — stencil mask MUST be 0xFF so glClear can wipe it next frame */
+	/* 3. Restore blend and disable stencil.
+	   Stencil buffer DATA is preserved for the lighting pass that follows. */
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glStencilMask(0xFF);
 	glDisable(GL_STENCIL_TEST);

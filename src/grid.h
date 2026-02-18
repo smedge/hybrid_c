@@ -8,6 +8,7 @@
 
 void Grid_initialize(void);
 void Grid_render(const void *state, const PlaceableComponent *placeable);
+void Grid_set_render_disabled(bool disabled);
 void Grid_cleanup(void);
 
 #endif

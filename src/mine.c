@@ -280,6 +280,26 @@ void Mine_render_bloom_source(void)
 	}
 }
 
+void Mine_render_light_source(void)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		MineState *ms = &mines[i];
+		PlaceableComponent *pl = &placeables[i];
+
+		if (ms->destroyed) continue;
+
+		if (ms->exploding) {
+			Render_filled_circle(
+				(float)pl->position.x, (float)pl->position.y,
+				750.0f, 16, 1.0f, 0.9f, 0.7f, 1.0f);
+		} else if (ms->active || ms->blinkTimer < 100) {
+			Render_filled_circle(
+				(float)pl->position.x, (float)pl->position.y,
+				150.0f, 12, 1.0f, 0.2f, 0.1f, 0.3f);
+		}
+	}
+}
+
 void Mine_reset_all(void)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {

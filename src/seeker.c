@@ -698,6 +698,39 @@ void Seeker_render_bloom_source(void)
 	}
 }
 
+void Seeker_render_light_source(void)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		SeekerState *s = &seekers[i];
+		PlaceableComponent *pl = &placeables[i];
+
+		if (s->aiState == SEEKER_DEAD || s->aiState == SEEKER_DYING)
+			continue;
+
+		if (s->aiState == SEEKER_WINDING_UP) {
+			bool flashOn = (s->windupTimer / 50) % 2 == 0;
+			if (flashOn) {
+				Render_filled_circle(
+					(float)pl->position.x, (float)pl->position.y,
+					180.0f, 12, 0.2f, 1.0f, 0.3f, 0.6f);
+			}
+		} else if (s->aiState == SEEKER_DASHING) {
+			Render_filled_circle(
+				(float)pl->position.x, (float)pl->position.y,
+				240.0f, 12, 0.2f, 1.0f, 0.3f, 0.8f);
+		}
+	}
+
+	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+		if (sparks[si].active) {
+			Render_filled_circle(
+				(float)sparks[si].position.x,
+				(float)sparks[si].position.y,
+				240.0f, 12, 0.2f, 1.0f, 0.3f, 0.5f);
+		}
+	}
+}
+
 void Seeker_deaggro_all(void)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {

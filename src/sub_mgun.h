@@ -11,6 +11,7 @@ void Sub_Mgun_cleanup();
 void Sub_Mgun_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);
 void Sub_Mgun_render();
 void Sub_Mgun_render_bloom_source(void);
+void Sub_Mgun_render_light_source(void);
 
 bool Sub_Mgun_check_hit(Rectangle target);
 bool Sub_Mgun_check_nearby(Position pos, double radius);

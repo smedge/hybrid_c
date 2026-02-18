@@ -5,6 +5,7 @@
 #include "color.h"
 #include "collision.h"
 #include "entity.h"
+#include "mat4.h"
 
 #define MAP_SIZE 1024
 #define HALF_MAP_SIZE (MAP_SIZE / 2)
@@ -27,10 +28,12 @@ void Map_set_boundary_cell(const MapCell *cell);
 void Map_clear_boundary_cell(void);
 Collision Map_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Map_render(const void *state, const PlaceableComponent *placeable);
+void Map_set_render_disabled(bool disabled);
 void Map_render_minimap(float center_x, float center_y,
 	float screen_x, float screen_y, float size, float range);
 bool Map_line_test_hit(double x0, double y0, double x1, double y1,
 					   double *hit_x, double *hit_y);
 void Map_render_stencil_mask(void);
+void Map_render_stencil_mask_all(const Mat4 *proj, const Mat4 *view_mat);
 
 #endif

@@ -9,6 +9,7 @@ void Seeker_cleanup(void);
 void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned int ticks);
 void Seeker_render(const void *state, const PlaceableComponent *placeable);
 void Seeker_render_bloom_source(void);
+void Seeker_render_light_source(void);
 Collision Seeker_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Seeker_resolve(void *state, const Collision collision);
 void Seeker_deaggro_all(void);
