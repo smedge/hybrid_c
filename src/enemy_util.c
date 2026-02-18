@@ -11,6 +11,7 @@
 #include "sub_disintegrate.h"
 #include "sub_egress.h"
 #include "sub_stealth.h"
+#include "sub_gravwell.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -215,4 +216,15 @@ bool Enemy_check_any_hit(Rectangle hitBox)
 		|| Sub_Inferno_check_hit(hitBox)
 		|| Sub_Disintegrate_check_hit(hitBox)
 		|| Sub_Egress_check_hit(hitBox);
+}
+
+double Enemy_apply_gravity(PlaceableComponent *pl, double dt)
+{
+	double dx, dy, speed_mult;
+	if (!Sub_Gravwell_get_pull(pl->position, dt, &dx, &dy, &speed_mult))
+		return 1.0;
+
+	pl->position.x += dx;
+	pl->position.y += dy;
+	return speed_mult;
 }

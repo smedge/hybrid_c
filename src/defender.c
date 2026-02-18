@@ -665,6 +665,10 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		break;
 	}
 
+	/* Gravity well pull (alive, not dying/dead) */
+	if (d->alive && d->aiState != DEFENDER_DYING && d->aiState != DEFENDER_DEAD)
+		Enemy_apply_gravity(pl, dt);
+
 	/* --- Spark decay (from idx 0 only) --- */
 	if (idx == 0) {
 		for (int si = 0; si < SPARK_POOL_SIZE; si++) {

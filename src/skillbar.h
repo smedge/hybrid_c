@@ -16,6 +16,7 @@ typedef enum {
 	SUB_TYPE_SHIELD,
 	SUB_TYPE_HEALING,
 	SUB_TYPE_STEALTH,
+	SUB_TYPE_CONTROL,
 	SUB_TYPE_COUNT
 } SubroutineType;
 

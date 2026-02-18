@@ -13,6 +13,7 @@
 #include "sub_stealth.h"
 #include "sub_inferno.h"
 #include "sub_disintegrate.h"
+#include "sub_gravwell.h"
 
 #include <math.h>
 #ifndef M_PI
@@ -24,6 +25,14 @@
 #define SLOT_MARGIN 10.0f
 #define PIE_SEGMENTS 32
 #define PIE_RADIUS 22.0f
+
+/* Gravwell icon colors */
+#define EDGE_R_ICON 0.15f
+#define EDGE_G_ICON 0.2f
+#define EDGE_B_ICON 0.5f
+#define MID_R_ICON  0.08f
+#define MID_G_ICON  0.1f
+#define MID_B_ICON  0.3f
 
 typedef struct {
 	SubroutineId id;
@@ -55,6 +64,8 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Channel a devastating beam of fire. Melts everything.", true },
 	[SUB_ID_DISINTEGRATE] = { SUB_ID_DISINTEGRATE, SUB_TYPE_PROJECTILE, "sub_disintegrate", "DISINT",
 		"Precision beam. Carves through all targets in its path.", true },
+	[SUB_ID_GRAVWELL] = { SUB_ID_GRAVWELL, SUB_TYPE_CONTROL, "sub_gravwell", "GRAV",
+		"Gravity well. Pulls and slows enemies at cursor position.", false },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -77,6 +88,14 @@ static void toggle_slot(int slot)
 		Sub_Stealth_try_activate();
 		if (Sub_Stealth_is_stealthed())
 			active_sub[SUB_TYPE_STEALTH] = SUB_ID_STEALTH;
+		return;
+	}
+
+	/* Gravwell: instant-cast at cursor, border tracks active state */
+	if (id == SUB_ID_GRAVWELL) {
+		Sub_Gravwell_try_activate();
+		if (Sub_Gravwell_is_active())
+			active_sub[SUB_TYPE_CONTROL] = SUB_ID_GRAVWELL;
 		return;
 	}
 
@@ -122,6 +141,11 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 	if (active_sub[SUB_TYPE_STEALTH] == SUB_ID_STEALTH
 			&& !Sub_Stealth_is_stealthed())
 		active_sub[SUB_TYPE_STEALTH] = SUB_NONE;
+
+	/* Sync gravwell border with active state (clears on expire) */
+	if (active_sub[SUB_TYPE_CONTROL] == SUB_ID_GRAVWELL
+			&& !Sub_Gravwell_is_active())
+		active_sub[SUB_TYPE_CONTROL] = SUB_NONE;
 
 	clickConsumed = false;
 
@@ -287,9 +311,9 @@ void Skillbar_auto_equip(SubroutineId id)
 	slots[slot] = id;
 
 	/* Auto-activate if no other sub of this type is active.
-	   Stealth is ability-activated, not toggle-activated — never auto-activate. */
+	   Stealth/Gravwell are ability-activated, not toggle-activated — never auto-activate. */
 	SubroutineType type = sub_registry[id].type;
-	if (type != SUB_TYPE_STEALTH && active_sub[type] == SUB_NONE)
+	if (type != SUB_TYPE_STEALTH && type != SUB_TYPE_CONTROL && active_sub[type] == SUB_NONE)
 		active_sub[type] = id;
 }
 
@@ -480,6 +504,25 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Render_thick_line(cx - 2, cy, cx + 10, cy, 1.5f, 1.0f, 0.95f, 1.0f, alpha);
 		break;
 	}
+	case SUB_ID_GRAVWELL: {
+		/* Spiral vortex — concentric arcs spiraling inward */
+		float t = 1.5f;
+		float r1 = 9.0f, r2 = 6.0f, r3 = 3.0f;
+		/* Outer arc */
+		Render_thick_line(cx + r1, cy, cx, cy + r1, t,
+			EDGE_R_ICON, EDGE_G_ICON, EDGE_B_ICON, alpha);
+		Render_thick_line(cx, cy + r1, cx - r1, cy, t,
+			EDGE_R_ICON, EDGE_G_ICON, EDGE_B_ICON, alpha);
+		/* Middle arc */
+		Render_thick_line(cx - r2, cy, cx, cy - r2, t,
+			MID_R_ICON, MID_G_ICON, MID_B_ICON, alpha);
+		Render_thick_line(cx, cy - r2, cx + r2, cy, t,
+			MID_R_ICON, MID_G_ICON, MID_B_ICON, alpha);
+		/* Inner dot */
+		Render_filled_circle(cx, cy, r3, 6,
+			0.1f, 0.1f, 0.2f, alpha);
+		break;
+	}
 	default:
 		break;
 	}
@@ -498,6 +541,7 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_STEALTH: return Sub_Stealth_get_cooldown_fraction();
 	case SUB_ID_INFERNO: return Sub_Inferno_get_cooldown_fraction();
 	case SUB_ID_DISINTEGRATE: return Sub_Disintegrate_get_cooldown_fraction();
+	case SUB_ID_GRAVWELL: return Sub_Gravwell_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

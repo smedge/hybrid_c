@@ -432,6 +432,10 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 		break;
 	}
 
+	/* Gravity well pull (alive and not dying/dead) */
+	if (h->alive && h->aiState != HUNTER_DYING && h->aiState != HUNTER_DEAD)
+		Enemy_apply_gravity(pl, dt);
+
 	/* --- Update projectiles (done for ALL hunters from any update call) --- */
 	/* Only do this from hunter index 0 to avoid processing projectiles N times */
 	if (idx == 0) {
