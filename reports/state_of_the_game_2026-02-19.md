@@ -26,6 +26,16 @@ Audio ownership got fixed as part of this too. Before unification, skill sounds 
 
 We also centralized damage routing (`Enemy_check_player_damage()`) and fragment drops (`Enemy_drop_fragments()`) in `enemy_util.c`. Every enemy type now calls the same damage check that tests all player weapons and applies stealth ambush multipliers centrally. No more per-enemy-type weapon checking code.
 
+### Cloud Reflections & Weapon Lighting
+
+Two new stencil-based rendering systems that fundamentally changed how the world looks.
+
+**Cloud reflections** (`map_reflect.c/h`): Solid map blocks now act as polished metallic surfaces reflecting the cloud sky overhead. The blurred cloud texture from `bg_bloom` is sampled through a stencil mask with mirrored UVs and parallax camera offset, composited with additive blending. As you move, the reflected clouds slide across block surfaces — subtle, luminous, alive. Multi-value stencil writes circuit cells as 1 and solid cells as 2, so reflections only land on solid blocks while lighting can hit everything.
+
+**Weapon lighting** (`map_lighting.c/h`): Player weapons now cast colored light onto nearby map cells. Projectiles, beams, mine blinks, fire blobs — each weapon type provides a `*_render_light_source()` that renders emissive geometry into the `light_bloom` FBO. After blur, a stencil-tested fullscreen composite draws the blurred light onto map cells only. The stencil data from the reflection pass persists and gets reused — no redundant stencil writes. Fire inferno near a wall and watch it glow orange. Disintegrate past solid blocks and they pulse purple. The world reacts to your weapons now.
+
+These two systems share the stencil buffer intelligently — one write pass, two consumers with different stencil tests. That shared infrastructure is what made the settings toggles tricky later (can't skip the stencil write if only one system is disabled).
+
 ### Settings Window & Render Pipeline Toggles
 
 Then we built a full settings system. Seven toggles — multisampling, antialiasing, fullscreen, pixel snapping, bloom, lighting, reflections — in a modal window (I key) with the same visual style as the subroutine catalog. Pending-value pattern: edit freely, OK applies + saves to `settings.cfg`, Cancel/ESC discards. Settings persist across sessions.
