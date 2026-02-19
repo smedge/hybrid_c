@@ -1,5 +1,20 @@
 #include "sub_heal_core.h"
 #include "render.h"
+#include "audio.h"
+
+#include <SDL2/SDL_mixer.h>
+
+static Mix_Chunk *sampleHeal = 0;
+
+void SubHeal_initialize_audio(void)
+{
+	Audio_load_sample(&sampleHeal, "resources/sounds/heal.wav");
+}
+
+void SubHeal_cleanup_audio(void)
+{
+	Audio_unload_sample(&sampleHeal);
+}
 
 void SubHeal_init(SubHealCore *core)
 {
@@ -21,6 +36,7 @@ bool SubHeal_try_activate(SubHealCore *core, const SubHealConfig *cfg, Position 
 		core->beamOrigin = origin;
 		core->beamTarget = target;
 	}
+	Audio_play_sample(&sampleHeal);
 	return true;
 }
 

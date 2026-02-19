@@ -1,4 +1,19 @@
 #include "sub_dash_core.h"
+#include "audio.h"
+
+#include <SDL2/SDL_mixer.h>
+
+static Mix_Chunk *sampleDash = 0;
+
+void SubDash_initialize_audio(void)
+{
+	Audio_load_sample(&sampleDash, "resources/sounds/enemy_aggro.wav");
+}
+
+void SubDash_cleanup_audio(void)
+{
+	Audio_unload_sample(&sampleDash);
+}
 
 void SubDash_init(SubDashCore *core)
 {
@@ -19,6 +34,7 @@ bool SubDash_try_activate(SubDashCore *core, const SubDashConfig *cfg, double di
 	core->dirX = dirX;
 	core->dirY = dirY;
 	core->hitThisDash = false;
+	Audio_play_sample(&sampleDash);
 	return true;
 }
 

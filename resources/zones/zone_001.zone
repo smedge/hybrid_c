@@ -237,7 +237,6 @@ spawn defender 9600.0 8000.0
 spawn hunter 9100.0 8000.0
 spawn hunter 9600.0 7500.0
 spawn defender -6400.0 6400.0
-spawn seeker -6400.0 6300.0
 spawn hunter -12800.0 0.0
 spawn defender -12900.0 100.0
 spawn defender -12900.0 -100.0

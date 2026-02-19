@@ -19,6 +19,9 @@ typedef struct {
 	double damage;
 } SubDashConfig;
 
+void SubDash_initialize_audio(void);
+void SubDash_cleanup_audio(void);
+
 void SubDash_init(SubDashCore *core);
 bool SubDash_try_activate(SubDashCore *core, const SubDashConfig *cfg, double dirX, double dirY);
 bool SubDash_update(SubDashCore *core, const SubDashConfig *cfg, unsigned int ticks);

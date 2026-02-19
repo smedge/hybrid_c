@@ -5,9 +5,6 @@
 #include "progression.h"
 #include "player_stats.h"
 #include "ship.h"
-#include "audio.h"
-
-#include <SDL2/SDL_mixer.h>
 
 #define FEEDBACK_COST 30.0
 
@@ -31,15 +28,10 @@ static const SubShieldConfig cfg = {
 	.light_segments = 16,
 };
 
-static Mix_Chunk *sampleActivate = 0;
-static Mix_Chunk *sampleDeactivate = 0;
-
 void Sub_Aegis_initialize(void)
 {
 	SubShield_init(&core);
-
-	Audio_load_sample(&sampleActivate, "resources/sounds/statue_rise.wav");
-	Audio_load_sample(&sampleDeactivate, "resources/sounds/door.wav");
+	SubShield_initialize_audio();
 }
 
 void Sub_Aegis_cleanup(void)
@@ -47,8 +39,7 @@ void Sub_Aegis_cleanup(void)
 	if (SubShield_is_active(&core))
 		PlayerStats_set_shielded(false);
 
-	Audio_unload_sample(&sampleActivate);
-	Audio_unload_sample(&sampleDeactivate);
+	SubShield_cleanup_audio();
 }
 
 void Sub_Aegis_update(const Input *input, unsigned int ticks)
@@ -61,20 +52,17 @@ void Sub_Aegis_update(const Input *input, unsigned int ticks)
 			if (SubShield_try_activate(&core, &cfg)) {
 				PlayerStats_set_shielded(true);
 				PlayerStats_add_feedback(FEEDBACK_COST);
-				Audio_play_sample(&sampleActivate);
 			}
 		}
 	} else {
 		/* Check if shield was broken externally (e.g. by mine) */
 		if (!PlayerStats_is_shielded()) {
 			SubShield_break(&core, &cfg);
-			Audio_play_sample(&sampleDeactivate);
 			return;
 		}
 		/* Tick the core — returns true if shield just expired */
 		if (SubShield_update(&core, &cfg, ticks)) {
 			PlayerStats_set_shielded(false);
-			Audio_play_sample(&sampleDeactivate);
 			return;
 		}
 	}
@@ -102,4 +90,9 @@ void Sub_Aegis_render_light_source(void)
 float Sub_Aegis_get_cooldown_fraction(void)
 {
 	return SubShield_get_cooldown_fraction(&core, &cfg);
+}
+
+void Sub_Aegis_on_hit(void)
+{
+	SubShield_on_hit(&core);
 }

@@ -165,13 +165,10 @@ static void activate_spark(Position pos, bool shielded) {
 	sparks[slot].ticksLeft = SPARK_DURATION;
 }
 
-/* Audio */
-static Mix_Chunk *sampleHeal = 0;
-static Mix_Chunk *sampleAegis = 0;
+/* Audio — entity sounds only (damage/death/respawn) */
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
-static Mix_Chunk *sampleShieldHit = 0;
 
 /* Helpers */
 static void pick_wander_target(DefenderState *d)
@@ -254,14 +251,12 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 	EnemyRegistry_heal(bestType, bestIdx, defHealCfg.heal_amount);
 
 	SubHeal_try_activate(&d->healCore, &defHealCfg, pl->position, bestPos);
-	Audio_play_sample(&sampleHeal);
 	return true;
 }
 
 static void activate_aegis(DefenderState *d)
 {
-	if (SubShield_try_activate(&d->shieldCore, &defShieldCfg))
-		Audio_play_sample(&sampleAegis);
+	SubShield_try_activate(&d->shieldCore, &defShieldCfg);
 }
 
 /* ---- Public API ---- */
@@ -305,14 +300,12 @@ void Defender_initialize(Position position)
 	highestUsedIndex++;
 
 	/* Load audio and register with enemy registry once, not per-entity */
-	if (!sampleHeal) {
-		Audio_load_sample(&sampleHeal, "resources/sounds/refill_start.wav");
-		Audio_load_sample(&sampleAegis, "resources/sounds/statue_rise.wav");
+	if (!sampleDeath) {
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
-
+		SubShield_initialize_audio();
+		SubHeal_initialize_audio();
 		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal};
 		defenderTypeId = EnemyRegistry_register(cb);
 	}
@@ -331,12 +324,11 @@ void Defender_cleanup(void)
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 
-	Audio_unload_sample(&sampleHeal);
-	Audio_unload_sample(&sampleAegis);
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
-	Audio_unload_sample(&sampleShieldHit);
+	SubShield_cleanup_audio();
+	SubHeal_cleanup_audio();
 }
 
 Collision Defender_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -404,7 +396,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 					/* Mine breaks aegis shield — no damage, grace outlasts explosion */
 					SubShield_break(&d->shieldCore, &defShieldCfg);
 				}
-				Audio_play_sample(&sampleShieldHit);
+				SubShield_on_hit(&d->shieldCore);
 			} else {
 				d->hp -= dmg.damage + (dmg.mine_hit ? dmg.mine_damage : 0.0);
 				Audio_play_sample(&sampleHit);
@@ -820,6 +812,22 @@ bool Defender_is_protecting(Position pos)
 			return true;
 	}
 	return false;
+}
+
+void Defender_notify_shield_hit(Position pos)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (!d->alive)
+			continue;
+		if (!SubShield_is_active(&d->shieldCore) && !SubShield_in_grace(&d->shieldCore))
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, pos);
+		if (dist < PROTECT_RADIUS) {
+			SubShield_on_hit(&d->shieldCore);
+			return;
+		}
+	}
 }
 
 bool Defender_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index)

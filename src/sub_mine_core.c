@@ -1,6 +1,24 @@
 #include "sub_mine_core.h"
 #include "render.h"
 #include "view.h"
+#include "audio.h"
+
+#include <SDL2/SDL_mixer.h>
+
+static Mix_Chunk *sampleArm = 0;
+static Mix_Chunk *sampleExplode = 0;
+
+void SubMine_initialize_audio(void)
+{
+	Audio_load_sample(&sampleArm, "resources/sounds/bomb_set.wav");
+	Audio_load_sample(&sampleExplode, "resources/sounds/bomb_explode.wav");
+}
+
+void SubMine_cleanup_audio(void)
+{
+	Audio_unload_sample(&sampleArm);
+	Audio_unload_sample(&sampleExplode);
+}
 
 void SubMine_init(SubMineCore *core)
 {
@@ -17,6 +35,7 @@ bool SubMine_arm(SubMineCore *core, const SubMineConfig *cfg, Position pos)
 	core->phase = MINE_PHASE_ARMED;
 	core->position = pos;
 	core->phaseTicks = 0;
+	Audio_play_sample(&sampleArm);
 	(void)cfg;
 	return true;
 }
@@ -27,6 +46,7 @@ void SubMine_detonate(SubMineCore *core)
 		return;
 	core->phase = MINE_PHASE_EXPLODING;
 	core->phaseTicks = 0;
+	Audio_play_sample(&sampleExplode);
 }
 
 MinePhase SubMine_update(SubMineCore *core, const SubMineConfig *cfg, unsigned int ticks)
@@ -37,6 +57,7 @@ MinePhase SubMine_update(SubMineCore *core, const SubMineConfig *cfg, unsigned i
 		if (core->phaseTicks >= cfg->armed_duration_ms) {
 			core->phase = MINE_PHASE_EXPLODING;
 			core->phaseTicks = 0;
+			Audio_play_sample(&sampleExplode);
 			return MINE_PHASE_EXPLODING;
 		}
 		break;

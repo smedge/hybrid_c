@@ -2,7 +2,6 @@
 
 #include "sub_projectile_core.h"
 #include "graphics.h"
-#include "audio.h"
 #include "position.h"
 #include "render.h"
 #include "view.h"
@@ -11,15 +10,10 @@
 #include "sub_stealth.h"
 #include "player_stats.h"
 
-#include <SDL2/SDL_mixer.h>
-
 static Entity *parent;
 static SubProjectilePool pool;
 
-static Mix_Chunk *sampleFire = 0;
-static Mix_Chunk *sampleHit = 0;
-
-static SubProjectileConfig cfg = {
+static const SubProjectileConfig cfg = {
 	.fire_cooldown_ms = 500,
 	.velocity = 3500.0,
 	.ttl_ms = 1000,
@@ -36,25 +30,18 @@ static SubProjectileConfig cfg = {
 	.light_proj_r = 1.0f, .light_proj_g = 1.0f, .light_proj_b = 1.0f, .light_proj_a = 0.7f,
 	.light_spark_radius = 90.0f,
 	.light_spark_r = 1.0f, .light_spark_g = 1.0f, .light_spark_b = 0.8f, .light_spark_a = 0.6f,
-	.sample_fire = NULL,
-	.sample_hit = NULL,
 };
 
 void Sub_Pea_initialize(Entity *p)
 {
 	parent = p;
 	SubProjectile_pool_init(&pool, cfg.pool_size);
-
-	Audio_load_sample(&sampleFire, "resources/sounds/long_beam.wav");
-	Audio_load_sample(&sampleHit, "resources/sounds/ricochet.wav");
-	cfg.sample_fire = &sampleFire;
-	cfg.sample_hit = &sampleHit;
+	SubProjectile_initialize_audio();
 }
 
 void Sub_Pea_cleanup()
 {
-	Audio_unload_sample(&sampleFire);
-	Audio_unload_sample(&sampleHit);
+	SubProjectile_cleanup_audio();
 }
 
 void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable)

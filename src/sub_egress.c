@@ -25,11 +25,13 @@ static bool shiftWasDown;
 void Sub_Egress_initialize(void)
 {
 	SubDash_init(&core);
+	SubDash_initialize_audio();
 	shiftWasDown = false;
 }
 
 void Sub_Egress_cleanup(void)
 {
+	SubDash_cleanup_audio();
 }
 
 void Sub_Egress_update(const Input *input, unsigned int ticks)

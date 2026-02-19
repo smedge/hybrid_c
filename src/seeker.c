@@ -147,13 +147,10 @@ static void activate_spark(Position pos, bool shielded) {
 	sparks[slot].ticksLeft = SPARK_DURATION;
 }
 
-/* Audio */
-static Mix_Chunk *sampleWindup = 0;
-static Mix_Chunk *sampleDash = 0;
+/* Audio — entity sounds only (damage/death/respawn) */
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
-static Mix_Chunk *sampleShieldHit = 0;
 
 /* Helpers */
 static void pick_wander_target(SeekerState *s)
@@ -209,13 +206,11 @@ void Seeker_initialize(Position position)
 	highestUsedIndex++;
 
 	/* Load audio and register with enemy registry once, not per-entity */
-	if (!sampleWindup) {
-		Audio_load_sample(&sampleWindup, "resources/sounds/enemy_aggro.wav");
-		Audio_load_sample(&sampleDash, "resources/sounds/ricochet.wav");
+	if (!sampleDeath) {
+		SubDash_initialize_audio();
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
 
 		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal};
 		EnemyRegistry_register(cb);
@@ -234,12 +229,10 @@ void Seeker_cleanup(void)
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 
-	Audio_unload_sample(&sampleWindup);
-	Audio_unload_sample(&sampleDash);
+	SubDash_cleanup_audio();
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
-	Audio_unload_sample(&sampleShieldHit);
 }
 
 Collision Seeker_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -293,7 +286,10 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 
 		if (hit) {
 			activate_spark(pl->position, shielded);
-			Audio_play_sample(shielded ? &sampleShieldHit : &sampleHit);
+			if (shielded)
+				Defender_notify_shield_hit(pl->position);
+			else
+				Audio_play_sample(&sampleHit);
 
 			/* Getting shot immediately aggroes */
 			if (s->aiState == SEEKER_IDLE) {
@@ -402,7 +398,6 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 				s->pendingDirY = 1.0;
 			}
 
-			Audio_play_sample(&sampleWindup);
 		}
 		break;
 	}
@@ -417,7 +412,6 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			s->aiState = SEEKER_DASHING;
 			s->dashStartPos = pl->position;
 			SubDash_try_activate(&s->dashCore, &seekerDashCfg, s->pendingDirX, s->pendingDirY);
-			Audio_play_sample(&sampleDash);
 		}
 		break;
 	}

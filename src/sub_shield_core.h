@@ -39,6 +39,10 @@ bool SubShield_is_active(const SubShieldCore *core);
 bool SubShield_in_grace(const SubShieldCore *core);
 float SubShield_get_cooldown_fraction(const SubShieldCore *core, const SubShieldConfig *cfg);
 
+void SubShield_initialize_audio(void);
+void SubShield_cleanup_audio(void);
+void SubShield_on_hit(const SubShieldCore *core);
+
 void SubShield_render_ring(const SubShieldCore *core, const SubShieldConfig *cfg, Position pos);
 void SubShield_render_bloom(const SubShieldCore *core, const SubShieldConfig *cfg, Position pos);
 void SubShield_render_light(const SubShieldCore *core, const SubShieldConfig *cfg, Position pos);

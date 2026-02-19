@@ -5,8 +5,6 @@
 #include "position.h"
 #include "collision.h"
 
-#include <SDL2/SDL_mixer.h>
-
 #define SUB_PROJ_MAX_POOL 64
 
 typedef struct {
@@ -47,10 +45,10 @@ typedef struct {
 	float light_proj_r, light_proj_g, light_proj_b, light_proj_a;
 	float light_spark_radius;
 	float light_spark_r, light_spark_g, light_spark_b, light_spark_a;
-	/* Audio */
-	Mix_Chunk **sample_fire;
-	Mix_Chunk **sample_hit;
 } SubProjectileConfig;
+
+void SubProjectile_initialize_audio(void);
+void SubProjectile_cleanup_audio(void);
 
 void SubProjectile_pool_init(SubProjectilePool *pool, int poolSize);
 bool SubProjectile_try_fire(SubProjectilePool *pool, const SubProjectileConfig *cfg,

@@ -4,12 +4,9 @@
 #include "ship.h"
 #include "progression.h"
 #include "render.h"
-#include "audio.h"
 #include "skillbar.h"
 #include "sub_stealth.h"
 #include "player_stats.h"
-
-#include <SDL2/SDL_mixer.h>
 
 #define MAX_PLAYER_MINES 3
 #define PLACE_COOLDOWN 250
@@ -32,9 +29,6 @@ static const SubMineConfig playerMineCfg = {
 static SubMineCore mines[MAX_PLAYER_MINES];
 static int cooldownTimer;
 
-static Mix_Chunk *samplePlace = 0;
-static Mix_Chunk *sampleExplode = 0;
-
 void Sub_Mine_initialize(void)
 {
 	cooldownTimer = 0;
@@ -42,14 +36,12 @@ void Sub_Mine_initialize(void)
 	for (int i = 0; i < MAX_PLAYER_MINES; i++)
 		SubMine_init(&mines[i]);
 
-	Audio_load_sample(&samplePlace, "resources/sounds/bomb_set.wav");
-	Audio_load_sample(&sampleExplode, "resources/sounds/bomb_explode.wav");
+	SubMine_initialize_audio();
 }
 
 void Sub_Mine_cleanup(void)
 {
-	Audio_unload_sample(&samplePlace);
-	Audio_unload_sample(&sampleExplode);
+	SubMine_cleanup_audio();
 }
 
 void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
@@ -72,7 +64,6 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 		if (slot >= 0) {
 			cooldownTimer = PLACE_COOLDOWN;
 			SubMine_arm(&mines[slot], &playerMineCfg, Ship_get_position());
-			Audio_play_sample(&samplePlace);
 		}
 	}
 
@@ -86,7 +77,6 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 
 		/* Just transitioned to EXPLODING */
 		if (m->phase == MINE_PHASE_EXPLODING && prevPhase == MINE_PHASE_ARMED) {
-			Audio_play_sample(&sampleExplode);
 			PlayerStats_add_feedback(15.0);
 
 			/* Player's own mines hurt the player */

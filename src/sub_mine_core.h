@@ -36,6 +36,9 @@ typedef struct {
 	float light_explode_r, light_explode_g, light_explode_b, light_explode_a;
 } SubMineConfig;
 
+void SubMine_initialize_audio(void);
+void SubMine_cleanup_audio(void);
+
 void SubMine_init(SubMineCore *core);
 bool SubMine_arm(SubMineCore *core, const SubMineConfig *cfg, Position pos);
 void SubMine_detonate(SubMineCore *core);

@@ -52,9 +52,8 @@ static PlaceableComponent placeables[MINE_COUNT];
 static Entity *entityRefs[MINE_COUNT];
 static int highestUsedIndex = 0;
 
-static Mix_Chunk *sample01 = 0;
-static Mix_Chunk *sample02 = 0;
-static Mix_Chunk *sample03 = 0;
+/* Audio — entity sounds only (respawn) */
+static Mix_Chunk *sampleRespawn = 0;
 
 void Mine_initialize(Position position)
 {
@@ -83,10 +82,9 @@ void Mine_initialize(Position position)
 	highestUsedIndex++;
 
 	/* Load audio once, not per-entity */
-	if (!sample01) {
-		Audio_load_sample(&sample01, "resources/sounds/bomb_set.wav");
-		Audio_load_sample(&sample02, "resources/sounds/bomb_explode.wav");
-		Audio_load_sample(&sample03, "resources/sounds/door.wav");
+	if (!sampleRespawn) {
+		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
+		SubMine_initialize_audio();
 	}
 }
 
@@ -100,9 +98,8 @@ void Mine_cleanup()
 	}
 	highestUsedIndex = 0;
 
-	Audio_unload_sample(&sample01);
-	Audio_unload_sample(&sample02);
-	Audio_unload_sample(&sample03);
+	Audio_unload_sample(&sampleRespawn);
+	SubMine_cleanup_audio();
 }
 
 Collision Mine_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -123,7 +120,6 @@ Collision Mine_collide(void *state, const PlaceableComponent *placeable, const R
 	if (core->phase != MINE_PHASE_EXPLODING && Collision_aabb_test(bodyTransformed, boundingBox)) {
 		/* Direct contact — instant explosion, breaks stealth */
 		Sub_Stealth_break();
-		Audio_play_sample(&sample02);
 		SubMine_detonate(core);
 		ms->killedByPlayer = true;
 		collision.collisionDetected = true;
@@ -156,7 +152,6 @@ void Mine_resolve(void *state, const Collision collision)
 	if (Sub_Stealth_is_stealthed())
 		return;
 
-	Audio_play_sample(&sample01);
 	SubMine_arm(core, &enemyMineCfg, core->position);
 }
 
@@ -171,7 +166,6 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 		Rectangle body = {-bs, bs, bs, -bs};
 		Rectangle mineBody = Collision_transform_bounding_box(placeable->position, body);
 		if (Enemy_check_any_hit(mineBody)) {
-			Audio_play_sample(&sample02);
 			SubMine_detonate(core);
 			ms->killedByPlayer = true;
 		}
@@ -180,14 +174,9 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 	MinePhase prevPhase = core->phase;
 	MinePhase phase = SubMine_update(core, &enemyMineCfg, ticks);
 
-	/* Just transitioned to EXPLODING */
-	if (phase == MINE_PHASE_EXPLODING && prevPhase == MINE_PHASE_ARMED) {
-		Audio_play_sample(&sample02);
-	}
-
 	/* Just transitioned out of DEAD back to DORMANT — respawn */
 	if (phase == MINE_PHASE_DORMANT && prevPhase == MINE_PHASE_DEAD) {
-		Audio_play_sample(&sample03);
+		Audio_play_sample(&sampleRespawn);
 		ms->killedByPlayer = false;
 	}
 

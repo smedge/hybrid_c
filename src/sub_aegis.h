@@ -10,5 +10,6 @@ void Sub_Aegis_render(void);
 void Sub_Aegis_render_bloom_source(void);
 void Sub_Aegis_render_light_source(void);
 float Sub_Aegis_get_cooldown_fraction(void);
+void Sub_Aegis_on_hit(void);
 
 #endif

@@ -21,6 +21,9 @@ typedef struct {
 	float bloom_beam_thickness;
 } SubHealConfig;
 
+void SubHeal_initialize_audio(void);
+void SubHeal_cleanup_audio(void);
+
 void SubHeal_init(SubHealCore *core);
 bool SubHeal_try_activate(SubHealCore *core, const SubHealConfig *cfg, Position origin, Position target);
 void SubHeal_update(SubHealCore *core, const SubHealConfig *cfg, unsigned int ticks);

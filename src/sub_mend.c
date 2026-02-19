@@ -5,7 +5,6 @@
 #include "progression.h"
 #include "player_stats.h"
 #include "ship.h"
-#include "audio.h"
 
 #define FEEDBACK_COST 20.0
 #define REGEN_BOOST_DURATION 5000
@@ -21,17 +20,15 @@ static const SubHealConfig cfg = {
 	.bloom_beam_thickness = 0.0f,
 };
 
-static Mix_Chunk *sampleHeal;
-
 void Sub_Mend_initialize(void)
 {
 	SubHeal_init(&core);
-	Audio_load_sample(&sampleHeal, "resources/sounds/heal.wav");
+	SubHeal_initialize_audio();
 }
 
 void Sub_Mend_cleanup(void)
 {
-	Audio_unload_sample(&sampleHeal);
+	SubHeal_cleanup_audio();
 }
 
 void Sub_Mend_update(const Input *input, unsigned int ticks)
@@ -46,7 +43,6 @@ void Sub_Mend_update(const Input *input, unsigned int ticks)
 		PlayerStats_heal(cfg.heal_amount);
 		PlayerStats_boost_regen(REGEN_BOOST_DURATION, REGEN_BOOST_MULTIPLIER);
 		PlayerStats_add_feedback(FEEDBACK_COST);
-		Audio_play_sample(&sampleHeal);
 	}
 }
 

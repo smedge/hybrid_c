@@ -5,10 +5,26 @@
 #include "audio.h"
 #include "color.h"
 
+#include <SDL2/SDL_mixer.h>
 #include <math.h>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+static Mix_Chunk *sampleFire = 0;
+static Mix_Chunk *sampleHit = 0;
+
+void SubProjectile_initialize_audio(void)
+{
+	Audio_load_sample(&sampleFire, "resources/sounds/long_beam.wav");
+	Audio_load_sample(&sampleHit, "resources/sounds/ricochet.wav");
+}
+
+void SubProjectile_cleanup_audio(void)
+{
+	Audio_unload_sample(&sampleFire);
+	Audio_unload_sample(&sampleHit);
+}
 
 static double get_radians(double degrees)
 {
@@ -62,8 +78,7 @@ bool SubProjectile_try_fire(SubProjectilePool *pool, const SubProjectileConfig *
 	p->headingSin = sin(rad);
 	p->headingCos = cos(rad);
 
-	if (cfg->sample_fire)
-		Audio_play_sample(cfg->sample_fire);
+	Audio_play_sample(&sampleFire);
 
 	return true;
 }
@@ -101,8 +116,7 @@ void SubProjectile_update(SubProjectilePool *pool, const SubProjectileConfig *cf
 			pool->sparkPosition.y = hy;
 			pool->sparkTicksLeft = cfg->spark_duration_ms;
 			p->active = false;
-			if (cfg->sample_hit)
-				Audio_play_sample(cfg->sample_hit);
+			Audio_play_sample(&sampleHit);
 		}
 	}
 

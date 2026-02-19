@@ -61,6 +61,8 @@ Feedback accumulates from two sources: **subroutine usage** (active cost of abil
 | sub_boost | None |
 | sub_stealth | 0 (requires 0 feedback to activate) |
 | sub_inferno | 25 per second while channeling |
+| sub_disintegrate | 22 per second while channeling |
+| sub_gravwell | 25 per deployment |
 
 **Spillover example**: Feedback is at 95, sub_mine adds 15. Feedback caps at 100, the remaining 10 spills over as 10 Integrity damage.
 
@@ -76,7 +78,7 @@ Feedback accumulates from two sources: **subroutine usage** (active cost of abil
 
 Subroutines are abilities the Hybrid AI can execute to interact with digital space. They are the core progression mechanic.
 
-**Endgame Vision**: 50+ subroutines across many types. The current set (pea, mgun, mine, boost, egress, mend, aegis, stealth, inferno) are the foundation — general-purpose tools that work everywhere but excel nowhere specific. As the game expands, subroutines become increasingly specialized. No single loadout of 10 handles everything. The player must read the situation, understand what they're up against, visit their catalog, and build for the challenge. This build-craft layer — choosing, combining, and swapping subroutines to match the threat — is where the strategic depth lives. The skill expression isn't just aim and reflexes; it's knowing which tools to bring and when to swap them.
+**Endgame Vision**: 50+ subroutines across many types. The current set (pea, mgun, mine, boost, egress, mend, aegis, stealth, inferno, disintegrate, gravwell) are the foundation — general-purpose tools that work everywhere but excel nowhere specific. As the game expands, subroutines become increasingly specialized. No single loadout of 10 handles everything. The player must read the situation, understand what they're up against, visit their catalog, and build for the challenge. This build-craft layer — choosing, combining, and swapping subroutines to match the threat — is where the strategic depth lives. The skill expression isn't just aim and reflexes; it's knowing which tools to bring and when to swap them.
 
 **Build Archetypes** (long-term direction — examples, not exhaustive):
 - **Minion Master**: Drone summoning + drone healing + drone command + feedback management. Powerful army but demands multiple slots and careful resource management. Inspired by Guild Wars necromancer builds where you need supporting skills to make the core strategy viable.
@@ -115,6 +117,8 @@ Every subroutine falls into one of three activation categories:
 | sub_aegis | shield | Instant | Damage shield. Invulnerable to all damage for 10 seconds. 30s cooldown. 30 feedback. Activated with F key. Cyan ring visual. | 4/10 | 5 defender kills (aegis fragments) | Implemented |
 | sub_stealth | stealth | Instant | Cloak and ambush. Go invisible (0.15 alpha + pulse), 0.5x speed while cloaked. Requires 0 feedback to activate. 15s cooldown (starts on unstealth). Breaking stealth via attack grants 5x ambush damage for 1s within 500 units, pierces all shields. Ambush kill resets cooldown. Enemies detect player in 90° vision cone within 100 units. | 7/10 | TBD (placeholder) | Implemented |
 | sub_inferno | projectile (elite) | Channel | Channeled fire beam. Hold LMB to unleash 125 blobs/sec, 10 damage each (~1250 DPS). ±5° spread, 2500 u/s speed, 500ms TTL, piercing. 25 feedback/sec while channeling — ~4s sustain window before spillover. 256 blob pool. | 15/14 | TBD (placeholder) | Implemented |
+| sub_disintegrate | projectile (elite) | Channel | Precision carving beam. Hold LMB to channel a triple-layer purple-white beam. 2600 range, carves at 120°/sec sweep, full pierce. ~900 DPS, 22 feedback/sec. Dedicated bloom FBO for purple halo. 80 blobs, 3-layer render (purple outer, mid, white-hot core). | 15/14 | TBD (placeholder) | Implemented |
+| sub_gravwell | deployable | Instant | Gravity well. Deploys a vortex that pulls enemies toward center and slows them (60% speed at edge, 5% at center). 600-unit radius, 8s duration, 20s cooldown, 25 feedback. 640 particle blobs with ghost trails. No direct damage — pure crowd control. | TBD | TBD (placeholder) | Implemented |
 
 **Each enemy type has a corresponding subroutine** (or set of subroutines) unlocked by defeating enough of that enemy. This creates a progression loop: encounter enemy → learn its patterns → kill it → gain its ability. As the subroutine count grows, some enemies will unlock multiple subroutines (e.g., defenders unlock both sub_mend and sub_aegis), and later enemies will unlock subroutines that form the building blocks of entire playstyle archetypes.
 
@@ -134,6 +138,7 @@ Enemies drop **fragments** (small colored binary glyph collectibles) when destro
 | Mend | Light blue | Defender kills (50% drop) | sub_mend | 5 |
 | Aegis | Light cyan | Defender kills (50% drop) | sub_aegis | 5 |
 | Elite | Gold | Special encounters | sub_boost | 1 |
+| Gravwell | TBD | TBD | sub_gravwell | TBD |
 
 - The **Catalog Window** (P key) shows progression and allows equipping — see Catalog Window section below
 
@@ -271,6 +276,7 @@ No single loadout handles all of these. The player must adapt their build to the
 | sub_mine | 100 (AoE) | 2s fuse, 3 max | burst |
 | sub_egress | 50 (contact) | 2s cooldown | burst |
 | sub_inferno | 10/blob | 125 blobs/sec | ~1250 |
+| sub_disintegrate | 15/frame | channeled beam | ~900 |
 | Hunter burst shot | 15 | 3-shot burst, 1.5s between | ~30 avg |
 | Seeker dash | 80 | ~every 4s | ~20 avg |
 
@@ -424,7 +430,7 @@ Zones use a **noise + influence field approach** to level generation. The design
 **Prerequisites** (all complete):
 1. ~~God mode editing tools for procgen content authoring~~ (done)
 2. ~~Portals and zone transitions~~ (done)
-3. ~~At least one active enemy type~~ (done — hunters, seekers, defenders)
+3. ~~At least one active enemy type~~ (done — mines, hunters, seekers, defenders)
 
 ### Map & Navigation
 
@@ -536,6 +542,8 @@ More types will be added as new cell types, enemy types, and world features are 
 - Sub_aegis damage shield (F key, 10s invulnerability, 30s cooldown, 30 feedback, cyan ring visual)
 - Sub_stealth cloak and ambush (invisible + 0.5x speed, 0 feedback gate, 5x ambush multiplier, shield pierce, cooldown reset on ambush kill, 15s cooldown, enemy vision cone detection)
 - Sub_inferno channeled fire beam (elite, hold LMB, 125 blobs/sec, ~1250 DPS, 25 feedback/sec, piercing, 256 blob pool)
+- Sub_disintegrate precision beam (elite, hold LMB, carving sweep at 120°/sec, ~900 DPS, 22 feedback/sec, dedicated purple bloom FBO, full pierce)
+- Sub_gravwell gravity well deployable (640 blobs, ghost trails, 600-unit radius pull + slow, 8s duration, 20s cooldown, 25 feedback)
 - Player stats system (Integrity + Feedback bars, spillover damage, damage-to-feedback (0.5x), regen with 2x rate at 0 feedback, damage flash + sound, shield state, i-frame system)
 - Hunter enemy (patrol, chase, 3-shot burst, LOS requirement, near-miss aggro, deaggro on player death)
 - Seeker enemy (stalk, orbit, telegraph, dash-charge, 60HP glass cannon)
@@ -559,8 +567,12 @@ More types will be added as new cell types, enemy types, and world features are 
 - Cursor (red dot + white crosshair)
 - 7 gameplay music tracks (random selection) + menu music
 - OpenGL 3.3 Core Profile rendering pipeline
-- FBO post-process bloom (foreground entity glow + background diffuse clouds + disintegrate beam)
-- Stencil-based cloud reflection on solid map blocks (parallax mirrored sky)
+- FBO post-process bloom (4 instances: foreground entity glow, background diffuse clouds, disintegrate beam, weapon lighting)
+- Stencil-based cloud reflection on solid map blocks (multi-value stencil, parallax mirrored sky)
+- Weapon lighting on map cells (stencil-tested light FBO composite from weapon emissive sources)
+- Subroutine unification (shared mechanical cores for shield, heal, dash, mine, projectile — used by both player subs and enemy AI)
+- Centralized damage routing and fragment drop system in enemy_util.c
+- GPU instanced particle rendering (shared quad renderer for gravwell, inferno, disintegrate)
 - Motion trails (ship boost ghost triangles, projectile thick line trails)
 - Background parallax cloud system (3 layers, tiled, pulsing, drifting)
 - Background zoom parallax (half-rate zoom for depth perception)
@@ -622,7 +634,7 @@ The codebase is structured with platform abstraction in mind, enabling future po
 
 **Rendering abstraction** (`render.h` / `render.c`):
 - All game entities call `Render_*` functions — never OpenGL directly
-- Entity files (ship.c, mine.c, sub_pea.c, map.c) have zero GL includes
+- Entity files (ship.c, mine.c, sub_pea.c, map.c) and subroutine core files have zero GL includes
 - The `Render_*` API provides: `Render_point`, `Render_triangle`, `Render_quad`, `Render_line_segment`, `Render_thick_line`, `Render_filled_circle`, `Render_quad_absolute`, `Render_flush`, `Render_flush_keep`, `Render_redraw`, `Render_clear`
 - Swapping OpenGL for Vulkan/Metal/WebGPU requires only reimplementing render.c, batch.c, shader.c, and bloom.c — entity code is untouched
 
@@ -632,6 +644,26 @@ The codebase is structured with platform abstraction in mind, enabling future po
 - All game systems receive `const Input*` — they never call SDL directly
 - `Screen` struct (`graphics.h`) abstracts window dimensions
 - Porting to another windowing system (GLFW, native platform) requires only changing the SDL calls in `graphics.c` and the main event loop
+
+### Subroutine Unification (Core Extraction)
+
+Player subroutines and enemy abilities that share the same mechanics (shields, heals, dashes, mines, projectiles) are implemented using **shared mechanical cores**. Each core is a pure state machine with no knowledge of player input, skillbar, audio, or progression — the caller (player sub wrapper or enemy AI) handles those concerns.
+
+**Pattern**: Core struct (state) + Config struct (tuning constants) + pure API functions.
+
+| Core | Shared Between | Key Config Differences |
+|------|---------------|----------------------|
+| `sub_shield_core` | sub_aegis ↔ defender aegis | Duration, cooldown, break grace period, ring size, light |
+| `sub_heal_core` | sub_mend ↔ defender heal | Cooldown (10s vs 4s), beam visual duration, heal amount applied by caller |
+| `sub_dash_core` | sub_egress ↔ seeker dash | Speed (4000 vs 5000), cooldown (2s vs 0), damage (50 vs 80) |
+| `sub_mine_core` | sub_mine ↔ enemy mine | Fuse time (2s vs 500ms), dead phase duration (0 vs 10s for respawn) |
+| `sub_projectile_core` | sub_pea, sub_mgun ↔ hunter projectiles | Velocity, damage, cooldown, color, pool size, light radii |
+
+**Damage routing**: `Enemy_check_player_damage()` in `enemy_util.c` checks all player weapons against an enemy hitbox. Each weapon's `check_hit()` returns the damage value from its config (not hardcoded constants), and stealth ambush multiplier is applied centrally.
+
+**Drop system**: `Enemy_drop_fragments()` in `enemy_util.c` handles the shared "pick a random locked subroutine from a carried list, spawn fragment" pattern. Each enemy type defines a static `CarriedSubroutine` table mapping which subroutines it drops.
+
+**Benefits**: Adding a new enemy that uses an existing mechanic (e.g., a new enemy with a shield) requires only writing the AI wrapper with a config — the shield rendering, timing, and state machine come free from the core. Same for new player subs that reuse existing mechanics with different tuning.
 
 ### Entity Component System (ECS)
 
@@ -677,7 +709,7 @@ typedef struct {
 4. Write a factory function that calls `Entity_initialize_entity()`, wires up all component pointers, and calls `Entity_add_entity()`
 5. Implement component callback functions (render, collide, resolve, update)
 
-**Entity pool**: Fixed array of 1024 entities. Slots are reused when marked empty.
+**Entity pool**: Fixed array of 2048 entities. Slots are reused when marked empty.
 
 ### Immediate-Mode GUI (imgui)
 
@@ -715,8 +747,11 @@ typedef struct {
 **Render passes per frame**:
 1. **Background bloom pass**: Render background blobs into bg_bloom FBO → gaussian blur → additive composite
 2. **World pass**: Grid, map cells, entities (ship, mines, projectiles) with world projection + view transform
-3. **Foreground bloom pass**: Re-render emissive elements into bloom FBO → gaussian blur → additive composite
-4. **UI pass**: HUD, minimap, skill bar, text with UI projection + identity view
+3. **Cloud reflection pass**: Stencil mask solid blocks → fullscreen quad samples bg_bloom with mirrored parallax UVs → additive composite
+4. **Weapon lighting pass**: Render weapon emissive geometry into light_bloom FBO → blur → stencil-tested additive composite on map cells
+5. **Foreground bloom pass**: Re-render emissive elements into bloom FBO → gaussian blur → additive composite
+6. **Disintegrate bloom pass**: Re-render beam into disint_bloom FBO → gaussian blur → additive composite (only when beam active)
+7. **UI pass**: HUD, minimap, skill bar, text with UI projection + identity view
 
 **Vertex reuse** (`Render_flush_keep` / `Render_redraw`):
 - For tiled geometry (background clouds), vertices are pushed once per tile pattern
@@ -727,7 +762,7 @@ typedef struct {
 
 ### FBO Post-Process Bloom
 
-Two-instance bloom system replacing the old geometry-based glow (which hit vertex budget limits with 10 concentric shapes per object).
+Four-instance bloom system replacing the old geometry-based glow (which hit vertex budget limits with 10 concentric shapes per object).
 
 **Architecture** (`bloom.h` / `bloom.c`):
 - 3 FBOs per instance (source, ping, pong) with `GL_RGB16F` textures
@@ -735,15 +770,16 @@ Two-instance bloom system replacing the old geometry-based glow (which hit verte
 - Embedded GLSL 330 core shaders: fullscreen vertex, 9-tap separable gaussian blur, additive composite
 - Fullscreen quad VAO/VBO for post-process passes
 
-**Three bloom instances** (initialized in `graphics.c`):
+**Four bloom instances** (initialized in `graphics.c`):
 
 | Instance | Purpose | Divisor | Intensity | Blur Passes |
 |----------|---------|---------|-----------|-------------|
 | bloom (foreground) | Neon halos on entities | 2 (half-res) | 2.0 | 5 |
 | bg_bloom (background) | Diffuse ethereal clouds + block reflection source | 8 (eighth-res) | 2.5 | 20 |
 | disint_bloom (disintegrate) | Purple beam halo | 2 (half-res) | 3.0 | 7 |
+| light_bloom (weapon lighting) | Weapon light cast on map cells | 4 (quarter-res) | 1.5 | 6 |
 
-**Bloom sources**: Map cells, ship, ship death spark, sub_pea/sub_mgun projectiles + sparks, sub_inferno fire blobs (1.5x brightness), sub_aegis shield ring, mine blink/explosion, hunter body + projectiles, seeker body + dash trail, defender body + aegis ring + heal beams, portals, save points, fragments. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
+**Bloom sources**: Map cells, ship, ship death spark, sub_pea/sub_mgun projectiles + sparks, sub_inferno fire blobs (1.5x brightness), sub_disintegrate beam (dedicated disint_bloom FBO), sub_aegis shield ring, sub_gravwell vortex particles, mine blink/explosion, hunter body + projectiles, seeker body + dash trail, defender body + aegis ring + heal beams, portals, save points, fragments. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
 
 **Key design decision**: Background renders ONLY through the bg_bloom FBO (no raw polygon render). Additive bloom on top of sharp polygons doesn't hide edges — rendering exclusively through blur produces the desired diffuse cloud effect.
 
@@ -759,8 +795,9 @@ Solid (non-circuit) map blocks act as polished metallic surfaces reflecting the 
 
 **Architecture** (`map_reflect.c` / `map_reflect.h`):
 - Stencil buffer (8-bit) requested via SDL, cleared each frame
-- **Stencil write pass**: Renders fill quads for solid cells (no circuit cells, no outlines) and boundary areas into the stencil buffer with color writes disabled
-- **Reflection pass**: Fullscreen quad samples `bg_bloom->pong_tex` with mirrored UVs and parallax camera offset, drawn with additive blend where stencil == 1
+- **Multi-value stencil write pass**: Renders fill quads for all map cells into stencil buffer — circuit cells write 1, solid cells write 2. Color writes disabled during stencil pass.
+- **Reflection pass**: Fullscreen quad samples `bg_bloom->pong_tex` with mirrored UVs and parallax camera offset, drawn with additive blend where stencil == 2 (solid blocks only)
+- **Weapon lighting** reuses the same stencil data: tests stencil >= 1 (all cells) for light composite
 - Dedicated GLSL 330 core shader for reflection sampling
 - Texture temporarily set to `GL_MIRRORED_REPEAT` during reflection to avoid UV seams
 
@@ -768,7 +805,21 @@ Solid (non-circuit) map blocks act as polished metallic surfaces reflecting the 
 - `REFLECT_PARALLAX` (0.001) — UV offset scale per camera pixel
 - `REFLECT_INTENSITY` (3.0) — cloud brightness multiplier
 
-**Pipeline position**: After world geometry flush, before disintegrate bloom pass.
+**Pipeline position**: After world geometry flush, before weapon lighting pass.
+
+### Weapon Lighting on Map Cells
+
+Player weapons cast colored light onto nearby map cells, creating dynamic illumination as projectiles and beams pass over the terrain.
+
+**Architecture** (`map_lighting.c` / `map_lighting.h`):
+- Uses `light_bloom` FBO instance (divisor=4, intensity=1.5, blur_passes=6)
+- Each weapon type provides a `*_render_light_source()` function that renders emissive geometry (filled circles at projectile positions) into the light FBO
+- After blur, a stencil-tested fullscreen composite draws the blurred light onto map cells only (stencil >= 1, written by the reflection pass)
+- Stencil data persists from the reflection pass — lighting re-enables stencil test for composite only
+
+**Light sources**: sub_pea projectiles + sparks, sub_mgun projectiles + sparks, sub_mine armed blink + explosion, sub_inferno fire blobs, sub_disintegrate beam, hunter projectiles + sparks.
+
+**Pipeline position**: After cloud reflection, before foreground bloom pass.
 
 ### Motion Trails
 
@@ -818,7 +869,7 @@ As enemy counts grow, brute-force collision checks (every projectile × every en
 - Uniform distribution expected (enemies spread across zones, not heavily clustered)
 - If density becomes highly non-uniform (e.g., boss arenas with swarms), quadtree can be swapped in behind the same query interface later
 
-**When to implement**: Before adding the second enemy type or whenever mine count exceeds ~100
+**When to implement**: When enemy density in procgen zones exceeds current brute-force performance budget
 
 ### Zone Data Files
 

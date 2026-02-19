@@ -94,9 +94,8 @@ static int highestUsedIndex = 0;
 
 /* Projectile pool (shared across all hunters) */
 static SubProjectilePool hunterProjPool;
-static Mix_Chunk *sampleShoot = 0;
 
-static SubProjectileConfig hunterProjCfg = {
+static const SubProjectileConfig hunterProjCfg = {
 	.fire_cooldown_ms = 0,
 	.velocity = 2000.0,
 	.ttl_ms = 800,
@@ -113,8 +112,6 @@ static SubProjectileConfig hunterProjCfg = {
 	.light_proj_r = 1.0f, .light_proj_g = 0.5f, .light_proj_b = 0.1f, .light_proj_a = 0.7f,
 	.light_spark_radius = 90.0f,
 	.light_spark_r = 1.0f, .light_spark_g = 0.5f, .light_spark_b = 0.1f, .light_spark_a = 0.6f,
-	.sample_fire = NULL,
-	.sample_hit = NULL,
 };
 
 /* Body-hit sparks (separate from projectile wall sparks) */
@@ -141,11 +138,10 @@ static void activate_spark(Position pos, bool shielded) {
 	sparks[slot].ticksLeft = BODY_SPARK_DURATION;
 }
 
-/* Audio */
+/* Audio — entity sounds only (damage/death/respawn) */
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
-static Mix_Chunk *sampleShieldHit = 0;
 
 /* Helpers */
 static double get_radians(double degrees)
@@ -200,13 +196,11 @@ void Hunter_initialize(Position position)
 
 	/* Load audio and register with enemy registry once, not per-entity */
 	if (!sampleDeath) {
-		Audio_load_sample(&sampleShoot, "resources/sounds/long_beam.wav");
-		hunterProjCfg.sample_fire = &sampleShoot;
 		SubProjectile_pool_init(&hunterProjPool, hunterProjCfg.pool_size);
+		SubProjectile_initialize_audio();
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-		Audio_load_sample(&sampleShieldHit, "resources/sounds/ricochet.wav");
 
 		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal};
 		EnemyRegistry_register(cb);
@@ -227,11 +221,10 @@ void Hunter_cleanup(void)
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 
-	Audio_unload_sample(&sampleShoot);
+	SubProjectile_cleanup_audio();
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
-	Audio_unload_sample(&sampleShieldHit);
 }
 
 Collision Hunter_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -287,7 +280,10 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 
 		if (hit) {
 			activate_spark(pl->position, shielded);
-			Audio_play_sample(shielded ? &sampleShieldHit : &sampleHit);
+			if (shielded)
+				Defender_notify_shield_hit(pl->position);
+			else
+				Audio_play_sample(&sampleHit);
 
 			/* Getting shot immediately aggroes */
 			if (h->aiState == HUNTER_IDLE) {

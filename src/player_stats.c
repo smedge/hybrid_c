@@ -1,5 +1,6 @@
 #include "player_stats.h"
 
+#include "sub_aegis.h"
 #include "render.h"
 #include "text.h"
 #include "graphics.h"
@@ -287,8 +288,11 @@ void PlayerStats_add_feedback(double amount)
 
 void PlayerStats_damage(double amount)
 {
-	if (shielded || iframeMs > 0)
+	if (shielded || iframeMs > 0) {
+		if (shielded)
+			Sub_Aegis_on_hit();
 		return;
+	}
 	integrity -= amount;
 	if (integrity < 0.0)
 		integrity = 0.0;
