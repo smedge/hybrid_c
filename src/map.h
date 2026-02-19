@@ -35,5 +35,7 @@ bool Map_line_test_hit(double x0, double y0, double x1, double y1,
 					   double *hit_x, double *hit_y);
 void Map_render_stencil_mask(void);
 void Map_render_stencil_mask_all(const Mat4 *proj, const Mat4 *view_mat);
+void Map_set_circuit_traces(bool enabled);
+bool Map_get_circuit_traces(void);
 
 #endif

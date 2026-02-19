@@ -6,6 +6,7 @@
 #include "view.h"
 #include "map_lighting.h"
 #include "map_reflect.h"
+#include "map.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -46,6 +47,7 @@ static bool pendingPixelSnapping = true;
 static bool pendingBloom = true;
 static bool pendingLighting = true;
 static bool pendingReflections = true;
+static bool pendingCircuitTraces = true;
 
 /* Mouse tracking */
 static bool mouseWasDown = false;
@@ -89,6 +91,8 @@ void Settings_load(void)
 			MapLighting_set_enabled(value != 0);
 		else if (strcmp(key, "reflections") == 0)
 			MapReflect_set_enabled(value != 0);
+		else if (strcmp(key, "circuit_traces") == 0)
+			Map_set_circuit_traces(value != 0);
 	}
 	fclose(f);
 	printf("Settings_load: done. ms=%d aa=%d fs=%d\n",
@@ -111,6 +115,7 @@ void Settings_save(void)
 	fprintf(f, "bloom %d\n", Graphics_get_bloom_enabled() ? 1 : 0);
 	fprintf(f, "lighting %d\n", MapLighting_get_enabled() ? 1 : 0);
 	fprintf(f, "reflections %d\n", MapReflect_get_enabled() ? 1 : 0);
+	fprintf(f, "circuit_traces %d\n", Map_get_circuit_traces() ? 1 : 0);
 	fclose(f);
 	printf("Settings saved to %s\n", SETTINGS_FILE_PATH);
 }
@@ -127,6 +132,7 @@ void Settings_initialize(void)
 	pendingBloom = Graphics_get_bloom_enabled();
 	pendingLighting = MapLighting_get_enabled();
 	pendingReflections = MapReflect_get_enabled();
+	pendingCircuitTraces = Map_get_circuit_traces();
 }
 
 void Settings_cleanup(void)
@@ -152,6 +158,7 @@ void Settings_toggle(void)
 		pendingBloom = Graphics_get_bloom_enabled();
 		pendingLighting = MapLighting_get_enabled();
 		pendingReflections = MapReflect_get_enabled();
+		pendingCircuitTraces = Map_get_circuit_traces();
 	}
 }
 
@@ -254,6 +261,13 @@ void Settings_update(const Input *input, const unsigned int ticks)
 			my >= row_y && my <= row_y + TOGGLE_HEIGHT) {
 			pendingReflections = !pendingReflections;
 		}
+
+		/* Circuit Traces toggle */
+		row_y += 40.0f;
+		if (mx >= toggle_x && mx <= toggle_x + TOGGLE_WIDTH &&
+			my >= row_y && my <= row_y + TOGGLE_HEIGHT) {
+			pendingCircuitTraces = !pendingCircuitTraces;
+		}
 	}
 
 	/* Button clicks */
@@ -291,6 +305,7 @@ void Settings_update(const Input *input, const unsigned int ticks)
 			Graphics_set_bloom_enabled(pendingBloom);
 			MapLighting_set_enabled(pendingLighting);
 			MapReflect_set_enabled(pendingReflections);
+			Map_set_circuit_traces(pendingCircuitTraces);
 			Settings_save();
 			if (msChanged || aaChanged || fsChanged)
 				Graphics_recreate();
@@ -516,6 +531,26 @@ void Settings_render(const Screen *screen)
 			toggle_x, row_y + TOGGLE_HEIGHT, 1.0f, 0.4f, 0.4f, 0.4f, 0.6f);
 		Render_thick_line(toggle_x + TOGGLE_WIDTH, row_y,
 			toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT, 1.0f, 0.4f, 0.4f, 0.4f, 0.6f);
+
+		/* Circuit Traces toggle */
+		row_y += 40.0f;
+		if (pendingCircuitTraces) {
+			Render_quad_absolute(toggle_x, row_y,
+				toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT,
+				0.1f, 0.4f, 0.1f, 0.9f);
+		} else {
+			Render_quad_absolute(toggle_x, row_y,
+				toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT,
+				0.2f, 0.2f, 0.2f, 0.9f);
+		}
+		Render_thick_line(toggle_x, row_y,
+			toggle_x + TOGGLE_WIDTH, row_y, 1.0f, 0.4f, 0.4f, 0.4f, 0.6f);
+		Render_thick_line(toggle_x, row_y + TOGGLE_HEIGHT,
+			toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT, 1.0f, 0.4f, 0.4f, 0.4f, 0.6f);
+		Render_thick_line(toggle_x, row_y,
+			toggle_x, row_y + TOGGLE_HEIGHT, 1.0f, 0.4f, 0.4f, 0.4f, 0.6f);
+		Render_thick_line(toggle_x + TOGGLE_WIDTH, row_y,
+			toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT, 1.0f, 0.4f, 0.4f, 0.4f, 0.6f);
 	}
 
 	/* Buttons */
@@ -679,6 +714,20 @@ void Settings_render(const Screen *screen)
 			pendingReflections ? 0.3f : 0.6f,
 			pendingReflections ? 1.0f : 0.6f,
 			pendingReflections ? 0.3f : 0.6f,
+			0.9f);
+
+		/* Circuit Traces row */
+		row_y += 40.0f;
+		Text_render(tr, shaders, &proj, &ident,
+			"Circuit Traces", label_x, row_y + 15.0f,
+			0.8f, 0.8f, 0.9f, 0.9f);
+
+		Text_render(tr, shaders, &proj, &ident,
+			pendingCircuitTraces ? "ON" : "OFF",
+			toggle_x + 12.0f, row_y + 15.0f,
+			pendingCircuitTraces ? 0.3f : 0.6f,
+			pendingCircuitTraces ? 1.0f : 0.6f,
+			pendingCircuitTraces ? 0.3f : 0.6f,
 			0.9f);
 	}
 

@@ -11,6 +11,8 @@ static MapCell *map[MAP_SIZE][MAP_SIZE];
 static MapCell emptyCell = {true, false, {0,0,0,0}, {0,0,0,0}};
 static MapCell boundaryCell = {true, false, {0,0,0,0}, {0,0,0,0}};
 
+static bool circuitTracesEnabled = true;
+
 /* Pool of dynamically-set cells for zone loader */
 #define CELL_POOL_SIZE (MAP_SIZE * MAP_SIZE)
 static MapCell cellPool[CELL_POOL_SIZE];
@@ -805,7 +807,7 @@ static void render_cell(int x, int y, float outlineThickness)
 	}
 
 	/* Circuit board pattern */
-	if (!bloomSourceMode && mapCell.circuitPattern) {
+	if (!bloomSourceMode && mapCell.circuitPattern && circuitTracesEnabled) {
 		View view = View_get_view();
 		if (view.scale >= 0.15) {
 			int adjN = !nPtr->empty;
@@ -1100,4 +1102,14 @@ void Map_render_stencil_mask_all(const Mat4 *proj, const Mat4 *view_mat)
 		for (int y = minY; y <= maxY; y++)
 			render_cell_stencil(x, y);
 	Render_flush(proj, view_mat);
+}
+
+void Map_set_circuit_traces(bool enabled)
+{
+	circuitTracesEnabled = enabled;
+}
+
+bool Map_get_circuit_traces(void)
+{
+	return circuitTracesEnabled;
 }
