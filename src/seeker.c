@@ -248,9 +248,8 @@ Collision Seeker_collide(void *state, const PlaceableComponent *placeable, const
 
 	if (Collision_aabb_test(transformed, boundingBox)) {
 		collision.collisionDetected = true;
-		/* Solid contact only during dash (deals damage via update check) */
-		if (s->aiState == SEEKER_DASHING)
-			collision.solid = true;
+		/* Dash damage handled in update via explicit AABB check + hitThisDash.
+		   Do NOT set solid here — Ship_resolve treats solid as wall → force_kill. */
 		Sub_Stealth_break();
 	}
 

@@ -3,6 +3,7 @@
 #include "hunter.h"
 #include "seeker.h"
 #include "defender.h"
+#include "stalker.h"
 #include "portal.h"
 #include "savepoint.h"
 #include "background.h"
@@ -183,6 +184,7 @@ void Zone_unload(void)
 	Hunter_cleanup();
 	Seeker_cleanup();
 	Defender_cleanup();
+	Stalker_cleanup();
 	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();
@@ -362,6 +364,9 @@ void Zone_place_spawn(const char *enemy_type, double world_x, double world_y)
 	} else if (strcmp(enemy_type, "defender") == 0) {
 		Position pos = {world_x, world_y};
 		Defender_initialize(pos);
+	} else if (strcmp(enemy_type, "stalker") == 0) {
+		Position pos = {world_x, world_y};
+		Stalker_initialize(pos);
 	}
 
 	zoneDirty = true;
@@ -626,6 +631,7 @@ static void rebuild_enemies(void)
 	Hunter_cleanup();
 	Seeker_cleanup();
 	Defender_cleanup();
+	Stalker_cleanup();
 	EnemyRegistry_clear();
 	Zone_spawn_enemies();
 }
@@ -644,6 +650,8 @@ void Zone_spawn_enemies(void)
 			Seeker_initialize(pos);
 		else if (strcmp(sp->enemy_type, "defender") == 0)
 			Defender_initialize(pos);
+		else if (strcmp(sp->enemy_type, "stalker") == 0)
+			Stalker_initialize(pos);
 	}
 }
 
@@ -681,6 +689,7 @@ static void apply_zone_to_world(void)
 	Hunter_cleanup();
 	Seeker_cleanup();
 	Defender_cleanup();
+	Stalker_cleanup();
 	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();

@@ -16,6 +16,7 @@
 #include "hunter.h"
 #include "seeker.h"
 #include "defender.h"
+#include "stalker.h"
 #include "sub_aegis.h"
 #include "sub_disintegrate.h"
 #include "sub_inferno.h"
@@ -120,8 +121,8 @@ typedef enum {
 
 static GodPlacementMode godPlacementMode = GOD_MODE_CELLS;
 
-static const char *ENEMY_TYPES[] = {"mine", "hunter", "seeker", "defender"};
-#define ENEMY_TYPE_COUNT 4
+static const char *ENEMY_TYPES[] = {"mine", "hunter", "seeker", "defender", "stalker"};
+#define ENEMY_TYPE_COUNT 5
 static int godEnemyType = 0;
 
 static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals"};
@@ -496,6 +497,7 @@ void Mode_Gameplay_render(void)
 		Mine_render_light_source();
 		Hunter_render_light_source();
 		Seeker_render_light_source();
+		Stalker_render_light_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(lb, draw_w, draw_h);
 
@@ -549,6 +551,7 @@ void Mode_Gameplay_render(void)
 		Hunter_render_bloom_source();
 		Seeker_render_bloom_source();
 		Defender_render_bloom_source();
+		Stalker_render_bloom_source();
 		Sub_Aegis_render_bloom_source();
 		Portal_render_bloom_source();
 		Savepoint_render_bloom_source();

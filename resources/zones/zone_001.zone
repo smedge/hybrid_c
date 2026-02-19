@@ -252,6 +252,7 @@ spawn seeker -11800.0 -8000.0
 spawn seeker -11800.0 -8100.0
 spawn seeker -11800.0 -8200.0
 spawn seeker -11800.0 -8300.0
+spawn stalker -6400.0 -4800.0
 
 portal 576 512 east_gate ./resources/zones/zone_002.zone west_gate
 
