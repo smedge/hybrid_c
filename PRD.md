@@ -449,6 +449,7 @@ Zones use a **noise + influence field approach** to level generation. The design
 - **Stat Bars** (top-left): Integrity and Feedback bars with labels and numeric values
 - **Skill Bar** (bottom): 10 slots, shared between gameplay and god mode (see Unified Skill Bar below)
 - **Minimap** (bottom-right): 200×200 radar showing nearby geometry with fog of war
+- **Settings Window** (I key): Modal settings panel with tabbed layout (Graphics, Keybinds). Graphics tab toggles: Multisampling, Antialiasing, Fullscreen, Pixel Snapping, Bloom, Lighting, Reflections. Pending-value pattern (edit freely, OK applies + saves, Cancel/ESC discards). Settings persist to `settings.cfg` and load before engine initialization. Keybinds tab is placeholder for future custom key mapping.
 
 ### Unified Skill Bar
 
@@ -578,6 +579,9 @@ More types will be added as new cell types, enemy types, and world features are 
 - Background zoom parallax (half-rate zoom for depth perception)
 - Vertex reuse rendering (flush_keep/redraw for tiled geometry)
 - Rebirth sequence (zoom-in cinematic on game start / zone load)
+- Settings window (I key — Graphics tab with 7 toggles: multisampling, antialiasing, fullscreen, pixel snapping, bloom, lighting, reflections; Keybinds tab placeholder; persistent settings.cfg)
+- Runtime toggle for bloom, lighting, and cloud reflections (settings-driven, gated in render pipeline)
+- Pixel snapping toggle (camera translation rounding in view.c, configurable via settings)
 
 ### Not Yet Implemented
 - Unified skill bar Phase 3 (two-loadout system for gameplay/god mode)
@@ -605,11 +609,11 @@ More types will be added as new cell types, enemy types, and world features are 
 | Sound | Used For |
 |-------|----------|
 | statue_rise.wav | Ship respawn, aegis activation (player + defender) |
-| bomb_explode.wav | Ship death, mine explosion, hunter/seeker/defender death, inferno fire loop |
+| bomb_explode.wav | Ship death, mine explosion, hunter/seeker/defender death, inferno fire loop, disintegrate fire |
 | long_beam.wav | Sub_pea fire, sub_mgun fire, hunter shots |
 | ricochet.wav | Projectile wall hit (pea, mgun), shielded defender hit |
-| bomb_set.wav | Mine armed |
-| door.wav | Mine/hunter/seeker/defender respawn, aegis deactivation, stealth break |
+| bomb_set.wav | Mine armed, gravwell deploy |
+| door.wav | Mine/hunter/seeker/defender respawn, aegis deactivation, stealth break, gravwell expire |
 | samus_die.wav | Ship death |
 | samus_hurt.wav | Integrity damage (spillover, enemy hits, hit feedback) |
 | refill_start.wav | Defender heal beam, stealth activation |
@@ -777,7 +781,7 @@ Four-instance bloom system replacing the old geometry-based glow (which hit vert
 | bloom (foreground) | Neon halos on entities | 2 (half-res) | 2.0 | 5 |
 | bg_bloom (background) | Diffuse ethereal clouds + block reflection source | 8 (eighth-res) | 2.5 | 20 |
 | disint_bloom (disintegrate) | Purple beam halo | 2 (half-res) | 3.0 | 7 |
-| light_bloom (weapon lighting) | Weapon light cast on map cells | 4 (quarter-res) | 1.5 | 6 |
+| light_bloom (weapon lighting) | Weapon light cast on map cells | 8 (eighth-res) | 1.0 | 7 |
 
 **Bloom sources**: Map cells, ship, ship death spark, sub_pea/sub_mgun projectiles + sparks, sub_inferno fire blobs (1.5x brightness), sub_disintegrate beam (dedicated disint_bloom FBO), sub_aegis shield ring, sub_gravwell vortex particles, mine blink/explosion, hunter body + projectiles, seeker body + dash trail, defender body + aegis ring + heal beams, portals, save points, fragments. Each entity type provides a `*_render_bloom_source()` function that re-renders emissive elements into the FBO.
 
@@ -803,7 +807,7 @@ Solid (non-circuit) map blocks act as polished metallic surfaces reflecting the 
 
 **Tunables** (constants in `map_reflect.c`):
 - `REFLECT_PARALLAX` (0.001) — UV offset scale per camera pixel
-- `REFLECT_INTENSITY` (3.0) — cloud brightness multiplier
+- `REFLECT_INTENSITY` (2.5) — cloud brightness multiplier
 
 **Pipeline position**: After world geometry flush, before weapon lighting pass.
 
