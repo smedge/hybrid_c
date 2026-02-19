@@ -7,6 +7,7 @@ const double ZOOM_IN_RATE = 1.05;
 const double ZOOM_OUT_RATE = 0.95;
 
 static double minZoom = 0.25;
+static bool pixelSnapping = true;
 static View view;
 
 void View_initialize()
@@ -35,8 +36,10 @@ Mat4 View_get_transform(const Screen *screen)
 	double y = (screen->height / 2.0) - (view.position.y * view.scale);
 
 	/* Snap to pixel grid to prevent subpixel jitter on thin geometry */
-	x = floor(x + 0.5);
-	y = floor(y + 0.5);
+	if (pixelSnapping) {
+		x = floor(x + 0.5);
+		y = floor(y + 0.5);
+	}
 
 	Mat4 t = Mat4_translate((float)x, (float)y, 0.0f);
 	Mat4 s = Mat4_scale((float)view.scale, (float)view.scale, 1.0f);
@@ -78,4 +81,14 @@ void View_set_scale(double scale)
 void View_set_min_zoom(double zoom)
 {
 	minZoom = zoom;
+}
+
+void View_set_pixel_snapping(bool enabled)
+{
+	pixelSnapping = enabled;
+}
+
+bool View_get_pixel_snapping(void)
+{
+	return pixelSnapping;
 }

@@ -31,6 +31,8 @@ static const char *lighting_frag_src =
 
 /* --- GL resources --- */
 
+static bool lightingEnabled = true;
+
 static GLuint lighting_program;
 static GLint u_image;
 static GLint u_intensity;
@@ -124,8 +126,19 @@ void MapLighting_cleanup(void)
 	glDeleteProgram(lighting_program);
 }
 
+void MapLighting_set_enabled(bool enabled)
+{
+	lightingEnabled = enabled;
+}
+
+bool MapLighting_get_enabled(void)
+{
+	return lightingEnabled;
+}
+
 void MapLighting_render(int draw_w, int draw_h)
 {
+	if (!lightingEnabled) return;
 	Bloom *lb = Graphics_get_light_bloom();
 	if (!lb->valid) return;
 

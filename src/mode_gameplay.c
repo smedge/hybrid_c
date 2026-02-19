@@ -7,6 +7,7 @@
 #include "background.h"
 #include "skillbar.h"
 #include "catalog.h"
+#include "settings.h"
 #include "destructible.h"
 #include "player_stats.h"
 #include "sub_pea.h"
@@ -96,6 +97,7 @@ static const char *bgm_paths[] = {
 };
 
 /* God mode state */
+static bool mouseConsumedUntilRelease = false;
 static bool godModeActive = false;
 static int godModeSelectedType = 0;
 static int godModeCursorX = 0;
@@ -177,6 +179,7 @@ void Mode_Gameplay_initialize(void)
 	Progression_initialize();
 	Skillbar_initialize();
 	Catalog_initialize();
+	Settings_initialize();
 	Zone_load("./resources/zones/zone_001.zone");
 	Destructible_initialize();
 
@@ -216,6 +219,7 @@ void Mode_Gameplay_initialize_from_save(void)
 	Progression_initialize();
 	Skillbar_initialize();
 	Catalog_initialize();
+	Settings_initialize();
 	Zone_load(ckpt->zone_path);
 	Destructible_initialize();
 
@@ -244,6 +248,7 @@ void Mode_Gameplay_initialize_from_save(void)
 
 void Mode_Gameplay_cleanup(void)
 {
+	Settings_cleanup();
 	Catalog_cleanup();
 	Skillbar_cleanup();
 	Progression_cleanup();
@@ -337,21 +342,58 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		return;
 	}
 
-	/* Toggle catalog */
-	if (input->keyP && !godModeActive)
+	/* Toggle catalog (close settings if opening) */
+	if (input->keyP && !godModeActive) {
+		if (!Catalog_is_open() && Settings_is_open())
+			Settings_toggle();
 		Catalog_toggle();
+	}
 
-	if (Catalog_is_open()) {
+	/* Toggle settings (close catalog if opening) */
+	if (input->keyI && !godModeActive) {
+		if (!Settings_is_open() && Catalog_is_open())
+			Catalog_toggle();
+		Settings_toggle();
+	}
+
+	bool catalogWasOpen = Catalog_is_open();
+	bool settingsWasOpen = Settings_is_open();
+
+	if (catalogWasOpen) {
 		if (input->keyEsc)
 			escConsumed = true;
 		Catalog_update(input, ticks);
 	}
 
-	/* UI gets raw input; gameplay gets mouse stripped when UI consumes it */
-	cursor_update(input);
-	Skillbar_update(input, ticks);
+	if (settingsWasOpen) {
+		if (input->keyEsc)
+			escConsumed = true;
+		Settings_update(input, ticks);
+	}
 
-	bool ui_wants_mouse = Catalog_is_open() || Skillbar_consumed_click();
+	/* If a UI panel just closed this frame, consume mouse until released */
+	if (catalogWasOpen && !Catalog_is_open())
+		mouseConsumedUntilRelease = true;
+	if (settingsWasOpen && !Settings_is_open())
+		mouseConsumedUntilRelease = true;
+	if (mouseConsumedUntilRelease && !input->mouseLeft)
+		mouseConsumedUntilRelease = false;
+
+	/* UI gets raw input; gameplay gets mouse stripped when UI consumes it */
+	bool ui_wants_mouse = catalogWasOpen || settingsWasOpen ||
+		mouseConsumedUntilRelease;
+
+	cursor_update(input);
+	if (ui_wants_mouse) {
+		Input skillbar_filtered = *input;
+		skillbar_filtered.mouseLeft = false;
+		skillbar_filtered.mouseRight = false;
+		Skillbar_update(&skillbar_filtered, ticks);
+	} else {
+		Skillbar_update(input, ticks);
+	}
+
+	ui_wants_mouse = ui_wants_mouse || Skillbar_consumed_click();
 	Input filtered = *input;
 	if (ui_wants_mouse) {
 		filtered.mouseLeft = false;
@@ -411,7 +453,7 @@ void Mode_Gameplay_render(void)
 	Mat4 view = View_get_transform(&screen);
 
 	/* Background bloom pass (blurred only — no raw polygon render) */
-	{
+	if (Graphics_get_bloom_enabled()) {
 		int draw_w, draw_h;
 		Graphics_get_drawable_size(&draw_w, &draw_h);
 		Bloom *bg_bloom = Graphics_get_bg_bloom();
@@ -438,7 +480,7 @@ void Mode_Gameplay_render(void)
 	}
 
 	/* Weapon lighting on map cells (stencil data written by MapReflect) */
-	{
+	if (MapLighting_get_enabled()) {
 		int draw_w, draw_h;
 		Graphics_get_drawable_size(&draw_w, &draw_h);
 		Bloom *lb = Graphics_get_light_bloom();
@@ -480,7 +522,7 @@ void Mode_Gameplay_render(void)
 	}
 
 	/* Disintegrate bloom pass (dedicated purple FBO) */
-	{
+	if (Graphics_get_bloom_enabled()) {
 		int draw_w, draw_h;
 		Graphics_get_drawable_size(&draw_w, &draw_h);
 		Bloom *disint_bloom = Graphics_get_disint_bloom();
@@ -495,7 +537,7 @@ void Mode_Gameplay_render(void)
 	}
 
 	/* FBO bloom pass */
-	{
+	if (Graphics_get_bloom_enabled()) {
 		int draw_w, draw_h;
 		Graphics_get_drawable_size(&draw_w, &draw_h);
 		Bloom *bloom = Graphics_get_bloom();
@@ -527,6 +569,7 @@ void Mode_Gameplay_render(void)
 	Savepoint_render_notification(&screen);
 	Fragment_render_text(&screen);
 	Catalog_render(&screen);
+	Settings_render(&screen);
 	if (godModeActive)
 		god_mode_render_hud(&screen);
 

@@ -1,6 +1,7 @@
 #ifndef VIEW_H
 #define VIEW_H
 
+#include <stdbool.h>
 #include "input.h"
 #include "position.h"
 #include "screen.h"
@@ -19,5 +20,7 @@ const View View_get_view(void);
 void View_set_position(const Position position);
 void View_set_scale(double scale);
 void View_set_min_zoom(double minZoom);
+void View_set_pixel_snapping(bool enabled);
+bool View_get_pixel_snapping(void);
 
 #endif

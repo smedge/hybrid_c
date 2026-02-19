@@ -9,6 +9,7 @@
 #include "mode_mainmenu.h"
 #include "mode_gameplay.h"
 #include "savepoint.h"
+#include "settings.h"
 
 static const unsigned int DELAY = 1;
 
@@ -55,6 +56,7 @@ static void initialize(void)
 		exit(-1);
 	}
 
+	Settings_load();
 	Graphics_initialize();
 	Audio_initialize();
 
@@ -104,6 +106,7 @@ static void reset_input(Input *input)
 	input->keyO = false;
 	input->keyX = false;
 	input->keyZ = false;
+	input->keyI = false;
 	input->keyP = false;
 	input->keyTab = false;
 	input->keyE = false;
@@ -445,6 +448,10 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 
 	case SDLK_g:
 		input->keyG = true;
+		break;
+
+	case SDLK_i:
+		input->keyI = true;
 		break;
 
 	case SDLK_j:

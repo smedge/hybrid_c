@@ -44,5 +44,14 @@ Bloom *Graphics_get_bg_bloom(void);
 Bloom *Graphics_get_disint_bloom(void);
 Bloom *Graphics_get_light_bloom(void);
 void Graphics_get_drawable_size(int *w, int *h);
+void Graphics_set_multisampling(bool enabled);
+void Graphics_set_antialiasing(bool enabled);
+void Graphics_set_fullscreen(bool enabled);
+void Graphics_set_bloom_enabled(bool enabled);
+bool Graphics_get_multisampling(void);
+bool Graphics_get_antialiasing(void);
+bool Graphics_get_fullscreen(void);
+bool Graphics_get_bloom_enabled(void);
+void Graphics_recreate(void);
 
 #endif

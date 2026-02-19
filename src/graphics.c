@@ -1,6 +1,7 @@
 #include "graphics.h"
 #include "map_reflect.h"
 #include "map_lighting.h"
+#include "particle_instance.h"
 
 #include <OpenGL/gl3.h>
 
@@ -15,6 +16,9 @@ static Bloom bloom;
 static Bloom bg_bloom;
 static Bloom disint_bloom;
 static Bloom light_bloom;
+static bool multisamplingEnabled = true;
+static bool antialiasingEnabled = true;
+static bool bloomEnabled = true;
 
 static void create_window(void);
 static void create_fullscreen_window(void);
@@ -31,6 +35,13 @@ void Graphics_initialize(void)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
 		SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+	if (multisamplingEnabled) {
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
+	} else {
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
+	}
 	create_window();
 	initialize_gl();
 	Graphics_clear();
@@ -39,6 +50,7 @@ void Graphics_initialize(void)
 
 void Graphics_cleanup(void)
 {
+	ParticleInstance_cleanup();
 	MapLighting_cleanup();
 	MapReflect_cleanup();
 	Bloom_cleanup(&light_bloom);
@@ -146,6 +158,52 @@ void Graphics_get_drawable_size(int *w, int *h)
 	SDL_GL_GetDrawableSize(graphics.window, w, h);
 }
 
+void Graphics_set_multisampling(bool enabled)
+{
+	multisamplingEnabled = enabled;
+}
+
+void Graphics_set_antialiasing(bool enabled)
+{
+	antialiasingEnabled = enabled;
+}
+
+void Graphics_set_fullscreen(bool enabled)
+{
+	graphics.fullScreen = enabled;
+}
+
+void Graphics_recreate(void)
+{
+	Graphics_cleanup();
+	Graphics_initialize();
+}
+
+bool Graphics_get_multisampling(void)
+{
+	return multisamplingEnabled;
+}
+
+bool Graphics_get_antialiasing(void)
+{
+	return antialiasingEnabled;
+}
+
+bool Graphics_get_fullscreen(void)
+{
+	return graphics.fullScreen;
+}
+
+void Graphics_set_bloom_enabled(bool enabled)
+{
+	bloomEnabled = enabled;
+}
+
+bool Graphics_get_bloom_enabled(void)
+{
+	return bloomEnabled;
+}
+
 static void create_window(void)
 {
 	if (graphics.fullScreen)
@@ -160,14 +218,16 @@ static void create_fullscreen_window(void)
 		HYBRID_WINDOW_NAME,
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
-		HYBRID_FULLSCREEN_WIDTH,
-		HYBRID_FULLSCREEN_HEIGHT,
+		0, 0,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI |
-			SDL_WINDOW_FULLSCREEN | SDL_WINDOW_SHOWN
+			SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_SHOWN
 	);
 
-	graphics.screen.width = HYBRID_FULLSCREEN_WIDTH;
-	graphics.screen.height = HYBRID_FULLSCREEN_HEIGHT;
+	/* Query actual logical size — avoids Retina scaling mismatch */
+	int w, h;
+	SDL_GetWindowSize(graphics.window, &w, &h);
+	graphics.screen.width = w;
+	graphics.screen.height = h;
 }
 
 static void create_windowed_window(void)
@@ -194,6 +254,10 @@ static void initialize_gl(void)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_PROGRAM_POINT_SIZE);
+	if (multisamplingEnabled)
+		glEnable(GL_MULTISAMPLE);
+	else
+		glDisable(GL_MULTISAMPLE);
 	glClearColor(0, 0, 0, 1);
 
 	int draw_w, draw_h;

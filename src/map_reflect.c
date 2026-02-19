@@ -6,6 +6,7 @@
 
 #include "graphics.h"
 #include "map.h"
+#include "map_lighting.h"
 #include "render.h"
 #include "view.h"
 
@@ -40,6 +41,8 @@ static const char *reflect_frag_src =
 	"}\n";
 
 /* --- GL resources --- */
+
+static bool reflectEnabled = true;
 
 static GLuint reflect_program;
 static GLint u_cloud_tex;
@@ -140,11 +143,25 @@ void MapReflect_cleanup(void)
 	glDeleteProgram(reflect_program);
 }
 
+void MapReflect_set_enabled(bool enabled)
+{
+	reflectEnabled = enabled;
+}
+
+bool MapReflect_get_enabled(void)
+{
+	return reflectEnabled;
+}
+
 void MapReflect_render(const Mat4 *world_proj, const Mat4 *view,
 	int draw_w, int draw_h)
 {
 	Bloom *bg_bloom = Graphics_get_bg_bloom();
 	if (!bg_bloom->valid) return;
+
+	/* Skip everything if both reflection and lighting are off */
+	if (!reflectEnabled && !MapLighting_get_enabled())
+		return;
 
 	/* 1. Stencil write pass: circuit=1, solid=2 (shared with lighting) */
 	glEnable(GL_STENCIL_TEST);
@@ -157,39 +174,43 @@ void MapReflect_render(const Mat4 *world_proj, const Mat4 *view,
 
 	/* 2. Reflection pass: draw fullscreen quad where stencil == 2 (solid only) */
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glStencilFunc(GL_EQUAL, 2, 0xFF);
-	glStencilMask(0x00);
 
-	/* Additive blend */
-	glBlendFunc(GL_ONE, GL_ONE);
+	if (reflectEnabled) {
+		glStencilFunc(GL_EQUAL, 2, 0xFF);
+		glStencilMask(0x00);
 
-	/* Compute parallax camera offset */
-	View cam = View_get_view();
-	float cam_offset_x = -(float)cam.position.x * REFLECT_PARALLAX / (float)draw_w;
-	float cam_offset_y = -(float)cam.position.y * REFLECT_PARALLAX / (float)draw_h;
+		/* Additive blend */
+		glBlendFunc(GL_ONE, GL_ONE);
 
-	glUseProgram(reflect_program);
-	glUniform1i(u_cloud_tex, 0);
-	glUniform2f(u_screen_size, (float)draw_w, (float)draw_h);
-	glUniform2f(u_camera_offset, cam_offset_x, cam_offset_y);
-	glUniform1f(u_intensity, REFLECT_INTENSITY);
+		/* Compute parallax camera offset */
+		View cam = View_get_view();
+		float cam_offset_x = -(float)cam.position.x * REFLECT_PARALLAX / (float)draw_w;
+		float cam_offset_y = -(float)cam.position.y * REFLECT_PARALLAX / (float)draw_h;
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, bg_bloom->pong_tex);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glUseProgram(reflect_program);
+		glUniform1i(u_cloud_tex, 0);
+		glUniform2f(u_screen_size, (float)draw_w, (float)draw_h);
+		glUniform2f(u_camera_offset, cam_offset_x, cam_offset_y);
+		glUniform1f(u_intensity, REFLECT_INTENSITY);
 
-	glBindVertexArray(quad_vao);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	glBindVertexArray(0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, bg_bloom->pong_tex);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 
-	/* Restore bloom texture wrapping */
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glBindVertexArray(quad_vao);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
 
-	/* 3. Restore blend and disable stencil.
+		/* Restore bloom texture wrapping */
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
+	/* 3. Restore stencil state.
 	   Stencil buffer DATA is preserved for the lighting pass that follows. */
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glStencilMask(0xFF);
 	glDisable(GL_STENCIL_TEST);
 }
