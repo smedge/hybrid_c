@@ -13,7 +13,7 @@ void Sub_Pea_render();
 void Sub_Pea_render_bloom_source(void);
 void Sub_Pea_render_light_source(void);
 
-bool Sub_Pea_check_hit(Rectangle target);
+double Sub_Pea_check_hit(Rectangle target);
 bool Sub_Pea_check_nearby(Position pos, double radius);
 void Sub_Pea_deactivate_all(void);
 float Sub_Pea_get_cooldown_fraction(void);

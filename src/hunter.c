@@ -1,4 +1,5 @@
 #include "hunter.h"
+#include "sub_projectile_core.h"
 #include "enemy_util.h"
 #include "defender.h"
 #include "fragment.h"
@@ -22,7 +23,7 @@
 #define HUNTER_HP 100.0
 #define AGGRO_RANGE 1600.0
 #define DEAGGRO_RANGE 3200.0
-#define FIRE_RANGE 1600.0  /* matches projectile max range: PROJ_VELOCITY * PROJ_TTL/1000 */
+#define FIRE_RANGE 1600.0  /* matches projectile max range: velocity * ttl/1000 */
 #define IDLE_DRIFT_RADIUS 400.0
 #define IDLE_DRIFT_SPEED 80.0
 #define IDLE_WANDER_INTERVAL 2000
@@ -34,15 +35,12 @@
 #define DEATH_FLASH_MS 200
 #define RESPAWN_MS 30000
 
-#define PROJ_COUNT 64
-#define PROJ_VELOCITY 2000.0
-#define PROJ_TTL 800
-#define PROJ_DAMAGE 15.0
-#define PROJ_SPARK_DURATION 80
-#define PROJ_SPARK_SIZE 12.0
-
 #define BODY_SIZE 12.0
 #define WALL_CHECK_DIST 50.0
+
+static const CarriedSubroutine hunterCarried[] = {
+	{ SUB_ID_MGUN, FRAG_TYPE_HUNTER },
+};
 
 typedef enum {
 	HUNTER_IDLE,
@@ -74,15 +72,6 @@ typedef struct {
 	int respawnTimer;
 } HunterState;
 
-typedef struct {
-	bool active;
-	Position position;
-	Position prevPosition;
-	double headingSin;
-	double headingCos;
-	int ticksLived;
-} HunterProjectile;
-
 /* Shared singleton components */
 static RenderableComponent renderable = {Hunter_render};
 static CollidableComponent collidable = {{-BODY_SIZE, BODY_SIZE, BODY_SIZE, -BODY_SIZE},
@@ -95,7 +84,6 @@ static AIUpdatableComponent updatable = {Hunter_update};
 /* Colors */
 static const ColorFloat colorBody     = {1.0f, 0.3f, 0.0f, 1.0f};
 static const ColorFloat colorAggro    = {1.0f, 0.5f, 0.1f, 1.0f};
-static const ColorFloat colorProj     = {1.0f, 0.35f, 0.05f, 1.0f};
 
 
 /* State arrays */
@@ -104,10 +92,32 @@ static PlaceableComponent placeables[HUNTER_COUNT];
 static Entity *entityRefs[HUNTER_COUNT];
 static int highestUsedIndex = 0;
 
-/* Projectile pool */
-static HunterProjectile projectiles[PROJ_COUNT];
+/* Projectile pool (shared across all hunters) */
+static SubProjectilePool hunterProjPool;
+static Mix_Chunk *sampleShoot = 0;
 
-/* Sparks */
+static SubProjectileConfig hunterProjCfg = {
+	.fire_cooldown_ms = 0,
+	.velocity = 2000.0,
+	.ttl_ms = 800,
+	.pool_size = 64,
+	.damage = 15.0,
+	.color_r = 1.0f, .color_g = 0.35f, .color_b = 0.05f,
+	.trail_thickness = 3.0f,
+	.trail_alpha = 0.6f,
+	.point_size = 8.0,
+	.min_point_size = 2.0,
+	.spark_duration_ms = 80,
+	.spark_size = 15.0f,
+	.light_proj_radius = 60.0f,
+	.light_proj_r = 1.0f, .light_proj_g = 0.5f, .light_proj_b = 0.1f, .light_proj_a = 0.7f,
+	.light_spark_radius = 90.0f,
+	.light_spark_r = 1.0f, .light_spark_g = 0.5f, .light_spark_b = 0.1f, .light_spark_a = 0.6f,
+	.sample_fire = NULL,
+	.sample_hit = NULL,
+};
+
+/* Body-hit sparks (separate from projectile wall sparks) */
 #define SPARK_POOL_SIZE 8
 static struct {
 	bool active;
@@ -115,6 +125,9 @@ static struct {
 	Position position;
 	int ticksLeft;
 } sparks[SPARK_POOL_SIZE];
+
+#define BODY_SPARK_DURATION 80
+#define BODY_SPARK_SIZE 12.0f
 
 static void activate_spark(Position pos, bool shielded) {
 	int slot = 0;
@@ -125,11 +138,10 @@ static void activate_spark(Position pos, bool shielded) {
 	sparks[slot].active = true;
 	sparks[slot].shielded = shielded;
 	sparks[slot].position = pos;
-	sparks[slot].ticksLeft = PROJ_SPARK_DURATION;
+	sparks[slot].ticksLeft = BODY_SPARK_DURATION;
 }
 
 /* Audio */
-static Mix_Chunk *sampleShoot = 0;
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
@@ -145,39 +157,6 @@ static void pick_wander_target(HunterState *h)
 {
 	Enemy_pick_wander_target(h->spawnPoint, IDLE_DRIFT_RADIUS, IDLE_WANDER_INTERVAL,
 		&h->wanderTarget, &h->wanderTimer);
-}
-
-static void fire_projectile(Position origin, Position target)
-{
-	/* Find inactive slot */
-	int slot = -1;
-	for (int i = 0; i < PROJ_COUNT; i++) {
-		if (!projectiles[i].active) {
-			slot = i;
-			break;
-		}
-	}
-	if (slot < 0) {
-		int oldest = 0;
-		for (int i = 1; i < PROJ_COUNT; i++) {
-			if (projectiles[i].ticksLived > projectiles[oldest].ticksLived)
-				oldest = i;
-		}
-		slot = oldest;
-	}
-
-	HunterProjectile *p = &projectiles[slot];
-	p->active = true;
-	p->ticksLived = 0;
-	p->position = origin;
-	p->prevPosition = origin;
-
-	double heading = Position_get_heading(origin, target);
-	double rad = get_radians(heading);
-	p->headingSin = sin(rad);
-	p->headingCos = cos(rad);
-
-	Audio_play_sample(&sampleShoot);
 }
 
 /* ---- Public API ---- */
@@ -220,8 +199,10 @@ void Hunter_initialize(Position position)
 	highestUsedIndex++;
 
 	/* Load audio and register with enemy registry once, not per-entity */
-	if (!sampleShoot) {
+	if (!sampleDeath) {
 		Audio_load_sample(&sampleShoot, "resources/sounds/long_beam.wav");
+		hunterProjCfg.sample_fire = &sampleShoot;
+		SubProjectile_pool_init(&hunterProjPool, hunterProjCfg.pool_size);
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
@@ -242,8 +223,7 @@ void Hunter_cleanup(void)
 	}
 	highestUsedIndex = 0;
 
-	for (int i = 0; i < PROJ_COUNT; i++)
-		projectiles[i].active = false;
+	SubProjectile_deactivate_all(&hunterProjPool);
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 
@@ -384,7 +364,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 
 		h->burstTimer -= ticks;
 		if (h->burstTimer <= 0 && h->burstShotsFired < BURST_COUNT) {
-			fire_projectile(pl->position, shipPos);
+			SubProjectile_try_fire(&hunterProjPool, &hunterProjCfg, pl->position, shipPos);
 			h->burstShotsFired++;
 			h->burstTimer = BURST_INTERVAL;
 		}
@@ -410,8 +390,8 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			h->respawnTimer = 0;
 
 			/* Drop fragment */
-			if (h->killedByPlayer && !Progression_is_unlocked(SUB_ID_MGUN))
-				Fragment_spawn(pl->position, FRAG_TYPE_HUNTER);
+			if (h->killedByPlayer)
+				Enemy_drop_fragments(pl->position, hunterCarried, 1);
 		}
 		break;
 
@@ -439,49 +419,19 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 	/* --- Update projectiles (done for ALL hunters from any update call) --- */
 	/* Only do this from hunter index 0 to avoid processing projectiles N times */
 	if (idx == 0) {
-		Position shipPos = Ship_get_position();
-		Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
-		Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
+		SubProjectile_update(&hunterProjPool, &hunterProjCfg, ticks);
 
-		for (int i = 0; i < PROJ_COUNT; i++) {
-			HunterProjectile *p = &projectiles[i];
-			if (!p->active)
-				continue;
-
-			p->ticksLived += ticks;
-			if (p->ticksLived > PROJ_TTL) {
-				p->active = false;
-				continue;
-			}
-
-			p->prevPosition = p->position;
-
-			double dx = p->headingSin * PROJ_VELOCITY * dt;
-			double dy = p->headingCos * PROJ_VELOCITY * dt;
-			p->position.x += dx;
-			p->position.y += dy;
-
-			/* Wall collision */
-			double hx, hy;
-			if (Map_line_test_hit(p->prevPosition.x, p->prevPosition.y,
-					p->position.x, p->position.y, &hx, &hy)) {
-				Position hitPos = {hx, hy};
-				activate_spark(hitPos, false);
-				p->active = false;
-				continue;
-			}
-
-			/* Hit ship */
-			if (!Ship_is_destroyed() &&
-				Collision_line_aabb_test(p->prevPosition.x, p->prevPosition.y,
-					p->position.x, p->position.y, shipWorld, NULL)) {
-				p->active = false;
-				PlayerStats_damage(PROJ_DAMAGE);
-				continue;
-			}
+		/* Check player hit */
+		if (!Ship_is_destroyed()) {
+			Position shipPos = Ship_get_position();
+			Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
+			Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
+			double dmg = SubProjectile_check_hit(&hunterProjPool, &hunterProjCfg, shipWorld);
+			if (dmg > 0)
+				PlayerStats_damage(dmg);
 		}
 
-		/* Spark decay */
+		/* Body-hit spark decay */
 		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 			if (sparks[si].active) {
 				sparks[si].ticksLeft -= ticks;
@@ -495,6 +445,20 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 void Hunter_render(const void *state, const PlaceableComponent *placeable)
 {
 	HunterState *h = (HunterState *)state;
+
+	/* Shared pool render must happen regardless of this hunter's alive state */
+	int idx = (int)((HunterState *)state - hunters);
+	if (idx == 0) {
+		SubProjectile_render(&hunterProjPool, &hunterProjCfg);
+
+		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+			if (sparks[si].active) {
+				Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
+					BODY_SPARK_DURATION, BODY_SPARK_SIZE, sparks[si].shielded,
+					1.0f, 0.5f, 0.1f);
+			}
+		}
+	}
 
 	if (h->aiState == HUNTER_DEAD)
 		return;
@@ -533,41 +497,6 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 
 	/* Center dot */
 	Render_point(&placeable->position, 4.0, bodyColor);
-
-	/* --- Render all projectiles (from any hunter's render call, guard with idx 0) --- */
-	int idx = (int)((HunterState *)state - hunters);
-	if (idx == 0) {
-		View view = View_get_view();
-		const double UNSCALED_POINT_SIZE = 6.0;
-		const double MIN_POINT_SIZE = 2.0;
-
-		for (int i = 0; i < PROJ_COUNT; i++) {
-			if (!projectiles[i].active)
-				continue;
-
-			/* Motion trail */
-			Render_thick_line(
-				(float)projectiles[i].prevPosition.x,
-				(float)projectiles[i].prevPosition.y,
-				(float)projectiles[i].position.x,
-				(float)projectiles[i].position.y,
-				2.5f, colorProj.red, colorProj.green, colorProj.blue, 0.6f);
-
-			double size = UNSCALED_POINT_SIZE * view.scale;
-			if (size < MIN_POINT_SIZE)
-				size = MIN_POINT_SIZE;
-			Render_point(&projectiles[i].position, size, &colorProj);
-		}
-
-		/* Spark pool rendering */
-		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
-			if (sparks[si].active) {
-				Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
-					PROJ_SPARK_DURATION, PROJ_SPARK_SIZE, sparks[si].shielded,
-					1.0f, 0.5f, 0.1f);
-			}
-		}
-	}
 }
 
 void Hunter_render_bloom_source(void)
@@ -590,32 +519,13 @@ void Hunter_render_bloom_source(void)
 	}
 
 	/* Projectile bloom */
-	View view = View_get_view();
-	const double UNSCALED_POINT_SIZE = 6.0;
-	const double MIN_POINT_SIZE = 2.0;
+	SubProjectile_render_bloom(&hunterProjPool, &hunterProjCfg);
 
-	for (int i = 0; i < PROJ_COUNT; i++) {
-		if (!projectiles[i].active)
-			continue;
-
-		Render_thick_line(
-			(float)projectiles[i].prevPosition.x,
-			(float)projectiles[i].prevPosition.y,
-			(float)projectiles[i].position.x,
-			(float)projectiles[i].position.y,
-			2.5f, colorProj.red, colorProj.green, colorProj.blue, 0.6f);
-
-		double size = UNSCALED_POINT_SIZE * view.scale;
-		if (size < MIN_POINT_SIZE)
-			size = MIN_POINT_SIZE;
-		Render_point(&projectiles[i].position, size, &colorProj);
-	}
-
-	/* Spark bloom */
+	/* Body-hit spark bloom */
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 		if (sparks[si].active) {
 			Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
-				PROJ_SPARK_DURATION, PROJ_SPARK_SIZE, sparks[si].shielded,
+				BODY_SPARK_DURATION, BODY_SPARK_SIZE, sparks[si].shielded,
 				1.0f, 0.5f, 0.1f);
 		}
 	}
@@ -623,13 +533,7 @@ void Hunter_render_bloom_source(void)
 
 void Hunter_render_light_source(void)
 {
-	for (int i = 0; i < PROJ_COUNT; i++) {
-		if (!projectiles[i].active) continue;
-		Render_filled_circle(
-			(float)projectiles[i].position.x,
-			(float)projectiles[i].position.y,
-			180.0f, 12, 1.0f, 0.5f, 0.1f, 0.7f);
-	}
+	SubProjectile_render_light(&hunterProjPool, &hunterProjCfg);
 
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 		if (sparks[si].active) {
@@ -654,8 +558,7 @@ void Hunter_deaggro_all(void)
 	}
 
 	/* Kill all in-flight hunter projectiles */
-	for (int i = 0; i < PROJ_COUNT; i++)
-		projectiles[i].active = false;
+	SubProjectile_deactivate_all(&hunterProjPool);
 }
 
 void Hunter_reset_all(void)
@@ -675,8 +578,7 @@ void Hunter_reset_all(void)
 		pick_wander_target(h);
 	}
 
-	for (int i = 0; i < PROJ_COUNT; i++)
-		projectiles[i].active = false;
+	SubProjectile_deactivate_all(&hunterProjPool);
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 }

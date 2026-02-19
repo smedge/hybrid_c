@@ -13,7 +13,7 @@ void Sub_Mgun_render();
 void Sub_Mgun_render_bloom_source(void);
 void Sub_Mgun_render_light_source(void);
 
-bool Sub_Mgun_check_hit(Rectangle target);
+double Sub_Mgun_check_hit(Rectangle target);
 bool Sub_Mgun_check_nearby(Position pos, double radius);
 void Sub_Mgun_deactivate_all(void);
 float Sub_Mgun_get_cooldown_fraction(void);

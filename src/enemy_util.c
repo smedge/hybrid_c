@@ -12,6 +12,8 @@
 #include "sub_egress.h"
 #include "sub_stealth.h"
 #include "sub_gravwell.h"
+#include "fragment.h"
+#include "progression.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -23,16 +25,19 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 	double mul = Sub_Stealth_get_damage_multiplier(dist);
 	r.ambush = (mul > 1.0);
 
-	if (Sub_Pea_check_hit(hitBox)) {
-		r.damage += 50.0 * mul;
+	double pea_dmg = Sub_Pea_check_hit(hitBox);
+	if (pea_dmg > 0) {
+		r.damage += pea_dmg * mul;
 		r.hit = true;
 	}
-	if (Sub_Mgun_check_hit(hitBox)) {
-		r.damage += 20.0 * mul;
+	double mgun_dmg = Sub_Mgun_check_hit(hitBox);
+	if (mgun_dmg > 0) {
+		r.damage += mgun_dmg * mul;
 		r.hit = true;
 	}
-	if (Sub_Mine_check_hit(hitBox)) {
-		r.mine_damage = 100.0 * mul;
+	double mine_dmg = Sub_Mine_check_hit(hitBox);
+	if (mine_dmg > 0) {
+		r.mine_damage = mine_dmg * mul;
 		r.mine_hit = true;
 		r.hit = true;
 	}
@@ -44,8 +49,9 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 		r.damage += 20.0 * mul;
 		r.hit = true;
 	}
-	if (Sub_Egress_check_hit(hitBox)) {
-		r.damage += Sub_Egress_get_damage() * mul;
+	double egress_dmg = Sub_Egress_check_hit(hitBox);
+	if (egress_dmg > 0) {
+		r.damage += egress_dmg * mul;
 		r.hit = true;
 	}
 
@@ -227,4 +233,23 @@ double Enemy_apply_gravity(PlaceableComponent *pl, double dt)
 	pl->position.x += dx;
 	pl->position.y += dy;
 	return speed_mult;
+}
+
+void Enemy_drop_fragments(Position deathPos, const CarriedSubroutine *subs, int subCount)
+{
+	/* Collect indices of locked (not yet unlocked) subroutines */
+	int locked[8];
+	int lockedCount = 0;
+
+	for (int i = 0; i < subCount && lockedCount < 8; i++) {
+		if (!Progression_is_unlocked(subs[i].sub_id))
+			locked[lockedCount++] = i;
+	}
+
+	if (lockedCount == 0)
+		return;
+
+	/* Pick one at random, equal weight */
+	int pick = rand() % lockedCount;
+	Fragment_spawn(deathPos, subs[locked[pick]].frag_type);
 }

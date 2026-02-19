@@ -1,12 +1,10 @@
 #include "sub_mine.h"
 
+#include "sub_mine_core.h"
 #include "ship.h"
 #include "progression.h"
 #include "render.h"
 #include "audio.h"
-#include "shipstate.h"
-#include "color.h"
-#include "view.h"
 #include "skillbar.h"
 #include "sub_stealth.h"
 #include "player_stats.h"
@@ -14,50 +12,38 @@
 #include <SDL2/SDL_mixer.h>
 
 #define MAX_PLAYER_MINES 3
-#define ARMED_TIME 2000
-#define EXPLODING_TIME 100
 #define PLACE_COOLDOWN 250
-#define EXPLOSION_SIZE 250.0
-#define MINE_SIZE 10.0
 
-typedef enum {
-	MINE_INACTIVE,
-	MINE_ARMED,
-	MINE_EXPLODING
-} PlayerMinePhase;
+static const SubMineConfig playerMineCfg = {
+	.armed_duration_ms = 2000,
+	.exploding_duration_ms = 100,
+	.dead_duration_ms = 0,
+	.explosion_half_size = 250.0f,
+	.body_half_size = 10.0f,
+	.body_r = 0.196f, .body_g = 0.196f, .body_b = 0.196f, .body_a = 1.0f,
+	.blink_r = 1.0f, .blink_g = 0.0f, .blink_b = 0.0f, .blink_a = 1.0f,
+	.explosion_r = 1.0f, .explosion_g = 1.0f, .explosion_b = 1.0f, .explosion_a = 1.0f,
+	.light_armed_radius = 180.0f,
+	.light_armed_r = 1.0f, .light_armed_g = 0.2f, .light_armed_b = 0.1f, .light_armed_a = 0.4f,
+	.light_explode_radius = 750.0f,
+	.light_explode_r = 1.0f, .light_explode_g = 0.9f, .light_explode_b = 0.7f, .light_explode_a = 1.0f,
+};
 
-typedef struct {
-	bool active;
-	PlayerMinePhase phase;
-	Position position;
-	unsigned int phaseTicks;
-} PlayerMine;
-
-static PlayerMine mines[MAX_PLAYER_MINES];
+static SubMineCore mines[MAX_PLAYER_MINES];
 static int cooldownTimer;
 
 static Mix_Chunk *samplePlace = 0;
 static Mix_Chunk *sampleExplode = 0;
-
-static const ColorRGB COLOR_DARK_RGB = {50, 50, 50, 255};
-static const ColorRGB COLOR_ACTIVE_RGB = {255, 0, 0, 255};
-static const ColorRGB COLOR_WHITE_RGB = {255, 255, 255, 255};
-
-static ColorFloat colorDark, colorActive, colorWhite;
 
 void Sub_Mine_initialize(void)
 {
 	cooldownTimer = 0;
 
 	for (int i = 0; i < MAX_PLAYER_MINES; i++)
-		mines[i].active = false;
+		SubMine_init(&mines[i]);
 
 	Audio_load_sample(&samplePlace, "resources/sounds/bomb_set.wav");
 	Audio_load_sample(&sampleExplode, "resources/sounds/bomb_explode.wav");
-
-	colorDark = Color_rgb_to_float(&COLOR_DARK_RGB);
-	colorActive = Color_rgb_to_float(&COLOR_ACTIVE_RGB);
-	colorWhite = Color_rgb_to_float(&COLOR_WHITE_RGB);
 }
 
 void Sub_Mine_cleanup(void)
@@ -74,10 +60,10 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 	if (userInput->keySpace && cooldownTimer <= 0
 			&& Skillbar_is_active(SUB_ID_MINE)) {
 		Sub_Stealth_break_attack();
-		/* Only place if there's a free slot — 3 max, no overwriting */
+		/* Only place if there's a free slot */
 		int slot = -1;
 		for (int i = 0; i < MAX_PLAYER_MINES; i++) {
-			if (!mines[i].active) {
+			if (mines[i].phase == MINE_PHASE_DORMANT) {
 				slot = i;
 				break;
 			}
@@ -85,49 +71,31 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 
 		if (slot >= 0) {
 			cooldownTimer = PLACE_COOLDOWN;
-
-			PlayerMine *m = &mines[slot];
-			m->active = true;
-			m->phase = MINE_ARMED;
-			m->position = Ship_get_position();
-			m->phaseTicks = 0;
-
+			SubMine_arm(&mines[slot], &playerMineCfg, Ship_get_position());
 			Audio_play_sample(&samplePlace);
 		}
 	}
 
 	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
-		PlayerMine *m = &mines[i];
-		if (!m->active)
+		SubMineCore *m = &mines[i];
+		if (m->phase == MINE_PHASE_DORMANT)
 			continue;
 
-		m->phaseTicks += ticks;
+		MinePhase prevPhase = m->phase;
+		SubMine_update(m, &playerMineCfg, ticks);
 
-		switch (m->phase) {
-		case MINE_ARMED:
-			if (m->phaseTicks >= ARMED_TIME) {
-				m->phase = MINE_EXPLODING;
-				m->phaseTicks = 0;
-				Audio_play_sample(&sampleExplode);
-				PlayerStats_add_feedback(15.0);
+		/* Just transitioned to EXPLODING */
+		if (m->phase == MINE_PHASE_EXPLODING && prevPhase == MINE_PHASE_ARMED) {
+			Audio_play_sample(&sampleExplode);
+			PlayerStats_add_feedback(15.0);
 
-				/* Player's own mines hurt the player */
-				Position shipPos = Ship_get_position();
-				double dx = shipPos.x - m->position.x;
-				double dy = shipPos.y - m->position.y;
-				if (dx >= -EXPLOSION_SIZE && dx <= EXPLOSION_SIZE
-						&& dy >= -EXPLOSION_SIZE && dy <= EXPLOSION_SIZE)
-					PlayerStats_damage(100.0);
-			}
-			break;
-
-		case MINE_EXPLODING:
-			if (m->phaseTicks >= EXPLODING_TIME)
-				m->active = false;
-			break;
-
-		case MINE_INACTIVE:
-			break;
+			/* Player's own mines hurt the player */
+			Position shipPos = Ship_get_position();
+			double dx = shipPos.x - m->position.x;
+			double dy = shipPos.y - m->position.y;
+			float hs = playerMineCfg.explosion_half_size;
+			if (dx >= -hs && dx <= hs && dy >= -hs && dy <= hs)
+				PlayerStats_damage(100.0);
 		}
 	}
 }
@@ -135,92 +103,34 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 void Sub_Mine_render(void)
 {
 	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
-		PlayerMine *m = &mines[i];
-		if (!m->active)
+		if (mines[i].phase == MINE_PHASE_DORMANT)
 			continue;
-
-		switch (m->phase) {
-		case MINE_ARMED: {
-			Rectangle rect = {-MINE_SIZE, MINE_SIZE, MINE_SIZE, -MINE_SIZE};
-			View view = View_get_view();
-			if (view.scale > 0.09)
-				Render_quad(&m->position, 45.0, rect, &colorDark);
-			float dh = 3.0f;
-			if (view.scale > 0.001f && 0.5f / (float)view.scale > dh)
-				dh = 0.5f / (float)view.scale;
-			Rectangle dot = {-dh, dh, dh, -dh};
-			Render_quad(&m->position, 45.0, dot, &colorActive);
-			break;
-		}
-
-		case MINE_EXPLODING: {
-			Rectangle explosion = {-EXPLOSION_SIZE, EXPLOSION_SIZE,
-				EXPLOSION_SIZE, -EXPLOSION_SIZE};
-			Render_quad(&m->position, 22.5, explosion, &colorWhite);
-			Render_quad(&m->position, 67.5, explosion, &colorWhite);
-			break;
-		}
-
-		case MINE_INACTIVE:
-			break;
-		}
+		SubMine_render(&mines[i], &playerMineCfg);
 	}
 }
 
 void Sub_Mine_render_bloom_source(void)
 {
 	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
-		PlayerMine *m = &mines[i];
-		if (!m->active)
+		if (mines[i].phase == MINE_PHASE_DORMANT)
 			continue;
-
-		switch (m->phase) {
-		case MINE_ARMED: {
-			View view = View_get_view();
-			float dh = 3.0f;
-			if (view.scale > 0.001f && 0.5f / (float)view.scale > dh)
-				dh = 0.5f / (float)view.scale;
-			Rectangle dot = {-dh, dh, dh, -dh};
-			Render_quad(&m->position, 45.0, dot, &colorActive);
-			break;
-		}
-
-		case MINE_EXPLODING: {
-			Rectangle explosion = {-EXPLOSION_SIZE, EXPLOSION_SIZE,
-				EXPLOSION_SIZE, -EXPLOSION_SIZE};
-			Render_quad(&m->position, 22.5, explosion, &colorWhite);
-			Render_quad(&m->position, 67.5, explosion, &colorWhite);
-			break;
-		}
-
-		case MINE_INACTIVE:
-			break;
-		}
+		SubMine_render_bloom(&mines[i], &playerMineCfg);
 	}
 }
 
 void Sub_Mine_render_light_source(void)
 {
 	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
-		PlayerMine *m = &mines[i];
-		if (!m->active) continue;
-
-		if (m->phase == MINE_ARMED) {
-			Render_filled_circle(
-				(float)m->position.x, (float)m->position.y,
-				180.0f, 12, 1.0f, 0.2f, 0.1f, 0.4f);
-		} else if (m->phase == MINE_EXPLODING) {
-			Render_filled_circle(
-				(float)m->position.x, (float)m->position.y,
-				750.0f, 16, 1.0f, 0.9f, 0.7f, 1.0f);
-		}
+		if (mines[i].phase == MINE_PHASE_DORMANT)
+			continue;
+		SubMine_render_light(&mines[i], &playerMineCfg);
 	}
 }
 
 void Sub_Mine_deactivate_all(void)
 {
 	for (int i = 0; i < MAX_PLAYER_MINES; i++)
-		mines[i].active = false;
+		SubMine_init(&mines[i]);
 }
 
 float Sub_Mine_get_cooldown_fraction(void)
@@ -228,7 +138,7 @@ float Sub_Mine_get_cooldown_fraction(void)
 	/* All slots occupied — show fully disabled until one frees up */
 	bool has_free_slot = false;
 	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
-		if (!mines[i].active) {
+		if (mines[i].phase == MINE_PHASE_DORMANT) {
 			has_free_slot = true;
 			break;
 		}
@@ -239,19 +149,11 @@ float Sub_Mine_get_cooldown_fraction(void)
 	return (float)cooldownTimer / PLACE_COOLDOWN;
 }
 
-bool Sub_Mine_check_hit(Rectangle target)
+double Sub_Mine_check_hit(Rectangle target)
 {
 	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
-		PlayerMine *m = &mines[i];
-		if (!m->active || m->phase != MINE_EXPLODING)
-			continue;
-
-		Rectangle blastArea = Collision_transform_bounding_box(m->position,
-			(Rectangle){-EXPLOSION_SIZE, EXPLOSION_SIZE,
-				EXPLOSION_SIZE, -EXPLOSION_SIZE});
-
-		if (Collision_aabb_test(blastArea, target))
-			return true;
+		if (SubMine_check_explosion_hit(&mines[i], &playerMineCfg, target))
+			return 100.0;
 	}
-	return false;
+	return 0.0;
 }

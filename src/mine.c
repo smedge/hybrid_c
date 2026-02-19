@@ -1,4 +1,5 @@
 #include "mine.h"
+#include "sub_mine_core.h"
 #include "enemy_util.h"
 #include "fragment.h"
 #include "progression.h"
@@ -13,9 +14,25 @@
 
 #define MINE_COUNT 128
 #define MINE_ROTATION 0.0
-#define TICKS_ACTIVE 500
-#define TICKS_EXPLODING 100
-#define TICKS_DESTROYED 10000
+
+static const SubMineConfig enemyMineCfg = {
+	.armed_duration_ms = 500,
+	.exploding_duration_ms = 100,
+	.dead_duration_ms = 10000,
+	.explosion_half_size = 250.0f,
+	.body_half_size = 10.0f,
+	.body_r = 0.196f, .body_g = 0.196f, .body_b = 0.196f, .body_a = 1.0f,
+	.blink_r = 1.0f, .blink_g = 0.0f, .blink_b = 0.0f, .blink_a = 1.0f,
+	.explosion_r = 1.0f, .explosion_g = 1.0f, .explosion_b = 1.0f, .explosion_a = 1.0f,
+	.light_armed_radius = 150.0f,
+	.light_armed_r = 1.0f, .light_armed_g = 0.2f, .light_armed_b = 0.1f, .light_armed_a = 0.3f,
+	.light_explode_radius = 750.0f,
+	.light_explode_r = 1.0f, .light_explode_g = 0.9f, .light_explode_b = 0.7f, .light_explode_a = 1.0f,
+};
+
+static const CarriedSubroutine mineCarried[] = {
+	{ SUB_ID_MINE, FRAG_TYPE_MINE },
+};
 
 static RenderableComponent renderable = {Mine_render};
 static CollidableComponent collidable = {{-250.0, 250.0, 250.0, -250.0},
@@ -25,21 +42,8 @@ static CollidableComponent collidable = {{-250.0, 250.0, 250.0, -250.0},
 											Mine_collide, Mine_resolve};
 static AIUpdatableComponent updatable = {Mine_update};
 
-static const ColorRGB COLOR = {45, 45, 45, 255};
-static const ColorRGB COLOR_DARK = {50, 50, 50, 255};
-static const ColorRGB COLOR_ACTIVE = {255, 0, 0, 255};
-static const ColorRGB COLOR_WHITE = {255, 255, 255, 255};
-
-static ColorFloat color, colorDark, colorActive, colorWhite;
-
 typedef struct {
-	bool active;
-	unsigned int ticksActive;
-	bool destroyed;
-	unsigned int ticksDestroyed;
-	bool exploding;
-	unsigned int ticksExploding;
-	unsigned int blinkTimer;
+	SubMineCore core;
 	bool killedByPlayer;
 } MineState;
 
@@ -59,13 +63,9 @@ void Mine_initialize(Position position)
 		return;
 	}
 
-	mines[highestUsedIndex].active = false;
-	mines[highestUsedIndex].exploding = false;
-	mines[highestUsedIndex].destroyed = false;
-	mines[highestUsedIndex].ticksActive = 0;
-	mines[highestUsedIndex].ticksExploding = 0;
-	mines[highestUsedIndex].ticksDestroyed = 0;
-	mines[highestUsedIndex].blinkTimer = rand() % 1000;
+	SubMine_init(&mines[highestUsedIndex].core);
+	mines[highestUsedIndex].core.position = position;
+	mines[highestUsedIndex].core.blinkTimer = rand() % 1000;
 	mines[highestUsedIndex].killedByPlayer = false;
 
 	placeables[highestUsedIndex].position = position;
@@ -77,21 +77,16 @@ void Mine_initialize(Position position)
 	entity.renderable = &renderable;
 	entity.collidable = &collidable;
 	entity.aiUpdatable = &updatable;
-	
+
 	entityRefs[highestUsedIndex] = Entity_add_entity(entity);
 
 	highestUsedIndex++;
 
-	/* Load audio and colors once, not per-entity */
+	/* Load audio once, not per-entity */
 	if (!sample01) {
 		Audio_load_sample(&sample01, "resources/sounds/bomb_set.wav");
 		Audio_load_sample(&sample02, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sample03, "resources/sounds/door.wav");
-
-		color = Color_rgb_to_float(&COLOR);
-		colorDark = Color_rgb_to_float(&COLOR_DARK);
-		colorActive = Color_rgb_to_float(&COLOR_ACTIVE);
-		colorWhite = Color_rgb_to_float(&COLOR_WHITE);
 	}
 }
 
@@ -112,26 +107,25 @@ void Mine_cleanup()
 
 Collision Mine_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
 {
-	MineState* mineState = (MineState*)state;
-
+	MineState *ms = (MineState *)state;
+	SubMineCore *core = &ms->core;
 	Collision collision = {false, false};
 
-	if (mineState->destroyed)
+	if (core->phase == MINE_PHASE_DEAD)
 		return collision;
 
 	Position position = placeable->position;
 
 	/* Check direct body hit (the grey diamond + red dot) */
-	Rectangle body = {-10.0, 10.0, 10.0, -10.0};
+	float bs = enemyMineCfg.body_half_size;
+	Rectangle body = {-bs, bs, bs, -bs};
 	Rectangle bodyTransformed = Collision_transform_bounding_box(position, body);
-	if (!mineState->exploding && Collision_aabb_test(bodyTransformed, boundingBox)) {
+	if (core->phase != MINE_PHASE_EXPLODING && Collision_aabb_test(bodyTransformed, boundingBox)) {
 		/* Direct contact — instant explosion, breaks stealth */
 		Sub_Stealth_break();
 		Audio_play_sample(&sample02);
-		mineState->active = false;
-		mineState->exploding = true;
-		mineState->ticksExploding = 0;
-		mineState->killedByPlayer = true;
+		SubMine_detonate(core);
+		ms->killedByPlayer = true;
 		collision.collisionDetected = true;
 		collision.solid = true;
 		return collision;
@@ -143,7 +137,7 @@ Collision Mine_collide(void *state, const PlaceableComponent *placeable, const R
 
 	if (Collision_aabb_test(transformedBoundingBox, boundingBox)) {
 		collision.collisionDetected = true;
-		if (mineState->exploding)
+		if (core->phase == MINE_PHASE_EXPLODING)
 			collision.solid = true;
 	}
 
@@ -152,9 +146,10 @@ Collision Mine_collide(void *state, const PlaceableComponent *placeable, const R
 
 void Mine_resolve(void *state, const Collision collision)
 {
-	MineState* mineState = (MineState*)state;
+	MineState *ms = (MineState *)state;
+	SubMineCore *core = &ms->core;
 
-	if (mineState->active || mineState->exploding || mineState->destroyed)
+	if (core->phase != MINE_PHASE_DORMANT)
 		return;
 
 	/* Detection radius — stealth bypasses it */
@@ -162,154 +157,91 @@ void Mine_resolve(void *state, const Collision collision)
 		return;
 
 	Audio_play_sample(&sample01);
-	mineState->active = true;
-	mineState->ticksActive = 0;
+	SubMine_arm(core, &enemyMineCfg, core->position);
 }
 
 void Mine_update(void *state, const PlaceableComponent *placeable, const unsigned int ticks)
 {
-	MineState* mineState = (MineState*)state;
+	MineState *ms = (MineState *)state;
+	SubMineCore *core = &ms->core;
 
-	if (!mineState->destroyed && !mineState->exploding) {
-		Rectangle body = {-10.0, 10.0, 10.0, -10.0};
+	/* Check for player projectile hits on the mine body */
+	if (core->phase != MINE_PHASE_DEAD && core->phase != MINE_PHASE_EXPLODING) {
+		float bs = enemyMineCfg.body_half_size;
+		Rectangle body = {-bs, bs, bs, -bs};
 		Rectangle mineBody = Collision_transform_bounding_box(placeable->position, body);
 		if (Enemy_check_any_hit(mineBody)) {
 			Audio_play_sample(&sample02);
-			mineState->active = false;
-			mineState->exploding = true;
-			mineState->ticksExploding = 0;
-			mineState->killedByPlayer = true;
+			SubMine_detonate(core);
+			ms->killedByPlayer = true;
 		}
 	}
 
-	if (mineState->active)
-	{
-		mineState->ticksActive += ticks;
-		if (mineState->ticksActive > TICKS_ACTIVE) {
-			Audio_play_sample(&sample02);
-			mineState->active = false;
-			mineState->exploding = true;
-			mineState->ticksExploding = 0;
-		}
-		return;
-	}
-	
-	if (mineState->exploding) {
-		mineState->ticksExploding += ticks;
-		if (mineState->ticksExploding > TICKS_EXPLODING) {
-			mineState->exploding = false;
-			mineState->destroyed = true;
-			mineState->ticksDestroyed = 0;
-			if (mineState->killedByPlayer && !Progression_is_unlocked(SUB_ID_MINE))
-				Fragment_spawn(placeable->position, FRAG_TYPE_MINE);
-		}
-		return;
+	MinePhase prevPhase = core->phase;
+	MinePhase phase = SubMine_update(core, &enemyMineCfg, ticks);
+
+	/* Just transitioned to EXPLODING */
+	if (phase == MINE_PHASE_EXPLODING && prevPhase == MINE_PHASE_ARMED) {
+		Audio_play_sample(&sample02);
 	}
 
-	if (mineState->destroyed){
-		mineState->ticksDestroyed += ticks;
-		if (mineState->ticksDestroyed > TICKS_DESTROYED) {
-			Audio_play_sample(&sample03);
-			mineState->active = false;
-			mineState->exploding = false;
-			mineState->destroyed = false;
-			mineState->killedByPlayer = false;
-		}
-		return;
+	/* Just transitioned out of DEAD back to DORMANT — respawn */
+	if (phase == MINE_PHASE_DORMANT && prevPhase == MINE_PHASE_DEAD) {
+		Audio_play_sample(&sample03);
+		ms->killedByPlayer = false;
 	}
 
-	mineState->blinkTimer += ticks;
-	if (mineState->blinkTimer >= 1000)
-		mineState->blinkTimer -= 1000;
+	/* Fragment drop on transition from EXPLODING to DEAD */
+	if (phase == MINE_PHASE_DEAD && prevPhase == MINE_PHASE_EXPLODING) {
+		if (ms->killedByPlayer)
+			Enemy_drop_fragments(placeable->position, mineCarried, 1);
+	}
 }
 
-void Mine_render(const void *state, const PlaceableComponent *placeable) 
+void Mine_render(const void *state, const PlaceableComponent *placeable)
 {
-	MineState* mineState = (MineState*)state;
+	MineState *ms = (MineState *)state;
+	SubMineCore *core = &ms->core;
 
-	if (mineState->destroyed)
+	if (core->phase == MINE_PHASE_DEAD)
 		return;
 
-	if (mineState->exploding) {
-		Rectangle explosion = {-250, 250, 250, -250};
-		Render_quad(&placeable->position, 22.5, explosion, &colorWhite);
-		Render_quad(&placeable->position, 67.5, explosion, &colorWhite);
-		return;
-	}
-
-	Rectangle rectangle = {-10, 10, 10, -10};
-	View view =  View_get_view();
-	if (view.scale > 0.09)
-		Render_quad(&placeable->position, 45.0, rectangle, &colorDark);
-
-	float dh = 3.0f;
-	if (view.scale > 0.001f && 0.5f / (float)view.scale > dh)
-		dh = 0.5f / (float)view.scale;
-	Rectangle dot = {-dh, dh, dh, -dh};
-	if (mineState->active)
-		Render_quad(&placeable->position, 45.0, dot, &colorActive);
-	else if (mineState->blinkTimer < 100)
-		Render_quad(&placeable->position, 45.0, dot, &colorActive);
-
-	//Render_bounding_box(&placeable->position, &collidable.boundingBox);
+	/* Use placeable position (matches entity system) but core stores the same pos */
+	SubMineCore renderCore = *core;
+	renderCore.position = placeable->position;
+	SubMine_render(&renderCore, &enemyMineCfg);
 }
 
 void Mine_render_bloom_source(void)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {
-		MineState *ms = &mines[i];
-		PlaceableComponent *pl = &placeables[i];
-
-		if (ms->destroyed)
+		SubMineCore *core = &mines[i].core;
+		if (core->phase == MINE_PHASE_DEAD)
 			continue;
-
-		if (ms->exploding) {
-			Rectangle explosion = {-250, 250, 250, -250};
-			Render_quad(&pl->position, 22.5, explosion, &colorWhite);
-			Render_quad(&pl->position, 67.5, explosion, &colorWhite);
-			continue;
-		}
-
-		View view = View_get_view();
-		float dh = 3.0f;
-		if (view.scale > 0.001f && 1.0f / (float)view.scale > dh)
-			dh = 1.0f / (float)view.scale;
-		Rectangle dot = {-dh, dh, dh, -dh};
-		if (ms->active || ms->blinkTimer < 100)
-			Render_quad(&pl->position, 45.0, dot, &colorActive);
+		SubMineCore renderCore = *core;
+		renderCore.position = placeables[i].position;
+		SubMine_render_bloom(&renderCore, &enemyMineCfg);
 	}
 }
 
 void Mine_render_light_source(void)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {
-		MineState *ms = &mines[i];
-		PlaceableComponent *pl = &placeables[i];
-
-		if (ms->destroyed) continue;
-
-		if (ms->exploding) {
-			Render_filled_circle(
-				(float)pl->position.x, (float)pl->position.y,
-				750.0f, 16, 1.0f, 0.9f, 0.7f, 1.0f);
-		} else if (ms->active || ms->blinkTimer < 100) {
-			Render_filled_circle(
-				(float)pl->position.x, (float)pl->position.y,
-				150.0f, 12, 1.0f, 0.2f, 0.1f, 0.3f);
-		}
+		SubMineCore *core = &mines[i].core;
+		if (core->phase == MINE_PHASE_DEAD)
+			continue;
+		SubMineCore renderCore = *core;
+		renderCore.position = placeables[i].position;
+		SubMine_render_light(&renderCore, &enemyMineCfg);
 	}
 }
 
 void Mine_reset_all(void)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {
-		mines[i].active = false;
-		mines[i].exploding = false;
-		mines[i].destroyed = false;
-		mines[i].ticksActive = 0;
-		mines[i].ticksExploding = 0;
-		mines[i].ticksDestroyed = 0;
-		mines[i].blinkTimer = rand() % 1000;
+		SubMine_init(&mines[i].core);
+		mines[i].core.position = placeables[i].position;
+		mines[i].core.blinkTimer = rand() % 1000;
 		mines[i].killedByPlayer = false;
 	}
 }

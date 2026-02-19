@@ -1,45 +1,42 @@
 #include "sub_aegis.h"
 
+#include "sub_shield_core.h"
 #include "skillbar.h"
 #include "progression.h"
 #include "player_stats.h"
 #include "ship.h"
-#include "render.h"
 #include "audio.h"
 
-#include <math.h>
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 #include <SDL2/SDL_mixer.h>
 
-#define SHIELD_DURATION_MS 10000
 #define FEEDBACK_COST 30.0
-#define COOLDOWN_MS 30000
-#define RING_RADIUS 35.0f
-#define RING_SEGMENTS 6
-#define PULSE_SPEED 6.0f
 
-typedef enum {
-	AEGIS_READY,
-	AEGIS_ACTIVE,
-	AEGIS_COOLDOWN
-} AegisState;
-
-static AegisState state;
-static int activeMs;
-static int cooldownMs;
-static float pulseTimer;
+static SubShieldCore core;
+static const SubShieldConfig cfg = {
+	.duration_ms = 10000,
+	.cooldown_ms = 30000,
+	.break_grace_ms = 0,
+	.ring_radius = 35.0f,
+	.ring_thickness = 2.0f,
+	.ring_segments = 6,
+	.color_r = 0.6f, .color_g = 0.9f, .color_b = 1.0f,
+	.pulse_speed = 6.0f,
+	.pulse_alpha_min = 0.7f,
+	.pulse_alpha_range = 0.3f,
+	.radius_pulse_amount = 0.05f,
+	.bloom_thickness = 3.0f,
+	.bloom_alpha_min = 0.5f,
+	.bloom_alpha_range = 0.3f,
+	.light_radius = 90.0f,
+	.light_segments = 16,
+};
 
 static Mix_Chunk *sampleActivate = 0;
 static Mix_Chunk *sampleDeactivate = 0;
 
 void Sub_Aegis_initialize(void)
 {
-	state = AEGIS_READY;
-	activeMs = 0;
-	cooldownMs = 0;
-	pulseTimer = 0.0f;
+	SubShield_init(&core);
 
 	Audio_load_sample(&sampleActivate, "resources/sounds/statue_rise.wav");
 	Audio_load_sample(&sampleDeactivate, "resources/sounds/door.wav");
@@ -47,8 +44,7 @@ void Sub_Aegis_initialize(void)
 
 void Sub_Aegis_cleanup(void)
 {
-	/* Drop shield if active */
-	if (state == AEGIS_ACTIVE)
+	if (SubShield_is_active(&core))
 		PlayerStats_set_shielded(false);
 
 	Audio_unload_sample(&sampleActivate);
@@ -59,105 +55,51 @@ void Sub_Aegis_update(const Input *input, unsigned int ticks)
 {
 	if (Ship_is_destroyed()) return;
 
-	switch (state) {
-	case AEGIS_READY:
+	if (!SubShield_is_active(&core)) {
+		/* Try to activate */
 		if (input->keyF && Skillbar_is_active(SUB_ID_AEGIS)) {
-			PlayerStats_set_shielded(true);
-			PlayerStats_add_feedback(FEEDBACK_COST);
-			state = AEGIS_ACTIVE;
-			activeMs = SHIELD_DURATION_MS;
-			pulseTimer = 0.0f;
-			Audio_play_sample(&sampleActivate);
+			if (SubShield_try_activate(&core, &cfg)) {
+				PlayerStats_set_shielded(true);
+				PlayerStats_add_feedback(FEEDBACK_COST);
+				Audio_play_sample(&sampleActivate);
+			}
 		}
-		break;
-
-	case AEGIS_ACTIVE:
-		pulseTimer += ticks / 1000.0f;
+	} else {
 		/* Check if shield was broken externally (e.g. by mine) */
 		if (!PlayerStats_is_shielded()) {
-			state = AEGIS_COOLDOWN;
-			cooldownMs = COOLDOWN_MS;
+			SubShield_break(&core, &cfg);
 			Audio_play_sample(&sampleDeactivate);
-			break;
+			return;
 		}
-		activeMs -= (int)ticks;
-		if (activeMs <= 0) {
-			activeMs = 0;
+		/* Tick the core — returns true if shield just expired */
+		if (SubShield_update(&core, &cfg, ticks)) {
 			PlayerStats_set_shielded(false);
-			state = AEGIS_COOLDOWN;
-			cooldownMs = COOLDOWN_MS;
 			Audio_play_sample(&sampleDeactivate);
+			return;
 		}
-		break;
-
-	case AEGIS_COOLDOWN:
-		cooldownMs -= (int)ticks;
-		if (cooldownMs <= 0) {
-			cooldownMs = 0;
-			state = AEGIS_READY;
-		}
-		break;
 	}
+
+	/* Tick cooldown when not active */
+	if (!SubShield_is_active(&core))
+		SubShield_update(&core, &cfg, ticks);
 }
 
 void Sub_Aegis_render(void)
 {
-	if (state != AEGIS_ACTIVE)
-		return;
-
-	Position shipPos = Ship_get_position();
-	float pulse = 0.7f + 0.3f * sinf(pulseTimer * PULSE_SPEED);
-	float r = RING_RADIUS * (0.95f + 0.05f * sinf(pulseTimer * PULSE_SPEED * 2.0f));
-
-	for (int i = 0; i < RING_SEGMENTS; i++) {
-		float a0 = i * (2.0f * (float)M_PI / RING_SEGMENTS);
-		float a1 = (i + 1) * (2.0f * (float)M_PI / RING_SEGMENTS);
-		float x0 = (float)shipPos.x + cosf(a0) * r;
-		float y0 = (float)shipPos.y + sinf(a0) * r;
-		float x1 = (float)shipPos.x + cosf(a1) * r;
-		float y1 = (float)shipPos.y + sinf(a1) * r;
-		Render_thick_line(x0, y0, x1, y1, 2.0f,
-			0.6f, 0.9f, 1.0f, pulse);
-	}
+	SubShield_render_ring(&core, &cfg, Ship_get_position());
 }
 
 void Sub_Aegis_render_bloom_source(void)
 {
-	if (state != AEGIS_ACTIVE)
-		return;
-
-	Position shipPos = Ship_get_position();
-	float pulse = 0.5f + 0.3f * sinf(pulseTimer * PULSE_SPEED);
-	float r = RING_RADIUS;
-
-	for (int i = 0; i < RING_SEGMENTS; i++) {
-		float a0 = i * (2.0f * (float)M_PI / RING_SEGMENTS);
-		float a1 = (i + 1) * (2.0f * (float)M_PI / RING_SEGMENTS);
-		float x0 = (float)shipPos.x + cosf(a0) * r;
-		float y0 = (float)shipPos.y + sinf(a0) * r;
-		float x1 = (float)shipPos.x + cosf(a1) * r;
-		float y1 = (float)shipPos.y + sinf(a1) * r;
-		Render_thick_line(x0, y0, x1, y1, 3.0f,
-			0.6f, 0.9f, 1.0f, pulse);
-	}
+	SubShield_render_bloom(&core, &cfg, Ship_get_position());
 }
 
 void Sub_Aegis_render_light_source(void)
 {
-	if (state != AEGIS_ACTIVE) return;
-
-	Position shipPos = Ship_get_position();
-	float pulse = 0.5f + 0.3f * sinf(pulseTimer * PULSE_SPEED);
-	Render_filled_circle(
-		(float)shipPos.x, (float)shipPos.y,
-		90.0f, 16, 0.6f, 0.9f, 1.0f, pulse);
+	SubShield_render_light(&core, &cfg, Ship_get_position());
 }
 
 float Sub_Aegis_get_cooldown_fraction(void)
 {
-	if (state == AEGIS_ACTIVE)
-		return (float)activeMs / SHIELD_DURATION_MS;
-	if (state == AEGIS_COOLDOWN)
-		return (float)cooldownMs / COOLDOWN_MS;
-	return 0.0f;
+	return SubShield_get_cooldown_fraction(&core, &cfg);
 }

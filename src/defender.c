@@ -1,4 +1,6 @@
 #include "defender.h"
+#include "sub_shield_core.h"
+#include "sub_heal_core.h"
 #include "enemy_util.h"
 #include "enemy_registry.h"
 #include "fragment.h"
@@ -24,8 +26,6 @@
 #define AGGRO_RANGE 1200.0
 #define DEAGGRO_RANGE 3200.0
 #define HEAL_RANGE 800.0
-#define HEAL_AMOUNT 50.0
-#define HEAL_COOLDOWN_MS 4000
 #define FLEE_TRIGGER_RANGE 400.0
 #define FLEE_SAFE_RANGE 600.0
 #define IDLE_DRIFT_RADIUS 400.0
@@ -33,8 +33,38 @@
 #define IDLE_WANDER_INTERVAL 2000
 #define WALL_CHECK_DIST 50.0
 
-#define AEGIS_DURATION_MS 10000
-#define AEGIS_COOLDOWN_MS 30000
+static const SubShieldConfig defShieldCfg = {
+	.duration_ms = 10000,
+	.cooldown_ms = 30000,
+	.break_grace_ms = 200,
+	.ring_radius = 18.0f,
+	.ring_thickness = 1.5f,
+	.ring_segments = 6,
+	.color_r = 0.6f, .color_g = 0.9f, .color_b = 1.0f,
+	.pulse_speed = 5.0f,
+	.pulse_alpha_min = 0.6f,
+	.pulse_alpha_range = 0.4f,
+	.radius_pulse_amount = 0.0f,
+	.bloom_thickness = 2.0f,
+	.bloom_alpha_min = 0.5f,
+	.bloom_alpha_range = 0.0f,
+	.light_radius = 0.0f,
+	.light_segments = 0,
+};
+
+static const SubHealConfig defHealCfg = {
+	.heal_amount = 50.0,
+	.cooldown_ms = 4000,
+	.beam_duration_ms = 200,
+	.beam_thickness = 2.5f,
+	.beam_color_r = 0.3f, .beam_color_g = 0.7f, .beam_color_b = 1.0f,
+	.bloom_beam_thickness = 3.0f,
+};
+
+static const CarriedSubroutine defenderCarried[] = {
+	{ SUB_ID_MEND, FRAG_TYPE_MEND },
+	{ SUB_ID_AEGIS, FRAG_TYPE_AEGIS },
+};
 
 #define DEATH_FLASH_MS 200
 #define RESPAWN_MS 30000
@@ -44,7 +74,6 @@
 #define SHIELD_CHASE_SPEED 800.0
 #define AEGIS_STANDOFF_DIST 500.0
 #define RELAY_STANDOFF_DIST 150.0
-#define HEAL_BEAM_DURATION_MS 200
 #define BOOST_TRAIL_GHOSTS 12
 #define BOOST_TRAIL_LENGTH 3.0
 
@@ -69,15 +98,10 @@ typedef struct {
 	int wanderTimer;
 
 	/* Healing */
-	int healCooldown;
-	bool healBeamActive;
-	int healBeamTimer;
-	Position healBeamTarget;
+	SubHealCore healCore;
 
 	/* Aegis (enemy self-shield) */
-	bool aegisActive;
-	int aegisDuration;
-	int aegisCooldown;
+	SubShieldCore shieldCore;
 
 	/* Boost */
 	bool boosting;
@@ -85,9 +109,6 @@ typedef struct {
 
 	/* Frame-level snapshot so protection survives same-frame mine break */
 	bool aegisWasActive;
-
-	/* Brief invulnerability after mine pops aegis (outlasts explosion) */
-	int shieldBreakGrace;
 
 	/* Target deconfliction — set each frame during SUPPORTING */
 	bool hasAssignment;
@@ -110,7 +131,6 @@ static AIUpdatableComponent updatable = {Defender_update};
 /* Colors */
 static const ColorFloat colorBody   = {0.3f, 0.7f, 1.0f, 1.0f};
 static const ColorFloat colorAggro  = {0.5f, 0.8f, 1.0f, 1.0f};
-static const ColorFloat colorAegis  = {0.6f, 0.9f, 1.0f, 0.8f};
 
 /* State arrays */
 static DefenderState defenders[DEFENDER_COUNT];
@@ -166,7 +186,7 @@ static bool another_defender_shielding(int selfIdx, Position targetPos)
 		if (i == selfIdx)
 			continue;
 		DefenderState *other = &defenders[i];
-		if (!other->alive || !other->aegisActive)
+		if (!other->alive || !SubShield_is_active(&other->shieldCore))
 			continue;
 		double dist = Enemy_distance_between(placeables[i].position, targetPos);
 		if (dist < PROTECT_RADIUS)
@@ -194,7 +214,7 @@ static bool another_defender_assigned(int selfIdx, Position targetPos)
 
 static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 {
-	if (d->healCooldown > 0)
+	if (!SubHeal_is_ready(&d->healCore))
 		return false;
 
 	int typeCount = EnemyRegistry_type_count();
@@ -231,23 +251,17 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 	if (bestType < 0)
 		return false;
 
-	EnemyRegistry_heal(bestType, bestIdx, HEAL_AMOUNT);
+	EnemyRegistry_heal(bestType, bestIdx, defHealCfg.heal_amount);
 
-	d->healCooldown = HEAL_COOLDOWN_MS;
-	d->healBeamActive = true;
-	d->healBeamTimer = HEAL_BEAM_DURATION_MS;
-	d->healBeamTarget = bestPos;
+	SubHeal_try_activate(&d->healCore, &defHealCfg, pl->position, bestPos);
 	Audio_play_sample(&sampleHeal);
 	return true;
 }
 
 static void activate_aegis(DefenderState *d)
 {
-	if (d->aegisActive || d->aegisCooldown > 0)
-		return;
-	d->aegisActive = true;
-	d->aegisDuration = AEGIS_DURATION_MS;
-	Audio_play_sample(&sampleAegis);
+	if (SubShield_try_activate(&d->shieldCore, &defShieldCfg))
+		Audio_play_sample(&sampleAegis);
 }
 
 /* ---- Public API ---- */
@@ -268,13 +282,8 @@ void Defender_initialize(Position position)
 	d->spawnPoint = position;
 	d->facing = 0.0;
 	d->killedByPlayer = false;
-	d->healCooldown = 0;
-	d->healBeamActive = false;
-	d->healBeamTimer = 0;
-	d->aegisActive = false;
-	d->aegisDuration = 0;
-	d->aegisCooldown = 0;
-	d->shieldBreakGrace = 0;
+	SubHeal_init(&d->healCore);
+	SubShield_init(&d->shieldCore);
 	d->boosting = false;
 	d->prevPosition = position;
 	d->deathTimer = 0;
@@ -366,38 +375,20 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	d->prevPosition = pl->position;
 	d->boosting = false;
 	d->hasAssignment = false;
-	d->aegisWasActive = d->aegisActive;
+	d->aegisWasActive = SubShield_is_active(&d->shieldCore);
 	currentUpdaterIdx = idx;
 
 	/* --- Tick timers --- */
-	if (d->healCooldown > 0)
-		d->healCooldown -= ticks;
-	if (d->healBeamActive) {
-		d->healBeamTimer -= ticks;
-		if (d->healBeamTimer <= 0)
-			d->healBeamActive = false;
-	}
+	SubHeal_update(&d->healCore, &defHealCfg, ticks);
 
-	/* Aegis timer */
-	if (d->aegisActive) {
-		d->aegisDuration -= ticks;
-		if (d->aegisDuration <= 0) {
-			d->aegisActive = false;
-			d->aegisCooldown = AEGIS_COOLDOWN_MS;
-		}
-	} else if (d->aegisCooldown > 0) {
-		d->aegisCooldown -= ticks;
-	}
-
-	/* Shield break grace — brief invulnerability after mine pops aegis */
-	if (d->shieldBreakGrace > 0)
-		d->shieldBreakGrace -= ticks;
+	/* Aegis timer + grace (all handled by core) */
+	SubShield_update(&d->shieldCore, &defShieldCfg, ticks);
 
 	if (d->alive)
 		Enemy_check_stealth_proximity(pl->position, d->facing);
 
 	/* --- Check for incoming player projectiles --- */
-	if (d->alive && d->aiState != DEFENDER_DYING && d->shieldBreakGrace <= 0) {
+	if (d->alive && d->aiState != DEFENDER_DYING && !SubShield_in_grace(&d->shieldCore)) {
 		Rectangle body = {-BODY_SIZE, BODY_SIZE, BODY_SIZE, -BODY_SIZE};
 		Rectangle hitBox = Collision_transform_bounding_box(pl->position, body);
 
@@ -405,15 +396,13 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		bool hit = dmg.hit;
 
 		if (hit) {
-			bool shielded = d->aegisActive && !dmg.ambush;
+			bool shielded = SubShield_is_active(&d->shieldCore) && !dmg.ambush;
 			activate_spark(pl->position, shielded);
 
 			if (shielded) {
 				if (dmg.mine_hit) {
 					/* Mine breaks aegis shield — no damage, grace outlasts explosion */
-					d->aegisActive = false;
-					d->aegisCooldown = AEGIS_COOLDOWN_MS;
-					d->shieldBreakGrace = 200; /* > EXPLODING_TIME (100ms) */
+					SubShield_break(&d->shieldCore, &defShieldCfg);
 				}
 				Audio_play_sample(&sampleShieldHit);
 			} else {
@@ -431,7 +420,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			}
 		}
 
-		if ((!d->aegisActive || dmg.ambush) && hit && d->hp <= 0.0) {
+		if ((!SubShield_is_active(&d->shieldCore) || dmg.ambush) && hit && d->hp <= 0.0) {
 			d->alive = false;
 			d->aiState = DEFENDER_DYING;
 			d->deathTimer = 0;
@@ -500,7 +489,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		try_heal_ally(d, pl);
 
 		/* Flee if player gets close — but hold ground while actively shielding */
-		if (shipDist < FLEE_TRIGGER_RANGE && !d->aegisActive) {
+		if (shipDist < FLEE_TRIGGER_RANGE && !SubShield_is_active(&d->shieldCore)) {
 			d->aiState = DEFENDER_FLEEING;
 			break;
 		}
@@ -567,13 +556,13 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		}
 
 		if (hasTarget) {
-			bool aegisReady = d->aegisActive ||
-				(d->aegisCooldown <= 0 && !another_defender_shielding(idx, allyPos));
+			bool aegisReady = SubShield_is_active(&d->shieldCore) ||
+				(d->shieldCore.cooldownMs <= 0 && !another_defender_shielding(idx, allyPos));
 			double allyDist = Enemy_distance_between(pl->position, allyPos);
 
 			if (aegisReady) {
 				/* Aegis available — rush in to shield ally */
-				double chaseSpeed = d->aegisActive ? SHIELD_CHASE_SPEED : NORMAL_SPEED * BOOST_MULTIPLIER;
+				double chaseSpeed = SubShield_is_active(&d->shieldCore) ? SHIELD_CHASE_SPEED : NORMAL_SPEED * BOOST_MULTIPLIER;
 				d->boosting = true;
 				Enemy_move_toward(pl, allyPos, chaseSpeed, dt, WALL_CHECK_DIST);
 
@@ -628,21 +617,9 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			d->aiState = DEFENDER_DEAD;
 			d->respawnTimer = 0;
 
-			/* Drop fragment — prioritize locked subroutines */
-			if (d->killedByPlayer) {
-				bool mend_locked = !Progression_is_unlocked(SUB_ID_MEND);
-				bool aegis_locked = !Progression_is_unlocked(SUB_ID_AEGIS);
-				if (mend_locked || aegis_locked) {
-					FragmentType ftype;
-					if (mend_locked && aegis_locked)
-						ftype = (rand() % 2 == 0) ? FRAG_TYPE_MEND : FRAG_TYPE_AEGIS;
-					else if (mend_locked)
-						ftype = FRAG_TYPE_MEND;
-					else
-						ftype = FRAG_TYPE_AEGIS;
-					Fragment_spawn(pl->position, ftype);
-				}
-			}
+			/* Drop fragment */
+			if (d->killedByPlayer)
+				Enemy_drop_fragments(pl->position, defenderCarried, 2);
 		}
 		break;
 
@@ -653,11 +630,8 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			d->hp = DEFENDER_HP;
 			d->aiState = DEFENDER_IDLE;
 			d->killedByPlayer = false;
-			d->healCooldown = 0;
-			d->aegisActive = false;
-			d->aegisDuration = 0;
-			d->aegisCooldown = 0;
-			d->shieldBreakGrace = 0;
+			SubHeal_init(&d->healCore);
+			SubShield_init(&d->shieldCore);
 			pl->position = d->spawnPoint;
 			pick_wander_target(d);
 			Audio_play_sample(&sampleRespawn);
@@ -734,20 +708,10 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 	Render_point(&placeable->position, 4.0, bodyColor);
 
 	/* Aegis shield ring */
-	if (d->aegisActive) {
-		float pulse = 0.6f + 0.4f * sinf(d->aegisDuration / 200.0f);
-		render_hexagon(placeable->position, BODY_SIZE + 8.0f, 1.5f,
-			colorAegis.red, colorAegis.green, colorAegis.blue, pulse);
-	}
+	SubShield_render_ring(&d->shieldCore, &defShieldCfg, placeable->position);
 
 	/* Heal beam */
-	if (d->healBeamActive) {
-		float fade = (float)d->healBeamTimer / HEAL_BEAM_DURATION_MS;
-		Render_thick_line(
-			(float)placeable->position.x, (float)placeable->position.y,
-			(float)d->healBeamTarget.x, (float)d->healBeamTarget.y,
-			2.5f, 0.3f, 0.7f, 1.0f, fade);
-	}
+	SubHeal_render_beam(&d->healCore, &defHealCfg);
 
 	/* Sparks (from idx 0 only) */
 	if (idx == 0) {
@@ -794,19 +758,10 @@ void Defender_render_bloom_source(void)
 		Render_point(&pl->position, 6.0, bodyColor);
 
 		/* Aegis ring bloom */
-		if (d->aegisActive) {
-			render_hexagon(pl->position, BODY_SIZE + 8.0f, 2.0f,
-				colorAegis.red, colorAegis.green, colorAegis.blue, 0.5f);
-		}
+		SubShield_render_bloom(&d->shieldCore, &defShieldCfg, pl->position);
 
 		/* Heal beam bloom */
-		if (d->healBeamActive) {
-			float fade = (float)d->healBeamTimer / HEAL_BEAM_DURATION_MS;
-			Render_thick_line(
-				(float)pl->position.x, (float)pl->position.y,
-				(float)d->healBeamTarget.x, (float)d->healBeamTarget.y,
-				3.0f, 0.3f, 0.7f, 1.0f, fade * 0.6f);
-		}
+		SubHeal_render_beam_bloom(&d->healCore, &defHealCfg);
 	}
 
 	/* Spark bloom */
@@ -838,12 +793,8 @@ void Defender_reset_all(void)
 		d->hp = DEFENDER_HP;
 		d->aiState = DEFENDER_IDLE;
 		d->killedByPlayer = false;
-		d->healCooldown = 0;
-		d->healBeamActive = false;
-		d->aegisActive = false;
-		d->aegisDuration = 0;
-		d->aegisCooldown = 0;
-		d->shieldBreakGrace = 0;
+		SubHeal_init(&d->healCore);
+		SubShield_init(&d->shieldCore);
 		d->boosting = false;
 		d->deathTimer = 0;
 		d->respawnTimer = 0;
@@ -862,7 +813,7 @@ bool Defender_is_protecting(Position pos)
 		if (!d->alive)
 			continue;
 		/* Protected if aegis was active this frame OR in post-break grace */
-		if (!d->aegisWasActive && d->shieldBreakGrace <= 0)
+		if (!d->aegisWasActive && !SubShield_in_grace(&d->shieldCore))
 			continue;
 		double dist = Enemy_distance_between(placeables[i].position, pos);
 		if (dist < PROTECT_RADIUS)

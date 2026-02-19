@@ -1,4 +1,5 @@
 #include "seeker.h"
+#include "sub_dash_core.h"
 #include "enemy_util.h"
 #include "defender.h"
 #include "fragment.h"
@@ -32,9 +33,13 @@
 #define ORBIT_MIN_MS 1000
 #define ORBIT_MAX_MS 2000
 #define WINDUP_MS 300
-#define DASH_SPEED 5000.0
-#define DASH_DURATION_MS 150
-#define DASH_DAMAGE 80.0
+static const SubDashConfig seekerDashCfg = {
+	.duration_ms = 150,
+	.speed = 5000.0,
+	.cooldown_ms = 0,
+	.damage = 80.0,
+};
+
 #define RECOVER_MS 2000
 
 #define DEATH_FLASH_MS 200
@@ -42,6 +47,10 @@
 
 #define BODY_LENGTH 18.0
 #define BODY_WIDTH 8.0
+
+static const CarriedSubroutine seekerCarried[] = {
+	{ SUB_ID_EGRESS, FRAG_TYPE_SEEKER },
+};
 #define WALL_CHECK_DIST 50.0
 #define NEAR_MISS_RADIUS 200.0
 
@@ -73,14 +82,13 @@ typedef struct {
 	int orbitDirection;   /* +1 or -1 */
 	int orbitTimer;       /* how long to orbit before striking */
 
-	/* Windup */
-	double dashDirX;
-	double dashDirY;
+	/* Windup — direction locked before dash */
+	double pendingDirX;
+	double pendingDirY;
 
 	/* Dash */
-	int dashTimer;
+	SubDashCore dashCore;
 	Position dashStartPos;
-	bool hitThisDash;
 
 	/* Recovery */
 	int recoverTimer;
@@ -175,9 +183,9 @@ void Seeker_initialize(Position position)
 	s->orbitAngle = 0.0;
 	s->orbitDirection = 1;
 	s->orbitTimer = 0;
-	s->dashDirX = 0.0;
-	s->dashDirY = 0.0;
-	s->dashTimer = 0;
+	s->pendingDirX = 0.0;
+	s->pendingDirY = 0.0;
+	SubDash_init(&s->dashCore);
 	s->recoverTimer = 0;
 	s->recoverVelX = 0.0;
 	s->recoverVelY = 0.0;
@@ -387,11 +395,11 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			double dy = shipPos.y - pl->position.y;
 			double len = sqrt(dx * dx + dy * dy);
 			if (len > 0.001) {
-				s->dashDirX = dx / len;
-				s->dashDirY = dy / len;
+				s->pendingDirX = dx / len;
+				s->pendingDirY = dy / len;
 			} else {
-				s->dashDirX = 0.0;
-				s->dashDirY = 1.0;
+				s->pendingDirX = 0.0;
+				s->pendingDirY = 1.0;
 			}
 
 			Audio_play_sample(&sampleWindup);
@@ -403,63 +411,58 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		s->windupTimer += ticks;
 
 		/* Face dash direction */
-		s->facing = atan2(s->dashDirX, s->dashDirY) * 180.0 / PI;
+		s->facing = atan2(s->pendingDirX, s->pendingDirY) * 180.0 / PI;
 
 		if (s->windupTimer >= WINDUP_MS) {
 			s->aiState = SEEKER_DASHING;
-			s->dashTimer = 0;
 			s->dashStartPos = pl->position;
-			s->hitThisDash = false;
+			SubDash_try_activate(&s->dashCore, &seekerDashCfg, s->pendingDirX, s->pendingDirY);
 			Audio_play_sample(&sampleDash);
 		}
 		break;
 	}
 	case SEEKER_DASHING: {
-		s->dashTimer += ticks;
-
-		double moveX = s->dashDirX * DASH_SPEED * dt;
-		double moveY = s->dashDirY * DASH_SPEED * dt;
+		double moveX = s->dashCore.dirX * seekerDashCfg.speed * dt;
+		double moveY = s->dashCore.dirY * seekerDashCfg.speed * dt;
 
 		/* Check wall collision along dash path */
 		double hx, hy;
 		double newX = pl->position.x + moveX;
 		double newY = pl->position.y + moveY;
 		if (Map_line_test_hit(pl->position.x, pl->position.y, newX, newY, &hx, &hy)) {
-			/* Stop at wall */
-			pl->position.x = hx - s->dashDirX * 5.0; /* back off slightly */
-			pl->position.y = hy - s->dashDirY * 5.0;
-			/* End dash early */
+			pl->position.x = hx - s->dashCore.dirX * 5.0;
+			pl->position.y = hy - s->dashCore.dirY * 5.0;
+			s->recoverVelX = s->dashCore.dirX * seekerDashCfg.speed * 0.1;
+			s->recoverVelY = s->dashCore.dirY * seekerDashCfg.speed * 0.1;
+			SubDash_end_early(&s->dashCore, &seekerDashCfg);
 			s->aiState = SEEKER_RECOVERING;
 			s->recoverTimer = 0;
-			s->recoverVelX = s->dashDirX * DASH_SPEED * 0.1;
-			s->recoverVelY = s->dashDirY * DASH_SPEED * 0.1;
 			break;
 		}
 
 		pl->position.x = newX;
 		pl->position.y = newY;
-		s->facing = atan2(s->dashDirX, s->dashDirY) * 180.0 / PI;
+		s->facing = atan2(s->dashCore.dirX, s->dashCore.dirY) * 180.0 / PI;
 
 		/* Check hit on player during dash */
-		if (!Ship_is_destroyed()) {
+		if (!Ship_is_destroyed() && !s->dashCore.hitThisDash) {
 			Position shipPos = Ship_get_position();
 			Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
 			Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
 			Rectangle seekerBB = {-BODY_WIDTH, BODY_LENGTH, BODY_WIDTH, -BODY_LENGTH};
 			Rectangle seekerWorld = Collision_transform_bounding_box(pl->position, seekerBB);
 
-			if (Collision_aabb_test(seekerWorld, shipWorld) && !s->hitThisDash) {
-				PlayerStats_damage(DASH_DAMAGE);
-				s->hitThisDash = true;
+			if (Collision_aabb_test(seekerWorld, shipWorld)) {
+				PlayerStats_damage(seekerDashCfg.damage);
+				s->dashCore.hitThisDash = true;
 			}
 		}
 
-		if (s->dashTimer >= DASH_DURATION_MS) {
+		if (SubDash_update(&s->dashCore, &seekerDashCfg, ticks)) {
+			s->recoverVelX = s->dashCore.dirX * seekerDashCfg.speed * 0.1;
+			s->recoverVelY = s->dashCore.dirY * seekerDashCfg.speed * 0.1;
 			s->aiState = SEEKER_RECOVERING;
 			s->recoverTimer = 0;
-			/* Carry some momentum into recovery */
-			s->recoverVelX = s->dashDirX * DASH_SPEED * 0.1;
-			s->recoverVelY = s->dashDirY * DASH_SPEED * 0.1;
 		}
 		break;
 	}
@@ -503,8 +506,8 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			s->respawnTimer = 0;
 
 			/* Drop fragment */
-			if (s->killedByPlayer && !Progression_is_unlocked(SUB_ID_EGRESS))
-				Fragment_spawn(pl->position, FRAG_TYPE_SEEKER);
+			if (s->killedByPlayer)
+				Enemy_drop_fragments(pl->position, seekerCarried, 1);
 		}
 		break;
 
@@ -612,8 +615,8 @@ void Seeker_render(const void *state, const PlaceableComponent *placeable)
 		for (int g = 5; g >= 1; g--) {
 			float t = (float)g / 6.0f;
 			Position ghost;
-			ghost.x = placeable->position.x - s->dashDirX * BODY_LENGTH * 3.0 * t;
-			ghost.y = placeable->position.y - s->dashDirY * BODY_LENGTH * 3.0 * t;
+			ghost.x = placeable->position.x - s->dashCore.dirX * BODY_LENGTH * 3.0 * t;
+			ghost.y = placeable->position.y - s->dashCore.dirY * BODY_LENGTH * 3.0 * t;
 			float alpha = (1.0f - t) * 0.5f;
 			ColorFloat ghostColor = {1.0f, 1.0f, 1.0f, alpha};
 			render_needle(ghost, s->facing, &ghostColor);
@@ -679,8 +682,8 @@ void Seeker_render_bloom_source(void)
 			for (int g = 3; g >= 1; g--) {
 				float t = (float)g / 4.0f;
 				Position ghost;
-				ghost.x = pl->position.x - s->dashDirX * BODY_LENGTH * 2.0 * t;
-				ghost.y = pl->position.y - s->dashDirY * BODY_LENGTH * 2.0 * t;
+				ghost.x = pl->position.x - s->dashCore.dirX * BODY_LENGTH * 2.0 * t;
+				ghost.y = pl->position.y - s->dashCore.dirY * BODY_LENGTH * 2.0 * t;
 				float alpha = (1.0f - t) * 0.6f;
 				ColorFloat gc = {1.0f, 1.0f, 1.0f, alpha};
 				Render_point(&ghost, 4.0, &gc);
@@ -755,9 +758,9 @@ void Seeker_reset_all(void)
 		s->aiState = SEEKER_IDLE;
 		s->killedByPlayer = false;
 		s->orbitTimer = 0;
-		s->dashDirX = 0.0;
-		s->dashDirY = 0.0;
-		s->dashTimer = 0;
+		s->pendingDirX = 0.0;
+		s->pendingDirY = 0.0;
+		SubDash_init(&s->dashCore);
 		s->windupTimer = 0;
 		s->recoverTimer = 0;
 		s->recoverVelX = 0.0;

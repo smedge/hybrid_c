@@ -42,4 +42,14 @@ double Enemy_apply_gravity(PlaceableComponent *pl, double dt);
 bool Enemy_check_any_nearby(Position pos, double radius);
 bool Enemy_check_any_hit(Rectangle hitBox);
 
+/* Drop system — maps enemy types to the subroutines they carry */
+typedef struct {
+	int sub_id;       /* SubroutineId — which subroutine this unlocks */
+	int frag_type;    /* FragmentType — which fragment to spawn */
+} CarriedSubroutine;
+
+/* Spawn a fragment for one randomly-chosen locked subroutine from the list.
+   Does nothing if all carried subs are already unlocked. */
+void Enemy_drop_fragments(Position deathPos, const CarriedSubroutine *subs, int subCount);
+
 #endif

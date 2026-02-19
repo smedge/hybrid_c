@@ -12,7 +12,6 @@ bool Sub_Egress_is_dashing(void);
 double Sub_Egress_get_dash_vx(void);
 double Sub_Egress_get_dash_vy(void);
 float Sub_Egress_get_cooldown_fraction(void);
-bool Sub_Egress_check_hit(Rectangle target);
-double Sub_Egress_get_damage(void);
+double Sub_Egress_check_hit(Rectangle target);
 
 #endif
