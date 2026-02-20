@@ -2,9 +2,68 @@
 
 ## Goal
 
-Seedable PRNG and simplex noise generate visible organic terrain across the whole map. A zone file with a `seed` directive produces two tile types — walls and empty space — from noise evaluation against a single configurable threshold. Same seed = same terrain, every time.
+Seedable PRNG and simplex noise generate visible organic terrain across the whole map. A procgen zone produces two tile types — walls and empty space — from noise evaluation against a single configurable threshold. Same master seed = same terrain in every zone, every time.
 
-This is the foundation layer. No landmarks, no influence fields, no connectivity validation, no effect cells yet — just raw noise-driven terrain filling a 1024×1024 grid. Later phases modulate this with landmark influences, carve corridors, and populate enemies. Effect cells (traversable rendered cells for data traces and biome hazards) will be added when themed zones are implemented.
+This is the foundation layer. No landmarks, no influence fields, no connectivity validation, no effect cells yet — just raw noise-driven terrain filling a 1024×1024 grid. Later phases modulate this with landmark influences, carve corridors, and populate enemies. Effect cells (traversable rendered cells) will be added in Phase 3 as chunk-authored content.
+
+---
+
+## Seed Architecture
+
+### Master Seed + Zone ID Hashing
+
+The seed is NOT stored in the zone file. Zone files are **templates** — they define the skeleton (cell types, noise parameters, landmarks) but not the seed. This enables the core replayability loop: same zone template, different seed, different world.
+
+**Master seed**: A single `uint32_t` generated once when starting a new game. Stored in the save file. One number controls the entire world.
+
+**Per-zone seed derivation**: Each zone's generation seed is derived from the master seed and the zone's identity:
+
+```c
+uint32_t zone_seed = Procgen_derive_zone_seed(master_seed, zone_filepath);
+```
+
+**Hash function**: Combine master seed with FNV-1a hash of the zone filepath:
+
+```c
+uint32_t Procgen_derive_zone_seed(uint32_t master_seed, const char *zone_id) {
+    // FNV-1a hash of zone identifier
+    uint32_t hash = 2166136261u;  // FNV offset basis
+    for (const char *p = zone_id; *p; p++) {
+        hash ^= (uint8_t)*p;
+        hash *= 16777619u;        // FNV prime
+    }
+    // Combine with master seed (boost hash_combine style)
+    return master_seed ^ (hash * 0x9E3779B9 + (master_seed << 6) + (master_seed >> 2));
+}
+```
+
+This guarantees:
+- Same master seed + same zone = identical terrain every time
+- Same master seed + different zone = completely different terrain
+- Different master seed + same zone = completely different terrain
+- One master seed to share for daily challenges, bug reports, multiplayer sync
+
+### Where the Master Seed Lives
+
+**Save file** (future): The master seed is generated at new-game time and stored in the save file. Every zone load derives from it. This is the production path but not Phase 2 scope.
+
+**Phase 2 testing**: The procgen module holds a master seed that can be set from godmode:
+```c
+void Procgen_set_master_seed(uint32_t seed);    // Set master seed (godmode/testing)
+uint32_t Procgen_get_master_seed(void);          // Read current master seed
+```
+
+On startup, initialize with a default (e.g., `0` or time-based). Godmode can override it. Seed cycling (Shift+H) increments the master seed and regenerates.
+
+### Zone File: `procgen` Directive
+
+Instead of a `seed` line, zones use a `procgen` directive to indicate they use procedural generation:
+
+```
+procgen true
+```
+
+This flag tells the loader to call `Procgen_generate()` after parsing. The seed comes from the procgen module's master seed, not from the zone file.
 
 ---
 
@@ -66,8 +125,16 @@ The ±500 range ensures octaves sample far-apart regions of the noise field.
 The main generation module. Phase 2 scope is noise-to-terrain conversion with a single threshold.
 
 ```c
+// Master seed management
+void     Procgen_set_master_seed(uint32_t seed);
+uint32_t Procgen_get_master_seed(void);
+
+// Derive a zone-specific seed from master seed + zone identity
+uint32_t Procgen_derive_zone_seed(uint32_t master_seed, const char *zone_id);
+
 // Generate terrain for the given zone. Fills zone->cell_grid using noise.
-// Skips cells already placed by hand (cell_grid[x][y] != -1).
+// Derives zone seed from master seed + zone filepath.
+// Skips cells already placed by hand (cell_hand_placed is true).
 // Call after zone file parsing, before apply_zone_to_world().
 void Procgen_generate(Zone *zone);
 ```
@@ -76,14 +143,15 @@ void Procgen_generate(Zone *zone);
 
 ```
 function Procgen_generate(zone):
-    if zone has no seed: return  // Not a procgen zone
+    if not zone.procgen: return  // Not a procgen zone
 
-    rng = Prng_seed(zone.seed)
+    zone_seed = Procgen_derive_zone_seed(master_seed, zone.filepath)
+    rng = Prng_seed(zone_seed)
 
     for y in 0..zone.size:
         for x in 0..zone.size:
             // Skip hand-placed cells
-            if zone.cell_grid[x][y] != -1:
+            if zone.cell_hand_placed[x][y]:
                 continue
 
             // Evaluate noise at this grid position
@@ -92,7 +160,7 @@ function Procgen_generate(zone):
                                    zone.noise_frequency,
                                    zone.noise_lacunarity,
                                    zone.noise_persistence,
-                                   zone.seed)
+                                   zone_seed)
 
             // Two-tile-type thresholding
             if noise_val < zone.wall_threshold:
@@ -114,15 +182,17 @@ Add noise parameters to the Zone struct:
 ```c
 // Add to Zone struct:
 
-// Procgen noise parameters
-bool has_seed;                          // true if zone uses procedural generation
-uint32_t seed;                          // PRNG seed for deterministic generation
+// Procgen flag and noise parameters
+bool procgen;                              // true if zone uses procedural generation
 
-int noise_octaves;                      // Number of noise layers (default 5)
-double noise_frequency;                 // Base frequency (default 0.01)
-double noise_lacunarity;                // Frequency multiplier per octave (default 2.0)
-double noise_persistence;               // Amplitude multiplier per octave (default 0.5)
-double noise_wall_threshold;            // Below this = wall (default -0.1)
+int noise_octaves;                         // Number of noise layers (default 5)
+double noise_frequency;                    // Base frequency (default 0.01)
+double noise_lacunarity;                   // Frequency multiplier per octave (default 2.0)
+double noise_persistence;                  // Amplitude multiplier per octave (default 0.5)
+double noise_wall_threshold;               // Below this = wall (default -0.1)
+
+// Hand-placed cell tracking
+bool cell_hand_placed[MAP_SIZE][MAP_SIZE]; // true = authored in zone file, false = available for generation
 
 // Wall type tracking — indices into cell_types[] that are wall types
 // (all celltypes are wall types in Phase 2, but tracked explicitly
@@ -136,7 +206,7 @@ int wall_type_count;
 Add parsing for new zone file directives:
 
 ```
-seed <uint32>
+procgen true
 noise_octaves <int>
 noise_frequency <float>
 noise_lacunarity <float>
@@ -146,22 +216,22 @@ noise_wall_threshold <float>
 
 **`celltype` tracking**: When celltypes are parsed, also record their index in `wall_type_indices[]` so the generator can pick among wall types.
 
-**Default values**: If a zone has a `seed` but doesn't specify noise params, use defaults:
+**Default values**: If a zone has `procgen true` but doesn't specify noise params, use defaults:
 - octaves: 5
 - frequency: 0.01
 - lacunarity: 2.0
 - persistence: 0.5
 - wall_threshold: -0.1
 
-**Integration point**: After all lines are parsed, if `zone.has_seed` is true, call `Procgen_generate(&zone)` before `apply_zone_to_world()`.
+**Integration point**: After all lines are parsed, if `zone.procgen` is true, call `Procgen_generate(&zone)` before `apply_zone_to_world()`.
 
 ### `zone.c` — Zone Save Extension
 
-When saving a procgen zone, write the seed and noise parameters back to the zone file so they round-trip. The generated cells themselves are NOT saved — they're regenerated from the seed on load. Only hand-placed cells are persisted.
+When saving a procgen zone, write the procgen flag and noise parameters back to the zone file so they round-trip. The generated cells themselves are NOT saved — they're regenerated from the seed on load. Only hand-placed cells are persisted.
 
 **What gets saved**:
 ```
-seed <value>
+procgen true
 noise_octaves <value>
 noise_frequency <value>
 noise_lacunarity <value>
@@ -169,9 +239,9 @@ noise_persistence <value>
 noise_wall_threshold <value>
 ```
 
-**What does NOT get saved**: Generated cell data. The cell_grid entries created by `Procgen_generate()` are transient — they exist in memory after generation but are not written as `cell` lines in the zone file. Only cells that were hand-placed (via godmode or authored in the zone file) are saved as `cell` lines.
+**What does NOT get saved**: Generated cell data or the seed. The cell_grid entries created by `Procgen_generate()` are transient — they exist in memory after generation but are not written as `cell` lines in the zone file. Only cells that were hand-placed (via godmode or authored in the zone file) are saved as `cell` lines. The seed comes from the save file's master seed at load time.
 
-This keeps zone files small and seed-deterministic. A procgen zone file is just the skeleton + seed + parameters.
+This keeps zone files small and reusable. A procgen zone file is just the skeleton + parameters — a template that produces different terrain per playthrough.
 
 ---
 
@@ -192,8 +262,8 @@ bgcolor 3 38 13 89
 celltype solid 20 0 20 255 128 0 128 255 none
 celltype circuit 10 20 20 255 64 128 128 255 circuit
 
-# Procgen seed + noise parameters
-seed 12345
+# Enable procedural generation
+procgen true
 noise_octaves 5
 noise_frequency 0.01
 noise_lacunarity 2.0
@@ -216,14 +286,16 @@ spawn mine 0.0 0.0
 Zone_load("procgen_test.zone"):
     1. Parse zone file (existing parser + new directives)
        - Cell types (celltype)
-       - Noise parameters (seed, octaves, frequency, etc.)
+       - Procgen flag + noise parameters
        - Hand-placed cells, spawns, portals, savepoints
-    2. If zone.has_seed:
+       - Mark hand-placed cells in cell_hand_placed grid
+    2. If zone.procgen:
        a. Procgen_generate(&zone)
-          - Init PRNG with seed
+          - Derive zone_seed from master_seed + zone filepath
+          - Init PRNG with zone_seed
           - For each cell in 1024×1024 grid:
-            - Skip if hand-placed (cell_grid != -1)
-            - Evaluate Noise_fbm at grid position
+            - Skip if hand-placed (cell_hand_placed is true)
+            - Evaluate Noise_fbm at grid position (using zone_seed)
             - noise < wall_threshold → pick wall cell type
             - noise ≥ wall_threshold → leave empty
     3. apply_zone_to_world()
@@ -241,20 +313,20 @@ Zone_load("procgen_test.zone"):
 
 The generator needs to know which cells were hand-placed (from the zone file) so it skips them. After generation, the save system needs to know which cells are hand-placed so it only saves those.
 
-**Approach**: Add a parallel boolean grid to track hand-placed status:
+**Approach**: A parallel boolean grid tracks hand-placed status:
 
 ```c
-// Add to Zone struct:
+// In Zone struct:
 bool cell_hand_placed[MAP_SIZE][MAP_SIZE];  // true = authored in zone file, false = generated
 ```
 
 - Zone parser sets `cell_hand_placed[x][y] = true` when parsing `cell` lines
-- `Procgen_generate()` checks `cell_hand_placed` (not just `cell_grid != -1`) to skip hand-placed cells
+- `Procgen_generate()` checks `cell_hand_placed` to skip hand-placed cells
 - `Zone_save()` only writes `cell` lines for cells where `cell_hand_placed` is true
 - Godmode cell placement sets `cell_hand_placed = true` (hand-placed by definition)
 - Godmode cell removal sets `cell_hand_placed = true` and `cell_grid = -1` (explicit removal persists — prevents the generator from filling that spot on next load)
 
-**Why not just save all cells?** A 1024×1024 zone could have 300K+ generated wall cells. Writing them all as `cell` lines would make zone files enormous and defeat the purpose of seed-based generation. The zone file should be a compact skeleton.
+**Why not just save all cells?** A 1024×1024 zone could have 300K+ generated wall cells. Writing them all as `cell` lines would make zone files enormous and defeat the purpose of seed-based generation. The zone file should be a compact template.
 
 **Godmode removal persistence**: If you clear a generated cell in godmode, that removal should persist across save/load. This requires storing explicit "no cell here" markers for hand-cleared positions. Options:
 - Save `clearcell <x> <y>` lines in the zone file for explicitly removed cells
@@ -301,13 +373,15 @@ This is essential for tuning noise parameters. The overlay renders as a semi-tra
 
 **Implementation**: When enabled, iterate visible cells and draw a colored quad at each position using `Render_triangle` with alpha. Colors interpolated from noise value. Only evaluates noise for on-screen cells (camera viewport), not the full 1024×1024 grid.
 
-**Seed cycling**: Godmode hotkey (suggest: Shift+H) re-rolls the seed (increment by 1) and regenerates terrain without reloading the zone file. This enables fast visual iteration: tap Shift+H repeatedly to see different terrain from the same noise parameters.
+**Seed cycling**: Godmode hotkey (suggest: Shift+H) increments the master seed and regenerates terrain. This enables fast visual iteration: tap Shift+H repeatedly to see different terrain from the same noise parameters.
 
 **Implementation for seed cycling**:
-1. Increment `zone.seed`
+1. Increment master seed via `Procgen_set_master_seed(current + 1)`
 2. Clear all non-hand-placed cells from cell_grid (reset to -1 where `cell_hand_placed` is false)
-3. Call `Procgen_generate(&zone)` with new seed
+3. Call `Procgen_generate(&zone)` — derives new zone_seed from new master seed
 4. Call `apply_zone_to_world()` to refresh the map
+
+**Master seed display**: Show the current master seed somewhere in the godmode HUD so you can note down seeds that produce interesting terrain.
 
 ---
 
@@ -315,13 +389,13 @@ This is essential for tuning noise parameters. The overlay renders as a semi-tra
 
 1. **`prng.c/h`** — Implement xoshiro128** with SplitMix32 seeding. Test determinism.
 2. **`noise.c/h`** — Implement 2D simplex noise + fBm wrapper. Test with known values.
-3. **`zone.h/zone.c`** — Add noise params + `cell_hand_placed` grid + `wall_type_indices` to Zone struct. Add `seed` + noise parameter parsing. Track wall type indices when parsing celltypes.
-4. **`procgen.c/h`** — Implement `Procgen_generate()` — noise evaluation + single-threshold wall placement.
+3. **`procgen.c/h`** — Implement master seed management, zone seed derivation, `Procgen_generate()` with noise evaluation + single-threshold wall placement.
+4. **`zone.h/zone.c`** — Add noise params + `cell_hand_placed` grid + `wall_type_indices` + `procgen` flag to Zone struct. Add parser support for `procgen` + noise parameter directives. Track wall type indices when parsing celltypes.
 5. **`zone.c`** — Hook `Procgen_generate()` into `Zone_load()` pipeline (after parsing, before apply_zone_to_world).
-6. **`zone.c`** — Update `Zone_save()` to write seed/noise params and only save hand-placed cells.
-7. **Create test zone file** — Minimal procgen zone with seed + noise params + hand-placed savepoint/portal.
-8. **Test** — Load zone, verify terrain appears, walk through it, change seed, verify different terrain.
-9. **Debug overlay** — Noise heatmap + seed cycling in godmode.
+6. **`zone.c`** — Update `Zone_save()` to write procgen flag/noise params and only save hand-placed cells.
+7. **Create test zone file** — Minimal procgen zone with noise params + hand-placed savepoint/portal.
+8. **Test** — Load zone, verify terrain appears, walk through it, cycle seeds, verify different terrain.
+9. **Debug overlay** — Noise heatmap + seed cycling + master seed display in godmode.
 
 ---
 
@@ -337,7 +411,9 @@ This is essential for tuning noise parameters. The overlay renders as a semi-tra
 
 5. **Godmode editing in procgen zones**: When a player edits cells in godmode on a procgen zone, those edits are hand-placed and persist. But the surrounding generated terrain regenerates from seed on reload. This is correct behavior — edits are overlays on top of generated content. Worth noting in case it surprises anyone.
 
-6. **Non-procgen zone compatibility**: Zones without a `seed` directive are unaffected. `Procgen_generate()` returns immediately if `has_seed` is false. Zero regressions on existing hand-authored zones (The Origin, Data Nexus, etc.).
+6. **Non-procgen zone compatibility**: Zones without `procgen true` are unaffected. `Procgen_generate()` returns immediately if `procgen` is false. Zero regressions on existing hand-authored zones (The Origin, Data Nexus, etc.).
+
+7. **Save file integration**: The master seed needs to live in the save file for production. Phase 2 uses a module-level seed set via godmode. Save file integration is a separate task — likely a small addition when the save system is extended for procgen.
 
 ---
 
@@ -372,16 +448,18 @@ This keeps effect cells as a **design tool** (placed where they matter for gamep
 - [ ] PRNG produces deterministic sequences (same seed = same output)
 - [ ] Simplex noise generates smooth 2D fields (no grid artifacts, proper range)
 - [ ] fBm wrapper layers octaves correctly (more octaves = more detail)
-- [ ] Zone file parser reads `seed` and noise parameter directives
-- [ ] Zone file save writes seed and noise parameters, only hand-placed cells
+- [ ] Master seed + zone ID hashing produces unique, deterministic per-zone seeds
+- [ ] Zone file parser reads `procgen` flag and noise parameter directives
+- [ ] Zone file save writes procgen flag/noise parameters, only hand-placed cells
 - [ ] Procgen generates wall terrain from noise + single threshold
 - [ ] Two tile types visible: walls (solid) and empty space (cloudscape)
 - [ ] Hand-placed cells preserved (generator skips them)
-- [ ] Different seeds produce different terrain layouts
-- [ ] Same seed produces identical terrain every time
+- [ ] Different master seeds produce different terrain layouts
+- [ ] Same master seed produces identical terrain every time
 - [ ] Varying noise params visibly changes terrain character (density, scale)
 - [ ] Terrain feels organic, not grid-aligned (no visible rectangular patterns)
 - [ ] Reasonable navigation — can walk through generated terrain at default threshold
 - [ ] Non-procgen zones load and play with no regressions
 - [ ] Debug overlay: noise heatmap visible in godmode
 - [ ] Debug: seed cycling regenerates terrain in-place
+- [ ] Debug: master seed displayed in godmode HUD
