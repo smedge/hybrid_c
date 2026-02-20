@@ -3,6 +3,7 @@
 #include "map_lighting.h"
 #include "particle_instance.h"
 #include "circuit_atlas.h"
+#include "map_window.h"
 
 #include <OpenGL/gl3.h>
 
@@ -51,6 +52,7 @@ void Graphics_initialize(void)
 
 void Graphics_cleanup(void)
 {
+	MapWindow_cleanup();
 	CircuitAtlas_cleanup();
 	ParticleInstance_cleanup();
 	MapLighting_cleanup();
@@ -289,6 +291,7 @@ static void initialize_gl(void)
 	MapReflect_initialize();
 	MapLighting_initialize();
 	CircuitAtlas_initialize();
+	MapWindow_initialize();
 }
 
 static void destroy_window(void)

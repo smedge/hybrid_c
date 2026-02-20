@@ -108,6 +108,7 @@ static void reset_input(Input *input)
 	input->keyX = false;
 	input->keyZ = false;
 	input->keyI = false;
+	input->keyM = false;
 	input->keyP = false;
 	input->keyTab = false;
 	input->keyE = false;
@@ -465,6 +466,10 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 
 	case SDLK_l:
 		input->keyL = true;
+		break;
+
+	case SDLK_m:
+		input->keyM = true;
 		break;
 
 	case SDLK_n:

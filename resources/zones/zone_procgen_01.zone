@@ -7,7 +7,7 @@ bgcolor 2 115 20 102
 bgcolor 3 38 13 89
 
 celltype solid 20 0 20 255 128 0 128 255 none
-celltype circuit 10 20 20 255 64 128 128 255 circuit
+celltype circuit 10 20 20 180 64 128 128 255 circuit
 
 music resources/music/deadmau5_Quezacotl.mp3
 music resources/music/deadmau5_HR8938Cephei.mp3

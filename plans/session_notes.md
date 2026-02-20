@@ -61,3 +61,14 @@
 ## Rebirth View Snap Fix
 - **Bug**: On entering a zone for rebirth from save, the camera showed zone center for one frame before snapping to the saved checkpoint position.
 - **Fix**: Set `View_set_position(loadSpawnPos)` in `Mode_Gameplay_initialize_from_save()` before first render, so the view starts at the correct position immediately.
+
+## Map Window (M Key) — Implemented
+- Full-zone overview window toggled by M key, styled like settings/catalog (dark panel + border, title floating above top edge).
+- **CPU-side texture generation**: iterates all cells via `Map_get_cell(x,y)`, writes brightened pixel colors (8x multiplier matching minimap) into an RGBA8 texture. One pixel per grid cell, GL_NEAREST filtering for crisp pixels.
+- **Dedicated GLSL 330 shader**: minimal vertex+fragment for full-color textured quad rendering (text shader only samples GL_RED, can't do RGBA).
+- **Landmark dots**: player (red), portals (white), savepoints (cyan) — matching minimap colors and rendered as batched quads on top of the texture.
+- **Large grid divisions**: every 16 cells (matching in-game big grid), subtle lines at low alpha.
+- **Window sizing**: 70% of shortest viewport dimension, square, centered. Texture regenerated on each open so it handles zone changes naturally.
+- **Mutual exclusion**: opening map closes catalog/settings and vice versa. ESC or M to close.
+- New files: `map_window.c/h`. Modified: `input.h/c`, `sdlapp.c`, `graphics.c`, `mode_gameplay.c`.
+- Two linked procgen zones now explorable: default blue/cyan theme and a fire/red Tron theme.

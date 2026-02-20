@@ -30,6 +30,7 @@
 #include "portal.h"
 #include "fragment.h"
 #include "circuit_atlas.h"
+#include "map_window.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -351,22 +352,36 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		return;
 	}
 
-	/* Toggle catalog (close settings if opening) */
+	/* Toggle catalog (close settings/map if opening) */
 	if (input->keyP && !godModeActive) {
 		if (!Catalog_is_open() && Settings_is_open())
 			Settings_toggle();
+		if (!Catalog_is_open() && MapWindow_is_open())
+			MapWindow_toggle();
 		Catalog_toggle();
 	}
 
-	/* Toggle settings (close catalog if opening) */
+	/* Toggle settings (close catalog/map if opening) */
 	if (input->keyI && !godModeActive) {
 		if (!Settings_is_open() && Catalog_is_open())
 			Catalog_toggle();
+		if (!Settings_is_open() && MapWindow_is_open())
+			MapWindow_toggle();
 		Settings_toggle();
+	}
+
+	/* Toggle map window (close catalog/settings if opening) */
+	if (input->keyM && !godModeActive) {
+		if (!MapWindow_is_open() && Catalog_is_open())
+			Catalog_toggle();
+		if (!MapWindow_is_open() && Settings_is_open())
+			Settings_toggle();
+		MapWindow_toggle();
 	}
 
 	bool catalogWasOpen = Catalog_is_open();
 	bool settingsWasOpen = Settings_is_open();
+	bool mapWasOpen = MapWindow_is_open();
 
 	if (catalogWasOpen) {
 		if (input->keyEsc)
@@ -380,16 +395,24 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		Settings_update(input, ticks);
 	}
 
+	if (mapWasOpen) {
+		if (input->keyEsc)
+			escConsumed = true;
+		MapWindow_update(input);
+	}
+
 	/* If a UI panel just closed this frame, consume mouse until released */
 	if (catalogWasOpen && !Catalog_is_open())
 		mouseConsumedUntilRelease = true;
 	if (settingsWasOpen && !Settings_is_open())
 		mouseConsumedUntilRelease = true;
+	if (mapWasOpen && !MapWindow_is_open())
+		mouseConsumedUntilRelease = true;
 	if (mouseConsumedUntilRelease && !input->mouseLeft)
 		mouseConsumedUntilRelease = false;
 
 	/* UI gets raw input; gameplay gets mouse stripped when UI consumes it */
-	bool ui_wants_mouse = catalogWasOpen || settingsWasOpen ||
+	bool ui_wants_mouse = catalogWasOpen || settingsWasOpen || mapWasOpen ||
 		mouseConsumedUntilRelease;
 
 	cursor_update(input);
@@ -591,6 +614,7 @@ void Mode_Gameplay_render(void)
 	Fragment_render_text(&screen);
 	Catalog_render(&screen);
 	Settings_render(&screen);
+	MapWindow_render(&screen);
 	if (godModeActive)
 		god_mode_render_hud(&screen);
 

@@ -10,7 +10,7 @@ music resources/music/deadmau5_BloodGoat.mp3
 music resources/music/deadmau5_LimitBreak.mp3
 
 celltype solid 10 10 10 255 128 128 128 255 none
-celltype circuit 40 15 15 255 180 0 0 255 circuit
+celltype circuit 40 15 15 180 180 0 0 255 circuit
 
 procgen true
 noise_octaves 5
