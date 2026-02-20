@@ -149,27 +149,36 @@ Evaluate after Phase 2 whether visual authoring tools are needed or if text-file
 
 ### Influence Field Computation
 - For each landmark, compute terrain influence based on type, radius, strength, falloff
-- Modulate **both** noise thresholds per cell: wall threshold AND effect threshold
-- Dense influences: raise wall threshold (more walls) + narrow effect band (thin fringes)
-- Sparse influences: lower wall threshold (fewer walls) + widen effect band (more effect cells)
+- Modulate wall threshold per cell based on landmark influence
+- Dense influences: raise wall threshold (more walls) → labyrinthine
+- Sparse influences: lower wall threshold (fewer walls) → open battlefield
 - **This is where terrain character becomes landmark-driven** — the key feature
-- Effect cells naturally concentrate at terrain transitions, giving organic fringes
 
 ### Integration with Phase 2
-- Terrain generation now uses influence-modulated dual thresholds instead of flat base values
-- Three tile types respond to influence: dense areas = mostly walls with thin effect fringes, sparse areas = few walls with generous effect cell scatter
+- Terrain generation now uses influence-modulated threshold instead of flat base value
 - Center anchor and landmark chunks are stamped before terrain generation
-- Terrain generation skips fixed cells
+- Terrain generation skips fixed cells (hand-placed, center anchor, landmark chunks)
+
+### Effect Cells (Chunk-Authored)
+- Effect cells are **hand-authored inside chunks**, not noise-generated
+- New engine support: `effectCell` flag on MapCell (traversable but rendered)
+- Rendering pipeline: map renderer draws effect cells (pool-allocated, `empty=true`)
+- Border behavior, stencil integration for effect cells
+- New cell type in chunk format: `effect <x> <y> <celltype_id>`
+- New `effecttype` directive in zone files (defines traversable cell visual properties)
+- Gameplay hooks deferred to themed zone implementation (fire DOT, ice friction, etc.)
+- Effect cells are a **design tool** — placed with intent inside landmark rooms, encounter gates, boss arenas
 
 ### Content Authoring
 - Hand-write 1 center anchor chunk (text editor)
 - Hand-write landmark chunks — any mix of:
-  - Boss arenas (boss spawn + arena geometry)
+  - Boss arenas (boss spawn + arena geometry + optional effect cells for tactical terrain)
   - Encounter gates (scripted enemy compositions as difficulty gates — e.g., 3 swarmers + 2 defenders)
   - Portal rooms (zone transition points)
   - Safe zones (savepoint + breathing room)
   - Other curated encounters (sniper nests, defender lines, etc.)
 - Each landmark chunk includes `spawn_slot` lines for guaranteed enemy placement (prob 1.0)
+- Chunks can include effect cells for tactical positioning gameplay
 - Encounter gates are the metroidvania progression walls — designed to demand specific loadouts
 - Test with different seeds to verify position randomization
 
@@ -180,6 +189,8 @@ Evaluate after Phase 2 whether visual authoring tools are needed or if text-file
 - Terrain density varies around landmarks according to each landmark's configured influence type (dense, moderate, sparse, or structured)
 - Transitions between terrain types are smooth and organic
 - No visible hard boundaries between "dense zone" and "sparse zone"
+- Effect cells render inside chunks (traversable, visually distinct from walls)
+- Effect cells don't block player movement
 
 ---
 
