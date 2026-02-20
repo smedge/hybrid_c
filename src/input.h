@@ -23,6 +23,7 @@ typedef struct {
 
 	bool keyF;
 	bool keyG;
+	bool keyH;
 	bool keyJ;
 	bool keyL;
 	bool keyN;

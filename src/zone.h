@@ -1,6 +1,7 @@
 #ifndef ZONE_H
 #define ZONE_H
 
+#include <stdbool.h>
 #include "map.h"
 #include "color.h"
 
@@ -69,6 +70,17 @@ typedef struct {
 
 	char music_paths[ZONE_MAX_MUSIC][256];
 	int music_count;
+
+	/* Procgen fields */
+	bool procgen;
+	int noise_octaves;
+	double noise_frequency;
+	double noise_lacunarity;
+	double noise_persistence;
+	double noise_wall_threshold;
+	bool cell_hand_placed[MAP_SIZE][MAP_SIZE];
+	int wall_type_indices[ZONE_MAX_CELL_TYPES];
+	int wall_type_count;
 } Zone;
 
 void Zone_load(const char *path);
@@ -94,5 +106,8 @@ const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y);
 
 /* Enemy lifecycle (for deferred spawning during rebirth) */
 void Zone_spawn_enemies(void);
+
+/* Procgen: regenerate non-hand-placed cells from current master seed */
+void Zone_regenerate_procgen(void);
 
 #endif

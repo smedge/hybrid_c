@@ -1,0 +1,28 @@
+# Zone: Procgen Test
+name Procgen Test
+size 1024
+
+bgcolor 0 89 26 140
+bgcolor 1 51 26 128
+bgcolor 2 115 20 102
+bgcolor 3 38 13 89
+
+# Wall types
+celltype solid 20 0 20 255 128 0 128 255 none
+celltype circuit 10 20 20 255 64 128 128 255 circuit
+
+# Enable procedural generation
+procgen true
+noise_octaves 5
+noise_frequency 0.01
+noise_lacunarity 2.0
+noise_persistence 0.5
+noise_wall_threshold -0.1
+
+# Hand-placed content (skipped by generator)
+savepoint 512 512 1
+
+portal 510 512 1 ./resources/zones/zone_001.zone 1
+
+# Hand-placed enemies (fixed spawns)
+# spawn mine 0.0 0.0

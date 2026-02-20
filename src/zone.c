@@ -1,4 +1,5 @@
 #include "zone.h"
+#include "procgen.h"
 #include "mine.h"
 #include "hunter.h"
 #include "seeker.h"
@@ -70,6 +71,13 @@ void Zone_load(const char *path)
 	strncpy(zone.filepath, path, sizeof(zone.filepath) - 1);
 	undoCount = 0;
 
+	/* Noise param defaults (set before parsing so 0.0 isn't a sentinel) */
+	zone.noise_octaves = 5;
+	zone.noise_frequency = 0.01;
+	zone.noise_lacunarity = 2.0;
+	zone.noise_persistence = 0.5;
+	zone.noise_wall_threshold = -0.1;
+
 	char line[512];
 	while (fgets(line, sizeof(line), f)) {
 		/* Strip newline */
@@ -78,7 +86,8 @@ void Zone_load(const char *path)
 		if (len > 0 && line[len - 1] == '\r') line[--len] = '\0';
 
 		/* Skip empty lines and comments */
-		if (len == 0 || (len >= 2 && line[0] == '/' && line[1] == '/'))
+		if (len == 0 || line[0] == '#' ||
+		    (len >= 2 && line[0] == '/' && line[1] == '/'))
 			continue;
 
 		if (strncmp(line, "name ", 5) == 0) {
@@ -99,6 +108,9 @@ void Zone_load(const char *path)
 				ct->outlineColor = (ColorRGB){or_, og, ob, oa};
 				if (n < 10)
 					strcpy(ct->pattern, "none");
+				/* Track as wall type for procgen */
+				if (zone.wall_type_count < ZONE_MAX_CELL_TYPES)
+					zone.wall_type_indices[zone.wall_type_count++] = zone.cell_type_count;
 				zone.cell_type_count++;
 			}
 		}
@@ -111,6 +123,7 @@ void Zone_load(const char *path)
 				int idx = find_cell_type(type_id);
 				if (idx >= 0 && gx >= 0 && gx < MAP_SIZE && gy >= 0 && gy < MAP_SIZE) {
 					zone.cell_grid[gx][gy] = idx;
+					zone.cell_hand_placed[gx][gy] = true;
 					if (n >= 4 && strncmp(drop, "drop:", 5) == 0 &&
 					    zone.destructible_count < ZONE_MAX_DESTRUCTIBLES) {
 						ZoneDestructible *d = &zone.destructibles[zone.destructible_count++];
@@ -119,6 +132,15 @@ void Zone_load(const char *path)
 						strncpy(d->drop_sub, drop + 5, sizeof(d->drop_sub) - 1);
 						d->drop_sub[sizeof(d->drop_sub) - 1] = '\0';
 					}
+				}
+			}
+		}
+		else if (strncmp(line, "clearcell ", 10) == 0) {
+			int gx, gy;
+			if (sscanf(line + 10, "%d %d", &gx, &gy) == 2) {
+				if (gx >= 0 && gx < MAP_SIZE && gy >= 0 && gy < MAP_SIZE) {
+					zone.cell_hand_placed[gx][gy] = true;
+					zone.cell_grid[gx][gy] = -1;
 				}
 			}
 		}
@@ -166,9 +188,32 @@ void Zone_load(const char *path)
 				zone.music_count++;
 			}
 		}
+		else if (strncmp(line, "procgen ", 8) == 0) {
+			if (strncmp(line + 8, "true", 4) == 0)
+				zone.procgen = true;
+		}
+		else if (strncmp(line, "noise_octaves ", 14) == 0) {
+			sscanf(line + 14, "%d", &zone.noise_octaves);
+		}
+		else if (strncmp(line, "noise_frequency ", 16) == 0) {
+			sscanf(line + 16, "%lf", &zone.noise_frequency);
+		}
+		else if (strncmp(line, "noise_lacunarity ", 17) == 0) {
+			sscanf(line + 17, "%lf", &zone.noise_lacunarity);
+		}
+		else if (strncmp(line, "noise_persistence ", 18) == 0) {
+			sscanf(line + 18, "%lf", &zone.noise_persistence);
+		}
+		else if (strncmp(line, "noise_wall_threshold ", 21) == 0) {
+			sscanf(line + 21, "%lf", &zone.noise_wall_threshold);
+		}
 	}
 
 	fclose(f);
+
+	/* Generate procgen terrain before applying to world */
+	if (zone.procgen)
+		Procgen_generate(&zone);
 
 	apply_zone_to_world();
 
@@ -241,9 +286,22 @@ void Zone_save(void)
 	}
 	fprintf(f, "\n");
 
-	/* Cells */
+	/* Procgen parameters */
+	if (zone.procgen) {
+		fprintf(f, "procgen true\n");
+		fprintf(f, "noise_octaves %d\n", zone.noise_octaves);
+		fprintf(f, "noise_frequency %g\n", zone.noise_frequency);
+		fprintf(f, "noise_lacunarity %g\n", zone.noise_lacunarity);
+		fprintf(f, "noise_persistence %g\n", zone.noise_persistence);
+		fprintf(f, "noise_wall_threshold %g\n", zone.noise_wall_threshold);
+		fprintf(f, "\n");
+	}
+
+	/* Cells — for procgen zones, only save hand-placed cells */
 	for (int x = 0; x < MAP_SIZE; x++) {
 		for (int y = 0; y < MAP_SIZE; y++) {
+			if (zone.procgen && !zone.cell_hand_placed[x][y])
+				continue;
 			if (zone.cell_grid[x][y] >= 0) {
 				int idx = zone.cell_grid[x][y];
 				const ZoneDestructible *d = Zone_get_destructible(x, y);
@@ -252,6 +310,9 @@ void Zone_save(void)
 						zone.cell_types[idx].id, d->drop_sub);
 				else
 					fprintf(f, "cell %d %d %s\n", x, y, zone.cell_types[idx].id);
+			} else if (zone.procgen && zone.cell_hand_placed[x][y]) {
+				/* Hand-cleared position — persist removal */
+				fprintf(f, "clearcell %d %d\n", x, y);
 			}
 		}
 	}
@@ -308,6 +369,7 @@ void Zone_place_cell(int grid_x, int grid_y, const char *type_id)
 	push_undo(undo);
 
 	zone.cell_grid[grid_x][grid_y] = idx;
+	zone.cell_hand_placed[grid_x][grid_y] = true;
 
 	/* Update world */
 	ZoneCellType *ct = &zone.cell_types[idx];
@@ -331,6 +393,8 @@ void Zone_remove_cell(int grid_x, int grid_y)
 	push_undo(undo);
 
 	zone.cell_grid[grid_x][grid_y] = -1;
+	if (zone.procgen)
+		zone.cell_hand_placed[grid_x][grid_y] = true;
 	Map_clear_cell(grid_x, grid_y);
 
 	zoneDirty = true;
@@ -611,6 +675,26 @@ const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y)
 			return &zone.destructibles[i];
 	}
 	return NULL;
+}
+
+/* --- Procgen regeneration --- */
+
+void Zone_regenerate_procgen(void)
+{
+	if (!zone.procgen) return;
+
+	/* Reset non-hand-placed cells to empty */
+	for (int x = 0; x < zone.size; x++)
+		for (int y = 0; y < zone.size; y++)
+			if (!zone.cell_hand_placed[x][y])
+				zone.cell_grid[x][y] = -1;
+
+	/* Regenerate from current master seed */
+	Procgen_generate(&zone);
+
+	/* Rebuild world (does NOT set zoneDirty — this is a preview, not an edit) */
+	apply_zone_to_world();
+	Zone_spawn_enemies();
 }
 
 /* --- Internal --- */

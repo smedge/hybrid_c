@@ -24,6 +24,8 @@
 #include "map_reflect.h"
 #include "map_lighting.h"
 #include "grid.h"
+#include "procgen.h"
+#include "noise.h"
 #include "savepoint.h"
 #include "portal.h"
 #include "fragment.h"
@@ -135,6 +137,9 @@ static int godZoneFileCount = 0;
 
 static bool escConsumed = false;
 
+/* Procgen debug */
+static bool godNoiseHeatmapActive = false;
+
 /* Load-from-save state */
 static bool loadFromSave = false;
 static Position loadSpawnPos = {0.0, 0.0};
@@ -154,6 +159,7 @@ static void god_mode_render_cursor(void);
 static void god_mode_render_hud(const Screen *screen);
 static void god_mode_render_spawn_labels(void);
 static void god_mode_render_spawn_markers(void);
+static void god_mode_render_noise_heatmap(void);
 static void zone_teardown_and_load(const char *zone_path);
 static void god_mode_jump_to_zone(const char *zone_path);
 static void god_mode_scan_zones(void);
@@ -511,6 +517,8 @@ void Mode_Gameplay_render(void)
 	Entity_render_system();
 	Fragment_render();
 	if (godModeActive) {
+		if (godNoiseHeatmapActive)
+			god_mode_render_noise_heatmap();
 		god_mode_render_spawn_markers();
 		god_mode_render_cursor();
 	}
@@ -833,6 +841,19 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 		god_mode_create_zone();
 	}
 
+	/* Procgen debug: H = toggle heatmap, Shift+H = cycle seed */
+	if (input->keyH) {
+		const Zone *zp = Zone_get();
+		if (zp->procgen) {
+			if (input->keyLShift) {
+				Procgen_set_master_seed(Procgen_get_master_seed() + 1);
+				Zone_regenerate_procgen();
+			} else {
+				godNoiseHeatmapActive = !godNoiseHeatmapActive;
+			}
+		}
+	}
+
 	/* AI still runs so the world feels alive */
 	Entity_ai_update_system(ticks);
 	Destructible_update(ticks);
@@ -974,6 +995,22 @@ static void god_mode_render_hud(const Screen *screen)
 		buf, cx, ty + line_h * 5,
 		0.7f, 0.7f, 0.7f, 0.8f);
 
+	/* Procgen info */
+	if (z->procgen) {
+		snprintf(buf, sizeof(buf), "Seed: %u (Shift+H cycle)",
+			Procgen_get_master_seed());
+		Text_render(tr, shaders, &proj, &ident,
+			buf, cx, ty + line_h * 6,
+			0.3f, 1.0f, 0.7f, 0.8f);
+		snprintf(buf, sizeof(buf), "Heatmap: %s (H)",
+			godNoiseHeatmapActive ? "ON" : "OFF");
+		Text_render(tr, shaders, &proj, &ident,
+			buf, cx, ty + line_h * 7,
+			godNoiseHeatmapActive ? 0.3f : 0.7f,
+			godNoiseHeatmapActive ? 1.0f : 0.7f,
+			godNoiseHeatmapActive ? 0.3f : 0.7f, 0.8f);
+	}
+
 	/* Zone jump menu */
 	if (godZoneMenuOpen) {
 		float mx = (float)screen->width * 0.5f - 100.0f;
@@ -994,6 +1031,79 @@ static void god_mode_render_hud(const Screen *screen)
 			Text_render(tr, shaders, &proj, &ident,
 				buf, mx, my + line_h * (i + 1),
 				1.0f, 1.0f, 1.0f, 0.8f);
+		}
+	}
+}
+
+/* --- Noise heatmap overlay in godmode --- */
+
+static void god_mode_render_noise_heatmap(void)
+{
+	const Zone *z = Zone_get();
+	if (!z->procgen) return;
+
+	uint32_t zone_seed = Procgen_derive_zone_seed(
+		Procgen_get_master_seed(), z->filepath);
+
+	/* Determine visible grid range from camera viewport */
+	Screen screen = Graphics_get_screen();
+	View view_state = View_get_view();
+
+	double half_w = (screen.width / view_state.scale) / 2.0;
+	double half_h = (screen.height / view_state.scale) / 2.0;
+	double min_wx = view_state.position.x - half_w;
+	double max_wx = view_state.position.x + half_w;
+	double min_wy = view_state.position.y - half_h;
+	double max_wy = view_state.position.y + half_h;
+
+	int min_gx = (int)floor(min_wx / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+	int max_gx = (int)ceil(max_wx / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
+	int min_gy = (int)floor(min_wy / MAP_CELL_SIZE) + HALF_MAP_SIZE;
+	int max_gy = (int)ceil(max_wy / MAP_CELL_SIZE) + HALF_MAP_SIZE + 1;
+
+	if (min_gx < 0) min_gx = 0;
+	if (max_gx > MAP_SIZE) max_gx = MAP_SIZE;
+	if (min_gy < 0) min_gy = 0;
+	if (max_gy > MAP_SIZE) max_gy = MAP_SIZE;
+
+	float s = (float)MAP_CELL_SIZE;
+
+	for (int gy = min_gy; gy < max_gy; gy++) {
+		for (int gx = min_gx; gx < max_gx; gx++) {
+			double noise_val = Noise_fbm(
+				(double)gx, (double)gy,
+				z->noise_octaves,
+				z->noise_frequency,
+				z->noise_lacunarity,
+				z->noise_persistence,
+				zone_seed
+			);
+
+			/* Map noise [-1,1] to color: red=wall, green=empty */
+			float t = (float)((noise_val + 1.0) * 0.5); /* 0..1 */
+			float threshold_t = (float)((z->noise_wall_threshold + 1.0) * 0.5);
+			float r, g, b, a;
+
+			if (noise_val < z->noise_wall_threshold) {
+				/* Below threshold = wall (red) */
+				r = 0.8f; g = 0.1f; b = 0.1f;
+				a = 0.4f;
+			} else {
+				/* Above threshold = empty (green) */
+				r = 0.1f; g = 0.7f; b = 0.1f;
+				a = 0.25f;
+			}
+
+			/* Brighten near threshold for visibility */
+			float dist = (float)fabs(t - threshold_t);
+			if (dist < 0.05f) {
+				a = 0.7f;
+				r = 1.0f; g = 1.0f; b = 0.0f;
+			}
+
+			float wx = (float)(gx - HALF_MAP_SIZE) * s;
+			float wy = (float)(gy - HALF_MAP_SIZE) * s;
+			Render_quad_absolute(wx, wy, wx + s, wy + s, r, g, b, a);
 		}
 	}
 }
