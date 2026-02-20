@@ -183,50 +183,147 @@ Chunk_stamp(chunk, zone, cx, cy, transform):
 
 ---
 
-### Step 2: Center Anchor System
+### Step 1b: Godmode Chunk Export Tool
 
-**Extract existing center structures to chunk files.**
+A lightweight tool for authoring chunks visually. Work in any zone in godmode — paint cells, place entities as normal — then select a rectangular region and export it as a `.chunk` file. No text-editor coordinate math required.
+
+**New placement mode: `GOD_MODE_CHUNKS`**
+
+Added as the 5th mode in the Q/E cycle. HUD shows "CHUNKS" with a distinctive color (yellow/gold).
+
+**UX flow:**
+
+1. **Q/E** cycle to CHUNKS mode
+2. **LMB click** on a grid cell → sets corner A (renders a marker)
+3. **LMB click** on a second grid cell → sets corner B (selection rectangle renders as a bright outline)
+4. **Tab** → export the selection to a `.chunk` file
+5. **RMB** → clear the selection and start over
+
+The selection rectangle is always grid-aligned (snapped to cell boundaries). The outline renders in a bright color (yellow/gold) with corner markers so you can see exactly what's selected.
+
+**What gets exported:**
+
+For each grid cell within the selection rectangle:
+- If a wall cell exists → `wall <local_x> <local_y> <celltype_index>`
+- If no cell exists → nothing (implicitly empty within chunk footprint)
+
+For entities within the selection bounds:
+- Savepoints → `spawn <local_x> <local_y> savepoint 1.0`
+- Portals → `spawn <local_x> <local_y> portal 1.0`
+- Enemies (mines, hunters, seekers, defenders, stalkers) → `spawn <local_x> <local_y> <type> 1.0`
+
+Coordinates are converted to chunk-local: `local = grid - min_corner`. The chunk size is derived from the selection: `width = max_x - min_x + 1`, `height = max_y - min_y + 1`.
+
+**File naming:**
+
+Auto-generated: `resources/chunks/export_<NNN>.chunk` where NNN increments from 001. The filename is printed to the console so you know where it went. Rename to something meaningful afterward.
+
+```
+# Exported from zone_procgen_01 at grid (488,490)-(536,534)
+chunk export_001
+size 49 45
+
+wall 0 0 0
+wall 0 1 1
+wall 5 5 0
+...
+spawn 24 22 savepoint 1.0
+spawn 20 20 portal 1.0
+```
+
+The comment header records the source zone and grid coordinates for reference.
+
+**Entity scanning:**
+
+To capture entities within the selection, the export function needs to query each entity system for entities within the world-space bounding box of the selection. This uses existing position data — no new tracking needed:
+- Savepoints: scan `savepoint.c` pool for positions within bounds
+- Portals: scan portal pool
+- Enemies: scan each enemy pool (mine, hunter, seeker, defender, stalker)
+
+Entity world positions are converted to grid coords, then to chunk-local coords.
+
+**Chunk import/preview** is deferred — for Phase 3, exporting is the critical path. You can verify chunks by adding them as center anchors or landmarks and regenerating. A visual preview-at-cursor tool is a natural Phase 4/6 addition.
+
+**Implementation:**
+
+```c
+// In chunk.c/h
+// Export the rectangular region (grid coords) from the current zone to a .chunk file.
+// Scans cell grid + entity pools for content within the bounds.
+// Returns true on success.
+bool Chunk_export(const Zone* zone, int min_gx, int min_gy, int max_gx, int max_gy,
+                  const char* filepath);
+```
+
+```c
+// In input.c — GOD_MODE_CHUNKS handling
+static int chunkSelCornerA_x, chunkSelCornerA_y;  // -1 = not set
+static int chunkSelCornerB_x, chunkSelCornerB_y;
+static bool chunkSelHasA, chunkSelHasB;
+
+// LMB click: set corner A, then B
+// RMB: clear selection
+// Tab: export if both corners set
+```
+
+**Rendering the selection** (in mode_gameplay.c or wherever godmode HUD renders):
+- Corner A marker: small crosshair or filled square at the grid cell
+- Selection rectangle: 4 thick lines forming the outline (use `Render_thick_line` so it draws as triangles, not lines)
+- Semi-transparent fill over the selection area (optional, helps visualize)
+
+---
+
+### Step 2: Center Anchor System (Optional)
+
+The center anchor is **fully optional**. Two zone archetypes are supported:
+
+**Anchored zones** (e.g., The Origin): A hand-crafted center structure provides a recognizable starting area. The center anchor is stamped at map center with per-seed rotation/mirror. Hotspots are excluded from the center region. Good for zones where you want a strong sense of "home base."
+
+**Anchor-less zones**: No center structure at all — the entire map is noise terrain modulated by landmark influences. Entry portal, savepoint, exit portal are all landmark chunks placed at hotspot positions. The map center is just terrain like everywhere else. Good for deep-network zones that should feel like pure hostile wilderness with no safe haven.
+
+**Extract existing center structures to chunk files** (for anchored zones):
 
 The two procgen zones currently have ~200 hand-placed `cell` lines each that form their center structures. These become the first chunk files:
 
-1. Load the zone in godmode
-2. Identify the center structure bounds
-3. Write a chunk file with those cells at local coords
-4. Remove the `cell` lines from the zone file
-5. Add `center_anchor <chunk_file>` to the zone file
-
-This produces two real chunk files we can test the system with immediately.
+1. Open the zone in godmode
+2. Use the chunk export tool (Step 1b) to select and export the center structure
+3. Remove the `cell` lines from the zone file
+4. Add `center_anchor <chunk_file>` to the zone file
 
 **Zone file additions:**
 
 ```
+# Anchored zone — has a center structure
 center_anchor resources/chunks/origin_center.chunk
+
+# Anchor-less zone — just don't include center_anchor line
+# Entry portal, savepoint, exit are all landmarks at hotspot positions
 ```
 
 **Zone struct additions:**
 
 ```c
 // In Zone struct
-char center_anchor_path[256];  // Path to center anchor chunk file
+char center_anchor_path[256];  // Path to center anchor chunk file (empty = no anchor)
 bool has_center_anchor;
 ```
 
-**Generation sequence** (updated):
+**Generation behavior:**
 
 ```
-Procgen_generate:
-    1. Derive zone seed, seed PRNG
-    2. IF has_center_anchor:
-         a. Load center chunk
-         b. Pick transform: seed % TRANSFORM_COUNT
-         c. Stamp at map center (size/2, size/2)
-         d. Free chunk
-       ELSE:
-         Apply hardcoded 64x64 center exclusion (backward compat)
-    3. Generate hotspot positions (Step 3)
-    4. Resolve landmarks → stamp chunks (Step 4)
-    5. Compute influence field + generate terrain (Step 5)
+If has_center_anchor:
+    Load center chunk
+    Pick transform: zone_seed % TRANSFORM_COUNT
+    Stamp at map center (size/2, size/2)
+    Hotspot generator uses center_exclusion to keep landmarks away from center
+
+If NOT has_center_anchor:
+    No center exclusion — hotspots can generate anywhere (subject to edge margin + separation)
+    No center clearing — noise fills the entire map
+    Entry portal landmark should have highest priority (placed first, gets best hotspot)
 ```
+
+**Phase 4 implication**: Connectivity validation (flood fill) needs a starting point. For anchored zones, it starts from map center. For anchor-less zones, it starts from the entry portal landmark's position. The `procgen.c` stores which landmark is the "entry" (highest priority, or tagged explicitly) so Phase 4 knows where to flood fill from.
 
 ---
 
@@ -239,7 +336,7 @@ Generate candidate positions where landmarks might be placed. Positions vary per
 ```
 hotspot_count 10
 hotspot_edge_margin 80
-hotspot_center_exclusion 120
+hotspot_center_exclusion 120   # Ignored if no center_anchor
 hotspot_min_separation 150
 ```
 
@@ -249,9 +346,11 @@ hotspot_min_separation 150
 // In Zone struct (procgen params)
 int hotspot_count;            // Target number of hotspot positions (default 10)
 int hotspot_edge_margin;      // Min distance from map edges in grid cells (default 80)
-int hotspot_center_exclusion; // Min distance from center (default 120)
+int hotspot_center_exclusion; // Min distance from center (default 120). Ignored if no center anchor.
 int hotspot_min_separation;   // Min distance between hotspots (default 150)
 ```
+
+**Center exclusion behavior**: Only applies when the zone has a center anchor. For anchor-less zones, hotspots can generate anywhere within edge margins — the entire map is fair game.
 
 **Hotspot data (internal to procgen.c, not stored on Zone):**
 
@@ -269,7 +368,6 @@ typedef struct {
 ```
 generate_hotspots(zone, rng):
     margin = zone->hotspot_edge_margin
-    center_excl = zone->hotspot_center_exclusion
     min_sep = zone->hotspot_min_separation
     target = zone->hotspot_count
     center = zone->size / 2
@@ -283,10 +381,11 @@ generate_hotspots(zone, rng):
         x = Prng_range(margin, zone->size - margin, rng)
         y = Prng_range(margin, zone->size - margin, rng)
 
-        // Center exclusion
-        dx = x - center
-        dy = y - center
-        if sqrt(dx*dx + dy*dy) < center_excl: continue
+        // Center exclusion — only if zone has a center anchor
+        if zone->has_center_anchor:
+            dx = x - center
+            dy = y - center
+            if sqrt(dx*dx + dy*dy) < zone->hotspot_center_exclusion: continue
 
         // Separation check
         too_close = false
@@ -548,20 +647,22 @@ Procgen_generate(zone):
     3. Seed PRNG (existing)
     4. Clear cell_chunk_stamped grid
 
-    // ─── New: Center Anchor ───
+    // ─── New: Center Anchor (optional) ───
     5. If zone->has_center_anchor:
          Load center chunk file
          transform = zone_seed % TRANSFORM_COUNT
          Stamp at (size/2, size/2) with transform
          Free chunk
        Else:
-         Clear 64x64 center zone (existing fallback)
+         No center clearing — noise fills entire map
+         (Legacy zones with hand-placed cells still work via cell_hand_placed)
 
     // ─── New: Hotspots ───
-    6. Generate hotspot positions (constrained scatter)
+    6. Generate hotspot positions (center exclusion only if anchored)
 
     // ─── New: Landmarks ───
     7. Resolve landmarks → assign to hotspots, stamp chunks
+       (Entry portal/savepoint can be landmarks in anchor-less zones)
 
     // ─── Modified: Terrain with Influence ───
     8. Detect circuit vs solid wall types (existing)
@@ -574,6 +675,7 @@ Procgen_generate(zone):
 
     // ─── New: Debug info ───
     10. Store placed landmarks + hotspots for debug rendering
+        Store "origin point" (map center if anchored, entry landmark pos if not)
     11. Print summary with landmark placements
 ```
 
@@ -622,39 +724,59 @@ All new parameters have sensible defaults so existing procgen zones work without
 | `src/procgen.h` | PlacedLandmark struct, debug data accessors |
 | `src/zone.c` | Parse new zone file lines, new Zone struct fields |
 | `src/zone.h` | LandmarkDef, TerrainInfluence, hotspot params, center_anchor on Zone struct |
-| `src/mode_gameplay.c` | Debug rendering for hotspots/landmarks/influence (godmode only) |
-| `src/input.c` | Seed cycling hotkey in godmode |
+| `src/input.c` | GOD_MODE_CHUNKS mode, chunk selection state, Tab export, seed cycling hotkey |
+| `src/input.h` | Add GOD_MODE_CHUNKS to GodPlacementMode enum |
+| `src/mode_gameplay.c` | Chunk selection rendering, debug overlays for hotspots/landmarks/influence |
 | `Makefile` | Add chunk.c |
 
 ---
 
 ## Content Work
 
-**Chunk authoring** — needed before testing:
+**Chunk authoring workflow** — using the godmode chunk export tool:
 
-1. **Extract center anchors**: Take the ~200 hand-placed cell lines from each procgen zone file and convert them to `.chunk` files. This is a one-time manual conversion (or we write a quick script).
+1. **Extract center anchors**: Open each procgen zone in godmode. Select the hand-built center structure with the chunk tool. Export. Rename to `origin_center.chunk` / `fire_center.chunk`. Then clean up the zone file by removing the hand-placed `cell` lines and adding `center_anchor <path>` instead.
 
-2. **Author 2-3 simple landmark chunks**: Doesn't need to be final content. Simple rooms with distinctive shapes so we can visually verify placement and influence effects:
-   - A dense landmark (small arena with thick walls)
-   - A sparse landmark (minimal structure, mostly empty)
-   - A moderate landmark (balanced room)
+2. **Author 2-3 simple landmark chunks**: Work in a test zone (or an empty zone). Paint the landmark geometry in godmode, place any entities (savepoint, portal, enemies), select the region, export. Start simple:
+   - A dense landmark — small arena with thick walls, enemy spawns inside
+   - A sparse landmark — minimal walls, open interior, a savepoint
+   - A moderate landmark — balanced room with a portal
 
-3. **Test chunk transforms**: Verify all 8 rotations/mirrors produce correct geometry.
+3. **Test chunk transforms**: Load the exported chunks as center anchors. Cycle seeds to verify all 8 rotations/mirrors produce correct geometry. Fix any coordinate transform bugs before moving on to landmarks.
 
 ---
 
 ## Testing Checklist
 
-- [ ] Chunk loader correctly parses `.chunk` files
+**Chunk export tool:**
+- [ ] GOD_MODE_CHUNKS appears in Q/E mode cycle
+- [ ] LMB click sets corner A with visible marker
+- [ ] Second LMB click sets corner B, selection rectangle renders
+- [ ] RMB clears selection
+- [ ] Tab exports selection to `.chunk` file with correct local coords
+- [ ] Exported chunk captures wall cells with correct celltype indices
+- [ ] Exported chunk captures entities (savepoints, portals, enemies) within bounds
+
+**Chunk loader + transforms:**
+- [ ] Chunk loader correctly parses exported `.chunk` files
 - [ ] All 8 transforms produce correct geometry (no off-by-one, no mirroring artifacts)
-- [ ] Center anchor appears at map center with per-seed rotation
+- [ ] Spawns in chunks have their positions correctly transformed
+
+**Center anchor + hotspots + landmarks:**
+- [ ] Anchored zone: center anchor appears at map center with per-seed rotation
+- [ ] Anchor-less zone: no center clearing, noise fills whole map, hotspots can land anywhere
+- [ ] Anchor-less zone: entry portal + savepoint work as landmark chunks at hotspot positions
 - [ ] Hotspot positions vary per seed
-- [ ] Hotspot constraints respected (margin, center exclusion, separation)
+- [ ] Hotspot constraints respected (margin, center exclusion when anchored, separation)
 - [ ] Landmarks appear at different hotspot positions per seed
 - [ ] Landmark priority ordering works (lower priority placed first gets better positions)
+
+**Influence field:**
 - [ ] Terrain is denser around dense-influence landmarks
 - [ ] Terrain is sparser around sparse-influence landmarks
 - [ ] Transitions between influence zones are smooth (no hard edges)
+
+**Integration:**
 - [ ] Existing hand-placed cells survive regeneration
 - [ ] Chunk-stamped cells regenerate correctly on seed change
 - [ ] Seed cycling in godmode instantly shows different layouts
@@ -678,14 +800,14 @@ These items from the original Phase 3 spec are deferred:
 
 ## Open Questions
 
-1. **Center anchor chunk authoring**: Write a script to extract center cells from existing zone files into `.chunk` format? Or do it by hand? (The hand-placed cells are already in text format, so conversion is mostly reformatting coords to be chunk-local.)
+1. **Chunk-stamped cell tracking**: New `cell_chunk_stamped[][]` grid, or add a flags field to the existing cell grid? A separate bool grid is simpler and matches the `cell_hand_placed` pattern.
 
-2. **Chunk-stamped cell tracking**: New `cell_chunk_stamped[][]` grid, or add a flags field to the existing cell grid? A separate bool grid is simpler and matches the `cell_hand_placed` pattern.
+2. **Landmark chunk transforms**: Should all landmark chunks get random transforms, or should some landmarks specify `no_rotate` / `no_mirror` flags? (A boss arena might need a specific orientation relative to its entrance.)
 
-3. **Landmark chunk transforms**: Should all landmark chunks get random transforms, or should some landmarks specify `no_rotate` / `no_mirror` flags? (A boss arena might need a specific orientation relative to its entrance.)
+3. **Influence overlap**: Two dense landmarks with overlapping radii — their influences are additive, so the overlap region becomes extra-dense. Is this desirable or should we use max-wins? Start with additive, tune if needed.
 
-4. **Influence overlap**: Two dense landmarks with overlapping radii — their influences are additive, so the overlap region becomes extra-dense. Is this desirable or should we use max-wins? Start with additive, tune if needed.
+4. **Hotspot surplus**: With 10 hotspots and 3-5 landmarks, we have 5-7 unused hotspots. These are wasted today but become useful in Phase 5 for secondary enemy clusters or resource nodes. Worth keeping them around in the debug data.
 
-5. **Hotspot surplus**: With 10 hotspots and 3-5 landmarks, we have 5-7 unused hotspots. These are wasted today but become useful in Phase 5 for secondary enemy clusters or resource nodes. Worth keeping them around in the debug data.
+5. **Performance**: 1024x1024 cells × 16 landmark distance checks = ~16M sqrt calls. Should be fast in C but worth profiling. If slow, can precompute a coarse influence grid (e.g., 1 value per 4x4 tile block) and interpolate.
 
-6. **Performance**: 1024x1024 cells × 16 landmark distance checks = ~16M sqrt calls. Should be fast in C but worth profiling. If slow, can precompute a coarse influence grid (e.g., 1 value per 4x4 tile block) and interpolate.
+6. **Chunk export — portal metadata**: Portals have destination zone + destination portal ID. Should the chunk export capture full portal connection data, or just the position? For center anchors the connections matter; for landmark chunks that get placed at random positions, portal destinations might need to be configured in the zone file separately. Lean toward exporting position-only spawns and handling portal wiring at the zone level.
