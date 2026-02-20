@@ -31,10 +31,10 @@ uint32_t Procgen_derive_zone_seed(uint32_t ms, const char *zone_id)
 
 /* Circuit vein noise: separate noise field determines where circuit
  * patterns appear within walls. Gives organic veins/clusters instead
- * of random scatter. threshold 0.5 ≈ top ~15-20% of noise range. */
+ * of random scatter. Lower threshold = more circuit tiles. */
 #define CIRCUIT_VEIN_OCTAVES   3
 #define CIRCUIT_VEIN_FREQ      0.03
-#define CIRCUIT_VEIN_THRESHOLD 0.5
+#define CIRCUIT_VEIN_THRESHOLD 0.30
 
 void Procgen_generate(Zone *zone)
 {
@@ -61,6 +61,13 @@ void Procgen_generate(Zone *zone)
 	int default_wall = (zone->wall_type_count > 0)
 		? zone->wall_type_indices[0] : 0;
 
+	/* Center exclusion zone: 4×4 major grid cells (64×64 tiles) kept
+	 * clear for portal/savepoint — the data fortress. */
+	int center = zone->size / 2;
+	int fortress_half = 32;  /* 64/2 = 4 major cells × 16 tiles each / 2 */
+	int fort_min = center - fortress_half;
+	int fort_max = center + fortress_half;
+
 	int walls_placed = 0;
 	uint32_t vein_seed = zone_seed + 12345u;
 
@@ -70,6 +77,11 @@ void Procgen_generate(Zone *zone)
 			Prng_float(&rng);
 
 			if (zone->cell_hand_placed[x][y])
+				continue;
+
+			/* Data fortress: no procgen terrain in center */
+			if (x >= fort_min && x < fort_max &&
+				y >= fort_min && y < fort_max)
 				continue;
 
 			double noise_val = Noise_fbm(

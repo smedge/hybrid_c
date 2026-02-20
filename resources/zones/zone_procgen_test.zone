@@ -1,28 +1,348 @@
 # Zone: Procgen Test
 name Procgen Test
 size 1024
-
 bgcolor 0 89 26 140
 bgcolor 1 51 26 128
 bgcolor 2 115 20 102
 bgcolor 3 38 13 89
 
-# Wall types
 celltype solid 20 0 20 255 128 0 128 255 none
 celltype circuit 10 20 20 255 64 128 128 255 circuit
 
-# Enable procedural generation
 procgen true
 noise_octaves 5
 noise_frequency 0.01
-noise_lacunarity 2.0
+noise_lacunarity 2
 noise_persistence 0.5
 noise_wall_threshold -0.1
 
-# Hand-placed content (skipped by generator)
-savepoint 512 512 1
+cell 495 495 circuit
+cell 495 496 circuit
+cell 495 497 circuit
+cell 495 498 circuit
+cell 495 506 circuit
+cell 495 507 circuit
+cell 495 508 circuit
+cell 495 509 circuit
+cell 495 514 circuit
+cell 495 515 circuit
+cell 495 516 circuit
+cell 495 517 circuit
+cell 495 525 circuit
+cell 495 526 circuit
+cell 495 527 circuit
+cell 495 528 circuit
+cell 496 495 circuit
+cell 496 496 solid
+cell 496 497 solid
+cell 496 498 circuit
+cell 496 499 solid
+cell 496 500 solid
+cell 496 501 solid
+cell 496 502 solid
+cell 496 503 solid
+cell 496 504 solid
+cell 496 505 solid
+cell 496 506 circuit
+cell 496 507 solid
+cell 496 508 solid
+cell 496 509 circuit
+clearcell 496 512
+clearcell 496 513
+cell 496 514 circuit
+cell 496 515 solid
+cell 496 516 solid
+cell 496 517 circuit
+cell 496 518 solid
+cell 496 519 solid
+cell 496 520 solid
+cell 496 521 solid
+cell 496 522 solid
+cell 496 523 solid
+cell 496 524 solid
+cell 496 525 circuit
+cell 496 526 solid
+cell 496 527 solid
+cell 496 528 circuit
+cell 497 495 circuit
+cell 497 496 solid
+cell 497 497 solid
+cell 497 498 circuit
+cell 497 499 solid
+cell 497 500 solid
+cell 497 501 solid
+cell 497 502 solid
+cell 497 503 solid
+cell 497 504 solid
+cell 497 505 solid
+cell 497 506 circuit
+cell 497 507 solid
+cell 497 508 solid
+cell 497 509 circuit
+clearcell 497 512
+clearcell 497 513
+cell 497 514 circuit
+cell 497 515 solid
+cell 497 516 solid
+cell 497 517 circuit
+cell 497 518 solid
+cell 497 519 solid
+cell 497 520 solid
+cell 497 521 solid
+cell 497 522 solid
+cell 497 523 solid
+cell 497 524 solid
+cell 497 525 circuit
+cell 497 526 solid
+cell 497 527 solid
+cell 497 528 circuit
+cell 498 495 circuit
+cell 498 496 circuit
+cell 498 497 circuit
+cell 498 498 circuit
+cell 498 506 circuit
+cell 498 507 circuit
+cell 498 508 circuit
+cell 498 509 circuit
+clearcell 498 513
+cell 498 514 circuit
+cell 498 515 circuit
+cell 498 516 circuit
+cell 498 517 circuit
+cell 498 525 circuit
+cell 498 526 circuit
+cell 498 527 circuit
+cell 498 528 circuit
+cell 499 496 solid
+cell 499 497 solid
+cell 499 526 solid
+cell 499 527 solid
+cell 500 496 solid
+cell 500 497 solid
+cell 500 526 solid
+cell 500 527 solid
+cell 501 496 solid
+cell 501 497 solid
+cell 501 526 solid
+cell 501 527 solid
+cell 502 496 solid
+cell 502 497 solid
+cell 502 526 solid
+cell 502 527 solid
+cell 503 496 solid
+cell 503 497 solid
+cell 503 526 solid
+cell 503 527 solid
+cell 504 496 solid
+cell 504 497 solid
+cell 504 526 solid
+cell 504 527 solid
+cell 505 496 solid
+cell 505 497 solid
+cell 505 526 solid
+cell 505 527 solid
+cell 506 495 circuit
+cell 506 496 circuit
+cell 506 497 circuit
+cell 506 498 circuit
+cell 506 525 circuit
+cell 506 526 circuit
+cell 506 527 circuit
+cell 506 528 circuit
+cell 507 495 circuit
+cell 507 496 solid
+cell 507 497 solid
+cell 507 498 circuit
+cell 507 525 circuit
+cell 507 526 solid
+cell 507 527 solid
+cell 507 528 circuit
+cell 508 495 circuit
+cell 508 496 solid
+cell 508 497 solid
+cell 508 498 circuit
+cell 508 525 circuit
+cell 508 526 solid
+cell 508 527 solid
+cell 508 528 circuit
+cell 509 495 circuit
+cell 509 496 circuit
+cell 509 497 circuit
+cell 509 498 circuit
+cell 509 525 circuit
+cell 509 526 circuit
+cell 509 527 circuit
+cell 509 528 circuit
+clearcell 510 526
+clearcell 510 527
+clearcell 511 526
+clearcell 511 527
+cell 514 495 circuit
+cell 514 496 circuit
+cell 514 497 circuit
+cell 514 498 circuit
+cell 514 525 circuit
+cell 514 526 circuit
+cell 514 527 circuit
+cell 514 528 circuit
+cell 515 495 circuit
+cell 515 496 solid
+cell 515 497 solid
+cell 515 498 circuit
+cell 515 525 circuit
+cell 515 526 solid
+cell 515 527 solid
+cell 515 528 circuit
+cell 516 495 circuit
+cell 516 496 solid
+cell 516 497 solid
+cell 516 498 circuit
+cell 516 525 circuit
+cell 516 526 solid
+cell 516 527 solid
+cell 516 528 circuit
+cell 517 495 circuit
+cell 517 496 circuit
+cell 517 497 circuit
+cell 517 498 circuit
+cell 517 525 circuit
+cell 517 526 circuit
+cell 517 527 circuit
+cell 517 528 circuit
+cell 518 496 solid
+cell 518 497 solid
+cell 518 526 solid
+cell 518 527 solid
+cell 519 496 solid
+cell 519 497 solid
+cell 519 526 solid
+cell 519 527 solid
+cell 520 496 solid
+cell 520 497 solid
+cell 520 526 solid
+cell 520 527 solid
+cell 521 496 solid
+cell 521 497 solid
+clearcell 521 498
+cell 521 526 solid
+cell 521 527 solid
+cell 522 496 solid
+cell 522 497 solid
+clearcell 522 498
+cell 522 526 solid
+cell 522 527 solid
+cell 523 496 solid
+cell 523 497 solid
+clearcell 523 498
+cell 523 526 solid
+cell 523 527 solid
+clearcell 523 528
+cell 524 496 solid
+cell 524 497 solid
+clearcell 524 498
+clearcell 524 516
+clearcell 524 517
+cell 524 526 solid
+cell 524 527 solid
+cell 525 495 circuit
+cell 525 496 circuit
+cell 525 497 circuit
+cell 525 498 circuit
+cell 525 506 circuit
+cell 525 507 circuit
+cell 525 508 circuit
+cell 525 509 circuit
+clearcell 525 512
+cell 525 514 circuit
+cell 525 515 circuit
+cell 525 516 circuit
+cell 525 517 circuit
+cell 525 525 circuit
+cell 525 526 circuit
+cell 525 527 circuit
+cell 525 528 circuit
+cell 526 495 circuit
+cell 526 496 solid
+cell 526 497 solid
+cell 526 498 circuit
+cell 526 499 solid
+cell 526 500 solid
+cell 526 501 solid
+cell 526 502 solid
+cell 526 503 solid
+cell 526 504 solid
+cell 526 505 solid
+cell 526 506 circuit
+cell 526 507 solid
+cell 526 508 solid
+cell 526 509 circuit
+clearcell 526 512
+clearcell 526 513
+cell 526 514 circuit
+cell 526 515 solid
+cell 526 516 solid
+cell 526 517 circuit
+cell 526 518 solid
+cell 526 519 solid
+cell 526 520 solid
+cell 526 521 solid
+cell 526 522 solid
+cell 526 523 solid
+cell 526 524 solid
+cell 526 525 circuit
+cell 526 526 solid
+cell 526 527 solid
+cell 526 528 circuit
+cell 527 495 circuit
+cell 527 496 solid
+cell 527 497 solid
+cell 527 498 circuit
+cell 527 499 solid
+cell 527 500 solid
+cell 527 501 solid
+cell 527 502 solid
+cell 527 503 solid
+cell 527 504 solid
+cell 527 505 solid
+cell 527 506 circuit
+cell 527 507 solid
+cell 527 508 solid
+cell 527 509 circuit
+clearcell 527 512
+clearcell 527 513
+cell 527 514 circuit
+cell 527 515 solid
+cell 527 516 solid
+cell 527 517 circuit
+cell 527 518 solid
+cell 527 519 solid
+cell 527 520 solid
+cell 527 521 solid
+cell 527 522 solid
+cell 527 523 solid
+cell 527 524 solid
+cell 527 525 circuit
+cell 527 526 solid
+cell 527 527 solid
+cell 527 528 circuit
+cell 528 495 circuit
+cell 528 496 circuit
+cell 528 497 circuit
+cell 528 498 circuit
+cell 528 506 circuit
+cell 528 507 circuit
+cell 528 508 circuit
+cell 528 509 circuit
+cell 528 514 circuit
+cell 528 515 circuit
+cell 528 516 circuit
+cell 528 517 circuit
+cell 528 525 circuit
+cell 528 526 circuit
+cell 528 527 circuit
+cell 528 528 circuit
 
-portal 510 512 1 ./resources/zones/zone_001.zone 1
 
-# Hand-placed enemies (fixed spawns)
-# spawn mine 0.0 0.0
+portal 520 521 portal_1  
+
+savepoint 504 504 save_2
