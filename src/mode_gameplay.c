@@ -475,9 +475,13 @@ void Mode_Gameplay_render(void)
 		Bloom_composite(bg_bloom, draw_w, draw_h);
 	}
 
-	/* Map + grid render first (separate flush so lighting composites under entities) */
-	Map_render(NULL, NULL);
+	/* Grid renders first so map fills always cover it (even on auto-flush) */
 	Grid_render(NULL, NULL);
+	Render_flush(&world_proj, &view);
+
+	/* Map geometry on top of grid */
+	Render_set_pass(&world_proj, &view);
+	Map_render(NULL, NULL);
 	Render_flush(&world_proj, &view);
 
 	/* Circuit trace overlay (pre-baked textured quads) */
@@ -578,6 +582,7 @@ void Mode_Gameplay_render(void)
 	/* UI pass */
 	Mat4 ui_proj = Graphics_get_ui_projection();
 	Mat4 identity = Mat4_identity();
+	Render_set_pass(&ui_proj, &identity);
 	Hud_render(&screen);
 	PlayerStats_render(&screen);
 	Progression_render(&screen);

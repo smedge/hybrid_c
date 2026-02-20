@@ -52,6 +52,15 @@ static void flush_batch_draw(PrimitiveBatch *b, GLenum mode)
 	b->count = 0;
 }
 
+/* Auto-flush a single primitive batch using stored context */
+static void auto_flush(BatchRenderer *batch, PrimitiveBatch *pb, GLenum mode)
+{
+	if (!batch->flush_shaders) return;
+	Shader_set_matrices(&batch->flush_shaders->color_shader,
+		&batch->flush_proj, &batch->flush_view);
+	flush_batch_draw(pb, mode);
+}
+
 void Batch_initialize(BatchRenderer *batch)
 {
 	memset(batch, 0, sizeof(*batch));
@@ -72,14 +81,11 @@ void Batch_push_triangle_vertices(BatchRenderer *batch,
 	float r, float g, float b, float a)
 {
 	PrimitiveBatch *pb = &batch->triangles;
-	if (pb->count + 3 > BATCH_MAX_VERTICES) {
-		static bool warned = false;
-		if (!warned) {
-			fprintf(stderr, "WARNING: batch vertex overflow, geometry dropped\n");
-			warned = true;
-		}
-		return;
-	}
+	if (pb->count + 3 > BATCH_MAX_VERTICES)
+		auto_flush(batch, pb, GL_TRIANGLES);
+
+	if (pb->count + 3 > BATCH_MAX_VERTICES)
+		return; /* flush context not set — shouldn't happen */
 
 	ColorVertex *v = &pb->vertices[pb->count];
 	v[0] = (ColorVertex){x0, y0, r, g, b, a, 1.0f};
@@ -93,14 +99,11 @@ void Batch_push_line_vertices(BatchRenderer *batch,
 	float r, float g, float b, float a)
 {
 	PrimitiveBatch *pb = &batch->lines;
-	if (pb->count + 2 > BATCH_MAX_VERTICES) {
-		static bool warned = false;
-		if (!warned) {
-			fprintf(stderr, "WARNING: batch vertex overflow, geometry dropped\n");
-			warned = true;
-		}
+	if (pb->count + 2 > BATCH_MAX_VERTICES)
+		auto_flush(batch, pb, GL_LINES);
+
+	if (pb->count + 2 > BATCH_MAX_VERTICES)
 		return;
-	}
 
 	ColorVertex *v = &pb->vertices[pb->count];
 	v[0] = (ColorVertex){x0, y0, r, g, b, a, 1.0f};
@@ -113,14 +116,11 @@ void Batch_push_point_vertex(BatchRenderer *batch,
 	float r, float g, float b, float a)
 {
 	PrimitiveBatch *pb = &batch->points;
-	if (pb->count + 1 > BATCH_MAX_VERTICES) {
-		static bool warned = false;
-		if (!warned) {
-			fprintf(stderr, "WARNING: batch vertex overflow, geometry dropped\n");
-			warned = true;
-		}
+	if (pb->count + 1 > BATCH_MAX_VERTICES)
+		auto_flush(batch, pb, GL_POINTS);
+
+	if (pb->count + 1 > BATCH_MAX_VERTICES)
 		return;
-	}
 
 	pb->vertices[pb->count] = (ColorVertex){x, y, r, g, b, a, size};
 	pb->count++;
@@ -129,6 +129,11 @@ void Batch_push_point_vertex(BatchRenderer *batch,
 void Batch_flush(BatchRenderer *batch, const Shaders *shaders,
 	const Mat4 *projection, const Mat4 *view)
 {
+	/* Store context for future auto-flushes */
+	batch->flush_shaders = shaders;
+	batch->flush_proj = *projection;
+	batch->flush_view = *view;
+
 	Shader_set_matrices(&shaders->color_shader, projection, view);
 	flush_batch_draw(&batch->lines, GL_LINES);
 	flush_batch_draw(&batch->triangles, GL_TRIANGLES);

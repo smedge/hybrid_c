@@ -5,7 +5,7 @@
 #include "shader.h"
 #include "mat4.h"
 
-#define BATCH_MAX_VERTICES 262144
+#define BATCH_MAX_VERTICES 65536
 
 typedef struct {
 	float x, y;
@@ -24,6 +24,10 @@ typedef struct {
 	PrimitiveBatch triangles;
 	PrimitiveBatch lines;
 	PrimitiveBatch points;
+	/* Auto-flush context: stored on each flush for overflow recovery */
+	const Shaders *flush_shaders;
+	Mat4 flush_proj;
+	Mat4 flush_view;
 } BatchRenderer;
 
 void Batch_initialize(BatchRenderer *batch);

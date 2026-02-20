@@ -223,6 +223,15 @@ void Render_cooldown_pie(float cx, float cy, float radius, float fraction,
 	}
 }
 
+void Render_set_pass(const Mat4 *projection, const Mat4 *view)
+{
+	BatchRenderer *batch = Graphics_get_batch();
+	Shaders *shaders = Graphics_get_shaders();
+	batch->flush_shaders = shaders;
+	batch->flush_proj = *projection;
+	batch->flush_view = *view;
+}
+
 void Render_flush(const Mat4 *projection, const Mat4 *view)
 {
 	BatchRenderer *batch = Graphics_get_batch();
