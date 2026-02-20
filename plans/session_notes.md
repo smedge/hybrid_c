@@ -23,3 +23,41 @@
 - **Removed dead refcounting code**: Refcount pattern added during debugging was unnecessary once enemy types stopped managing core audio. Stripped from all four cores (sub_heal_core, sub_shield_core, sub_projectile_core, sub_dash_core).
 - **Increased SDL_mixer channels**: Added `Mix_AllocateChannels(32)` in Audio_initialize (was default 8 — too low for combat-heavy zones).
 - **Channel exhaustion logging**: Audio_play_sample now logs a warning if Mix_PlayChannel returns -1 (no free channel).
+
+## Procedural Generation Phase 2 — Implemented
+- Zone-defined procgen: zones can now declare `procgen 1` with noise parameters (octaves, frequency, lacunarity, persistence, wall_threshold) to generate terrain from noise at load time.
+- Circuit vein system: second noise layer determines where circuit patterns appear within walls, creating organic veins/clusters.
+- Hand-placed cells preserved: `cell_hand_placed` grid prevents procgen from overwriting manually placed cells.
+- Seed system: master seed + per-zone seed derivation from zone filepath for deterministic, reproducible generation.
+
+## Pre-Rendered Circuit Pattern Atlas — Implemented
+- **Problem**: `render_circuit_pattern()` regenerated every visible circuit cell's traces per frame — seeded RNG, occupancy grid, thick_line triangles, filled_circle endpoints. Massive CPU cost with hundreds of circuit cells in procgen zones.
+- **Solution**: `circuit_atlas.c/h` — pre-bake 20 base circuit pattern tiles into a 2560×2048 GL_RED texture atlas at init, draw textured quads at render time using the text shader.
+- **6 connectivity classes** (which edges have solid neighbors): island, 1-edge, adjacent pair, opposite pair, 3-edge, surrounded. 20 base tiles in 5×4 grid, 512×512 each.
+- **Variety**: spatial hash per cell selects pattern + extra rotation (for symmetric classes) + mirror (when E/W edges match). Up to 32 variants for island, 24 for surrounded — the most common case in dense zones.
+- **Rendering**: own VAO/VBO, reuses text shader (same vertex format), single draw call for all visible circuit cells. Chamfered cells get proper UV-mapped polygon vertices.
+- **Pipeline position**: after Map_render flush, before MapReflect/MapLighting.
+- ~100x reduction in per-cell triangle count for circuit rendering.
+
+## Batch Renderer Auto-Flush — Implemented
+- **Problem**: `BATCH_MAX_VERTICES` (65536) overflowed during rebirth/wide zoom with large procgen zones, silently dropping geometry.
+- **Solution**: Auto-flush on overflow — when a push would exceed the buffer, the batch draws that primitive type using stored flush context matrices, resets count, and continues. No vertex limit anymore, just extra draw calls as needed.
+- `Render_set_pass(proj, view)` stores flush context before each render pass. `Batch_flush` also stores context on every explicit flush.
+- **Grid render order fix**: Grid now renders and flushes separately BEFORE Map_render, so auto-flushed map fills always layer on top of grid lines.
+- **UI pass fix**: `Render_set_pass` called before Hud_render so minimap auto-flushes use the correct UI projection (not stale world projection).
+- `BATCH_MAX_VERTICES` stays at 65536 (~5.5MB static) instead of 262144 (~22MB). Console-friendly.
+
+## Procgen Tuning
+- **Circuit vein threshold**: Lowered from 0.5 to 0.30 — more circuit tiles in procgen zones (~35-40% vs 15-20%).
+- **Data fortress**: Center 64×64 cells (4×4 major grid blocks) of procgen zones excluded from terrain generation. Reserved for portal and savepoint placement.
+
+## Portal Persistence Fix
+- **Bug**: Unconnected portals (no destination set) disappeared on zone reload. `sscanf` required 5 fields but empty destination strings produced fewer tokens.
+- **Fix**: Sentinel value `"-"` written for empty dest_zone/dest_portal_id. Load converts `"-"` back to empty string. Unfinished portals now survive zone transitions.
+
+## Zone Music Shuffle
+- Zone music playlists now shuffled (Fisher-Yates) on zone entry and loop indefinitely.
+
+## Rebirth View Snap Fix
+- **Bug**: On entering a zone for rebirth from save, the camera showed zone center for one frame before snapping to the saved checkpoint position.
+- **Fix**: Set `View_set_position(loadSpawnPos)` in `Mode_Gameplay_initialize_from_save()` before first render, so the view starts at the correct position immediately.

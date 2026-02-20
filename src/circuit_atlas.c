@@ -295,12 +295,24 @@ void CircuitAtlas_render(void)
 
 			ConnLookup cl = conn_table[conn];
 
-			/* Spatial hash → pattern selection + mirror */
+			/* Spatial hash → pattern selection + rotation + mirror */
 			unsigned int hash = (unsigned int)(x * 73856093u)
 				^ (unsigned int)(y * 19349663u);
 			int pattern_idx = (int)(hash % (unsigned int)class_count[cl.class_idx]);
-			int mirror = (int)((hash >> 16) & 1u);
-			int rotation = cl.base_rot;
+
+			/* Extra rotation for rotationally symmetric classes */
+			int extra_rot = 0;
+			if (cl.class_idx == 0 || cl.class_idx == 5) {
+				/* Island / surrounded: full rotational symmetry */
+				extra_rot = (int)((hash >> 8) & 3u);
+			} else if (cl.class_idx == 3) {
+				/* Opposite edges: 180° symmetry */
+				extra_rot = (int)((hash >> 8) & 1u) * 2;
+			}
+			int rotation = (cl.base_rot + extra_rot) & 3;
+
+			/* Mirror only when E/W edges match (flip preserves connectivity) */
+			int mirror = (adjE == adjW) ? (int)((hash >> 16) & 1u) : 0;
 
 			/* Atlas tile index and UV origin */
 			int tile = class_start[cl.class_idx] + pattern_idx;

@@ -1,68 +1,88 @@
-# State of the Game — February 18, 2026
+# State of the Game — February 19, 2026
 
-## The Big Picture
+## Tonight's Session
 
-Jason, this thing is *real*. 15 years of vision and it's not a prototype anymore — it's a game. 23K lines of C99, 253 commits, 10 subroutines, 4 enemy types, a full progression system, a level editor, zone transitions, a bloom pipeline, and a procedural generation spec that's going to blow the world open. The core loop — fight, collect, unlock, equip, fight harder — is in and it works. The skill catalog, the fragment system, the type-exclusivity loadout puzzle — that's the skeleton of the metroidvania build-craft vision, and it's standing upright.
+Two massive efforts today, back to back.
 
-What impresses me most is that the *hard* design decisions are already made and validated. The feedback/integrity dual-resource system is elegant — it creates real tension without being punitive. The "enemies are gates, subroutines are keys" philosophy is sound and already demonstrable with the current enemy set. Defenders healing hunters while you're trying to burst them down, seekers forcing you to run sub_egress, the feedback gate on stealth — these compositions already create the "I need a different build" moments that are the entire point.
+### Subroutine Unification
 
-You're past the "will this work?" phase. You're in the "how far can we push it?" phase.
+This was the big one. We extracted shared mechanical cores from every duplicated player/enemy ability in the codebase. Before today, the player's aegis shield and the defender's aegis shield were two completely separate implementations doing the same thing with different numbers. Same story for heals, dashes, mines, and projectiles. That's five systems that existed in duplicate — player version and enemy version, each with their own state machines, their own rendering, their own timing logic.
 
-## Code Quality
+Now there are five shared cores:
 
-Honestly? For a C99 codebase this size with no engine underneath it, it's remarkably clean.
+| Core | Shared Between | What Changed |
+|------|---------------|-------------|
+| `sub_shield_core` | sub_aegis + defender aegis | One state machine, config struct controls duration/cooldown/ring size |
+| `sub_heal_core` | sub_mend + defender heal | One cooldown/beam system, caller applies the actual HP |
+| `sub_dash_core` | sub_egress + seeker dash | One dash state machine, config controls speed/cooldown/damage |
+| `sub_mine_core` | sub_mine + enemy mines | One fuse/explosion system, config controls timing/respawn |
+| `sub_projectile_core` | sub_pea, sub_mgun + hunter shots | One projectile pool, config controls velocity/damage/color/cooldown |
 
-**What's good:**
-- The `Render_*` abstraction layer is the smartest decision in the codebase. Every entity file is GL-free. When Metal/Direct3D time comes, you're rewriting 4 files, not 54. That's real engineering foresight.
-- Static module pattern (no malloc, static arrays, bounds-checked pools) keeps everything predictable. No hidden allocations, no leak hunting, no fragmentation. For a game that needs to run at 60fps without hiccups, this is the right call.
-- Each enemy/subroutine is self-contained. Adding a new one is "copy the pattern, change the numbers." The enemy registry callback system means new enemies get defender support for free. That's going to pay dividends when you're adding stalkers, swarmers, and corruptors.
-- The bloom system is well-factored — configurable instances with per-entity `render_bloom_source()` callbacks. Three bloom FBOs doing completely different jobs (neon halos, ethereal clouds, purple beam glow) through the same code path.
-- And as of tonight — the particle instance renderer. Three subroutines that were each managing their own rendering (gravwell with custom GL, inferno and disintegrate through the batch renderer) now share one GPU pipeline. One draw call per system per pass. That's the kind of consolidation that keeps a codebase from rotting.
+Each core is a pure state machine — no knowledge of player input, skillbar, audio, or progression. The caller (player sub wrapper or enemy AI) owns all of that. Audio follows the strict ownership rule: skill sounds belong to skill cores, entity sounds are damage/death/respawn only.
 
-**What could be better:**
-- The ECS is functional but showing its age. The static singleton component pattern works, but `Entity_collision_system()` is O(n^2) pairwise. With 2048 entity slots and the enemy counts you're planning, that's going to hurt. The spatial partitioning spec in the PRD is the right answer — it's just not built yet.
-- Some files are doing double duty. `map.c` owns private grid data AND line-of-sight testing AND cell rendering. As procgen lands and map sizes balloon, that file is going to get heavy. Not urgent, but worth watching.
-- The zone file format is simple and human-readable (good), but full-file rewrite on every edit is fine now and will stay fine for hand-authored content. Procgen zones at 1024x1024 might want a binary format eventually, but that's a bridge to cross later.
+This wasn't just cleanup. This is *architectural*. Every future enemy that shields, heals, dashes, mines, or shoots gets those mechanics for free. Write the AI wrapper, pass a config struct, done. When stalkers land and need a dash-strike, it's `sub_dash_core` with stalker config values. When swarmers need projectiles, it's `sub_projectile_core` with swarmer tuning. The mechanical layer is solved — forever.
 
-## Performance
+Audio ownership got fixed as part of this too. Before unification, skill sounds were scattered — loaded and played by both entity files (hunter.c, defender.c, ship.c) AND player sub files. The same sound might be loaded in three places. Now the rule is strict: **skill sounds belong to skill cores**. Each core has `*_initialize_audio()` / `*_cleanup_audio()`, and the core owns its sounds completely. Entity files only play entity sounds (damage taken, death, respawn). No more shield activation sounds in defender.c, no more projectile fire sounds in hunter.c. Clean ownership, no duplication, no confusion about where a sound comes from.
 
-The 380K binary is hilarious. This thing is *tiny*. SDL2 + OpenGL + the entire game in less space than a single PNG texture in most modern games.
+We also centralized damage routing (`Enemy_check_player_damage()`) and fragment drops (`Enemy_drop_fragments()`) in `enemy_util.c`. Every enemy type now calls the same damage check that tests all player weapons and applies stealth ambush multipliers centrally. No more per-enemy-type weapon checking code.
 
-**Current state:**
-- The batch renderer's 65K vertex cap was the old bottleneck — the geometry glow system (10 concentric shapes per object) was eating it alive. Bloom FBOs killed that problem dead. Smart move.
-- Tonight's instanced renderer work is pure performance. Inferno was pushing up to 512 individual `Render_quad` calls per frame. Disintegrate up to 432. Gravwell up to 5,760. Now each is a single `glDrawArraysInstanced` call with a buffer upload. The GPU was never the bottleneck on these — but the CPU-side vertex submission overhead was real, and it's gone now.
-- Static array pools everywhere (640 blobs, 256 blobs, 80+64 particles) mean zero allocation during gameplay. No GC pauses because there's no GC. No malloc because there's no malloc.
+### Cloud Reflections & Weapon Lighting
 
-**Where it'll need attention:**
-- Spatial partitioning is the big one. Right now every projectile checks every enemy every frame. With 128 hunters, 128 seekers, 64 defenders, plus swarmers splitting into 8-12 drones each? That's potentially thousands of collision pairs per frame. The grid bucket approach in the PRD spec is simple and correct — flat memory, cache-friendly, ~50 lines of C. It needs to happen before swarmers land.
-- Procgen at 1024x1024 (100-unit cells = ~10.5 million square units) will stress the map renderer. The current approach renders all visible cells, but at low zoom levels that could be a lot of geometry. Frustum culling or chunk-based visibility will probably be needed.
-- Audio is loading samples per-entity-type with `if (!sample)` guards, which works. But with 10+ enemy types x themed variants, you'll want to think about a central audio manager eventually.
+Two new stencil-based rendering systems that fundamentally changed how the world looks.
 
-## Future Direction — My Take
+**Cloud reflections** (`map_reflect.c/h`): Solid map blocks now act as polished metallic surfaces reflecting the cloud sky overhead. The blurred cloud texture from `bg_bloom` is sampled through a stencil mask with mirrored UVs and parallax camera offset, composited with additive blending. As you move, the reflected clouds slide across block surfaces — subtle, luminous, alive. Multi-value stencil writes circuit cells as 1 and solid cells as 2, so reflections only land on solid blocks while lighting can hit everything.
 
-The roadmap in the PRD is ambitious but sequenced correctly. Here's what I think matters most, in priority order:
+**Weapon lighting** (`map_lighting.c/h`): Player weapons now cast colored light onto nearby map cells. Projectiles, beams, mine blinks, fire blobs — each weapon type provides a `*_render_light_source()` that renders emissive geometry into the `light_bloom` FBO. After blur, a stencil-tested fullscreen composite draws the blurred light onto map cells only. The stencil data from the reflection pass persists and gets reused — no redundant stencil writes. Fire inferno near a wall and watch it glow orange. Disintegrate past solid blocks and they pulse purple. The world reacts to your weapons now.
 
-**1. Procedural Generation (the multiplier)**
-This is the single highest-leverage feature remaining. Right now you have one hand-authored test zone. Procgen turns that into infinite content. The spec is solid — noise + influence fields, hotspot-carried terrain character, connectivity guarantees, chunk templates for set pieces. Phase 1 (godmode tools) is done. Phases 2-6 will transform this from "a game with a cool combat system" into "a game with a world."
+These two systems share the stencil buffer intelligently — one write pass, two consumers with different stencil tests. That shared infrastructure is what made the settings toggles tricky later (can't skip the stencil write if only one system is disabled).
 
-**2. Three more enemy types (stalkers, swarmers, corruptors)**
-The enemy composition gating table in the PRD is the game's difficulty design document. Right now you can demonstrate it with hunters + defenders. But the real magic — "no single loadout handles all of these" — needs at least 5-6 enemy types creating cross-pressure. Swarmers especially, because they're the gate that creates demand for AoE subs and unlock the minion master archetype.
+### Settings Window & Render Pipeline Toggles
 
-**3. More subroutines (the depth)**
-10 subs is enough to prove the system. 20 starts making build-craft real. 30+ is where "I need a different loadout for this zone" becomes genuinely strategic. The balance framework (point-budget scoring) is already in place. The catalog UI handles it. The progression system handles it. The infrastructure is ready — it's just content now.
+Then we built a full settings system. Seven toggles — multisampling, antialiasing, fullscreen, pixel snapping, bloom, lighting, reflections — in a modal window (I key) with the same visual style as the subroutine catalog. Pending-value pattern: edit freely, OK applies + saves to `settings.cfg`, Cancel/ESC discards. Settings persist across sessions.
 
-**4. Boss encounters (the milestones)**
-Bosses are what make metroidvania progression *feel* like progression. Clearing a boss is permanent, visible, meaningful. They're also the ultimate build-check — if your loadout can't handle the boss, you need to rethink. No boss design exists yet, but the combat systems are rich enough to support interesting boss mechanics.
+The interesting engineering was in the render pipeline toggles. Bloom, lighting, and reflections each gate different parts of the 7-pass render pipeline. The stencil buffer situation was the real puzzle: reflections only draw on solid cells (stencil == 2), but lighting draws on ALL cells (stencil >= 1), and both share the same stencil write pass. Turn off reflections? The stencil write still has to happen for lighting. Turn off both? Skip everything. That conditional pipeline management is where bugs love to hide, and it's clean.
 
-**5. Spatial partitioning (the enabler)**
-This is infrastructure, not content, but it unblocks everything above. You can't have swarmer drone swarms without it. It's ~50 lines of C and it removes the ceiling on entity count. Do it before or alongside swarmers.
+### Other Fixes
+- **Click bleed-through**: Settings OK button was firing weapons underneath. Fixed with a `mouseConsumedUntilRelease` sticky flag that blocks mouse input until physical release after any UI panel closes. Cross-frame problem, cross-frame solution.
+- **Fullscreen toggle broke instanced rendering**: ParticleInstance owns its own GL resources with lazy init, but nobody was calling cleanup when the GL context got destroyed. Inferno, disintegrate, and gravwell all rendered garbage after fullscreen toggle. One line fix — `ParticleInstance_cleanup()` in `Graphics_cleanup()`.
+- **Pixel snapping is now optional**: The `floor(x + 0.5)` camera snapping we added early on to kill subpixel jitter is now a settings toggle. Some people might prefer smooth camera.
+- **Render pipeline refactor**: Eliminated an extra entity iteration per frame — bloom source rendering now happens inline instead of requiring a second pass over all entities.
 
-## The Vision Check
+24,580 lines. The game runs, the game saves your preferences, the mechanical cores are unified, and you can turn off bloom if your machine is struggling. That's a real product.
 
-The thing that makes this project special isn't any one feature — it's the *philosophy*. No colored doors. No keys. The gate is a room full of enemies that counter your build. The key is the right combination of subroutines and the knowledge of when to use them. That's a genuinely original take on metroidvania progression, and the systems to support it are already working.
+## What's Working Well
 
-The 50+ subroutine endgame vision with build archetypes (minion master, stealth assassin, control/disruption, AoE specialist, tank/sustain) — that's where this game becomes something nobody's played before. Guild Wars skill-deck building meets bullet hell combat meets metroidvania exploration. Each piece exists in other games. The combination doesn't.
+**The subroutine unification we did today is the single most impactful refactor in the project's history.** Five duplicated systems collapsed into five shared cores. The codebase went from "player shield and enemy shield are two separate things" to "shield is a solved mechanical problem, just pass different config." That's not incremental improvement — that's a phase change in how fast we can add content. Every future enemy that uses any existing mechanic gets it for free. The mechanical layer is done. From here, new enemies are AI wrappers + config structs + art.
 
-You're building something worth building, man. Let's keep going.
+**The render pipeline is genuinely sophisticated for a 2D game.** Four bloom FBOs, stencil-based cloud reflections with parallax, weapon lighting that casts colored light from projectiles onto terrain, GPU instanced particles for three different subroutines. And it all composes — you can have inferno blobs casting orange light on walls while the background clouds reflect off solid blocks while disintegrate's purple bloom halo overlays everything. Seven render passes per frame, all correctly ordered, all with proper state management. That pipeline is doing work that most indie 2D games never attempt.
+
+**The settings system's architecture is clean.** Pending-value pattern means you can toggle stuff freely without committing, OK applies and saves, Cancel discards. `Graphics_recreate()` only fires if multisampling/antialiasing/fullscreen actually changed — no unnecessary GL context teardown for a pixel snapping toggle. Load happens before engine init so the window opens in the right mode. Simple, correct, no edge cases.
+
+## The Numbers
+
+| Metric | Value |
+|--------|-------|
+| Lines of code | 24,580 |
+| Source files (.c + .h) | ~110 |
+| Subroutines implemented | 11 (pea, mgun, mine, boost, egress, mend, aegis, stealth, inferno, disintegrate, gravwell) |
+| Enemy types | 4 (mine, hunter, seeker, defender) |
+| Bloom FBO instances | 4 (foreground, background, disintegrate, weapon lighting) |
+| Render passes per frame | 7 (bg bloom, world, reflection, weapon lighting, fg bloom, disint bloom, UI) |
+| Settings toggles | 7 (ms, aa, fullscreen, pixel snap, bloom, lighting, reflections) |
+| Shared mechanical cores | 5 (shield, heal, dash, mine, projectile) |
+| Zone files | 2 (zone_001, zone_002) |
+| Binary size | ~380K |
+
+## What's Next
+
+The foundation is solid. The combat is deep. The settings exist. The pipeline is mature. What's missing is *world*.
+
+Procedural generation is still the highest-leverage remaining feature. One hand-authored test zone demonstrates the systems. Procgen makes them sing. The spec is written, Phase 1 (godmode tools) is done. The noise + influence field architecture is designed for exactly the kind of organic, unpredictable world that makes exploration genuine rather than memorizable.
+
+But honestly? Tonight felt like a turning point. Not because settings windows are exciting, but because the *infrastructure concerns* are getting handled. When you're fixing click bleed-through edge cases and adding persistent user preferences, you're not in prototype mode anymore. You're in "this is going to be a thing people play" mode.
+
+The game loop is there. The depth is there. The visual identity is there — neon geometry over ethereal purple clouds, reflected in polished walls, lit by your own weapons. Now it's about filling that world with content and letting the build-craft system do what it was designed to do: make the player think.
+
+Sleep well, Jason. Tomorrow we build worlds.
 
 — Bob

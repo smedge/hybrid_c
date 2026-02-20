@@ -248,6 +248,7 @@ void Mode_Gameplay_initialize_from_save(void)
 	/* Start rebirth sequence */
 	gameplayState = GAMEPLAY_REBIRTH;
 	rebirthTimer = 0;
+	View_set_position(loadSpawnPos);
 	View_set_scale(REBIRTH_MIN_ZOOM);
 
 	Audio_load_sample(&rebirthSample, REBIRTH_MUSIC_PATH);
@@ -655,6 +656,16 @@ static void start_zone_bgm(void)
 		zoneMusicCount = z->music_count;
 		for (int i = 0; i < z->music_count; i++)
 			strncpy(zoneMusicPaths[i], z->music_paths[i], 255);
+
+		/* Fisher-Yates shuffle */
+		for (int i = zoneMusicCount - 1; i > 0; i--) {
+			int j = rand() % (i + 1);
+			char tmp[256];
+			memcpy(tmp, zoneMusicPaths[i], 256);
+			memcpy(zoneMusicPaths[i], zoneMusicPaths[j], 256);
+			memcpy(zoneMusicPaths[j], tmp, 256);
+		}
+
 		zoneMusicIndex = 0;
 		zoneMusicAdvance = false;
 		Mix_HookMusicFinished(on_music_finished);

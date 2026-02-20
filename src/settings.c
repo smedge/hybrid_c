@@ -209,8 +209,16 @@ void Settings_update(const Input *input, const unsigned int ticks)
 
 	/* Graphics tab toggle clicks */
 	if (clicked && selectedTab == TAB_GRAPHICS) {
-		/* Multisampling toggle */
+		/* Fullscreen toggle */
 		float row_y = content_y + 30.0f;
+		if (mx >= toggle_x && mx <= toggle_x + TOGGLE_WIDTH &&
+			my >= row_y && my <= row_y + TOGGLE_HEIGHT) {
+			pendingFullscreen = !pendingFullscreen;
+			printf("Toggle fullscreen -> %d\n", pendingFullscreen);
+		}
+
+		/* Multisampling toggle */
+		row_y += 40.0f;
 		if (mx >= toggle_x && mx <= toggle_x + TOGGLE_WIDTH &&
 			my >= row_y && my <= row_y + TOGGLE_HEIGHT) {
 			pendingMultisampling = !pendingMultisampling;
@@ -223,14 +231,6 @@ void Settings_update(const Input *input, const unsigned int ticks)
 			my >= row_y && my <= row_y + TOGGLE_HEIGHT) {
 			pendingAntialiasing = !pendingAntialiasing;
 			printf("Toggle antialiasing -> %d\n", pendingAntialiasing);
-		}
-
-		/* Fullscreen toggle */
-		row_y += 40.0f;
-		if (mx >= toggle_x && mx <= toggle_x + TOGGLE_WIDTH &&
-			my >= row_y && my <= row_y + TOGGLE_HEIGHT) {
-			pendingFullscreen = !pendingFullscreen;
-			printf("Toggle fullscreen -> %d\n", pendingFullscreen);
 		}
 
 		/* Pixel Snapping toggle */
@@ -389,11 +389,11 @@ void Settings_render(const Screen *screen)
 	float toggle_x = label_x + 190.0f;
 
 	if (selectedTab == TAB_GRAPHICS) {
-		/* Multisampling toggle */
+		/* Fullscreen toggle */
 		float row_y = content_y + 30.0f;
 
 		/* Toggle button bg */
-		if (pendingMultisampling) {
+		if (pendingFullscreen) {
 			Render_quad_absolute(toggle_x, row_y,
 				toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT,
 				0.1f, 0.4f, 0.1f, 0.9f);
@@ -412,9 +412,9 @@ void Settings_render(const Screen *screen)
 		Render_thick_line(toggle_x + TOGGLE_WIDTH, row_y,
 			toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT, 1.0f, 0.4f, 0.4f, 0.4f, 0.6f);
 
-		/* Antialiasing toggle */
+		/* Multisampling toggle */
 		row_y += 40.0f;
-		if (pendingAntialiasing) {
+		if (pendingMultisampling) {
 			Render_quad_absolute(toggle_x, row_y,
 				toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT,
 				0.1f, 0.4f, 0.1f, 0.9f);
@@ -432,9 +432,9 @@ void Settings_render(const Screen *screen)
 		Render_thick_line(toggle_x + TOGGLE_WIDTH, row_y,
 			toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT, 1.0f, 0.4f, 0.4f, 0.4f, 0.6f);
 
-		/* Fullscreen toggle */
+		/* Antialiasing toggle */
 		row_y += 40.0f;
-		if (pendingFullscreen) {
+		if (pendingAntialiasing) {
 			Render_quad_absolute(toggle_x, row_y,
 				toggle_x + TOGGLE_WIDTH, row_y + TOGGLE_HEIGHT,
 				0.1f, 0.4f, 0.1f, 0.9f);
@@ -618,12 +618,26 @@ void Settings_render(const Screen *screen)
 	if (selectedTab == TAB_GRAPHICS) {
 		float row_y = content_y + 30.0f;
 
-		/* Multisampling label */
+		/* Fullscreen label */
+		Text_render(tr, shaders, &proj, &ident,
+			"Fullscreen", label_x, row_y + 15.0f,
+			0.8f, 0.8f, 0.9f, 0.9f);
+
+		/* Fullscreen toggle text */
+		Text_render(tr, shaders, &proj, &ident,
+			pendingFullscreen ? "ON" : "OFF",
+			toggle_x + 12.0f, row_y + 15.0f,
+			pendingFullscreen ? 0.3f : 0.6f,
+			pendingFullscreen ? 1.0f : 0.6f,
+			pendingFullscreen ? 0.3f : 0.6f,
+			0.9f);
+
+		/* Multisampling row */
+		row_y += 40.0f;
 		Text_render(tr, shaders, &proj, &ident,
 			"Multisampling", label_x, row_y + 15.0f,
 			0.8f, 0.8f, 0.9f, 0.9f);
 
-		/* Multisampling toggle text */
 		Text_render(tr, shaders, &proj, &ident,
 			pendingMultisampling ? "ON" : "OFF",
 			toggle_x + 12.0f, row_y + 15.0f,
@@ -644,20 +658,6 @@ void Settings_render(const Screen *screen)
 			pendingAntialiasing ? 0.3f : 0.6f,
 			pendingAntialiasing ? 1.0f : 0.6f,
 			pendingAntialiasing ? 0.3f : 0.6f,
-			0.9f);
-
-		/* Fullscreen row */
-		row_y += 40.0f;
-		Text_render(tr, shaders, &proj, &ident,
-			"Fullscreen", label_x, row_y + 15.0f,
-			0.8f, 0.8f, 0.9f, 0.9f);
-
-		Text_render(tr, shaders, &proj, &ident,
-			pendingFullscreen ? "ON" : "OFF",
-			toggle_x + 12.0f, row_y + 15.0f,
-			pendingFullscreen ? 0.3f : 0.6f,
-			pendingFullscreen ? 1.0f : 0.6f,
-			pendingFullscreen ? 0.3f : 0.6f,
 			0.9f);
 
 		/* Pixel Snapping row */

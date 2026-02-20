@@ -156,8 +156,11 @@ void Zone_load(const char *path)
 
 			ZonePortal *p = &zone.portals[zone.portal_count];
 			if (sscanf(line + 7, "%d %d %31s %255s %31s",
-				&p->grid_x, &p->grid_y, p->id, p->dest_zone, p->dest_portal_id) == 5)
+				&p->grid_x, &p->grid_y, p->id, p->dest_zone, p->dest_portal_id) == 5) {
+				if (strcmp(p->dest_zone, "-") == 0) p->dest_zone[0] = '\0';
+				if (strcmp(p->dest_portal_id, "-") == 0) p->dest_portal_id[0] = '\0';
 				zone.portal_count++;
+			}
 		}
 		else if (strncmp(line, "savepoint ", 10) == 0) {
 			if (zone.savepoint_count >= ZONE_MAX_SAVEPOINTS) continue;
@@ -330,7 +333,9 @@ void Zone_save(void)
 	for (int i = 0; i < zone.portal_count; i++) {
 		ZonePortal *p = &zone.portals[i];
 		fprintf(f, "portal %d %d %s %s %s\n",
-			p->grid_x, p->grid_y, p->id, p->dest_zone, p->dest_portal_id);
+			p->grid_x, p->grid_y, p->id,
+			p->dest_zone[0] ? p->dest_zone : "-",
+			p->dest_portal_id[0] ? p->dest_portal_id : "-");
 	}
 
 	/* Save points */
