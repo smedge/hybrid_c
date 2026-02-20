@@ -5,7 +5,7 @@
 #include "shader.h"
 #include "mat4.h"
 
-#define BATCH_MAX_VERTICES 65536
+#define BATCH_MAX_VERTICES 262144
 
 typedef struct {
 	float x, y;
