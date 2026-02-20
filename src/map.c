@@ -751,6 +751,17 @@ static void render_circuit_pattern(int cellX, int cellY, float ax, float ay,
 	}
 }
 
+/* --- Atlas helper: render circuit pattern with white traces for FBO bake --- */
+
+void Map_render_circuit_pattern_for_atlas(int cellX, int cellY,
+	float ax, float ay, int adjN, int adjE, int adjS, int adjW)
+{
+	ColorFloat traceColor = {1.0f, 1.0f, 1.0f, 1.0f};
+	ColorFloat fillColor = {0.0f, 0.0f, 0.0f, 0.0f};
+	render_circuit_pattern(cellX, cellY, ax, ay,
+		&traceColor, &fillColor, adjN, adjE, adjS, adjW);
+}
+
 /* --- Cell rendering --- */
 
 static void render_cell(int x, int y, float outlineThickness)
@@ -806,20 +817,7 @@ static void render_cell(int x, int y, float outlineThickness)
 		Render_quad_absolute(ax, ay, bx, by, pr, pg, pb, pa);
 	}
 
-	/* Circuit board pattern */
-	if (!bloomSourceMode && mapCell.circuitPattern && circuitTracesEnabled) {
-		View view = View_get_view();
-		if (view.scale >= 0.15) {
-			int adjN = !nPtr->empty;
-			int adjE = !ePtr->empty;
-			int adjS = !sPtr->empty;
-			int adjW = !wPtr->empty;
-			ColorFloat outlineColorF = Color_rgb_to_float(&mapCell.outlineColor);
-			render_circuit_pattern(x - HALF_MAP_SIZE, y - HALF_MAP_SIZE,
-				ax, ay, &outlineColorF, &primaryColor,
-				adjN, adjE, adjS, adjW);
-		}
-	}
+	/* Circuit board pattern — handled by CircuitAtlas_render() */
 
 	/* Outline edges */
 	ColorFloat outlineColor = Color_rgb_to_float(&mapCell.outlineColor);

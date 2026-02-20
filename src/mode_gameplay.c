@@ -29,6 +29,7 @@
 #include "savepoint.h"
 #include "portal.h"
 #include "fragment.h"
+#include "circuit_atlas.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -478,6 +479,9 @@ void Mode_Gameplay_render(void)
 	Map_render(NULL, NULL);
 	Grid_render(NULL, NULL);
 	Render_flush(&world_proj, &view);
+
+	/* Circuit trace overlay (pre-baked textured quads) */
+	CircuitAtlas_render();
 
 	/* Cloud reflection on solid blocks (also writes stencil for lighting) */
 	{

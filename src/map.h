@@ -37,5 +37,7 @@ void Map_render_stencil_mask(void);
 void Map_render_stencil_mask_all(const Mat4 *proj, const Mat4 *view_mat);
 void Map_set_circuit_traces(bool enabled);
 bool Map_get_circuit_traces(void);
+void Map_render_circuit_pattern_for_atlas(int cellX, int cellY,
+	float ax, float ay, int adjN, int adjE, int adjS, int adjW);
 
 #endif
