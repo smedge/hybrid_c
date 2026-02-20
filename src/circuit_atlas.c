@@ -248,7 +248,7 @@ void CircuitAtlas_render(void)
 	if (!Map_get_circuit_traces()) return;
 
 	View view = View_get_view();
-	if (view.scale < 0.15) return;
+	if (view.scale < 0.10) return;
 
 	Screen screen = Graphics_get_screen();
 	float half_w = (float)screen.width * 0.5f / (float)view.scale;
