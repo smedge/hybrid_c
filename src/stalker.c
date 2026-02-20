@@ -1,6 +1,6 @@
 #include "stalker.h"
-#include "sub_dash_core.h"
-#include "sub_projectile_core.h"
+#include "sub_pea.h"
+#include "sub_egress.h"
 #include "enemy_util.h"
 #include "defender.h"
 #include "fragment.h"
@@ -32,16 +32,8 @@
 #define IDLE_WANDER_INTERVAL 2000
 
 #define WINDUP_MS 300
-static const SubDashConfig stalkerDashCfg = {
-	.duration_ms = 150,
-	.speed = 4000.0,
-	.cooldown_ms = 0,
-	.damage = 60.0,
-};
 
-#define BURST_COUNT 3
-#define BURST_INTERVAL 100
-
+#define RETREAT_SHOT_MS 500
 #define RETREAT_RESTEALTH_MS 3000
 
 #define DEATH_FLASH_MS 200
@@ -65,7 +57,6 @@ typedef enum {
 	STALKER_STALKING,
 	STALKER_WINDING_UP,
 	STALKER_DASHING,
-	STALKER_SHOOTING,
 	STALKER_RETREATING,
 	STALKER_DYING,
 	STALKER_DEAD
@@ -91,12 +82,9 @@ typedef struct {
 	/* Dash */
 	SubDashCore dashCore;
 
-	/* Shooting burst */
-	int burstShotsFired;
-	int burstTimer;
-
 	/* Retreat */
 	int retreatTimer;
+	bool retreatShotFired;
 
 	/* Death/respawn */
 	int deathTimer;
@@ -125,27 +113,9 @@ static PlaceableComponent placeables[STALKER_COUNT];
 static Entity *entityRefs[STALKER_COUNT];
 static int highestUsedIndex = 0;
 
-/* Projectile pool (shared across all stalkers) */
+/* Projectile pool (shared across all stalkers, uses sub_pea config) */
+#define STALKER_PROJ_POOL_SIZE 32
 static SubProjectilePool stalkerProjPool;
-
-static const SubProjectileConfig stalkerProjCfg = {
-	.fire_cooldown_ms = 0,
-	.velocity = 2000.0,
-	.ttl_ms = 800,
-	.pool_size = 32,
-	.damage = 15.0,
-	.color_r = 0.6f, .color_g = 0.1f, .color_b = 0.8f,
-	.trail_thickness = 3.0f,
-	.trail_alpha = 0.6f,
-	.point_size = 8.0,
-	.min_point_size = 2.0,
-	.spark_duration_ms = 80,
-	.spark_size = 15.0f,
-	.light_proj_radius = 60.0f,
-	.light_proj_r = 0.6f, .light_proj_g = 0.1f, .light_proj_b = 0.8f, .light_proj_a = 0.7f,
-	.light_spark_radius = 90.0f,
-	.light_spark_r = 0.6f, .light_spark_g = 0.1f, .light_spark_b = 0.8f, .light_spark_a = 0.6f,
-};
 
 /* Body-hit sparks */
 #define SPARK_POOL_SIZE 8
@@ -195,7 +165,6 @@ static float compute_stealth_alpha(StalkerState *s, unsigned int globalTicks)
 		return STEALTH_ALPHA_MIN + (1.0f - STEALTH_ALPHA_MIN) * t;
 	}
 	case STALKER_DASHING:
-	case STALKER_SHOOTING:
 		return 1.0f;
 	case STALKER_RETREATING: {
 		/* Fade from 1.0 back to min over RETREAT_RESTEALTH_MS */
@@ -263,9 +232,8 @@ void Stalker_initialize(Position position)
 	s->pendingDirX = 0.0;
 	s->pendingDirY = 0.0;
 	SubDash_init(&s->dashCore);
-	s->burstShotsFired = 0;
-	s->burstTimer = 0;
 	s->retreatTimer = 0;
+	s->retreatShotFired = false;
 	s->deathTimer = 0;
 	s->respawnTimer = 0;
 	s->stealthAlpha = STEALTH_ALPHA_MIN;
@@ -287,9 +255,7 @@ void Stalker_initialize(Position position)
 
 	/* Load audio and register with enemy registry once */
 	if (!sampleDeath) {
-		SubProjectile_pool_init(&stalkerProjPool, stalkerProjCfg.pool_size);
-		SubProjectile_initialize_audio();
-		SubDash_initialize_audio();
+		SubProjectile_pool_init(&stalkerProjPool, STALKER_PROJ_POOL_SIZE);
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
@@ -313,8 +279,6 @@ void Stalker_cleanup(void)
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 
-	SubProjectile_cleanup_audio();
-	SubDash_cleanup_audio();
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
@@ -362,13 +326,20 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 	if (idx == 0) globalTicks += ticks;
 	s->stealthAlpha = compute_stealth_alpha(s, globalTicks);
 
+	/* Tick dash cooldown every frame so it doesn't freeze outside DASHING state */
+	if (!s->dashCore.active && s->dashCore.cooldownMs > 0) {
+		s->dashCore.cooldownMs -= (int)ticks;
+		if (s->dashCore.cooldownMs < 0)
+			s->dashCore.cooldownMs = 0;
+	}
+
 	/* --- Check for incoming player damage --- */
 	if (s->alive && s->aiState != STALKER_DYING) {
 		Rectangle body = {-BODY_WIDTH, BODY_RADIUS, BODY_WIDTH, -BODY_RADIUS};
 		Rectangle hitBox = Collision_transform_bounding_box(pl->position, body);
 
 		PlayerDamageResult dmg = Enemy_check_player_damage(hitBox, pl->position);
-		bool shielded = Defender_is_protecting(pl->position) && !dmg.ambush;
+		bool shielded = Defender_is_protecting(pl->position, dmg.ambush);
 		bool hit = dmg.hit;
 		if (hit && !shielded)
 			s->hp -= dmg.damage + dmg.mine_damage;
@@ -461,13 +432,13 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 
 		if (s->windupTimer >= WINDUP_MS) {
 			s->aiState = STALKER_DASHING;
-			SubDash_try_activate(&s->dashCore, &stalkerDashCfg, s->pendingDirX, s->pendingDirY);
+			SubDash_try_activate(&s->dashCore, Sub_Egress_get_config(), s->pendingDirX, s->pendingDirY);
 		}
 		break;
 	}
 	case STALKER_DASHING: {
-		double moveX = s->dashCore.dirX * stalkerDashCfg.speed * dt;
-		double moveY = s->dashCore.dirY * stalkerDashCfg.speed * dt;
+		double moveX = s->dashCore.dirX * Sub_Egress_get_config()->speed * dt;
+		double moveY = s->dashCore.dirY * Sub_Egress_get_config()->speed * dt;
 
 		/* Wall collision */
 		double hx, hy;
@@ -476,10 +447,10 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		if (Map_line_test_hit(pl->position.x, pl->position.y, newX, newY, &hx, &hy)) {
 			pl->position.x = hx - s->dashCore.dirX * 5.0;
 			pl->position.y = hy - s->dashCore.dirY * 5.0;
-			SubDash_end_early(&s->dashCore, &stalkerDashCfg);
-			s->aiState = STALKER_SHOOTING;
-			s->burstShotsFired = 0;
-			s->burstTimer = 0;
+			SubDash_end_early(&s->dashCore, Sub_Egress_get_config());
+			s->aiState = STALKER_RETREATING;
+			s->retreatTimer = 0;
+			s->retreatShotFired = false;
 			break;
 		}
 
@@ -496,35 +467,15 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			Rectangle stalkerWorld = Collision_transform_bounding_box(pl->position, stalkerBB);
 
 			if (Collision_aabb_test(stalkerWorld, shipWorld)) {
-				PlayerStats_damage(stalkerDashCfg.damage);
+				PlayerStats_damage(Sub_Egress_get_config()->damage);
 				s->dashCore.hitThisDash = true;
 			}
 		}
 
-		if (SubDash_update(&s->dashCore, &stalkerDashCfg, ticks)) {
-			/* Dash ended naturally → start shooting */
-			s->aiState = STALKER_SHOOTING;
-			s->burstShotsFired = 0;
-			s->burstTimer = 0;
-		}
-		break;
-	}
-	case STALKER_SHOOTING: {
-		/* Fire burst of 3 shots at player */
-		Position shipPos = Ship_get_position();
-		s->facing = Position_get_heading(pl->position, shipPos);
-
-		s->burstTimer -= ticks;
-		if (s->burstTimer <= 0 && s->burstShotsFired < BURST_COUNT) {
-			SubProjectile_try_fire(&stalkerProjPool, &stalkerProjCfg, pl->position, shipPos);
-			s->burstShotsFired++;
-			s->burstTimer = BURST_INTERVAL;
-		}
-
-		/* Burst complete → retreat */
-		if (s->burstShotsFired >= BURST_COUNT && s->burstTimer <= 0) {
+		if (SubDash_update(&s->dashCore, Sub_Egress_get_config(), ticks)) {
 			s->aiState = STALKER_RETREATING;
 			s->retreatTimer = 0;
+			s->retreatShotFired = false;
 		}
 		break;
 	}
@@ -535,6 +486,12 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		Position shipPos = Ship_get_position();
 		Enemy_move_away_from(pl, shipPos, RETREAT_SPEED, dt, WALL_CHECK_DIST);
 		s->facing = Position_get_heading(pl->position, shipPos);
+
+		/* Parting shot 1s into retreat */
+		if (!s->retreatShotFired && s->retreatTimer >= RETREAT_SHOT_MS) {
+			SubProjectile_try_fire(&stalkerProjPool, Sub_Pea_get_config(), pl->position, shipPos);
+			s->retreatShotFired = true;
+		}
 
 		/* Re-stealth after 3s */
 		if (s->retreatTimer >= RETREAT_RESTEALTH_MS) {
@@ -583,14 +540,14 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 
 	/* Update projectiles and sparks from index 0 only */
 	if (idx == 0) {
-		SubProjectile_update(&stalkerProjPool, &stalkerProjCfg, ticks);
+		SubProjectile_update(&stalkerProjPool, Sub_Pea_get_config(), ticks);
 
 		/* Check player hit */
 		if (!Ship_is_destroyed()) {
 			Position shipPos = Ship_get_position();
 			Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
 			Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
-			double dmg = SubProjectile_check_hit(&stalkerProjPool, &stalkerProjCfg, shipWorld);
+			double dmg = SubProjectile_check_hit(&stalkerProjPool, Sub_Pea_get_config(), shipWorld);
 			if (dmg > 0)
 				PlayerStats_damage(dmg);
 		}
@@ -613,7 +570,7 @@ void Stalker_render(const void *state, const PlaceableComponent *placeable)
 
 	/* Shared pool render from index 0 */
 	if (idx == 0) {
-		SubProjectile_render(&stalkerProjPool, &stalkerProjCfg);
+		SubProjectile_render(&stalkerProjPool, Sub_Pea_get_config());
 
 		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 			if (sparks[si].active) {
@@ -726,7 +683,7 @@ void Stalker_render_bloom_source(void)
 	}
 
 	/* Projectile bloom */
-	SubProjectile_render_bloom(&stalkerProjPool, &stalkerProjCfg);
+	SubProjectile_render_bloom(&stalkerProjPool, Sub_Pea_get_config());
 
 	/* Body-hit spark bloom */
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
@@ -762,7 +719,7 @@ void Stalker_render_light_source(void)
 	}
 
 	/* Projectile light */
-	SubProjectile_render_light(&stalkerProjPool, &stalkerProjCfg);
+	SubProjectile_render_light(&stalkerProjPool, Sub_Pea_get_config());
 
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 		if (sparks[si].active) {
@@ -779,8 +736,7 @@ void Stalker_deaggro_all(void)
 	for (int i = 0; i < highestUsedIndex; i++) {
 		StalkerState *s = &stalkers[i];
 		if (s->aiState == STALKER_STALKING || s->aiState == STALKER_WINDING_UP ||
-			s->aiState == STALKER_DASHING || s->aiState == STALKER_SHOOTING ||
-			s->aiState == STALKER_RETREATING) {
+			s->aiState == STALKER_DASHING || s->aiState == STALKER_RETREATING) {
 			s->aiState = STALKER_IDLE;
 			pick_wander_target(s);
 		}
@@ -802,9 +758,8 @@ void Stalker_reset_all(void)
 		s->pendingDirX = 0.0;
 		s->pendingDirY = 0.0;
 		SubDash_init(&s->dashCore);
-		s->burstShotsFired = 0;
-		s->burstTimer = 0;
 		s->retreatTimer = 0;
+		s->retreatShotFired = false;
 		s->deathTimer = 0;
 		s->respawnTimer = 0;
 		placeables[i].position = s->spawnPoint;

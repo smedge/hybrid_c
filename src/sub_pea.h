@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include "input.h"
 #include "entity.h"
+#include "sub_projectile_core.h"
+
+const SubProjectileConfig *Sub_Pea_get_config(void);
 
 void Sub_Pea_initialize(Entity *parent);
 void Sub_Pea_cleanup();

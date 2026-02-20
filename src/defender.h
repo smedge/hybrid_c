@@ -13,7 +13,7 @@ Collision Defender_collide(void *state, const PlaceableComponent *placeable, con
 void Defender_resolve(void *state, const Collision collision);
 void Defender_deaggro_all(void);
 void Defender_reset_all(void);
-bool Defender_is_protecting(Position pos);
+bool Defender_is_protecting(Position pos, bool ambush);
 void Defender_notify_shield_hit(Position pos);
 bool Defender_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index);
 bool Defender_find_aggro(Position from, double range, Position *out_pos);

@@ -84,7 +84,6 @@ void Mine_initialize(Position position)
 	/* Load audio once, not per-entity */
 	if (!sampleRespawn) {
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
-		SubMine_initialize_audio();
 	}
 }
 
@@ -99,7 +98,6 @@ void Mine_cleanup()
 	highestUsedIndex = 0;
 
 	Audio_unload_sample(&sampleRespawn);
-	SubMine_cleanup_audio();
 }
 
 Collision Mine_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)

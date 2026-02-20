@@ -207,7 +207,6 @@ void Seeker_initialize(Position position)
 
 	/* Load audio and register with enemy registry once, not per-entity */
 	if (!sampleDeath) {
-		SubDash_initialize_audio();
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
@@ -229,7 +228,6 @@ void Seeker_cleanup(void)
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 
-	SubDash_cleanup_audio();
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
@@ -278,7 +276,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		Rectangle hitBox = Collision_transform_bounding_box(pl->position, body);
 
 		PlayerDamageResult dmg = Enemy_check_player_damage(hitBox, pl->position);
-		bool shielded = Defender_is_protecting(pl->position) && !dmg.ambush;
+		bool shielded = Defender_is_protecting(pl->position, dmg.ambush);
 		bool hit = dmg.hit;
 		if (hit && !shielded)
 			s->hp -= dmg.damage + dmg.mine_damage;

@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include "input.h"
 #include "collision.h"
+#include "sub_dash_core.h"
+
+const SubDashConfig *Sub_Egress_get_config(void);
 
 void Sub_Egress_initialize(void);
 void Sub_Egress_cleanup(void);

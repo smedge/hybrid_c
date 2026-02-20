@@ -32,6 +32,11 @@ static const SubProjectileConfig cfg = {
 	.light_spark_r = 1.0f, .light_spark_g = 1.0f, .light_spark_b = 0.8f, .light_spark_a = 0.6f,
 };
 
+const SubProjectileConfig *Sub_Pea_get_config(void)
+{
+	return &cfg;
+}
+
 void Sub_Pea_initialize(Entity *p)
 {
 	parent = p;

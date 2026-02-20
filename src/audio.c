@@ -10,6 +10,7 @@ void Audio_initialize(void)
 		printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
 		exit(-1);
 	}
+	Mix_AllocateChannels(32);
 }
 
 void Audio_cleanup(void)
@@ -60,7 +61,8 @@ void Audio_unload_sample(Mix_Chunk **sample)
 
 void Audio_play_sample(Mix_Chunk **sample)
 {
-	Mix_PlayChannel(-1, *sample, 0);
+	if (Mix_PlayChannel(-1, *sample, 0) == -1)
+		printf("WARNING: out of audio channels: %s\n", Mix_GetError());
 }
 
 int Audio_play_sample_on_channel(Mix_Chunk **sample, int channel)

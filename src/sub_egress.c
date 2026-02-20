@@ -22,6 +22,11 @@ static const SubDashConfig cfg = {
 
 static bool shiftWasDown;
 
+const SubDashConfig *Sub_Egress_get_config(void)
+{
+	return &cfg;
+}
+
 void Sub_Egress_initialize(void)
 {
 	SubDash_init(&core);

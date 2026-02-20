@@ -304,8 +304,6 @@ void Defender_initialize(Position position)
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-		SubShield_initialize_audio();
-		SubHeal_initialize_audio();
 		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal};
 		defenderTypeId = EnemyRegistry_register(cb);
 	}
@@ -327,8 +325,6 @@ void Defender_cleanup(void)
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
-	SubShield_cleanup_audio();
-	SubHeal_cleanup_audio();
 }
 
 Collision Defender_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -798,8 +794,12 @@ void Defender_reset_all(void)
 		sparks[i].active = false;
 }
 
-bool Defender_is_protecting(Position pos)
+bool Defender_is_protecting(Position pos, bool ambush)
 {
+	/* Ambush pierces aegis — shield offers no protection */
+	if (ambush)
+		return false;
+
 	for (int i = 0; i < highestUsedIndex; i++) {
 		DefenderState *d = &defenders[i];
 		if (!d->alive)
