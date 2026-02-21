@@ -270,6 +270,8 @@ void Mode_Gameplay_initialize_from_save(void)
 	Skillbar_initialize();
 	Catalog_initialize();
 	Settings_initialize();
+	if (ckpt->procgen_seed != 0)
+		Procgen_set_master_seed(ckpt->procgen_seed);
 	Zone_load(ckpt->zone_path);
 	Destructible_initialize();
 
@@ -291,6 +293,7 @@ void Mode_Gameplay_initialize_from_save(void)
 	gameplayState = GAMEPLAY_REBIRTH;
 	rebirthTimer = 0;
 	View_set_position(loadSpawnPos);
+	Ship_set_position(loadSpawnPos);
 	View_set_scale(REBIRTH_MIN_ZOOM);
 
 	Audio_load_sample(&rebirthSample, REBIRTH_MUSIC_PATH);

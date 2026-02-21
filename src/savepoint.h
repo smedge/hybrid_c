@@ -8,6 +8,7 @@
 #include "fragment.h"
 #include "screen.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 #define SAVEPOINT_COUNT 16
 #define SAVEPOINT_SIZE 100.0
@@ -20,6 +21,7 @@ typedef struct {
 	char zone_path[256];
 	char savepoint_id[32];
 	Position position;
+	uint32_t procgen_seed;
 	bool unlocked[SUB_ID_COUNT];
 	bool discovered[SUB_ID_COUNT];
 	int fragment_counts[FRAG_TYPE_COUNT];

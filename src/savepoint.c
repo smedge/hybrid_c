@@ -7,6 +7,7 @@
 #include "mat4.h"
 #include "zone.h"
 #include "audio.h"
+#include "procgen.h"
 
 #include <string.h>
 #include <math.h>
@@ -104,6 +105,7 @@ static void do_save(SavepointState *sp)
 	strncpy(checkpoint.savepoint_id, sp->id, sizeof(checkpoint.savepoint_id) - 1);
 	checkpoint.savepoint_id[sizeof(checkpoint.savepoint_id) - 1] = '\0';
 	checkpoint.position = sp->position;
+	checkpoint.procgen_seed = Procgen_get_master_seed();
 
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
 		checkpoint.unlocked[i] = Progression_is_unlocked(i);
@@ -130,6 +132,7 @@ static void do_save(SavepointState *sp)
 	fprintf(f, "zone %s\n", checkpoint.zone_path);
 	fprintf(f, "savepoint %s\n", checkpoint.savepoint_id);
 	fprintf(f, "position %.1f %.1f\n", checkpoint.position.x, checkpoint.position.y);
+	fprintf(f, "seed %u\n", checkpoint.procgen_seed);
 
 	fprintf(f, "unlocked");
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
@@ -489,6 +492,7 @@ void Savepoint_seed_checkpoint(const char *zone_path, const char *savepoint_id,
 	strncpy(checkpoint.savepoint_id, savepoint_id, sizeof(checkpoint.savepoint_id) - 1);
 	checkpoint.savepoint_id[sizeof(checkpoint.savepoint_id) - 1] = '\0';
 	checkpoint.position = position;
+	checkpoint.procgen_seed = Procgen_get_master_seed();
 
 	/* Snapshot current game state (all defaults for a new game) */
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
@@ -545,6 +549,11 @@ bool Savepoint_load_from_disk(void)
 		}
 		else if (strncmp(line, "position ", 9) == 0) {
 			sscanf(line + 9, "%lf %lf", &checkpoint.position.x, &checkpoint.position.y);
+		}
+		else if (strncmp(line, "seed ", 5) == 0) {
+			unsigned int s;
+			if (sscanf(line + 5, "%u", &s) == 1)
+				checkpoint.procgen_seed = (uint32_t)s;
 		}
 		else if (strncmp(line, "unlocked ", 9) == 0) {
 			char *tok = strtok(line + 9, " ");
