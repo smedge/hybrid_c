@@ -37,6 +37,12 @@ void Savepoint_render_notification(const Screen *screen);
 /* Checkpoint API */
 const SaveCheckpoint *Savepoint_get_checkpoint(void);
 
+/* Seed an initial in-memory checkpoint (no disk write).
+ * Used when starting a new game to give the player a valid
+ * respawn point before they trigger a physical savepoint. */
+void Savepoint_seed_checkpoint(const char *zone_path, const char *savepoint_id,
+                               Position position);
+
 /* Suppress arrival (start deactivated) */
 void Savepoint_suppress_by_id(const char *savepoint_id);
 

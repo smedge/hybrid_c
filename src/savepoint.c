@@ -480,6 +480,26 @@ const SaveCheckpoint *Savepoint_get_checkpoint(void)
 	return &checkpoint;
 }
 
+void Savepoint_seed_checkpoint(const char *zone_path, const char *savepoint_id,
+                               Position position)
+{
+	checkpoint.valid = true;
+	strncpy(checkpoint.zone_path, zone_path, sizeof(checkpoint.zone_path) - 1);
+	checkpoint.zone_path[sizeof(checkpoint.zone_path) - 1] = '\0';
+	strncpy(checkpoint.savepoint_id, savepoint_id, sizeof(checkpoint.savepoint_id) - 1);
+	checkpoint.savepoint_id[sizeof(checkpoint.savepoint_id) - 1] = '\0';
+	checkpoint.position = position;
+
+	/* Snapshot current game state (all defaults for a new game) */
+	for (int i = 0; i < SUB_ID_COUNT; i++) {
+		checkpoint.unlocked[i] = Progression_is_unlocked(i);
+		checkpoint.discovered[i] = Progression_is_discovered(i);
+	}
+	for (int i = 0; i < FRAG_TYPE_COUNT; i++)
+		checkpoint.fragment_counts[i] = Fragment_get_count(i);
+	checkpoint.skillbar = Skillbar_snapshot();
+}
+
 bool Savepoint_has_save_file(void)
 {
 	FILE *f = fopen(SAVE_FILE_PATH, "r");

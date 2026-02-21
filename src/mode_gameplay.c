@@ -230,8 +230,15 @@ void Mode_Gameplay_initialize(void)
 	/* Start rebirth sequence */
 	gameplayState = GAMEPLAY_REBIRTH;
 	rebirthTimer = 0;
-	if (loadFromSave)
+	if (loadFromSave) {
 		View_set_position(loadSpawnPos);
+		Ship_set_position(loadSpawnPos);
+
+		/* Seed initial checkpoint so dying before the savepoint
+		 * triggers still respawns at the spawn point */
+		const Zone *z = Zone_get();
+		Savepoint_seed_checkpoint(z->filepath, "save_start", loadSpawnPos);
+	}
 	View_set_scale(REBIRTH_MIN_ZOOM);
 
 	Audio_load_sample(&rebirthSample, REBIRTH_MUSIC_PATH);
