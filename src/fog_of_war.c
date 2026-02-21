@@ -152,11 +152,11 @@ void FogOfWar_set_zone(const char *zone_path)
 		memcpy(cur->data, revealed, sizeof(revealed));
 	}
 
-	/* Load destination from cache, or start fresh */
+	/* Load destination from cache, then disk, then start fresh */
 	FowZoneCache *dest = find_cache(zone_path);
 	if (dest) {
 		memcpy(revealed, dest->data, sizeof(revealed));
-	} else {
+	} else if (!load_zone_from_disk(zone_path, revealed)) {
 		memset(revealed, 0, sizeof(revealed));
 	}
 
