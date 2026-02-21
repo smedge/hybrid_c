@@ -43,6 +43,7 @@ static bool revealed[MAP_SIZE][MAP_SIZE];  // ~1MB, zero-initialized per zone lo
 - **Zone load**: all cells reset to `false` (fully fogged)
 - **Each update tick**: mark cells within reveal radius of player as `true`
 - **Player death**: revealed state **persists** (exploration progress is never lost within a session)
+- **Savepoint save**: FoW state is written to `./save/fog_of_war.bin` alongside the checkpoint `.sav` file. Restored on load-from-save and cross-zone death respawn.
 - **Zone transition**: reset (new zone = new fog)
 - **Procgen regeneration**: reset (new terrain layout = new exploration)
 
@@ -94,6 +95,8 @@ void FogOfWar_reset(void);        // clear all revealed state
 void FogOfWar_update(Position player_pos);  // reveal cells within minimap range
 void FogOfWar_reveal_all(void);   // god mode: mark everything revealed
 bool FogOfWar_is_revealed(int gx, int gy);  // query for world map rendering
+void FogOfWar_save_to_file(void);   // write revealed[][] to ./save/fog_of_war.bin
+void FogOfWar_load_from_file(void); // restore revealed[][] from disk (no-op if missing)
 ```
 
 ### `src/fog_of_war.c`
@@ -117,10 +120,17 @@ No GL resources. Pure CPU state.
 ### `mode_gameplay.c`
 - Call `FogOfWar_update(Ship_get_position())` in update phase (skip while ship is destroyed — dead player doesn't reveal)
 - Call `FogOfWar_initialize()` / `FogOfWar_cleanup()` in lifecycle
+- In `Mode_Gameplay_initialize_from_save()`: call `FogOfWar_load_from_file()` after `Zone_load()` to restore saved exploration state
+- In cross-zone death respawn: call `FogOfWar_load_from_file()` after `zone_teardown_and_load()` to restore FoW when respawning back at checkpoint zone
 
 ### `zone.c`
 - Call `FogOfWar_reset()` in `Zone_load()` (after `apply_zone_to_world()`) and `Zone_unload()`
 - Call `FogOfWar_reset()` in `Zone_regenerate_procgen()`
+
+### `savepoint.c`
+- `#include "fog_of_war.h"`
+- In `do_save()`: call `FogOfWar_save_to_file()` after writing the checkpoint `.sav` file
+- In `Savepoint_delete_save_file()`: also `remove("./save/fog_of_war.bin")` to clean up FoW data
 
 ### `settings.c`
 - Add "Fog of War" toggle (default: ON)
@@ -149,5 +159,4 @@ No GL resources. Pure CPU state.
 - FoW on the gameplay view (intentionally unaffected)
 - FoW on the minimap display (intentionally unaffected)
 - Minimap zoom controls (separate future spec — when added, reveal radius auto-adapts)
-- FoW persistence across sessions / save files
 - Enemy vision / detection tied to FoW
