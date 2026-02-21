@@ -12,6 +12,7 @@ void FogOfWar_reveal_all(void);
 bool FogOfWar_is_revealed(int gx, int gy);
 void FogOfWar_save_to_file(void);
 void FogOfWar_load_from_file(void);
+bool FogOfWar_consume_dirty(void);
 void FogOfWar_set_enabled(bool enabled);
 bool FogOfWar_get_enabled(void);
 

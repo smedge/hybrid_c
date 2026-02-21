@@ -131,8 +131,7 @@ static void generate_texture(void)
 	if (size <= 0) size = MAP_SIZE;
 	texSize = size;
 
-	unsigned char *pixels = malloc(size * size * 4);
-	if (!pixels) return;
+	static unsigned char pixels[MAP_SIZE * MAP_SIZE * 4];
 
 	for (int y = 0; y < size; y++) {
 		for (int x = 0; x < size; x++) {
@@ -188,8 +187,6 @@ static void generate_texture(void)
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, size, size, 0,
 		GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 	glBindTexture(GL_TEXTURE_2D, 0);
-
-	free(pixels);
 }
 
 void MapWindow_toggle(void)
@@ -210,6 +207,9 @@ void MapWindow_update(const Input *input)
 
 	if (input->keyEsc)
 		isOpen = false;
+
+	if (FogOfWar_consume_dirty())
+		generate_texture();
 }
 
 void MapWindow_render(const Screen *screen)
