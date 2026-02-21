@@ -102,12 +102,29 @@ obstacle_density 0.08
 obstacle_min_spacing 8
 ```
 
-- `obstacle_density` — Target obstacle count per 100x100 cell area (approximate). Default: `0.08` (about 8 obstacles per 100x100 region of eligible terrain).
+- `obstacle_density` — Obstacles per 100x100 cell region of eligible terrain. Default: `0.08` (about 8 per region). On a 512x512 zone with ~50% eligible terrain, that produces ~104 obstacles. Crank to `0.20` for denser scatter (~260), drop to `0.03` for sparse (~40).
 - `obstacle_min_spacing` — Minimum cell distance between obstacle block centers. Default: `8`. Prevents clumping.
+
+**Example zone file** (procgen zone with obstacle settings):
+```
+name Sector 7G
+size 512
+seed 42
+procgen true
+
+# Procgen parameters
+hotspot_count 8
+wall_threshold 0.38
+effect_threshold 0.55
+
+# Obstacle scatter
+obstacle_density 0.08
+obstacle_min_spacing 8
+```
 
 ## Scatter Algorithm
 
-Obstacle scatter runs as a post-process step in `Procgen_generate()`, **after** noise terrain and landmark chunks are placed, **before** connectivity validation.
+Obstacle scatter runs as a post-process step in `Procgen_generate()`, **after** noise terrain and landmark chunks are placed, **before** connectivity validation. **Deterministic**: The scatter RNG is seeded from the zone seed (same seed → same obstacle layout every time). This matches the existing procgen contract — terrain, hotspots, and now obstacles are all reproducible from the seed.
 
 ### Where obstacles go
 
@@ -131,7 +148,8 @@ This creates a natural visual gradient: geometric patterns near landmarks fade i
 ### Algorithm
 
 ```
-function scatter_obstacles(zone, terrain, rng):
+function scatter_obstacles(zone, terrain):
+    rng = seed_rng(zone.seed)    // deterministic — same seed, same layout
     obstacles[] = load all .chunk files from resources/obstacles/
     structured[] = filter(obstacles, style == structured)
     organic[] = filter(obstacles, style == organic)
