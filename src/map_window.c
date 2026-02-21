@@ -12,6 +12,7 @@
 #include "mat4.h"
 #include "ship.h"
 #include "color.h"
+#include "fog_of_war.h"
 
 #include <math.h>
 
@@ -136,6 +137,26 @@ static void generate_texture(void)
 	for (int y = 0; y < size; y++) {
 		for (int x = 0; x < size; x++) {
 			int idx = (y * size + x) * 4;
+
+			if (!FogOfWar_is_revealed(x, y)) {
+				/* Unrevealed = black */
+				pixels[idx + 0] = 0;
+				pixels[idx + 1] = 0;
+				pixels[idx + 2] = 0;
+				pixels[idx + 3] = 255;
+				continue;
+			}
+
+			/* Check for soft edge (revealed cell next to unrevealed) */
+			bool edge = false;
+			for (int dy = -1; dy <= 1 && !edge; dy++) {
+				for (int dx = -1; dx <= 1 && !edge; dx++) {
+					if (dx == 0 && dy == 0) continue;
+					if (!FogOfWar_is_revealed(x + dx, y + dy))
+						edge = true;
+				}
+			}
+
 			const MapCell *cell = Map_get_cell(x, y);
 
 			if (cell && !cell->empty) {
@@ -143,14 +164,21 @@ static void generate_texture(void)
 				int r = cell->primaryColor.red * 8;
 				int g = cell->primaryColor.green * 8;
 				int b = cell->primaryColor.blue * 8;
+				if (edge) { r /= 2; g /= 2; b /= 2; }
 				pixels[idx + 0] = (unsigned char)(r > 255 ? 255 : r);
 				pixels[idx + 1] = (unsigned char)(g > 255 ? 255 : g);
 				pixels[idx + 2] = (unsigned char)(b > 255 ? 255 : b);
 				pixels[idx + 3] = 255;
 			} else {
-				pixels[idx + 0] = 10;
-				pixels[idx + 1] = 10;
-				pixels[idx + 2] = 15;
+				if (edge) {
+					pixels[idx + 0] = 5;
+					pixels[idx + 1] = 5;
+					pixels[idx + 2] = 7;
+				} else {
+					pixels[idx + 0] = 10;
+					pixels[idx + 1] = 10;
+					pixels[idx + 2] = 15;
+				}
 				pixels[idx + 3] = 255;
 			}
 		}
@@ -298,6 +326,9 @@ void MapWindow_render(const Screen *screen)
 		const Zone *z = Zone_get();
 		float ds = 3.0f;
 		for (int i = 0; i < z->savepoint_count; i++) {
+			if (!FogOfWar_is_revealed(z->savepoints[i].grid_x,
+				z->savepoints[i].grid_y))
+				continue;
 			float sx = qx + z->savepoints[i].grid_x * scale;
 			float sy = qy + (1.0f - z->savepoints[i].grid_y / (float)texSize) * qh;
 			Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,
@@ -310,6 +341,9 @@ void MapWindow_render(const Screen *screen)
 		const Zone *z = Zone_get();
 		float ds = 3.0f;
 		for (int i = 0; i < z->portal_count; i++) {
+			if (!FogOfWar_is_revealed(z->portals[i].grid_x,
+				z->portals[i].grid_y))
+				continue;
 			float sx = qx + z->portals[i].grid_x * scale;
 			float sy = qy + (1.0f - z->portals[i].grid_y / (float)texSize) * qh;
 			Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,

@@ -8,6 +8,7 @@
 #include "zone.h"
 #include "audio.h"
 #include "procgen.h"
+#include "fog_of_war.h"
 
 #include <string.h>
 #include <math.h>
@@ -167,6 +168,7 @@ static void do_save(SavepointState *sp)
 	fprintf(f, "\n");
 
 	fclose(f);
+	FogOfWar_save_to_file();
 	printf("Savepoint: saved at '%s' in %s\n", sp->id, checkpoint.zone_path);
 
 	notifyActive = true;
@@ -517,6 +519,7 @@ bool Savepoint_has_save_file(void)
 void Savepoint_delete_save_file(void)
 {
 	remove(SAVE_FILE_PATH);
+	remove("./save/fog_of_war.bin");
 	memset(&checkpoint, 0, sizeof(checkpoint));
 	checkpoint.valid = false;
 }

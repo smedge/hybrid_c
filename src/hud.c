@@ -15,6 +15,11 @@
 
 static void render_radar(const Screen *screen);
 
+float Hud_get_minimap_range(void)
+{
+	return RADAR_RANGE;
+}
+
 void Hud_initialize(void)
 {
 }

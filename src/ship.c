@@ -27,6 +27,7 @@
 #include "fragment.h"
 #include "progression.h"
 #include "skillbar.h"
+#include "fog_of_war.h"
 
 #include <string.h>
 
@@ -190,6 +191,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 					Fragment_set_count(i, ckpt->fragment_counts[i]);
 				Progression_restore(ckpt->unlocked, ckpt->discovered);
 				Skillbar_restore(ckpt->skillbar);
+				FogOfWar_load_from_file();
 			} else if (ckpt->valid) {
 				/* Cross-zone respawn — flag for mode_gameplay to handle */
 				Ship_set_pending_cross_zone_respawn(true);

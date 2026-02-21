@@ -32,6 +32,7 @@
 #include "fragment.h"
 #include "circuit_atlas.h"
 #include "map_window.h"
+#include "fog_of_war.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -201,6 +202,7 @@ void Mode_Gameplay_initialize(void)
 	Skillbar_initialize();
 	Catalog_initialize();
 	Settings_initialize();
+	FogOfWar_initialize();
 	Procgen_set_master_seed((uint32_t)time(NULL));
 	Zone_load("./resources/zones/procgen_001.zone");
 	Destructible_initialize();
@@ -270,9 +272,11 @@ void Mode_Gameplay_initialize_from_save(void)
 	Skillbar_initialize();
 	Catalog_initialize();
 	Settings_initialize();
+	FogOfWar_initialize();
 	if (ckpt->procgen_seed != 0)
 		Procgen_set_master_seed(ckpt->procgen_seed);
 	Zone_load(ckpt->zone_path);
+	FogOfWar_load_from_file();
 	Destructible_initialize();
 
 	/* Restore progression + skillbar + fragment counts from checkpoint */
@@ -302,6 +306,7 @@ void Mode_Gameplay_initialize_from_save(void)
 
 void Mode_Gameplay_cleanup(void)
 {
+	FogOfWar_cleanup();
 	Settings_cleanup();
 	Catalog_cleanup();
 	Skillbar_cleanup();
@@ -383,6 +388,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		godModeActive = !godModeActive;
 		Ship_set_god_mode(godModeActive);
 		if (godModeActive) {
+			FogOfWar_reveal_all();
 			View_set_min_zoom(0.01);
 		} else {
 			Zone_save_if_dirty();
@@ -489,6 +495,10 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 
 	View_set_position(Ship_get_position());
 
+	/* Reveal fog of war around player (skip while dead) */
+	if (!Ship_is_destroyed())
+		FogOfWar_update(Ship_get_position());
+
 	/* Check for portal transition trigger */
 	if (Portal_has_pending_transition()) {
 		begin_warp();
@@ -504,6 +514,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 
 			/* Zone swap (no cinematic) */
 			zone_teardown_and_load(ckpt->zone_path);
+			FogOfWar_load_from_file();
 
 			Ship_force_spawn(ckpt->position);
 			Savepoint_suppress_by_id(ckpt->savepoint_id);
