@@ -306,7 +306,6 @@ void Zone_load(const char *path)
 		Procgen_generate(&zone);
 
 	apply_zone_to_world();
-	FogOfWar_reset();
 
 	printf("Zone_load: loaded '%s' (%d cell types, %d spawns, %d portals, %d savepoints)\n",
 		zone.name, zone.cell_type_count, zone.spawn_count, zone.portal_count, zone.savepoint_count);
@@ -314,7 +313,6 @@ void Zone_load(const char *path)
 
 void Zone_unload(void)
 {
-	FogOfWar_reset();
 	Map_clear();
 	Map_clear_boundary_cell();
 	Mine_cleanup();
@@ -832,7 +830,7 @@ void Zone_regenerate_procgen(void)
 
 	/* Rebuild world (does NOT set zoneDirty — this is a preview, not an edit) */
 	apply_zone_to_world();
-	FogOfWar_reset();
+	FogOfWar_reset_active();
 	Zone_spawn_enemies();
 }
 

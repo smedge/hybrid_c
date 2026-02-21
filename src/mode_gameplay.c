@@ -205,6 +205,7 @@ void Mode_Gameplay_initialize(void)
 	FogOfWar_initialize();
 	Procgen_set_master_seed((uint32_t)time(NULL));
 	Zone_load("./resources/zones/procgen_001.zone");
+	FogOfWar_set_zone("./resources/zones/procgen_001.zone");
 	Destructible_initialize();
 
 	godModeActive = false;
@@ -276,7 +277,8 @@ void Mode_Gameplay_initialize_from_save(void)
 	if (ckpt->procgen_seed != 0)
 		Procgen_set_master_seed(ckpt->procgen_seed);
 	Zone_load(ckpt->zone_path);
-	FogOfWar_load_from_file();
+	FogOfWar_set_zone(ckpt->zone_path);
+	FogOfWar_load_all_from_disk();
 	Destructible_initialize();
 
 	/* Restore progression + skillbar + fragment counts from checkpoint */
@@ -512,9 +514,8 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		if (ckpt->valid) {
 			SkillbarSnapshot skillSnap = ckpt->skillbar;
 
-			/* Zone swap (no cinematic) */
+			/* Zone swap (no cinematic) — FoW saved/loaded inside */
 			zone_teardown_and_load(ckpt->zone_path);
-			FogOfWar_load_from_file();
 
 			Ship_force_spawn(ckpt->position);
 			Savepoint_suppress_by_id(ckpt->savepoint_id);
@@ -1346,6 +1347,9 @@ static void zone_teardown_and_load(const char *zone_path)
 	Zone_load(zone_path);
 	Zone_spawn_enemies();
 	Destructible_initialize();
+
+	/* Swap fog of war to destination zone (stashes current, loads cached) */
+	FogOfWar_set_zone(zone_path);
 }
 
 /* --- Zone navigation --- */
