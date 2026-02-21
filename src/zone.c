@@ -81,7 +81,6 @@ void Zone_load(const char *path)
 	/* Hotspot defaults */
 	zone.hotspot_count = 10;
 	zone.hotspot_edge_margin = 80;
-	zone.hotspot_center_exclusion = 120;
 	zone.hotspot_min_separation = 150;
 	zone.landmark_min_separation = 120;
 
@@ -155,8 +154,10 @@ void Zone_load(const char *path)
 			if (zone.spawn_count >= ZONE_MAX_SPAWNS) continue;
 
 			ZoneSpawn *sp = &zone.spawns[zone.spawn_count];
-			if (sscanf(line + 6, "%15s %lf %lf", sp->enemy_type, &sp->world_x, &sp->world_y) == 3)
+			if (sscanf(line + 6, "%15s %lf %lf", sp->enemy_type, &sp->world_x, &sp->world_y) == 3) {
+				sp->probability = 1.0f;
 				zone.spawn_count++;
+			}
 		}
 		else if (strncmp(line, "portal ", 7) == 0) {
 			if (zone.portal_count >= ZONE_MAX_PORTALS) continue;
@@ -217,19 +218,11 @@ void Zone_load(const char *path)
 		else if (strncmp(line, "noise_wall_threshold ", 21) == 0) {
 			sscanf(line + 21, "%lf", &zone.noise_wall_threshold);
 		}
-		else if (strncmp(line, "center_anchor ", 14) == 0) {
-			strncpy(zone.center_anchor_path, line + 14,
-			        sizeof(zone.center_anchor_path) - 1);
-			zone.has_center_anchor = true;
-		}
 		else if (strncmp(line, "hotspot_count ", 14) == 0) {
 			sscanf(line + 14, "%d", &zone.hotspot_count);
 		}
 		else if (strncmp(line, "hotspot_edge_margin ", 20) == 0) {
 			sscanf(line + 20, "%d", &zone.hotspot_edge_margin);
-		}
-		else if (strncmp(line, "hotspot_center_exclusion ", 25) == 0) {
-			sscanf(line + 25, "%d", &zone.hotspot_center_exclusion);
 		}
 		else if (strncmp(line, "hotspot_min_separation ", 23) == 0) {
 			sscanf(line + 23, "%d", &zone.hotspot_min_separation);
@@ -391,13 +384,9 @@ void Zone_save(void)
 		fprintf(f, "noise_persistence %g\n", zone.noise_persistence);
 		fprintf(f, "noise_wall_threshold %g\n", zone.noise_wall_threshold);
 
-		if (zone.has_center_anchor)
-			fprintf(f, "center_anchor %s\n", zone.center_anchor_path);
-
 		/* Hotspot params (only if non-default) */
 		fprintf(f, "hotspot_count %d\n", zone.hotspot_count);
 		fprintf(f, "hotspot_edge_margin %d\n", zone.hotspot_edge_margin);
-		fprintf(f, "hotspot_center_exclusion %d\n", zone.hotspot_center_exclusion);
 		fprintf(f, "hotspot_min_separation %d\n", zone.hotspot_min_separation);
 		fprintf(f, "landmark_min_separation %d\n", zone.landmark_min_separation);
 
@@ -550,6 +539,7 @@ void Zone_place_spawn(const char *enemy_type, double world_x, double world_y)
 	strncpy(sp->enemy_type, enemy_type, sizeof(sp->enemy_type) - 1);
 	sp->world_x = world_x;
 	sp->world_y = world_y;
+	sp->probability = 1.0f;
 	zone.spawn_count++;
 
 	/* Spawn in world */
@@ -870,6 +860,14 @@ void Zone_spawn_enemies(void)
 {
 	for (int i = 0; i < zone.spawn_count; i++) {
 		ZoneSpawn *sp = &zone.spawns[i];
+
+		/* Roll probability — hand-placed spawns are 1.0 (always pass) */
+		if (sp->probability < 1.0f) {
+			float roll = (float)rand() / (float)RAND_MAX;
+			if (roll > sp->probability)
+				continue;
+		}
+
 		Position pos = {sp->world_x, sp->world_y};
 		if (strcmp(sp->enemy_type, "mine") == 0)
 			Mine_initialize(pos);

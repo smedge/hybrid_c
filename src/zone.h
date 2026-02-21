@@ -66,6 +66,7 @@ typedef struct {
 typedef struct {
 	char enemy_type[16];
 	double world_x, world_y;
+	float probability;
 } ZoneSpawn;
 
 typedef struct {
@@ -122,14 +123,9 @@ typedef struct {
 	int wall_type_indices[ZONE_MAX_CELL_TYPES];
 	int wall_type_count;
 
-	/* Center anchor */
-	char center_anchor_path[256];
-	bool has_center_anchor;
-
 	/* Hotspot generation params */
 	int hotspot_count;
 	int hotspot_edge_margin;
-	int hotspot_center_exclusion;
 	int hotspot_min_separation;
 
 	/* Landmarks */

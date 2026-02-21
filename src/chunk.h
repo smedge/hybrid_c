@@ -22,6 +22,7 @@ typedef enum {
 typedef struct {
 	int x, y;
 	int celltype_index;
+	char drop_sub[32];
 } ChunkCell;
 
 typedef struct {

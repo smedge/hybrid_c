@@ -23,6 +23,7 @@
 #include "stalker.h"
 #include "savepoint.h"
 #include "zone.h"
+#include "enemy_registry.h"
 #include "fragment.h"
 #include "progression.h"
 #include "skillbar.h"
@@ -215,11 +216,13 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Stealth_initialize();
 			Sub_Gravwell_deactivate_all();
 			PlayerStats_reset();
-			Hunter_reset_all();
-			Seeker_reset_all();
-			Defender_reset_all();
-			Stalker_reset_all();
-			Mine_reset_all();
+			Mine_cleanup();
+			Hunter_cleanup();
+			Seeker_cleanup();
+			Defender_cleanup();
+			Stalker_cleanup();
+			EnemyRegistry_clear();
+			Zone_spawn_enemies();
 
 			Audio_play_sample(&sample01);
 		}

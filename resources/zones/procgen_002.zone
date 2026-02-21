@@ -15,14 +15,14 @@ music resources/music/deadmau5_BloodGoat.mp3
 music resources/music/deadmau5_LimitBreak.mp3
 
 procgen true
-noise_octaves 5
+noise_octaves 3
 noise_frequency 0.01
 noise_lacunarity 2
 noise_persistence 0.5
-noise_wall_threshold -0.1
-hotspot_count 10
+noise_wall_threshold -0.2
+
+hotspot_count 20
 hotspot_edge_margin 80
-hotspot_center_exclusion 120
 hotspot_min_separation 150
 landmark_min_separation 120
 

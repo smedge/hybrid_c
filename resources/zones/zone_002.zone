@@ -570,16 +570,12 @@ cell 520 513 blue_solid
 cell 521 511 blue_circuit
 cell 521 512 blue_circuit
 
-spawn stalker -1700.0 -8000.0
-spawn stalker -1500.0 -8000.0
 spawn mine -1600.0 -4800.0
 spawn mine -1600.0 -6400.0
 spawn mine -3200.0 -6400.0
 spawn mine -3200.0 -4800.0
 spawn mine 0.0 -4800.0
 spawn mine 0.0 -6400.0
-spawn mine -800.0 -5600.0
-spawn mine -2400.0 -5600.0
 spawn mine -3200.0 -1600.0
 spawn mine -3200.0 -3200.0
 spawn mine 0.0 -3200.0
@@ -590,28 +586,11 @@ spawn mine -3200.0 -9600.0
 spawn mine -3200.0 -8000.0
 spawn mine 0.0 -8000.0
 spawn mine 0.0 -9600.0
-spawn mine -4800.0 -1600.0
-spawn mine -4800.0 -3200.0
-spawn mine -4800.0 -4800.0
-spawn mine -4800.0 -6400.0
-spawn mine -4800.0 -8000.0
-spawn mine -4800.0 -9600.0
-spawn mine -4000.0 -8800.0
-spawn mine -4000.0 -7200.0
-spawn mine -4000.0 -5600.0
-spawn mine -4000.0 -4000.0
-spawn mine -4000.0 -2400.0
-spawn mine 1600.0 -1600.0
-spawn mine 1600.0 -3200.0
-spawn mine 1600.0 -4800.0
-spawn mine 1600.0 -6400.0
-spawn mine 1600.0 -8000.0
-spawn mine 1600.0 -9600.0
-spawn mine 800.0 -7200.0
-spawn mine 800.0 -8800.0
-spawn mine 800.0 -5600.0
-spawn mine 800.0 -4000.0
-spawn mine 800.0 -2400.0
-spawn stalker -1600.0 -3200.0
+spawn seeker -1600.0 -3200.0
+spawn defender 13600.0 -4000.0
+spawn hunter 13500.0 -3900.0
+spawn hunter 13700.0 -4100.0
+spawn seeker 13700.0 -3900.0
+spawn seeker 13500.0 -4100.0
 
 portal 512 512 west_gate ./resources/zones/zone_001.zone east_gate

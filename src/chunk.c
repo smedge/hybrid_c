@@ -76,8 +76,16 @@ bool Chunk_load(ChunkTemplate *out, const char *filepath)
 		else if (strncmp(line, "wall ", 5) == 0) {
 			if (out->wall_count >= CHUNK_MAX_CELLS) continue;
 			ChunkCell *c = &out->walls[out->wall_count];
-			if (sscanf(line + 5, "%d %d %d", &c->x, &c->y, &c->celltype_index) == 3)
+			c->drop_sub[0] = '\0';
+			char drop[64] = "";
+			int n = sscanf(line + 5, "%d %d %d %63s", &c->x, &c->y, &c->celltype_index, drop);
+			if (n >= 3) {
+				if (n >= 4 && strncmp(drop, "drop:", 5) == 0) {
+					strncpy(c->drop_sub, drop + 5, sizeof(c->drop_sub) - 1);
+					c->drop_sub[sizeof(c->drop_sub) - 1] = '\0';
+				}
 				out->wall_count++;
+			}
 		}
 		else if (strncmp(line, "empty ", 6) == 0) {
 			if (out->empty_count >= CHUNK_MAX_CELLS) continue;
@@ -142,6 +150,14 @@ void Chunk_stamp(const ChunkTemplate *chunk, Zone *zone,
 				int ct_idx = chunk->walls[i].celltype_index;
 				if (ct_idx >= 0 && ct_idx < zone->cell_type_count)
 					zone->cell_grid[gx][gy] = ct_idx;
+				if (chunk->walls[i].drop_sub[0] != '\0' &&
+				    zone->destructible_count < ZONE_MAX_DESTRUCTIBLES) {
+					ZoneDestructible *d = &zone->destructibles[zone->destructible_count++];
+					d->grid_x = gx;
+					d->grid_y = gy;
+					strncpy(d->drop_sub, chunk->walls[i].drop_sub, sizeof(d->drop_sub) - 1);
+					d->drop_sub[sizeof(d->drop_sub) - 1] = '\0';
+				}
 			}
 		}
 	}
@@ -212,8 +228,13 @@ bool Chunk_export(int min_gx, int min_gy, int max_gx, int max_gy,
 		for (int gx = min_gx; gx <= max_gx; gx++) {
 			int idx = z->cell_grid[gx][gy];
 			if (idx >= 0) {
-				fprintf(f, "wall %d %d %d\n",
-				        gx - min_gx, gy - min_gy, idx);
+				const ZoneDestructible *d = Zone_get_destructible(gx, gy);
+				if (d)
+					fprintf(f, "wall %d %d %d drop:%s\n",
+					        gx - min_gx, gy - min_gy, idx, d->drop_sub);
+				else
+					fprintf(f, "wall %d %d %d\n",
+					        gx - min_gx, gy - min_gy, idx);
 				wall_count++;
 			}
 		}

@@ -37,7 +37,7 @@ wall 23 11 1
 wall 14 14 0
 wall 17 14 0
 wall 14 17 0
-wall 17 17 0
+wall 17 17 1 drop:sub_boost
 wall 8 20 1
 wall 9 20 1
 wall 10 20 1

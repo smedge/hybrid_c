@@ -3,6 +3,7 @@
 #include "noise.h"
 #include "prng.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -98,7 +99,6 @@ static int generate_hotspots(Zone *zone, Prng *rng, Hotspot *out)
 	int margin = zone->hotspot_edge_margin;
 	int min_sep = zone->hotspot_min_separation;
 	int target = zone->hotspot_count;
-	int center = zone->size / 2;
 
 	/* Enumerate all 16x16 section centers within valid area */
 	GridCenter candidates[MAX_CANDIDATES];
@@ -113,14 +113,6 @@ static int generate_hotspots(Zone *zone, Prng *rng, Hotspot *out)
 			/* Edge margin check */
 			if (cx < margin || cx >= zone->size - margin) continue;
 			if (cy < margin || cy >= zone->size - margin) continue;
-
-			/* Center exclusion — only if zone has a center anchor */
-			if (zone->has_center_anchor) {
-				double dx = cx - center;
-				double dy = cy - center;
-				if (sqrt(dx * dx + dy * dy) < zone->hotspot_center_exclusion)
-					continue;
-			}
 
 			if (candidate_count < MAX_CANDIDATES) {
 				candidates[candidate_count].x = cx;
@@ -272,9 +264,12 @@ static int resolve_landmarks(Zone *zone, Prng *rng,
 				if (gx < 0 || gx >= zone->size || gy < 0 || gy >= zone->size)
 					continue;
 
-				/* Probability check */
+				/* Consume PRNG for determinism (portals/savepoints filter here,
+				 * enemies store probability and re-roll on each spawn) */
 				float roll = Prng_float(rng);
-				if (roll > chunk.spawns[si].probability)
+				bool is_enemy = strcmp(chunk.spawns[si].entity_type, "portal") != 0 &&
+				                strcmp(chunk.spawns[si].entity_type, "savepoint") != 0;
+				if (!is_enemy && roll > chunk.spawns[si].probability)
 					continue;
 
 				if (strcmp(chunk.spawns[si].entity_type, "portal") == 0) {
@@ -306,7 +301,7 @@ static int resolve_landmarks(Zone *zone, Prng *rng,
 					}
 				}
 				else {
-					/* Enemy spawn */
+					/* Enemy spawn — store with probability for re-roll on death */
 					if (zone->spawn_count < ZONE_MAX_SPAWNS) {
 						ZoneSpawn *sp = &zone->spawns[zone->spawn_count++];
 						strncpy(sp->enemy_type, chunk.spawns[si].entity_type,
@@ -315,6 +310,7 @@ static int resolve_landmarks(Zone *zone, Prng *rng,
 						/* Convert grid to world coords */
 						sp->world_x = (gx - HALF_MAP_SIZE) * MAP_CELL_SIZE;
 						sp->world_y = (gy - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+						sp->probability = chunk.spawns[si].probability;
 					}
 				}
 			}
@@ -383,6 +379,89 @@ static double compute_wall_threshold(int gx, int gy, double base_threshold,
 #define CIRCUIT_VEIN_FREQ      0.03
 #define CIRCUIT_VEIN_THRESHOLD 0.30
 
+/* Landmark edge erosion: smooths the hard rectangular boundary between
+ * chunk-stamped areas and noise terrain by eroding nearby wall cells
+ * using a noise-modulated depth. */
+#define ERODE_MAX_DIST       16      /* BFS reach from chunk boundary */
+#define ERODE_MIN_DEPTH      2       /* minimum erosion (always breaks edges) */
+#define ERODE_NOISE_OCTAVES  2       /* low = smooth, slowly curving edges */
+#define ERODE_NOISE_FREQ     0.04    /* low frequency = broad curves */
+#define ERODE_SEED_OFFSET    77777u  /* offset from zone_seed */
+
+static void erode_landmark_edges(Zone *zone, uint32_t zone_seed)
+{
+	int size = zone->size;
+	uint32_t erode_seed = zone_seed + ERODE_SEED_OFFSET;
+
+	/* Distance field: -1 = not near boundary, 1..MAX = distance from edge */
+	int8_t *dist = malloc(size * size * sizeof(int8_t));
+	memset(dist, -1, size * size);
+	int *qx = malloc(size * size * sizeof(int));
+	int *qy = malloc(size * size * sizeof(int));
+	int qhead = 0, qtail = 0;
+
+	/* Seed BFS: non-stamped cells adjacent (8-connected) to stamped cells */
+	for (int y = 0; y < size; y++) {
+		for (int x = 0; x < size; x++) {
+			if (zone->cell_chunk_stamped[x][y]) continue;
+			bool adj = false;
+			for (int dy = -1; dy <= 1 && !adj; dy++)
+				for (int dx = -1; dx <= 1 && !adj; dx++) {
+					if (dx == 0 && dy == 0) continue;
+					int nx = x + dx, ny = y + dy;
+					if (nx >= 0 && nx < size && ny >= 0 && ny < size
+					    && zone->cell_chunk_stamped[nx][ny])
+						adj = true;
+				}
+			if (adj) {
+				dist[y * size + x] = 1;
+				qx[qtail] = x; qy[qtail] = y; qtail++;
+			}
+		}
+	}
+
+	/* BFS outward (8-connected / Chebyshev) up to ERODE_MAX_DIST */
+	while (qhead < qtail) {
+		int cx = qx[qhead], cy = qy[qhead]; qhead++;
+		int d = dist[cy * size + cx];
+		if (d >= ERODE_MAX_DIST) continue;
+		for (int dy = -1; dy <= 1; dy++)
+			for (int dx = -1; dx <= 1; dx++) {
+				if (dx == 0 && dy == 0) continue;
+				int nx = cx + dx, ny = cy + dy;
+				if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+				if (zone->cell_chunk_stamped[nx][ny]) continue;
+				if (dist[ny * size + nx] >= 0) continue;
+				dist[ny * size + nx] = d + 1;
+				qx[qtail] = nx; qy[qtail] = ny; qtail++;
+			}
+	}
+
+	/* Erosion pass: clear walls within noise-modulated depth of boundary */
+	int eroded = 0;
+	for (int y = 0; y < size; y++) {
+		for (int x = 0; x < size; x++) {
+			int d = dist[y * size + x];
+			if (d < 1 || d > ERODE_MAX_DIST) continue;
+			if (zone->cell_grid[x][y] < 0) continue;       /* not a wall */
+			if (zone->cell_hand_placed[x][y]) continue;     /* protected */
+
+			double noise = Noise_fbm((double)x, (double)y,
+				ERODE_NOISE_OCTAVES, ERODE_NOISE_FREQ,
+				2.0, 0.5, erode_seed);
+			double depth = ERODE_MIN_DEPTH
+				+ (noise + 1.0) * 0.5 * (ERODE_MAX_DIST - ERODE_MIN_DEPTH);
+			if ((double)d <= depth) {
+				zone->cell_grid[x][y] = -1;
+				eroded++;
+			}
+		}
+	}
+
+	free(dist); free(qx); free(qy);
+	printf("Procgen: eroded %d wall cells near landmark edges\n", eroded);
+}
+
 void Procgen_generate(Zone *zone)
 {
 	if (!zone->procgen) return;
@@ -391,30 +470,6 @@ void Procgen_generate(Zone *zone)
 	debug_zone_seed = zone_seed;
 	Prng rng;
 	Prng_seed(&rng, zone_seed);
-
-	/* ─── Center Anchor (optional) ─── */
-	if (zone->has_center_anchor) {
-		ChunkTemplate anchor;
-		if (Chunk_load(&anchor, zone->center_anchor_path)) {
-			ChunkTransform transform = (ChunkTransform)(zone_seed % TRANSFORM_COUNT);
-			int center = zone->size / 2;
-			int origin_x = center - anchor.width / 2;
-			int origin_y = center - anchor.height / 2;
-			Chunk_stamp(&anchor, zone, origin_x, origin_y, transform);
-			printf("Procgen: center anchor '%s' stamped with transform %d\n",
-			       anchor.name, transform);
-		}
-	} else {
-		/* Legacy fallback: clear 64x64 center zone */
-		int center = zone->size / 2;
-		int fortress_half = 32;
-		int fort_min = center - fortress_half;
-		int fort_max = center + fortress_half;
-		for (int y = fort_min; y < fort_max; y++)
-			for (int x = fort_min; x < fort_max; x++)
-				if (x >= 0 && x < zone->size && y >= 0 && y < zone->size)
-					zone->cell_chunk_stamped[x][y] = true;
-	}
 
 	/* ─── Hotspot Generation ─── */
 	Hotspot hotspots[MAX_HOTSPOTS];
@@ -494,6 +549,9 @@ void Procgen_generate(Zone *zone)
 			/* else: leave as -1 (empty space over cloudscape) */
 		}
 	}
+
+	/* ─── Landmark Edge Erosion ─── */
+	erode_landmark_edges(zone, zone_seed);
 
 	printf("Procgen_generate: seed=%u zone_seed=%u walls=%d hotspots=%d landmarks=%d\n",
 	       master_seed, zone_seed, walls_placed, hotspot_count, placed_count);
