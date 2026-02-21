@@ -20,7 +20,9 @@ typedef struct {
 
 typedef struct {
 	const LandmarkDef *def;
-	int grid_x, grid_y;
+	int grid_x, grid_y;       /* hotspot center */
+	int origin_x, origin_y;   /* chunk stamp origin (top-left) */
+	int stamp_w, stamp_h;     /* chunk dims after transform */
 } PlacedLandmark;
 
 static Hotspot         debug_hotspots[MAX_HOTSPOTS];
@@ -230,13 +232,27 @@ static int resolve_landmarks(Zone *zone, Prng *rng,
 		hotspots[h_idx].used = true;
 
 		/* Load and stamp chunk */
+		int origin_x = hotspots[h_idx].x;
+		int origin_y = hotspots[h_idx].y;
+		int sw = 0, sh = 0;
 		ChunkTemplate chunk;
 		if (Chunk_load(&chunk, def->chunk_path)) {
 			ChunkTransform transform = (ChunkTransform)Prng_range(rng, 0, TRANSFORM_COUNT - 1);
 
 			/* Origin = hotspot minus half-size (already grid-aligned) */
-			int origin_x = hotspots[h_idx].x - chunk.width / 2;
-			int origin_y = hotspots[h_idx].y - chunk.height / 2;
+			origin_x = hotspots[h_idx].x - chunk.width / 2;
+			origin_y = hotspots[h_idx].y - chunk.height / 2;
+
+			/* Compute transformed dimensions */
+			if (transform == TRANSFORM_ROT90 || transform == TRANSFORM_ROT270 ||
+			    transform == TRANSFORM_MIRROR_H_ROT90 || transform == TRANSFORM_MIRROR_V_ROT90) {
+				sw = chunk.height;
+				sh = chunk.width;
+			} else {
+				sw = chunk.width;
+				sh = chunk.height;
+			}
+
 			Chunk_stamp(&chunk, zone, origin_x, origin_y, transform);
 
 			/* Resolve chunk spawns — portals, savepoints, enemies */
@@ -307,6 +323,10 @@ static int resolve_landmarks(Zone *zone, Prng *rng,
 		out[placed_count].def = def;
 		out[placed_count].grid_x = hotspots[h_idx].x;
 		out[placed_count].grid_y = hotspots[h_idx].y;
+		out[placed_count].origin_x = origin_x;
+		out[placed_count].origin_y = origin_y;
+		out[placed_count].stamp_w = sw;
+		out[placed_count].stamp_h = sh;
 		placed_count++;
 	}
 

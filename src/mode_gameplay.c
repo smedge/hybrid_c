@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
+#include <time.h>
 
 typedef enum {
 	GAMEPLAY_REBIRTH,
@@ -200,15 +201,37 @@ void Mode_Gameplay_initialize(void)
 	Skillbar_initialize();
 	Catalog_initialize();
 	Settings_initialize();
-	Zone_load("./resources/zones/zone_001.zone");
+	Procgen_set_master_seed((uint32_t)time(NULL));
+	Zone_load("./resources/zones/procgen_001.zone");
 	Destructible_initialize();
 
 	godModeActive = false;
 	godModeSelectedType = 0;
 
+	/* Find player_start landmark for spawn position */
+	loadFromSave = false;
+	{
+		int lcount = Procgen_get_landmark_count();
+		for (int i = 0; i < lcount; i++) {
+			int lx, ly;
+			const char *type;
+			float radius;
+			int inf;
+			Procgen_get_landmark(i, &lx, &ly, &type, &radius, &inf);
+			if (strcmp(type, "player_start") == 0) {
+				loadFromSave = true;
+				loadSpawnPos.x = (lx - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+				loadSpawnPos.y = (ly - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+				break;
+			}
+		}
+	}
+
 	/* Start rebirth sequence */
 	gameplayState = GAMEPLAY_REBIRTH;
 	rebirthTimer = 0;
+	if (loadFromSave)
+		View_set_position(loadSpawnPos);
 	View_set_scale(REBIRTH_MIN_ZOOM);
 
 	Audio_load_sample(&rebirthSample, REBIRTH_MUSIC_PATH);

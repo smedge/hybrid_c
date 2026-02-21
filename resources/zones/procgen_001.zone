@@ -1,0 +1,28 @@
+# Zone: Procgen Test
+name Procgen Test
+size 1024
+
+bgcolor 0 89 26 140
+bgcolor 1 51 26 128
+bgcolor 2 115 20 102
+bgcolor 3 38 13 89
+
+celltype solid 20 0 20 255 128 0 128 255 none
+celltype circuit 10 20 20 180 64 128 128 255 circuit
+
+music resources/music/deadmau5_Quezacotl.mp3
+music resources/music/deadmau5_HR8938Cephei.mp3
+
+procgen true
+noise_octaves 5
+noise_frequency 0.01
+noise_lacunarity 2
+noise_persistence 0.5
+noise_wall_threshold -0.1
+
+landmark player_start resources/chunks/save_001.chunk 1 moderate 80 0.6 2.0
+landmark_savepoint player_start save_start
+
+landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2.0
+landmark_portal exit_point portal_to_002 resources/zones/procgen_002.zone portal_to_001
+landmark_savepoint exit_point save_001
