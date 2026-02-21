@@ -25,6 +25,7 @@
 #include "map_lighting.h"
 #include "grid.h"
 #include "procgen.h"
+#include "chunk.h"
 #include "noise.h"
 #include "savepoint.h"
 #include "portal.h"
@@ -120,6 +121,7 @@ typedef enum {
 	GOD_MODE_ENEMIES,
 	GOD_MODE_SAVEPOINTS,
 	GOD_MODE_PORTALS,
+	GOD_MODE_CHUNKS,
 	GOD_MODE_COUNT
 } GodPlacementMode;
 
@@ -129,7 +131,14 @@ static const char *ENEMY_TYPES[] = {"mine", "hunter", "seeker", "defender", "sta
 #define ENEMY_TYPE_COUNT 5
 static int godEnemyType = 0;
 
-static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals"};
+static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks"};
+
+/* Chunk export selection */
+static bool chunkSelHasA = false;
+static bool chunkSelHasB = false;
+static int chunkSelA_x = 0, chunkSelA_y = 0;
+static int chunkSelB_x = 0, chunkSelB_y = 0;
+static int chunkExportCounter = 0;
 
 /* Zone jump menu */
 static bool godZoneMenuOpen = false;
@@ -162,6 +171,8 @@ static void god_mode_render_hud(const Screen *screen);
 static void god_mode_render_spawn_labels(void);
 static void god_mode_render_spawn_markers(void);
 static void god_mode_render_noise_heatmap(void);
+static void god_mode_render_chunk_selection(void);
+static void god_mode_render_procgen_debug(void);
 static void zone_teardown_and_load(const char *zone_path);
 static void god_mode_jump_to_zone(const char *zone_path);
 static void god_mode_scan_zones(void);
@@ -552,6 +563,8 @@ void Mode_Gameplay_render(void)
 		if (godNoiseHeatmapActive)
 			god_mode_render_noise_heatmap();
 		god_mode_render_spawn_markers();
+		god_mode_render_procgen_debug();
+		god_mode_render_chunk_selection();
 		god_mode_render_cursor();
 	}
 	Render_flush(&world_proj, &view);
@@ -766,19 +779,32 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 		godPlacementMode = (godPlacementMode + 1) % GOD_MODE_COUNT;
 	}
 
-	/* Tab cycles sub-type within mode */
+	/* Tab cycles sub-type within mode (or exports chunk selection) */
 	if (input->keyTab) {
-		const Zone *z = Zone_get();
-		switch (godPlacementMode) {
-		case GOD_MODE_CELLS:
-			if (z->cell_type_count > 0)
-				godModeSelectedType = (godModeSelectedType + 1) % z->cell_type_count;
-			break;
-		case GOD_MODE_ENEMIES:
-			godEnemyType = (godEnemyType + 1) % ENEMY_TYPE_COUNT;
-			break;
-		default:
-			break;
+		if (godPlacementMode == GOD_MODE_CHUNKS) {
+			/* Tab = export chunk if selection is complete */
+			if (chunkSelHasA && chunkSelHasB) {
+				chunkExportCounter++;
+				char path[256];
+				snprintf(path, sizeof(path),
+				         "resources/chunks/export_%03d.chunk", chunkExportCounter);
+				Chunk_export(chunkSelA_x, chunkSelA_y,
+				             chunkSelB_x, chunkSelB_y, path);
+				printf("Chunk exported to: %s\n", path);
+			}
+		} else {
+			const Zone *z = Zone_get();
+			switch (godPlacementMode) {
+			case GOD_MODE_CELLS:
+				if (z->cell_type_count > 0)
+					godModeSelectedType = (godModeSelectedType + 1) % z->cell_type_count;
+				break;
+			case GOD_MODE_ENEMIES:
+				godEnemyType = (godEnemyType + 1) % ENEMY_TYPE_COUNT;
+				break;
+			default:
+				break;
+			}
 		}
 	}
 
@@ -799,6 +825,25 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 		    z->cell_grid[grid_x][grid_y] != godModeSelectedType) {
 			Zone_place_cell(grid_x, grid_y, z->cell_types[godModeSelectedType].id);
 		}
+	}
+	if (lmbSingle && godPlacementMode == GOD_MODE_CHUNKS) {
+		if (!chunkSelHasA) {
+			chunkSelA_x = grid_x;
+			chunkSelA_y = grid_y;
+			chunkSelHasA = true;
+			chunkSelHasB = false;
+		} else if (!chunkSelHasB) {
+			chunkSelB_x = grid_x;
+			chunkSelB_y = grid_y;
+			chunkSelHasB = true;
+		} else {
+			/* Reset: start new selection */
+			chunkSelA_x = grid_x;
+			chunkSelA_y = grid_y;
+			chunkSelHasA = true;
+			chunkSelHasB = false;
+		}
+		godMouseLeftConsumed = true;
 	}
 	if (lmbSingle) {
 		switch (godPlacementMode) {
@@ -837,6 +882,11 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 	}
 
 	/* RMB removal per mode */
+	if (rmbSingle && godPlacementMode == GOD_MODE_CHUNKS) {
+		chunkSelHasA = false;
+		chunkSelHasB = false;
+		godMouseRightConsumed = true;
+	}
 	if (rmbClick && godPlacementMode == GOD_MODE_CELLS) {
 		Zone_remove_cell(grid_x, grid_y);
 	}
@@ -945,6 +995,15 @@ static void god_mode_render_cursor(void)
 	case GOD_MODE_PORTALS:
 		r = 0.5f; g = 0.3f; b = 1.0f;
 		goto render_crosshair;
+	case GOD_MODE_CHUNKS: {
+		/* Gold cursor square */
+		float s = MAP_CELL_SIZE;
+		Render_line_segment(wx, wy, wx + s, wy, 1.0f, 0.9f, 0.2f, 0.6f);
+		Render_line_segment(wx + s, wy, wx + s, wy + s, 1.0f, 0.9f, 0.2f, 0.6f);
+		Render_line_segment(wx + s, wy + s, wx, wy + s, 1.0f, 0.9f, 0.2f, 0.6f);
+		Render_line_segment(wx, wy + s, wx, wy, 1.0f, 0.9f, 0.2f, 0.6f);
+		break;
+	}
 	render_crosshair: {
 		/* Entity modes: use free position when snap is off */
 		float cx, cy;
@@ -1013,6 +1072,20 @@ static void god_mode_render_hud(const Screen *screen)
 			buf, cx, ty + line_h * 2,
 			1.0f, 0.5f, 0.3f, 0.8f);
 		break;
+	case GOD_MODE_CHUNKS:
+		if (chunkSelHasA && chunkSelHasB) {
+			int w = abs(chunkSelB_x - chunkSelA_x) + 1;
+			int h = abs(chunkSelB_y - chunkSelA_y) + 1;
+			snprintf(buf, sizeof(buf), "Selection: %dx%d (Tab=export, RMB=clear)", w, h);
+		} else if (chunkSelHasA) {
+			snprintf(buf, sizeof(buf), "Corner A set — click Corner B");
+		} else {
+			snprintf(buf, sizeof(buf), "Click to set Corner A");
+		}
+		Text_render(tr, shaders, &proj, &ident,
+			buf, cx, ty + line_h * 2,
+			1.0f, 0.9f, 0.2f, 0.8f);
+		break;
 	default:
 		break;
 	}
@@ -1041,8 +1114,8 @@ static void god_mode_render_hud(const Screen *screen)
 
 	/* Procgen info */
 	if (z->procgen) {
-		snprintf(buf, sizeof(buf), "Seed: %u (Shift+H cycle)",
-			Procgen_get_master_seed());
+		snprintf(buf, sizeof(buf), "Seed: %u / Zone: %u (Shift+H cycle)",
+			Procgen_get_master_seed(), Procgen_get_zone_seed());
 		Text_render(tr, shaders, &proj, &ident,
 			buf, cx, ty + line_h * 6,
 			0.3f, 1.0f, 0.7f, 0.8f);
@@ -1053,6 +1126,11 @@ static void god_mode_render_hud(const Screen *screen)
 			godNoiseHeatmapActive ? 0.3f : 0.7f,
 			godNoiseHeatmapActive ? 1.0f : 0.7f,
 			godNoiseHeatmapActive ? 0.3f : 0.7f, 0.8f);
+		snprintf(buf, sizeof(buf), "Hotspots: %d  Landmarks: %d",
+			Procgen_get_hotspot_count(), Procgen_get_landmark_count());
+		Text_render(tr, shaders, &proj, &ident,
+			buf, cx, ty + line_h * 8,
+			0.3f, 0.8f, 1.0f, 0.8f);
 	}
 
 	/* Zone jump menu */
@@ -1350,6 +1428,120 @@ static void god_mode_create_zone(void)
 
 	/* Jump to the new zone */
 	god_mode_jump_to_zone(path);
+}
+
+/* --- Chunk selection rendering --- */
+
+static void god_mode_render_chunk_selection(void)
+{
+	if (godPlacementMode != GOD_MODE_CHUNKS) return;
+
+	float s = MAP_CELL_SIZE;
+
+	/* Corner A marker */
+	if (chunkSelHasA) {
+		float ax = (float)(chunkSelA_x - HALF_MAP_SIZE) * s;
+		float ay = (float)(chunkSelA_y - HALF_MAP_SIZE) * s;
+		/* Filled corner marker */
+		Render_quad_absolute(ax, ay, ax + s, ay + s,
+			1.0f, 0.9f, 0.2f, 0.4f);
+	}
+
+	/* Selection rectangle when both corners set */
+	if (chunkSelHasA && chunkSelHasB) {
+		int min_x = chunkSelA_x < chunkSelB_x ? chunkSelA_x : chunkSelB_x;
+		int min_y = chunkSelA_y < chunkSelB_y ? chunkSelA_y : chunkSelB_y;
+		int max_x = chunkSelA_x > chunkSelB_x ? chunkSelA_x : chunkSelB_x;
+		int max_y = chunkSelA_y > chunkSelB_y ? chunkSelA_y : chunkSelB_y;
+
+		float x0 = (float)(min_x - HALF_MAP_SIZE) * s;
+		float y0 = (float)(min_y - HALF_MAP_SIZE) * s;
+		float x1 = (float)(max_x - HALF_MAP_SIZE + 1) * s;
+		float y1 = (float)(max_y - HALF_MAP_SIZE + 1) * s;
+
+		/* Semi-transparent fill */
+		Render_quad_absolute(x0, y0, x1, y1,
+			1.0f, 0.9f, 0.2f, 0.1f);
+
+		/* Thick outline (renders as triangles, proper draw order) */
+		float lw = 3.0f;
+		Render_thick_line(x0, y0, x1, y0, lw, 1.0f, 0.9f, 0.2f, 0.8f);
+		Render_thick_line(x1, y0, x1, y1, lw, 1.0f, 0.9f, 0.2f, 0.8f);
+		Render_thick_line(x1, y1, x0, y1, lw, 1.0f, 0.9f, 0.2f, 0.8f);
+		Render_thick_line(x0, y1, x0, y0, lw, 1.0f, 0.9f, 0.2f, 0.8f);
+	}
+}
+
+/* --- Procgen debug visualization --- */
+
+static void god_mode_render_procgen_debug(void)
+{
+	const Zone *z = Zone_get();
+	if (!z->procgen) return;
+
+	float s = MAP_CELL_SIZE;
+
+	/* Hotspot markers */
+	int hcount = Procgen_get_hotspot_count();
+	for (int i = 0; i < hcount; i++) {
+		int hx, hy;
+		bool used;
+		Procgen_get_hotspot(i, &hx, &hy, &used);
+
+		float wx = (float)(hx - HALF_MAP_SIZE) * s;
+		float wy = (float)(hy - HALF_MAP_SIZE) * s;
+
+		/* Diamond marker */
+		float ds = 40.0f;
+		float r = used ? 0.2f : 0.5f;
+		float g = used ? 1.0f : 0.5f;
+		float b = used ? 0.5f : 0.5f;
+		float a = 0.8f;
+		Render_thick_line(wx - ds, wy, wx, wy - ds, 2.0f, r, g, b, a);
+		Render_thick_line(wx, wy - ds, wx + ds, wy, 2.0f, r, g, b, a);
+		Render_thick_line(wx + ds, wy, wx, wy + ds, 2.0f, r, g, b, a);
+		Render_thick_line(wx, wy + ds, wx - ds, wy, 2.0f, r, g, b, a);
+	}
+
+	/* Landmark influence rings + labels */
+	int lcount = Procgen_get_landmark_count();
+	for (int i = 0; i < lcount; i++) {
+		int lx, ly;
+		const char *type;
+		float radius;
+		int inf_type;
+		Procgen_get_landmark(i, &lx, &ly, &type, &radius, &inf_type);
+
+		float cx = (float)(lx - HALF_MAP_SIZE) * s;
+		float cy = (float)(ly - HALF_MAP_SIZE) * s;
+		float world_radius = radius * s;
+
+		/* Color by influence type */
+		float r, g, b;
+		switch (inf_type) {
+		case INFLUENCE_DENSE:    r = 1.0f; g = 0.3f; b = 0.2f; break;
+		case INFLUENCE_SPARSE:   r = 0.2f; g = 0.5f; b = 1.0f; break;
+		case INFLUENCE_MODERATE: r = 0.3f; g = 1.0f; b = 0.3f; break;
+		default:                 r = 1.0f; g = 1.0f; b = 1.0f; break;
+		}
+
+		/* Draw influence radius as circle (line segments) */
+		int segs = 48;
+		for (int seg = 0; seg < segs; seg++) {
+			float a0 = (float)seg / segs * 2.0f * M_PI;
+			float a1 = (float)(seg + 1) / segs * 2.0f * M_PI;
+			float x0 = cx + cosf(a0) * world_radius;
+			float y0 = cy + sinf(a0) * world_radius;
+			float x1 = cx + cosf(a1) * world_radius;
+			float y1 = cy + sinf(a1) * world_radius;
+			Render_thick_line(x0, y0, x1, y1, 2.0f, r, g, b, 0.4f);
+		}
+
+		/* Center cross */
+		float cs = 60.0f;
+		Render_thick_line(cx - cs, cy, cx + cs, cy, 3.0f, r, g, b, 0.7f);
+		Render_thick_line(cx, cy - cs, cx, cy + cs, 3.0f, r, g, b, 0.7f);
+	}
 }
 
 /* --- Warp transition --- */

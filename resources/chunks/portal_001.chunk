@@ -1,0 +1,53 @@
+# Exported from Procgen Test 2 at grid (512,512)-(527,527)
+chunk portal_001
+size 16 16
+
+wall 6 0 0
+wall 9 0 0
+wall 6 1 0
+wall 7 1 1
+wall 8 1 1
+wall 9 1 0
+wall 6 2 0
+wall 7 2 1
+wall 8 2 1
+wall 9 2 0
+wall 7 3 1
+wall 8 3 1
+wall 0 6 0
+wall 1 6 0
+wall 2 6 0
+wall 13 6 0
+wall 14 6 0
+wall 15 6 0
+wall 1 7 1
+wall 2 7 1
+wall 3 7 1
+wall 12 7 1
+wall 13 7 1
+wall 14 7 1
+wall 1 8 1
+wall 2 8 1
+wall 3 8 1
+wall 12 8 1
+wall 13 8 1
+wall 14 8 1
+wall 0 9 0
+wall 1 9 0
+wall 2 9 0
+wall 13 9 0
+wall 14 9 0
+wall 15 9 0
+wall 7 12 1
+wall 8 12 1
+wall 6 13 0
+wall 7 13 1
+wall 8 13 1
+wall 9 13 0
+wall 6 14 0
+wall 7 14 1
+wall 8 14 1
+wall 9 14 0
+wall 6 15 0
+wall 9 15 0
+spawn 8 8 portal 1.0

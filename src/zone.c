@@ -78,6 +78,13 @@ void Zone_load(const char *path)
 	zone.noise_persistence = 0.5;
 	zone.noise_wall_threshold = -0.1;
 
+	/* Hotspot defaults */
+	zone.hotspot_count = 10;
+	zone.hotspot_edge_margin = 80;
+	zone.hotspot_center_exclusion = 120;
+	zone.hotspot_min_separation = 150;
+	zone.landmark_min_separation = 120;
+
 	char line[512];
 	while (fgets(line, sizeof(line), f)) {
 		/* Strip newline */
@@ -210,9 +217,95 @@ void Zone_load(const char *path)
 		else if (strncmp(line, "noise_wall_threshold ", 21) == 0) {
 			sscanf(line + 21, "%lf", &zone.noise_wall_threshold);
 		}
+		else if (strncmp(line, "center_anchor ", 14) == 0) {
+			strncpy(zone.center_anchor_path, line + 14,
+			        sizeof(zone.center_anchor_path) - 1);
+			zone.has_center_anchor = true;
+		}
+		else if (strncmp(line, "hotspot_count ", 14) == 0) {
+			sscanf(line + 14, "%d", &zone.hotspot_count);
+		}
+		else if (strncmp(line, "hotspot_edge_margin ", 20) == 0) {
+			sscanf(line + 20, "%d", &zone.hotspot_edge_margin);
+		}
+		else if (strncmp(line, "hotspot_center_exclusion ", 25) == 0) {
+			sscanf(line + 25, "%d", &zone.hotspot_center_exclusion);
+		}
+		else if (strncmp(line, "hotspot_min_separation ", 23) == 0) {
+			sscanf(line + 23, "%d", &zone.hotspot_min_separation);
+		}
+		else if (strncmp(line, "landmark_min_separation ", 24) == 0) {
+			sscanf(line + 24, "%d", &zone.landmark_min_separation);
+		}
+		else if (strncmp(line, "landmark_portal ", 16) == 0) {
+			/* landmark_portal <landmark_type> <portal_id> <dest_zone> <dest_portal_id> */
+			char lm_type[32], pid[32], dzone[256], dpid[32];
+			if (sscanf(line + 16, "%31s %31s %255s %31s",
+			           lm_type, pid, dzone, dpid) == 4) {
+				/* Find matching landmark def */
+				for (int i = zone.landmark_count - 1; i >= 0; i--) {
+					if (strcmp(zone.landmarks[i].type, lm_type) == 0) {
+						LandmarkDef *lm = &zone.landmarks[i];
+						if (lm->portal_count < LANDMARK_MAX_PORTALS) {
+							LandmarkPortalWiring *w = &lm->portals[lm->portal_count++];
+							strncpy(w->portal_id, pid, 31);
+							w->portal_id[31] = '\0';
+							strncpy(w->dest_zone, dzone, 255);
+							w->dest_zone[255] = '\0';
+							strncpy(w->dest_portal_id, dpid, 31);
+							w->dest_portal_id[31] = '\0';
+							if (strcmp(w->dest_zone, "-") == 0) w->dest_zone[0] = '\0';
+							if (strcmp(w->dest_portal_id, "-") == 0) w->dest_portal_id[0] = '\0';
+						}
+						break;
+					}
+				}
+			}
+		}
+		else if (strncmp(line, "landmark_savepoint ", 19) == 0) {
+			/* landmark_savepoint <landmark_type> <savepoint_id> */
+			char lm_type[32], sid[32];
+			if (sscanf(line + 19, "%31s %31s", lm_type, sid) == 2) {
+				for (int i = zone.landmark_count - 1; i >= 0; i--) {
+					if (strcmp(zone.landmarks[i].type, lm_type) == 0) {
+						LandmarkDef *lm = &zone.landmarks[i];
+						if (lm->savepoint_count < LANDMARK_MAX_SAVEPOINTS) {
+							LandmarkSavepointWiring *w = &lm->savepoints[lm->savepoint_count++];
+							strncpy(w->savepoint_id, sid, 31);
+							w->savepoint_id[31] = '\0';
+						}
+						break;
+					}
+				}
+			}
+		}
+		else if (strncmp(line, "landmark ", 9) == 0) {
+			if (zone.landmark_count >= ZONE_MAX_LANDMARKS) continue;
+			LandmarkDef *lm = &zone.landmarks[zone.landmark_count];
+			memset(lm, 0, sizeof(*lm));
+			char inf_type_str[32] = "";
+			int n = sscanf(line + 9, "%31s %255s %d %31s %f %f %f",
+			               lm->type, lm->chunk_path, &lm->priority,
+			               inf_type_str, &lm->influence.radius,
+			               &lm->influence.strength, &lm->influence.falloff);
+			if (n >= 7) {
+				if (strcmp(inf_type_str, "dense") == 0)
+					lm->influence.type = INFLUENCE_DENSE;
+				else if (strcmp(inf_type_str, "sparse") == 0)
+					lm->influence.type = INFLUENCE_SPARSE;
+				else
+					lm->influence.type = INFLUENCE_MODERATE;
+				zone.landmark_count++;
+			}
+		}
 	}
 
 	fclose(f);
+
+	/* Record hand-placed counts before procgen adds more */
+	zone.hand_portal_count = zone.portal_count;
+	zone.hand_savepoint_count = zone.savepoint_count;
+	zone.hand_spawn_count = zone.spawn_count;
 
 	/* Generate procgen terrain before applying to world */
 	if (zone.procgen)
@@ -297,6 +390,42 @@ void Zone_save(void)
 		fprintf(f, "noise_lacunarity %g\n", zone.noise_lacunarity);
 		fprintf(f, "noise_persistence %g\n", zone.noise_persistence);
 		fprintf(f, "noise_wall_threshold %g\n", zone.noise_wall_threshold);
+
+		if (zone.has_center_anchor)
+			fprintf(f, "center_anchor %s\n", zone.center_anchor_path);
+
+		/* Hotspot params (only if non-default) */
+		fprintf(f, "hotspot_count %d\n", zone.hotspot_count);
+		fprintf(f, "hotspot_edge_margin %d\n", zone.hotspot_edge_margin);
+		fprintf(f, "hotspot_center_exclusion %d\n", zone.hotspot_center_exclusion);
+		fprintf(f, "hotspot_min_separation %d\n", zone.hotspot_min_separation);
+		fprintf(f, "landmark_min_separation %d\n", zone.landmark_min_separation);
+
+		/* Landmarks */
+		for (int i = 0; i < zone.landmark_count; i++) {
+			const LandmarkDef *lm = &zone.landmarks[i];
+			const char *inf_str = "moderate";
+			if (lm->influence.type == INFLUENCE_DENSE) inf_str = "dense";
+			else if (lm->influence.type == INFLUENCE_SPARSE) inf_str = "sparse";
+			fprintf(f, "landmark %s %s %d %s %g %g %g\n",
+			        lm->type, lm->chunk_path, lm->priority,
+			        inf_str, lm->influence.radius,
+			        lm->influence.strength, lm->influence.falloff);
+			/* Portal wiring */
+			for (int j = 0; j < lm->portal_count; j++) {
+				const LandmarkPortalWiring *w = &lm->portals[j];
+				fprintf(f, "landmark_portal %s %s %s %s\n",
+				        lm->type, w->portal_id,
+				        w->dest_zone[0] ? w->dest_zone : "-",
+				        w->dest_portal_id[0] ? w->dest_portal_id : "-");
+			}
+			/* Savepoint wiring */
+			for (int j = 0; j < lm->savepoint_count; j++) {
+				fprintf(f, "landmark_savepoint %s %s\n",
+				        lm->type, lm->savepoints[j].savepoint_id);
+			}
+		}
+
 		fprintf(f, "\n");
 	}
 
@@ -321,16 +450,18 @@ void Zone_save(void)
 	}
 	fprintf(f, "\n");
 
-	/* Spawns */
-	for (int i = 0; i < zone.spawn_count; i++) {
+	/* Spawns (hand-placed only — procgen spawns are regenerated from landmarks) */
+	int save_spawn_count = zone.procgen ? zone.hand_spawn_count : zone.spawn_count;
+	for (int i = 0; i < save_spawn_count; i++) {
 		ZoneSpawn *sp = &zone.spawns[i];
 		fprintf(f, "spawn %s %.1f %.1f\n", sp->enemy_type, sp->world_x, sp->world_y);
 	}
 
-	/* Portals */
-	if (zone.portal_count > 0)
+	/* Portals (hand-placed only) */
+	int save_portal_count = zone.procgen ? zone.hand_portal_count : zone.portal_count;
+	if (save_portal_count > 0)
 		fprintf(f, "\n");
-	for (int i = 0; i < zone.portal_count; i++) {
+	for (int i = 0; i < save_portal_count; i++) {
 		ZonePortal *p = &zone.portals[i];
 		fprintf(f, "portal %d %d %s %s %s\n",
 			p->grid_x, p->grid_y, p->id,
@@ -338,10 +469,11 @@ void Zone_save(void)
 			p->dest_portal_id[0] ? p->dest_portal_id : "-");
 	}
 
-	/* Save points */
-	if (zone.savepoint_count > 0)
+	/* Save points (hand-placed only) */
+	int save_savepoint_count = zone.procgen ? zone.hand_savepoint_count : zone.savepoint_count;
+	if (save_savepoint_count > 0)
 		fprintf(f, "\n");
-	for (int i = 0; i < zone.savepoint_count; i++) {
+	for (int i = 0; i < save_savepoint_count; i++) {
 		fprintf(f, "savepoint %d %d %s\n",
 			zone.savepoints[i].grid_x, zone.savepoints[i].grid_y,
 			zone.savepoints[i].id);
@@ -688,11 +820,19 @@ void Zone_regenerate_procgen(void)
 {
 	if (!zone.procgen) return;
 
-	/* Reset non-hand-placed cells to empty */
-	for (int x = 0; x < zone.size; x++)
-		for (int y = 0; y < zone.size; y++)
+	/* Reset non-hand-placed cells to empty, clear chunk stamps */
+	for (int x = 0; x < zone.size; x++) {
+		for (int y = 0; y < zone.size; y++) {
+			zone.cell_chunk_stamped[x][y] = false;
 			if (!zone.cell_hand_placed[x][y])
 				zone.cell_grid[x][y] = -1;
+		}
+	}
+
+	/* Truncate procgen-placed portals/savepoints/spawns */
+	zone.portal_count = zone.hand_portal_count;
+	zone.savepoint_count = zone.hand_savepoint_count;
+	zone.spawn_count = zone.hand_spawn_count;
 
 	/* Regenerate from current master seed */
 	Procgen_generate(&zone);

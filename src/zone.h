@@ -11,6 +11,45 @@
 #define ZONE_MAX_DESTRUCTIBLES 32
 #define ZONE_MAX_PORTALS 16
 #define ZONE_MAX_SAVEPOINTS 16
+#define ZONE_MAX_LANDMARKS 16
+
+typedef enum {
+	INFLUENCE_DENSE,
+	INFLUENCE_MODERATE,
+	INFLUENCE_SPARSE
+} InfluenceType;
+
+typedef struct {
+	InfluenceType type;
+	float radius;
+	float strength;
+	float falloff;
+} TerrainInfluence;
+
+#define LANDMARK_MAX_PORTALS 4
+#define LANDMARK_MAX_SAVEPOINTS 4
+
+typedef struct {
+	char portal_id[32];
+	char dest_zone[256];
+	char dest_portal_id[32];
+} LandmarkPortalWiring;
+
+typedef struct {
+	char savepoint_id[32];
+} LandmarkSavepointWiring;
+
+typedef struct {
+	char type[32];
+	char chunk_path[256];
+	int priority;
+	TerrainInfluence influence;
+
+	LandmarkPortalWiring portals[LANDMARK_MAX_PORTALS];
+	int portal_count;
+	LandmarkSavepointWiring savepoints[LANDMARK_MAX_SAVEPOINTS];
+	int savepoint_count;
+} LandmarkDef;
 
 typedef struct {
 	int grid_x, grid_y;
@@ -79,8 +118,29 @@ typedef struct {
 	double noise_persistence;
 	double noise_wall_threshold;
 	bool cell_hand_placed[MAP_SIZE][MAP_SIZE];
+	bool cell_chunk_stamped[MAP_SIZE][MAP_SIZE];
 	int wall_type_indices[ZONE_MAX_CELL_TYPES];
 	int wall_type_count;
+
+	/* Center anchor */
+	char center_anchor_path[256];
+	bool has_center_anchor;
+
+	/* Hotspot generation params */
+	int hotspot_count;
+	int hotspot_edge_margin;
+	int hotspot_center_exclusion;
+	int hotspot_min_separation;
+
+	/* Landmarks */
+	LandmarkDef landmarks[ZONE_MAX_LANDMARKS];
+	int landmark_count;
+	int landmark_min_separation;
+
+	/* Hand-placed counts (for procgen regen — truncate back to these) */
+	int hand_portal_count;
+	int hand_savepoint_count;
+	int hand_spawn_count;
 } Zone;
 
 void Zone_load(const char *path);

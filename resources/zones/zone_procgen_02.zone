@@ -18,7 +18,17 @@ noise_frequency 0.01
 noise_lacunarity 2
 noise_persistence 0.5
 noise_wall_threshold -0.1
+hotspot_count 10
+hotspot_edge_margin 80
+hotspot_center_exclusion 120
+hotspot_min_separation 150
+landmark_min_separation 120
+landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
+landmark_portal exit_point portal_to_001 resources/zones/zone_procgen_01.zone portal_to_002
+landmark_savepoint exit_point save_002
 
+clearcell 272 160
+cell 300 166 solid
 clearcell 495 495
 clearcell 495 496
 clearcell 495 497

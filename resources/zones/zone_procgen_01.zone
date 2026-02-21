@@ -19,6 +19,14 @@ noise_lacunarity 2
 noise_persistence 0.5
 noise_wall_threshold -0.1
 
+
+
+landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2.0                                      
+landmark_portal exit_point portal_to_002 resources/zones/zone_procgen_02.zone portal_to_001                               
+landmark_savepoint exit_point save_001
+
+
+
 clearcell 495 495
 clearcell 495 496
 clearcell 495 497
