@@ -54,10 +54,10 @@ Entity* Entity_add_entity(const Entity entity)
 
 void Entity_destroy_all(void)
 {
-	unsigned int entityId;
-	for(entityId = 0; entityId < ENTITY_COUNT; ++entityId)
+	unsigned int top = highestIndex;
+	for (unsigned int entityId = 0; entityId <= top; ++entityId)
 	{
-		Entity_destroy(entityId);
+		entities[entityId].empty = true;
 	}
 	highestIndex = 0;
 }

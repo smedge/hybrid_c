@@ -6,7 +6,7 @@
 // TODO need to incororate this struct into sample calls
 typedef struct {
 	Mix_Chunk *mix_chunk;
-	char *path;
+	const char *path;
 } Sample;
 
 void Audio_initialize(void);
@@ -14,7 +14,7 @@ void Audio_cleanup(void);
 void Audio_loop_music(const char *path);
 void Audio_play_music(const char *path);
 void Audio_stop_music(void);
-void Audio_load_sample(Mix_Chunk **sample, char *path);
+void Audio_load_sample(Mix_Chunk **sample, const char *path);
 void Audio_unload_sample(Mix_Chunk **sample);
 void Audio_play_sample(Mix_Chunk **sample);
 int Audio_play_sample_on_channel(Mix_Chunk **sample, int channel);

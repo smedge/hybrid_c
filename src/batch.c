@@ -136,19 +136,20 @@ void Batch_flush(BatchRenderer *batch, const Shaders *shaders,
 	batch->flush_proj = *projection;
 	batch->flush_view = *view;
 
+	if (batch->lines.count == 0 && batch->triangles.count == 0
+			&& batch->points.count == 0)
+		return;
+
 	Shader_set_matrices(&shaders->color_shader, projection, view);
 	flush_batch_draw(&batch->lines, GL_LINES);
 	flush_batch_draw(&batch->triangles, GL_TRIANGLES);
 	flush_batch_draw(&batch->points, GL_POINTS);
 }
 
-static void flush_batch_keep(PrimitiveBatch *b, GLenum mode,
-	const ShaderProgram *sp, const Mat4 *projection, const Mat4 *view)
+static void flush_batch_keep(PrimitiveBatch *b, GLenum mode)
 {
 	if (b->count == 0)
 		return;
-
-	Shader_set_matrices(sp, projection, view);
 
 	glBindVertexArray(b->vao);
 	glBindBuffer(GL_ARRAY_BUFFER, b->vbo);
@@ -160,13 +161,10 @@ static void flush_batch_keep(PrimitiveBatch *b, GLenum mode,
 	/* count NOT reset — vertices stay in VBO for redraw */
 }
 
-static void redraw_batch(PrimitiveBatch *b, GLenum mode,
-	const ShaderProgram *sp, const Mat4 *projection, const Mat4 *view)
+static void redraw_batch(PrimitiveBatch *b, GLenum mode)
 {
 	if (b->count == 0)
 		return;
-
-	Shader_set_matrices(sp, projection, view);
 
 	glBindVertexArray(b->vao);
 	glDrawArrays(mode, 0, b->count);
@@ -176,23 +174,19 @@ static void redraw_batch(PrimitiveBatch *b, GLenum mode,
 void Batch_flush_keep(BatchRenderer *batch, const Shaders *shaders,
 	const Mat4 *projection, const Mat4 *view)
 {
-	flush_batch_keep(&batch->lines, GL_LINES,
-		&shaders->color_shader, projection, view);
-	flush_batch_keep(&batch->triangles, GL_TRIANGLES,
-		&shaders->color_shader, projection, view);
-	flush_batch_keep(&batch->points, GL_POINTS,
-		&shaders->color_shader, projection, view);
+	Shader_set_matrices(&shaders->color_shader, projection, view);
+	flush_batch_keep(&batch->lines, GL_LINES);
+	flush_batch_keep(&batch->triangles, GL_TRIANGLES);
+	flush_batch_keep(&batch->points, GL_POINTS);
 }
 
 void Batch_redraw(BatchRenderer *batch, const Shaders *shaders,
 	const Mat4 *projection, const Mat4 *view)
 {
-	redraw_batch(&batch->lines, GL_LINES,
-		&shaders->color_shader, projection, view);
-	redraw_batch(&batch->triangles, GL_TRIANGLES,
-		&shaders->color_shader, projection, view);
-	redraw_batch(&batch->points, GL_POINTS,
-		&shaders->color_shader, projection, view);
+	Shader_set_matrices(&shaders->color_shader, projection, view);
+	redraw_batch(&batch->lines, GL_LINES);
+	redraw_batch(&batch->triangles, GL_TRIANGLES);
+	redraw_batch(&batch->points, GL_POINTS);
 }
 
 void Batch_clear(BatchRenderer *batch)

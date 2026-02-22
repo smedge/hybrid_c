@@ -14,10 +14,6 @@ void Render_point(const Position *position, const float size,
 		color->red, color->green, color->blue, color->alpha);
 }
 
-void Render_line(void)
-{
-}
-
 void Render_triangle(const Position *position, const double heading,
 	const ColorFloat *color)
 {
@@ -65,10 +61,6 @@ void Render_quad(const Position *position, const double rotation,
 	Batch_push_triangle_vertices(batch,
 		wx[0], wy[0], wx[2], wy[2], wx[3], wy[3],
 		color->red, color->green, color->blue, color->alpha);
-}
-
-void Render_convex_poly(void)
-{
 }
 
 void Render_bounding_box(const Position *position,
@@ -257,15 +249,6 @@ void Render_clear(void)
 {
 	BatchRenderer *batch = Graphics_get_batch();
 	Batch_clear(batch);
-}
-
-void Render_flush_additive(const Mat4 *projection, const Mat4 *view)
-{
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-	BatchRenderer *batch = Graphics_get_batch();
-	Shaders *shaders = Graphics_get_shaders();
-	Batch_flush(batch, shaders, projection, view);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 static int get_nearest_grid_start_point(int x, const double GRID_SIZE)

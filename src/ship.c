@@ -325,15 +325,17 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			sparkActive = false;
 	}
 
-	Sub_Pea_update(userInput, ticks, placeable);
-	Sub_Mgun_update(userInput, ticks, placeable);
-	Sub_Mine_update(userInput, ticks);
-	Sub_Mend_update(userInput, ticks);
-	Sub_Aegis_update(userInput, ticks);
-	Sub_Stealth_update(ticks);
-	Sub_Inferno_update(userInput, ticks, placeable);
-	Sub_Disintegrate_update(userInput, ticks, placeable);
-	Sub_Gravwell_update(userInput, ticks);
+	if (!shipState.destroyed) {
+		Sub_Pea_update(userInput, ticks, placeable);
+		Sub_Mgun_update(userInput, ticks, placeable);
+		Sub_Mine_update(userInput, ticks);
+		Sub_Mend_update(userInput, ticks);
+		Sub_Aegis_update(userInput, ticks);
+		Sub_Stealth_update(ticks);
+		Sub_Inferno_update(userInput, ticks, placeable);
+		Sub_Disintegrate_update(userInput, ticks, placeable);
+		Sub_Gravwell_update(userInput, ticks);
+	}
 }
 
 void Ship_render(const void *state, const PlaceableComponent *placeable)

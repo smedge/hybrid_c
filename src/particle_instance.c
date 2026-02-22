@@ -192,5 +192,4 @@ void ParticleInstance_draw(const ParticleInstanceData *data, int count,
 	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, count);
 
 	glBindVertexArray(0);
-	glUseProgram(0);
 }

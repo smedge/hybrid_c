@@ -46,6 +46,8 @@ void Sub_Mine_cleanup(void)
 
 void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 {
+	if (Ship_is_destroyed()) return;
+
 	if (cooldownTimer > 0)
 		cooldownTimer -= ticks;
 

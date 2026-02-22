@@ -535,6 +535,8 @@ void Mode_Gameplay_render(void)
 {
 	Graphics_clear();
 	Screen screen = Graphics_get_screen();
+	int draw_w, draw_h;
+	Graphics_get_drawable_size(&draw_w, &draw_h);
 
 	/* World pass */
 	Mat4 world_proj = Graphics_get_world_projection();
@@ -542,8 +544,6 @@ void Mode_Gameplay_render(void)
 
 	/* Background bloom pass (blurred only — no raw polygon render) */
 	if (Graphics_get_bloom_enabled()) {
-		int draw_w, draw_h;
-		Graphics_get_drawable_size(&draw_w, &draw_h);
 		Bloom *bg_bloom = Graphics_get_bg_bloom();
 
 		Bloom_begin_source(bg_bloom);
@@ -568,16 +568,10 @@ void Mode_Gameplay_render(void)
 	CircuitAtlas_render();
 
 	/* Cloud reflection on solid blocks (also writes stencil for lighting) */
-	{
-		int draw_w, draw_h;
-		Graphics_get_drawable_size(&draw_w, &draw_h);
-		MapReflect_render(&world_proj, &view, draw_w, draw_h);
-	}
+	MapReflect_render(&world_proj, &view, draw_w, draw_h);
 
 	/* Weapon lighting on map cells (stencil data written by MapReflect) */
 	if (MapLighting_get_enabled()) {
-		int draw_w, draw_h;
-		Graphics_get_drawable_size(&draw_w, &draw_h);
 		Bloom *lb = Graphics_get_light_bloom();
 
 		Bloom_begin_source(lb);
@@ -623,8 +617,6 @@ void Mode_Gameplay_render(void)
 
 	/* Disintegrate bloom pass (dedicated purple FBO) */
 	if (Graphics_get_bloom_enabled()) {
-		int draw_w, draw_h;
-		Graphics_get_drawable_size(&draw_w, &draw_h);
 		Bloom *disint_bloom = Graphics_get_disint_bloom();
 
 		Bloom_begin_source(disint_bloom);
@@ -638,8 +630,6 @@ void Mode_Gameplay_render(void)
 
 	/* FBO bloom pass */
 	if (Graphics_get_bloom_enabled()) {
-		int draw_w, draw_h;
-		Graphics_get_drawable_size(&draw_w, &draw_h);
 		Bloom *bloom = Graphics_get_bloom();
 
 		Bloom_begin_source(bloom);

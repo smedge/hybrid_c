@@ -29,6 +29,9 @@
 
 #define SAVEPOINT_CHARGE_CHANNEL 4
 
+/* Must stay in sync with FragmentType enum order */
+static const char *frag_names[] = {"mine", "elite", "hunter", "seeker", "mend", "aegis", "gravwell", "stalker"};
+
 typedef enum {
 	SAVEPOINT_IDLE,
 	SAVEPOINT_CHARGING,
@@ -150,12 +153,9 @@ static void do_save(SavepointState *sp)
 	fprintf(f, "\n");
 
 	fprintf(f, "fragments");
-	{
-		static const char *frag_names[] = {"mine", "elite", "hunter", "seeker", "mend", "aegis", "gravwell", "stalker"};
-		for (int i = 0; i < FRAG_TYPE_COUNT; i++) {
-			if (checkpoint.fragment_counts[i] > 0)
-				fprintf(f, " %s:%d", frag_names[i], checkpoint.fragment_counts[i]);
-		}
+	for (int i = 0; i < FRAG_TYPE_COUNT; i++) {
+		if (checkpoint.fragment_counts[i] > 0)
+			fprintf(f, " %s:%d", frag_names[i], checkpoint.fragment_counts[i]);
 	}
 	fprintf(f, "\n");
 
@@ -576,7 +576,6 @@ bool Savepoint_load_from_disk(void)
 			}
 		}
 		else if (strncmp(line, "fragments ", 10) == 0) {
-			static const char *frag_names[] = {"mine", "elite", "hunter", "seeker", "mend", "aegis", "gravwell", "stalker"};
 			char *tok = strtok(line + 10, " ");
 			while (tok) {
 				char name[32];

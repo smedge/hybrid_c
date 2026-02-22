@@ -197,3 +197,12 @@ Total BSS footprint: ~36 MB
 - Circuit atlas vertex buffer: 4 MB (circuit_atlas.c)
 
 Not a problem — all BSS segment, zero runtime cost. Just worth knowing.
+
+
+
+
+
+
+The full audit has 35 items. Critical 1-8 are done. That leaves Moderate (9-23) and Minor (24-35). Let me plan this   
+  out. Some are flagged as "future" (12, 13) and some are pure refactors (24, 25, 31) — I'll focus on the surgical fixes
+   and skip those.            

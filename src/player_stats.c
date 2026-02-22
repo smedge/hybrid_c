@@ -105,8 +105,10 @@ void PlayerStats_update(unsigned int ticks)
 	}
 
 	/* Flash decay */
-	if (flashTicksLeft > 0)
+	if (flashTicksLeft > 0) {
 		flashTicksLeft -= ticks;
+		if (flashTicksLeft < 0) flashTicksLeft = 0;
+	}
 
 	/* Feedback full blink timer (4Hz = 250ms period) */
 	if (feedback >= FEEDBACK_MAX)

@@ -10,15 +10,11 @@
 void Render_point(const Position *position, const float size,
 	const ColorFloat *color);
 
-void Render_line(void);
-
 void Render_triangle(const Position *position, const double heading,
 	const ColorFloat *color);
 
 void Render_quad(const Position *position, const double rotation,
 	const Rectangle rectangle, const ColorFloat *color);
-
-void Render_convex_poly(void);
 
 void Render_bounding_box(const Position *position,
 	const Rectangle *rectangle);
@@ -45,7 +41,6 @@ void Render_set_pass(const Mat4 *projection, const Mat4 *view);
 void Render_flush(const Mat4 *projection, const Mat4 *view);
 void Render_flush_keep(const Mat4 *projection, const Mat4 *view);
 void Render_redraw(const Mat4 *projection, const Mat4 *view);
-void Render_flush_additive(const Mat4 *projection, const Mat4 *view);
 void Render_clear(void);
 
 #endif

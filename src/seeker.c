@@ -460,9 +460,8 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 	case SEEKER_RECOVERING: {
 		s->recoverTimer += ticks;
 
-		/* Decelerate from dash momentum */
-		double dampen = 1.0 - 3.0 * dt;
-		if (dampen < 0.0) dampen = 0.0;
+		/* Decelerate from dash momentum (frame-rate independent) */
+		double dampen = exp(-3.0 * dt);
 		s->recoverVelX *= dampen;
 		s->recoverVelY *= dampen;
 

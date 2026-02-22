@@ -42,7 +42,7 @@ void Audio_stop_music(void)
 	}
 }
 
-void Audio_load_sample(Mix_Chunk **sample, char *path)
+void Audio_load_sample(Mix_Chunk **sample, const char *path)
 {
 	if (!*sample) {
 		*sample = Mix_LoadWAV(path);
