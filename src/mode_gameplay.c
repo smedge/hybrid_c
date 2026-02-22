@@ -551,6 +551,7 @@ void Mode_Gameplay_render(void)
 		Bloom *bg_bloom = Graphics_get_bg_bloom();
 
 		Bloom_begin_source(bg_bloom);
+		Render_set_pass(&world_proj, &view);
 		Background_render();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bg_bloom, draw_w, draw_h);
@@ -579,6 +580,7 @@ void Mode_Gameplay_render(void)
 		Bloom *lb = Graphics_get_light_bloom();
 
 		Bloom_begin_source(lb);
+		Render_set_pass(&world_proj, &view);
 		Sub_Pea_render_light_source();
 		Sub_Mgun_render_light_source();
 		Sub_Mine_render_light_source();
