@@ -5,7 +5,7 @@
 #include "position.h"
 #include "collision.h"
 
-#define SUB_PROJ_MAX_POOL 64
+#define SUB_PROJ_MAX_POOL 256
 
 typedef struct {
 	bool active;

@@ -99,7 +99,7 @@ static const SubProjectileConfig hunterProjCfg = {
 	.fire_cooldown_ms = 0,
 	.velocity = 2000.0,
 	.ttl_ms = 800,
-	.pool_size = 64,
+	.pool_size = 256,
 	.damage = 15.0,
 	.color_r = 1.0f, .color_g = 0.35f, .color_b = 0.05f,
 	.trail_thickness = 3.0f,
