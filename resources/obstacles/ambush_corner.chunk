@@ -1,0 +1,12 @@
+# L-wall with probable hunter — structured ambush point
+chunk ambush_corner
+size 5 5
+style structured
+
+wall 0 0 0
+wall 1 0 0
+wall 2 0 0
+wall 0 1 0
+wall 0 2 0
+wall 0 3 0
+spawn 4 3 hunter 0.9

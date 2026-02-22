@@ -1,0 +1,13 @@
+# Narrow passage — structured corridor fragment
+chunk chokepoint
+size 6 3
+style structured
+
+wall 0 0 0
+wall 1 0 0
+wall 4 0 0
+wall 5 0 0
+wall 0 2 0
+wall 1 2 0
+wall 4 2 0
+wall 5 2 0

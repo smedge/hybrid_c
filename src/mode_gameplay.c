@@ -125,6 +125,7 @@ typedef enum {
 	GOD_MODE_SAVEPOINTS,
 	GOD_MODE_PORTALS,
 	GOD_MODE_CHUNKS,
+	GOD_MODE_OBSTACLES,
 	GOD_MODE_COUNT
 } GodPlacementMode;
 
@@ -134,7 +135,7 @@ static const char *ENEMY_TYPES[] = {"mine", "hunter", "seeker", "defender", "sta
 #define ENEMY_TYPE_COUNT 5
 static int godEnemyType = 0;
 
-static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks"};
+static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks", "Obstacles"};
 
 /* Chunk export selection */
 static bool chunkSelHasA = false;
@@ -142,6 +143,7 @@ static bool chunkSelHasB = false;
 static int chunkSelA_x = 0, chunkSelA_y = 0;
 static int chunkSelB_x = 0, chunkSelB_y = 0;
 static int chunkExportCounter = 0;
+static int obstacleExportCounter = 0;
 
 /* Zone jump menu */
 static bool godZoneMenuOpen = false;
@@ -816,7 +818,7 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 		godPlacementMode = (godPlacementMode + 1) % GOD_MODE_COUNT;
 	}
 
-	/* Tab cycles sub-type within mode (or exports chunk selection) */
+	/* Tab cycles sub-type within mode (or exports chunk/obstacle selection) */
 	if (input->keyTab) {
 		if (godPlacementMode == GOD_MODE_CHUNKS) {
 			/* Tab = export chunk if selection is complete */
@@ -828,6 +830,17 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 				Chunk_export(chunkSelA_x, chunkSelA_y,
 				             chunkSelB_x, chunkSelB_y, path);
 				printf("Chunk exported to: %s\n", path);
+			}
+		} else if (godPlacementMode == GOD_MODE_OBSTACLES) {
+			/* Tab = export obstacle if selection is complete */
+			if (chunkSelHasA && chunkSelHasB) {
+				obstacleExportCounter++;
+				char path[256];
+				snprintf(path, sizeof(path),
+				         "resources/obstacles/export_%03d.chunk", obstacleExportCounter);
+				Chunk_export(chunkSelA_x, chunkSelA_y,
+				             chunkSelB_x, chunkSelB_y, path);
+				printf("Obstacle exported to: %s\n", path);
 			}
 		} else {
 			const Zone *z = Zone_get();
@@ -863,7 +876,8 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 			Zone_place_cell(grid_x, grid_y, z->cell_types[godModeSelectedType].id);
 		}
 	}
-	if (lmbSingle && godPlacementMode == GOD_MODE_CHUNKS) {
+	if (lmbSingle && (godPlacementMode == GOD_MODE_CHUNKS ||
+	                  godPlacementMode == GOD_MODE_OBSTACLES)) {
 		if (!chunkSelHasA) {
 			chunkSelA_x = grid_x;
 			chunkSelA_y = grid_y;
@@ -919,7 +933,8 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 	}
 
 	/* RMB removal per mode */
-	if (rmbSingle && godPlacementMode == GOD_MODE_CHUNKS) {
+	if (rmbSingle && (godPlacementMode == GOD_MODE_CHUNKS ||
+	                  godPlacementMode == GOD_MODE_OBSTACLES)) {
 		chunkSelHasA = false;
 		chunkSelHasB = false;
 		godMouseRightConsumed = true;
@@ -1041,6 +1056,15 @@ static void god_mode_render_cursor(void)
 		Render_line_segment(wx, wy + s, wx, wy, 1.0f, 0.9f, 0.2f, 0.6f);
 		break;
 	}
+	case GOD_MODE_OBSTACLES: {
+		/* Cyan cursor square */
+		float s = MAP_CELL_SIZE;
+		Render_line_segment(wx, wy, wx + s, wy, 0.2f, 0.9f, 1.0f, 0.6f);
+		Render_line_segment(wx + s, wy, wx + s, wy + s, 0.2f, 0.9f, 1.0f, 0.6f);
+		Render_line_segment(wx + s, wy + s, wx, wy + s, 0.2f, 0.9f, 1.0f, 0.6f);
+		Render_line_segment(wx, wy + s, wx, wy, 0.2f, 0.9f, 1.0f, 0.6f);
+		break;
+	}
 	render_crosshair: {
 		/* Entity modes: use free position when snap is off */
 		float cx, cy;
@@ -1122,6 +1146,20 @@ static void god_mode_render_hud(const Screen *screen)
 		Text_render(tr, shaders, &proj, &ident,
 			buf, cx, ty + line_h * 2,
 			1.0f, 0.9f, 0.2f, 0.8f);
+		break;
+	case GOD_MODE_OBSTACLES:
+		if (chunkSelHasA && chunkSelHasB) {
+			int w = abs(chunkSelB_x - chunkSelA_x) + 1;
+			int h = abs(chunkSelB_y - chunkSelA_y) + 1;
+			snprintf(buf, sizeof(buf), "Selection: %dx%d (Tab=export, RMB=clear)", w, h);
+		} else if (chunkSelHasA) {
+			snprintf(buf, sizeof(buf), "Corner A set — click Corner B");
+		} else {
+			snprintf(buf, sizeof(buf), "Click to set Corner A");
+		}
+		Text_render(tr, shaders, &proj, &ident,
+			buf, cx, ty + line_h * 2,
+			0.2f, 0.9f, 1.0f, 0.8f);
 		break;
 	default:
 		break;
@@ -1474,7 +1512,8 @@ static void god_mode_create_zone(void)
 
 static void god_mode_render_chunk_selection(void)
 {
-	if (godPlacementMode != GOD_MODE_CHUNKS) return;
+	if (godPlacementMode != GOD_MODE_CHUNKS &&
+	    godPlacementMode != GOD_MODE_OBSTACLES) return;
 
 	float s = MAP_CELL_SIZE;
 

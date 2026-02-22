@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define STALKER_COUNT 128
+#define STALKER_COUNT 512
 
 #define STALKER_HP 40.0
 #define STALK_SPEED 300.0

@@ -6,12 +6,13 @@
 #include "color.h"
 
 #define ZONE_MAX_CELL_TYPES 32
-#define ZONE_MAX_SPAWNS 256
+#define ZONE_MAX_SPAWNS 1024
 #define ZONE_MAX_UNDO 512
 #define ZONE_MAX_DESTRUCTIBLES 32
 #define ZONE_MAX_PORTALS 16
 #define ZONE_MAX_SAVEPOINTS 16
 #define ZONE_MAX_LANDMARKS 16
+#define ZONE_MAX_OBSTACLE_DEFS 32
 
 typedef enum {
 	INFLUENCE_DENSE,
@@ -55,6 +56,11 @@ typedef struct {
 	int grid_x, grid_y;
 	char drop_sub[32];
 } ZoneDestructible;
+
+typedef struct {
+	char name[64];
+	float weight;
+} ObstacleDef;
 
 typedef struct {
 	char id[32];
@@ -132,6 +138,12 @@ typedef struct {
 	LandmarkDef landmarks[ZONE_MAX_LANDMARKS];
 	int landmark_count;
 	int landmark_min_separation;
+
+	/* Obstacle scatter */
+	ObstacleDef obstacle_defs[ZONE_MAX_OBSTACLE_DEFS];
+	int obstacle_def_count;
+	float obstacle_density;
+	int obstacle_min_spacing;
 
 	/* Hand-placed counts (for procgen regen — truncate back to these) */
 	int hand_portal_count;

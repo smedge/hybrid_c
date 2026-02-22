@@ -93,11 +93,19 @@ bool Chunk_load(ChunkTemplate *out, const char *filepath)
 			if (sscanf(line + 6, "%d %d", &e->x, &e->y) == 2)
 				out->empty_count++;
 		}
+		else if (strncmp(line, "style ", 6) == 0) {
+			if (strncmp(line + 6, "structured", 10) == 0)
+				out->obstacle_style = OBSTACLE_STRUCTURED;
+			else
+				out->obstacle_style = OBSTACLE_ORGANIC;
+		}
 		else if (strncmp(line, "spawn ", 6) == 0) {
 			if (out->spawn_count >= CHUNK_MAX_SPAWNS) continue;
 			ChunkSpawn *s = &out->spawns[out->spawn_count];
-			if (sscanf(line + 6, "%d %d %31s %f", &s->x, &s->y,
-			           s->entity_type, &s->probability) == 4)
+			s->probability = 1.0f;
+			int n = sscanf(line + 6, "%d %d %31s %f", &s->x, &s->y,
+			               s->entity_type, &s->probability);
+			if (n >= 3)
 				out->spawn_count++;
 		}
 	}

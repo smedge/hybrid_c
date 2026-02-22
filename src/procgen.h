@@ -27,4 +27,8 @@ void     Procgen_get_landmark(int i, int *x, int *y, const char **type,
 
 uint32_t Procgen_get_zone_seed(void);
 
+/* Query influence strength at a grid position (0.0–1.0).
+ * Returns 0 if no landmarks are placed yet. */
+float    Procgen_get_influence_strength(int gx, int gy);
+
 #endif

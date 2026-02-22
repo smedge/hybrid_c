@@ -8,6 +8,11 @@
 #define CHUNK_MAX_SPAWNS 32
 
 typedef enum {
+	OBSTACLE_ORGANIC,
+	OBSTACLE_STRUCTURED
+} ObstacleStyle;
+
+typedef enum {
 	TRANSFORM_IDENTITY,
 	TRANSFORM_ROT90,
 	TRANSFORM_ROT180,
@@ -47,6 +52,8 @@ typedef struct {
 
 	ChunkSpawn spawns[CHUNK_MAX_SPAWNS];
 	int spawn_count;
+
+	ObstacleStyle obstacle_style;
 } ChunkTemplate;
 
 /* Load a chunk template from file. Returns true on success. */

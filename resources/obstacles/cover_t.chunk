@@ -1,0 +1,12 @@
+# T-shaped wall — structured intersection cover
+chunk cover_t
+size 5 3
+style structured
+
+wall 0 0 0
+wall 1 0 0
+wall 2 0 0
+wall 3 0 0
+wall 4 0 0
+wall 2 1 0
+wall 2 2 0

@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define SEEKER_COUNT 128
+#define SEEKER_COUNT 512
 
 #define SEEKER_HP 60.0
 #define STALK_SPEED 300.0

@@ -1,0 +1,9 @@
+# Scattered single cells — organic debris
+chunk rock_scatter
+size 5 5
+style organic
+
+wall 1 0 0
+wall 4 1 0
+wall 0 3 0
+wall 3 4 0

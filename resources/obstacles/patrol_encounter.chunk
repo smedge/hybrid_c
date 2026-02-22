@@ -1,0 +1,8 @@
+# Encounter-only block — no geometry, just spawns
+chunk patrol_encounter
+size 8 8
+style organic
+
+spawn 2 2 hunter 0.8
+spawn 6 6 hunter 0.7
+spawn 4 4 seeker 0.8

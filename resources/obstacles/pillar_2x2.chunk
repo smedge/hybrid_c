@@ -1,0 +1,9 @@
+# Small pillar cluster — basic organic cover
+chunk pillar_2x2
+size 2 2
+style organic
+
+wall 0 0 0
+wall 1 0 0
+wall 0 1 0
+wall 1 1 0

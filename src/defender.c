@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define DEFENDER_COUNT 64
+#define DEFENDER_COUNT 512
 #define DEFENDER_HP 80.0
 #define NORMAL_SPEED 250.0
 #define FLEE_SPEED 400.0

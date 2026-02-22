@@ -86,6 +86,10 @@ void Zone_load(const char *path)
 	zone.hotspot_min_separation = 150;
 	zone.landmark_min_separation = 120;
 
+	/* Obstacle scatter defaults */
+	zone.obstacle_density = 0.08f;
+	zone.obstacle_min_spacing = 8;
+
 	char line[512];
 	while (fgets(line, sizeof(line), f)) {
 		/* Strip newline */
@@ -293,6 +297,20 @@ void Zone_load(const char *path)
 				zone.landmark_count++;
 			}
 		}
+		else if (strncmp(line, "obstacle_density ", 17) == 0) {
+			sscanf(line + 17, "%f", &zone.obstacle_density);
+		}
+		else if (strncmp(line, "obstacle_min_spacing ", 21) == 0) {
+			sscanf(line + 21, "%d", &zone.obstacle_min_spacing);
+		}
+		else if (strncmp(line, "obstacle ", 9) == 0) {
+			if (zone.obstacle_def_count >= ZONE_MAX_OBSTACLE_DEFS) continue;
+			ObstacleDef *od = &zone.obstacle_defs[zone.obstacle_def_count];
+			if (sscanf(line + 9, "%63s %f", od->name, &od->weight) == 2) {
+				if (od->weight > 0.0f)
+					zone.obstacle_def_count++;
+			}
+		}
 	}
 
 	fclose(f);
@@ -415,6 +433,17 @@ void Zone_save(void)
 			for (int j = 0; j < lm->savepoint_count; j++) {
 				fprintf(f, "landmark_savepoint %s %s\n",
 				        lm->type, lm->savepoints[j].savepoint_id);
+			}
+		}
+
+		/* Obstacle scatter */
+		if (zone.obstacle_def_count > 0) {
+			fprintf(f, "obstacle_density %g\n", zone.obstacle_density);
+			fprintf(f, "obstacle_min_spacing %d\n", zone.obstacle_min_spacing);
+			for (int i = 0; i < zone.obstacle_def_count; i++) {
+				fprintf(f, "obstacle %s %g\n",
+				        zone.obstacle_defs[i].name,
+				        zone.obstacle_defs[i].weight);
 			}
 		}
 

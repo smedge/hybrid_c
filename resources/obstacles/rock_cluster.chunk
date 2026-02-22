@@ -1,0 +1,14 @@
+# Dense organic cluster — irregular rock formation
+chunk rock_cluster
+size 4 4
+style organic
+
+wall 1 0 0
+wall 2 0 0
+wall 0 1 0
+wall 1 1 0
+wall 2 1 0
+wall 1 2 0
+wall 2 2 0
+wall 3 2 0
+wall 2 3 0

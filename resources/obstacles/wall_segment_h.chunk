@@ -1,0 +1,10 @@
+# Horizontal wall segment — structured barrier
+chunk wall_segment_h
+size 5 1
+style structured
+
+wall 0 0 0
+wall 1 0 0
+wall 2 0 0
+wall 3 0 0
+wall 4 0 0

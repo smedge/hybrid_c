@@ -1,0 +1,21 @@
+# Enclosed position with hunter — structured sniper post
+chunk sniper_nest
+size 5 5
+style structured
+
+wall 0 0 0
+wall 1 0 0
+wall 2 0 0
+wall 3 0 0
+wall 4 0 0
+wall 0 1 0
+wall 4 1 0
+wall 0 2 0
+wall 4 2 0
+wall 0 3 0
+wall 4 3 0
+wall 0 4 0
+wall 1 4 0
+wall 3 4 0
+wall 4 4 0
+spawn 2 2 hunter 0.9

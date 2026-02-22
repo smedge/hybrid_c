@@ -1,0 +1,10 @@
+# 3x3 corner piece — structured right angle
+chunk corner_3x3
+size 3 3
+style structured
+
+wall 0 0 0
+wall 1 0 0
+wall 2 0 0
+wall 0 1 0
+wall 0 2 0

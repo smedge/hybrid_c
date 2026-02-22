@@ -1,5 +1,6 @@
 #include "procgen.h"
 #include "chunk.h"
+#include "obstacle.h"
 #include "noise.h"
 #include "prng.h"
 
@@ -370,6 +371,265 @@ static double compute_wall_threshold(int gx, int gy, double base_threshold,
 	return threshold;
 }
 
+/* --- Influence strength query --- */
+
+/* Compute raw influence strength at a grid position (0.0 = no influence,
+ * up to ~1.0 at landmark centers). Used by obstacle scatter for style matching. */
+static float compute_influence_strength(int gx, int gy,
+                                        const PlacedLandmark *landmarks, int count)
+{
+	float max_strength = 0.0f;
+
+	for (int i = 0; i < count; i++) {
+		double dx = gx - landmarks[i].grid_x;
+		double dy = gy - landmarks[i].grid_y;
+		double dist = sqrt(dx * dx + dy * dy);
+		const TerrainInfluence *inf = &landmarks[i].def->influence;
+
+		if (dist >= inf->radius) continue;
+
+		double t = 1.0 - (dist / inf->radius);
+		float w = (float)(pow(t, (double)inf->falloff) * inf->strength);
+		if (w > max_strength) max_strength = w;
+	}
+
+	return max_strength;
+}
+
+float Procgen_get_influence_strength(int gx, int gy)
+{
+	return compute_influence_strength(gx, gy, debug_landmarks, debug_landmark_count);
+}
+
+/* --- Obstacle scatter --- */
+
+typedef struct {
+	const ChunkTemplate *chunk;
+	float weight;
+} ObstaclePoolEntry;
+
+typedef struct {
+	int x, y;
+} PlacedObstacle;
+
+#define MAX_PLACED_OBSTACLES 512
+
+static const ChunkTemplate *pick_weighted(ObstaclePoolEntry *pool, int count,
+                                          float total_weight, Prng *rng)
+{
+	if (count == 0) return NULL;
+	float roll = Prng_float(rng) * total_weight;
+	float accum = 0.0f;
+	for (int i = 0; i < count; i++) {
+		accum += pool[i].weight;
+		if (roll < accum) return pool[i].chunk;
+	}
+	return pool[count - 1].chunk;
+}
+
+static bool block_fits(int ox, int oy, const ChunkTemplate *chunk,
+                       ChunkTransform transform, const Zone *zone)
+{
+	/* Compute transformed dimensions */
+	int tw, th;
+	if (transform == TRANSFORM_ROT90 || transform == TRANSFORM_ROT270 ||
+	    transform == TRANSFORM_MIRROR_H_ROT90 || transform == TRANSFORM_MIRROR_V_ROT90) {
+		tw = chunk->height;
+		th = chunk->width;
+	} else {
+		tw = chunk->width;
+		th = chunk->height;
+	}
+
+	/* Check bounds */
+	if (ox < 0 || oy < 0 || ox + tw > zone->size || oy + th > zone->size)
+		return false;
+
+	/* Check each cell in the footprint */
+	for (int ly = 0; ly < chunk->height; ly++) {
+		for (int lx = 0; lx < chunk->width; lx++) {
+			int tx, ty;
+			Chunk_transform_point(lx, ly, chunk->width, chunk->height,
+			                      transform, &tx, &ty);
+			int gx = ox + tx;
+			int gy = oy + ty;
+
+			if (gx < 0 || gx >= zone->size || gy < 0 || gy >= zone->size)
+				return false;
+			if (zone->cell_chunk_stamped[gx][gy])
+				return false;
+			if (zone->cell_hand_placed[gx][gy])
+				return false;
+		}
+	}
+	return true;
+}
+
+static void scatter_obstacles(Zone *zone, Prng *rng,
+                               const PlacedLandmark *landmarks, int landmark_count)
+{
+	if (zone->obstacle_def_count == 0) return;
+
+	/* Load obstacle library if not already loaded */
+	Obstacle_load_library();
+
+	/* Build style pools from zone's obstacle definitions */
+	ObstaclePoolEntry structured[ZONE_MAX_OBSTACLE_DEFS];
+	ObstaclePoolEntry organic[ZONE_MAX_OBSTACLE_DEFS];
+	int structured_count = 0, organic_count = 0;
+	float structured_total = 0.0f, organic_total = 0.0f;
+
+	for (int i = 0; i < zone->obstacle_def_count; i++) {
+		const ChunkTemplate *chunk = Obstacle_find(zone->obstacle_defs[i].name);
+		if (!chunk) {
+			printf("scatter_obstacles: warning — obstacle '%s' not found\n",
+			       zone->obstacle_defs[i].name);
+			continue;
+		}
+		float w = zone->obstacle_defs[i].weight;
+		if (chunk->obstacle_style == OBSTACLE_STRUCTURED) {
+			structured[structured_count].chunk = chunk;
+			structured[structured_count].weight = w;
+			structured_total += w;
+			structured_count++;
+		} else {
+			organic[organic_count].chunk = chunk;
+			organic[organic_count].weight = w;
+			organic_total += w;
+			organic_count++;
+		}
+	}
+
+	if (structured_count == 0 && organic_count == 0) return;
+
+	/* Count eligible cells (not walls, not chunk-stamped, not hand-placed) */
+	int eligible_cells = 0;
+	for (int y = 0; y < zone->size; y++)
+		for (int x = 0; x < zone->size; x++) {
+			if (zone->cell_grid[x][y] >= 0) continue;
+			if (zone->cell_chunk_stamped[x][y]) continue;
+			if (zone->cell_hand_placed[x][y]) continue;
+			eligible_cells++;
+		}
+
+	/* Budget formula from spec */
+	int budget = (int)((eligible_cells / 10000.0f) * zone->obstacle_density * 100.0f);
+	if (budget <= 0) return;
+	if (budget > MAX_PLACED_OBSTACLES) budget = MAX_PLACED_OBSTACLES;
+
+	PlacedObstacle placed[MAX_PLACED_OBSTACLES];
+	int placed_count = 0;
+	int spawns_before = zone->spawn_count;
+	int max_attempts = budget * 20;
+	int min_spacing = zone->obstacle_min_spacing;
+
+	for (int attempt = 0; attempt < max_attempts && placed_count < budget; attempt++) {
+		int x = Prng_range(rng, 0, zone->size - 1);
+		int y = Prng_range(rng, 0, zone->size - 1);
+
+		/* Skip if in a landmark chunk footprint */
+		if (zone->cell_chunk_stamped[x][y]) continue;
+
+		/* Skip if already a wall */
+		if (zone->cell_grid[x][y] >= 0) continue;
+
+		/* Skip if hand-placed */
+		if (zone->cell_hand_placed[x][y]) continue;
+
+		/* Skip if too close to an already-placed obstacle */
+		bool too_close = false;
+		for (int i = 0; i < placed_count; i++) {
+			int dx = x - placed[i].x;
+			int dy = y - placed[i].y;
+			if (dx * dx + dy * dy < min_spacing * min_spacing) {
+				too_close = true;
+				break;
+			}
+		}
+		if (too_close) continue;
+
+		/* Compute local influence strength */
+		float strength = compute_influence_strength(x, y, landmarks, landmark_count);
+
+		/* Skip dense areas — they already have enough walls */
+		if (strength > 0.7f) continue;
+
+		/* Pick style pool based on influence */
+		const ChunkTemplate *block = NULL;
+		if (strength > 0.5f) {
+			block = pick_weighted(structured, structured_count,
+			                      structured_total, rng);
+		} else if (strength > 0.2f) {
+			if (Prng_float(rng) < strength)
+				block = pick_weighted(structured, structured_count,
+				                      structured_total, rng);
+			else
+				block = pick_weighted(organic, organic_count,
+				                      organic_total, rng);
+		} else {
+			block = pick_weighted(organic, organic_count,
+			                      organic_total, rng);
+		}
+
+		/* Fallback: if preferred pool is empty, try the other */
+		if (!block) {
+			if (organic_count > 0)
+				block = pick_weighted(organic, organic_count,
+				                      organic_total, rng);
+			else if (structured_count > 0)
+				block = pick_weighted(structured, structured_count,
+				                      structured_total, rng);
+		}
+		if (!block) continue;
+
+		/* Random transform */
+		ChunkTransform transform = (ChunkTransform)Prng_range(rng, 0, TRANSFORM_COUNT - 1);
+
+		/* Check if block fits without overlapping landmarks, hand-placed, or edges */
+		if (!block_fits(x, y, block, transform, zone))
+			continue;
+
+		/* Stamp walls */
+		Chunk_stamp(block, zone, x, y, transform);
+
+		/* Roll spawn probabilities and create zone spawn entries */
+		for (int si = 0; si < block->spawn_count; si++) {
+			float roll = Prng_float(rng);
+			if (roll > block->spawns[si].probability) continue;
+
+			/* Skip non-enemy spawns (portals/savepoints don't make sense in obstacles) */
+			if (strcmp(block->spawns[si].entity_type, "portal") == 0) continue;
+			if (strcmp(block->spawns[si].entity_type, "savepoint") == 0) continue;
+
+			if (zone->spawn_count >= ZONE_MAX_SPAWNS) continue;
+
+			int tx, ty;
+			Chunk_transform_spawn(block->spawns[si].x, block->spawns[si].y,
+			                      block->width, block->height,
+			                      transform, &tx, &ty);
+			int gx = x + tx;
+			int gy = y + ty;
+
+			ZoneSpawn *sp = &zone->spawns[zone->spawn_count++];
+			strncpy(sp->enemy_type, block->spawns[si].entity_type,
+			        sizeof(sp->enemy_type) - 1);
+			sp->enemy_type[sizeof(sp->enemy_type) - 1] = '\0';
+			sp->world_x = (gx - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+			sp->world_y = (gy - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+			sp->probability = 1.0f; /* already passed the roll */
+		}
+
+		placed[placed_count].x = x;
+		placed[placed_count].y = y;
+		placed_count++;
+	}
+
+	int obstacle_enemy_spawns = zone->spawn_count - spawns_before;
+	printf("scatter_obstacles: placed %d/%d obstacles, %d enemy spawns added (zone total: %d), pools: %d structured / %d organic\n",
+	       placed_count, budget, obstacle_enemy_spawns, zone->spawn_count,
+	       structured_count, organic_count);
+}
+
 /* --- Main generation --- */
 
 /* Circuit vein noise: separate noise field determines where circuit
@@ -557,6 +817,9 @@ void Procgen_generate(Zone *zone)
 
 	/* ─── Landmark Edge Erosion ─── */
 	erode_landmark_edges(zone, zone_seed);
+
+	/* ─── Obstacle Scatter ─── */
+	scatter_obstacles(zone, &rng, placed, placed_count);
 
 	printf("Procgen_generate: seed=%u zone_seed=%u walls=%d hotspots=%d landmarks=%d\n",
 	       master_seed, zone_seed, walls_placed, hotspot_count, placed_count);

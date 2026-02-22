@@ -1,0 +1,13 @@
+# Broken barricade — organic partial wall
+chunk barricade
+size 6 2
+style organic
+
+wall 0 0 0
+wall 1 0 0
+wall 3 0 0
+wall 4 0 0
+wall 5 0 0
+wall 0 1 0
+wall 1 1 0
+wall 5 1 0

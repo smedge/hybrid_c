@@ -1,0 +1,9 @@
+# L-shaped wall — organic cover with corner
+chunk pillar_L
+size 3 3
+style organic
+
+wall 0 0 0
+wall 1 0 0
+wall 0 1 0
+wall 0 2 0
