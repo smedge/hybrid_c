@@ -75,6 +75,12 @@ void Entity_destroy(const unsigned int entityId)
 	}
 }
 
+void Entity_recalculate_highest_index(void)
+{
+	while (highestIndex > 0 && entities[highestIndex].empty)
+		highestIndex--;
+}
+
 void Entity_user_update_system(const Input *input, const unsigned int ticks)
 {
 	for(int i = 0; i <= highestIndex; i++) 

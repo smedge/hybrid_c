@@ -208,7 +208,6 @@ void Sub_Gravwell_cleanup(void)
 {
 	wellActive = false;
 	cooldownMs = 0;
-	ParticleInstance_cleanup();
 	Audio_unload_sample(&samplePlace);
 	Audio_unload_sample(&sampleExpire);
 }

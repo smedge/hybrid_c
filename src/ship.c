@@ -216,6 +216,11 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Mend_initialize();
 			Sub_Aegis_initialize();
 			Sub_Stealth_initialize();
+			Sub_Pea_deactivate_all();
+			Sub_Mgun_deactivate_all();
+			Sub_Mine_deactivate_all();
+			Sub_Inferno_deactivate_all();
+			Sub_Disintegrate_deactivate_all();
 			Sub_Gravwell_deactivate_all();
 			PlayerStats_reset();
 			Mine_cleanup();
@@ -225,6 +230,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Stalker_cleanup();
 			EnemyRegistry_clear();
 			Zone_spawn_enemies();
+			Entity_recalculate_highest_index();
 
 			Audio_play_sample(&sample01);
 		}

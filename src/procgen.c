@@ -395,9 +395,14 @@ static void erode_landmark_edges(Zone *zone, uint32_t zone_seed)
 
 	/* Distance field: -1 = not near boundary, 1..MAX = distance from edge */
 	int8_t *dist = malloc(size * size * sizeof(int8_t));
-	memset(dist, -1, size * size);
 	int *qx = malloc(size * size * sizeof(int));
 	int *qy = malloc(size * size * sizeof(int));
+	if (!dist || !qx || !qy) {
+		fprintf(stderr, "Procgen: erode_landmark_edges allocation failed\n");
+		free(dist); free(qx); free(qy);
+		return;
+	}
+	memset(dist, -1, size * size);
 	int qhead = 0, qtail = 0;
 
 	/* Seed BFS: non-stamped cells adjacent (8-connected) to stamped cells */

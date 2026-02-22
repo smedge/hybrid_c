@@ -1,4 +1,5 @@
 #include "zone.h"
+#include "entity.h"
 #include "procgen.h"
 #include "mine.h"
 #include "hunter.h"
@@ -323,6 +324,7 @@ void Zone_unload(void)
 	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();
+	Entity_recalculate_highest_index();
 	memset(&zone, 0, sizeof(zone));
 	undoCount = 0;
 }
@@ -854,6 +856,7 @@ static void rebuild_enemies(void)
 	Defender_cleanup();
 	Stalker_cleanup();
 	EnemyRegistry_clear();
+	Entity_recalculate_highest_index();
 	Zone_spawn_enemies();
 }
 
@@ -922,6 +925,7 @@ static void apply_zone_to_world(void)
 	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();
+	Entity_recalculate_highest_index();
 
 	/* Apply background palette */
 	if (zone.has_bg_colors) {

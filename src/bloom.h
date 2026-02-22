@@ -27,7 +27,7 @@ typedef struct {
 	int blur_passes;
 } Bloom;
 
-void Bloom_initialize(Bloom *bloom, int draw_w, int draw_h);
+void Bloom_initialize(Bloom *bloom, int draw_w, int draw_h, int divisor, float intensity, int blur_passes);
 void Bloom_cleanup(Bloom *bloom);
 void Bloom_resize(Bloom *bloom, int draw_w, int draw_h);
 void Bloom_begin_source(Bloom *bloom);

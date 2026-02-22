@@ -21,6 +21,8 @@ void input_initialize(Input *input)
 
 	input->keyF = false;
 	input->keyG = false;
+	input->keyH = false;
+	input->keyI = false;
 	input->keyJ = false;
 	input->keyL = false;
 	input->keyN = false;

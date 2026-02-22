@@ -180,7 +180,7 @@ void Enemy_pick_wander_target(Position spawnPoint, double radius, int baseInterv
 	Position *out_target, int *out_timer)
 {
 	double angle = (rand() % 360) * PI / 180.0;
-	double dist = (rand() % (int)radius);
+	double dist = (radius >= 1.0) ? (rand() % (int)radius) : 0.0;
 	out_target->x = spawnPoint.x + cos(angle) * dist;
 	out_target->y = spawnPoint.y + sin(angle) * dist;
 	*out_timer = baseInterval + (rand() % 1000);

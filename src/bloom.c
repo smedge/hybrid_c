@@ -157,11 +157,11 @@ static void destroy_fbo(GLuint *fbo, GLuint *tex)
 
 /* ---- Public API ---- */
 
-void Bloom_initialize(Bloom *bloom, int draw_w, int draw_h)
+void Bloom_initialize(Bloom *bloom, int draw_w, int draw_h, int divisor, float intensity, int blur_passes)
 {
-	bloom->intensity = 2.0f;
-	bloom->blur_passes = 5;
-	bloom->divisor = 2;
+	bloom->intensity = intensity;
+	bloom->blur_passes = blur_passes;
+	bloom->divisor = divisor;
 
 	bloom->width = draw_w / bloom->divisor;
 	bloom->height = draw_h / bloom->divisor;

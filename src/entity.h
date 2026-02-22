@@ -31,6 +31,7 @@ Entity Entity_initialize_entity();
 Entity* Entity_add_entity(const Entity entity);
 void Entity_destroy_all(void);
 void Entity_destroy(const unsigned int entityId);
+void Entity_recalculate_highest_index(void);
 
 void Entity_user_update_system(const Input *input, const unsigned int ticks);
 void Entity_ai_update_system(const unsigned int ticks);

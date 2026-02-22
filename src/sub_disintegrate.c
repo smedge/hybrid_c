@@ -130,7 +130,6 @@ void Sub_Disintegrate_initialize(Entity *p)
 
 void Sub_Disintegrate_cleanup(void)
 {
-	ParticleInstance_cleanup();
 	Audio_unload_sample(&sampleFire);
 }
 

@@ -152,7 +152,6 @@ void Sub_Inferno_initialize(Entity *p)
 
 void Sub_Inferno_cleanup(void)
 {
-	ParticleInstance_cleanup();
 	Audio_unload_sample(&sampleFire);
 }
 

@@ -52,13 +52,15 @@ static void flush_batch_draw(PrimitiveBatch *b, GLenum mode)
 	b->count = 0;
 }
 
-/* Auto-flush a single primitive batch using stored context */
+/* Auto-flush all batches in correct order to preserve rendering contract */
 static void auto_flush(BatchRenderer *batch, PrimitiveBatch *pb, GLenum mode)
 {
 	if (!batch->flush_shaders) return;
 	Shader_set_matrices(&batch->flush_shaders->color_shader,
 		&batch->flush_proj, &batch->flush_view);
-	flush_batch_draw(pb, mode);
+	flush_batch_draw(&batch->lines, GL_LINES);
+	flush_batch_draw(&batch->triangles, GL_TRIANGLES);
+	flush_batch_draw(&batch->points, GL_POINTS);
 }
 
 void Batch_initialize(BatchRenderer *batch)
