@@ -30,9 +30,9 @@ static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_MEND]   = { "MEND",   "sub_mend",   FRAG_TYPE_MEND,   5, false },
 	[SUB_ID_AEGIS]  = { "AEGIS",  "sub_aegis",  FRAG_TYPE_AEGIS,  5, false },
 	[SUB_ID_STEALTH] = { "STEALTH", "sub_stealth", FRAG_TYPE_STALKER, 5, false },
-	[SUB_ID_INFERNO] = { "INFERNO", "sub_inferno", FRAG_TYPE_MINE, 0, false },
-	[SUB_ID_DISINTEGRATE] = { "DISINTEGRATE", "sub_disintegrate", FRAG_TYPE_MINE, 0, false },
-	[SUB_ID_GRAVWELL] = { "GRAVWELL", "sub_gravwell", FRAG_TYPE_GRAVWELL, 0, false },
+	[SUB_ID_INFERNO] = { "INFERNO", "sub_inferno", FRAG_TYPE_INFERNO, 5, false },
+	[SUB_ID_DISINTEGRATE] = { "DISINTEGRATE", "sub_disintegrate", FRAG_TYPE_DISINTEGRATE, 5, false },
+	[SUB_ID_GRAVWELL] = { "GRAVWELL", "sub_gravwell", FRAG_TYPE_GRAVWELL, 5, false },
 };
 
 /* Notification state */
@@ -152,6 +152,14 @@ void Progression_restore(const bool *unlocked, const bool *discovered)
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
 		entries[i].unlocked = unlocked[i];
 		entries[i].discovered = discovered[i];
+	}
+}
+
+void Progression_unlock_all(void)
+{
+	for (int i = 0; i < SUB_ID_COUNT; i++) {
+		entries[i].unlocked = true;
+		entries[i].discovered = true;
 	}
 }
 

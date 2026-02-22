@@ -33,6 +33,7 @@
 #include "circuit_atlas.h"
 #include "map_window.h"
 #include "fog_of_war.h"
+#include "progression.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -391,6 +392,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		Ship_set_god_mode(godModeActive);
 		if (godModeActive) {
 			FogOfWar_reveal_all();
+			Progression_unlock_all();
 			View_set_min_zoom(0.01);
 		} else {
 			Zone_save_if_dirty();

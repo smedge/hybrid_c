@@ -25,6 +25,7 @@ void Progression_cleanup(void);
 void Progression_update(unsigned int ticks);
 void Progression_render(const Screen *screen);
 
+void Progression_unlock_all(void);
 bool Progression_is_unlocked(SubroutineId id);
 bool Progression_is_discovered(SubroutineId id);
 void Progression_restore(const bool *unlocked, const bool *discovered);
