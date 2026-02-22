@@ -18,19 +18,19 @@ Obstacle blocks fill the gap. They give moderate and sparse terrain **authored t
 
 Obstacle blocks reuse the existing `.chunk` file format from `chunk.c/h`. They're just small chunks — the same `wall`, `empty`, `spawn`, `size` directives, loaded by the same `Chunk_load()` function.
 
-Three additions to the chunk format:
-1. **`style`** — `structured` or `organic`. Controls which influence zones the block is placed in. Defaults to `organic` if omitted.
-2. **`weight`** — Selection weight for weighted random picking. Higher weight = more likely to be chosen relative to other blocks in the same style pool. Default `1.0` if omitted.
-3. **`spawn` probability** — Optional probability field (0.0–1.0) appended to `spawn` lines. Rolled independently per spawn when the obstacle is placed. Default `1.0` (guaranteed) if omitted.
+Two additions to the chunk format:
+1. **`style`** — `structured` or `organic`. Intrinsic to the chunk's art style — controls which influence zones the block is eligible for placement in. Defaults to `organic` if omitted.
+2. **`spawn` probability** — Optional probability field (0.0–1.0) appended to `spawn` lines. Rolled independently per spawn when the obstacle is placed. Default `1.0` (guaranteed) if omitted.
+
+**Weights are NOT stored in chunks.** Selection weights are defined per-zone in the zone file (see [Zone File Integration](#zone-file-integration)). This lets different zones reuse the same obstacle chunks with different weighting — one zone can spam pillars while another favors encounters, using the same obstacle library.
 
 ### Examples
 
 ```
-# Common small pillar — high weight, appears frequently
+# Small pillar cluster — organic cover
 chunk pillar_2x2
 size 2 2
 style organic
-weight 5.0
 
 wall 0 0 0
 wall 1 0 0
@@ -39,11 +39,10 @@ wall 1 1 0
 ```
 
 ```
-# L-shaped wall with a probable hunter — structured, moderate weight
+# L-shaped wall with a probable hunter — structured geometry
 chunk ambush_corner
 size 5 5
 style structured
-weight 2.0
 
 wall 0 0 0
 wall 1 0 0
@@ -54,11 +53,10 @@ spawn hunter 4 2 0.6
 ```
 
 ```
-# Rare large encounter — low weight, spawns unlikely
+# Encounter-only block — no geometry, just spawns
 chunk patrol_encounter
 size 8 8
 style organic
-weight 0.5
 
 spawn hunter 2 2 0.5
 spawn hunter 6 6 0.3
@@ -69,7 +67,7 @@ spawn seeker 4 4 0.4
 - `structured` — Geometric, deliberate patterns. Symmetry, clean edges, recognizable shapes. Placed near landmarks where terrain feels architectural.
 - `organic` — Random-looking, asymmetric clusters. Natural formations. Placed in the wilds, far from landmark influence.
 
-**Weight examples:** A pool with blocks weighted 5.0, 2.0, 2.0, and 1.0 (total 10.0) picks them at 50%, 20%, 20%, and 10% respectively. This lets common small cover pieces dominate while rare large encounters stay special.
+**Weight examples:** See zone file integration below. A zone listing `obstacle pillar_2x2 5.0` and `obstacle patrol_encounter 1.0` picks pillars 5x more often than patrol encounters. Different zones can flip this ratio using the same chunk files.
 
 ### Storage
 
@@ -93,7 +91,7 @@ resources/obstacles/
 
 Two workflows, same output:
 
-1. **Godmode chunk export**: Enter godmode, paint walls and place enemies, select the region with Q/E to cycle to the appropriate mode. The godmode tool cycle gains a new **Obstacles** mode alongside the existing Chunks mode. Tab to export — Chunks mode writes to `resources/chunks/`, Obstacles mode writes to `resources/obstacles/`. Edit the exported file afterward to add `style`, `weight`, and probability values on spawn lines.
+1. **Godmode chunk export**: Enter godmode, paint walls and place enemies, select the region with Q/E to cycle to the appropriate mode. The godmode tool cycle gains a new **Obstacles** mode alongside the existing Chunks mode. Tab to export — Chunks mode writes to `resources/chunks/`, Obstacles mode writes to `resources/obstacles/`. Edit the exported file afterward to add `style` and probability values on spawn lines. Then reference the obstacle by name in any zone file with the desired weight.
 
 2. **Text editor**: Write directly — the format is trivial for small patterns.
 
@@ -101,19 +99,32 @@ The obstacle library starts small (10-15 blocks) and grows during Phase 6 conten
 
 ## Zone File Integration
 
-Two new parameters in the zone file control obstacle scatter:
+Obstacle scatter is configured entirely in the zone file. **No `obstacle` lines = no obstacles placed.** This is explicit opt-in — zones that don't want obstacles simply omit the directives.
+
+### Obstacle definitions
+
+Each `obstacle` line references a chunk file by name (without path or extension) and assigns a zone-specific weight:
 
 ```
-obstacle_density 0.08
-obstacle_min_spacing 8
+obstacle <chunk_name> <weight>
 ```
+
+- `chunk_name` — Name of a `.chunk` file in `resources/obstacles/`. Must match an existing file or it's skipped with a warning.
+- `weight` — Selection weight for this zone. Higher = more likely to be chosen relative to other obstacles in the same style pool. Must be > 0.
+
+This is the key design decision: **weights live in the zone, not the chunk.** The same `pillar_2x2.chunk` can be weight 5.0 in a cover-heavy zone and weight 0.5 in a zone that favors open encounters. The chunk file defines what the obstacle *is* (geometry, style, spawns). The zone file defines how *often* it appears.
+
+### Scatter parameters
+
+Two additional parameters control placement behavior:
 
 - `obstacle_density` — Obstacles per 100x100 cell region of eligible terrain. Value is multiplied by 100 to get the count per region. Default: `0.08` (about 8 per region). On a 512x512 zone with ~50% eligible terrain, that produces ~104 obstacles. Crank to `0.20` for denser scatter (~260), drop to `0.03` for sparse (~40).
 - `obstacle_min_spacing` — Minimum cell distance between obstacle block centers. Default: `8`. Prevents clumping.
 
 **Budget formula:** `budget = (eligible_cells / 10000) * obstacle_density * 100`
 
-**Example zone file** (procgen zone with obstacle settings):
+### Example zone file
+
 ```
 name Sector 7G
 size 512
@@ -128,6 +139,31 @@ effect_threshold 0.55
 # Obstacle scatter
 obstacle_density 0.08
 obstacle_min_spacing 8
+
+# Obstacle library — zone-specific weights
+obstacle pillar_2x2 5.0
+obstacle pillar_L 3.0
+obstacle corner_3x3 2.0
+obstacle wall_segment_h 2.0
+obstacle wall_segment_v 2.0
+obstacle ambush_corner 1.5
+obstacle rock_scatter 1.0
+obstacle rock_cluster 1.0
+obstacle patrol_encounter 0.5
+```
+
+### Different zones, different feel
+
+```
+# Dense cover zone — lots of pillars, minimal encounters
+obstacle pillar_2x2 10.0
+obstacle pillar_L 5.0
+obstacle patrol_encounter 0.2
+
+# Encounter-heavy zone — sparse cover, lots of fights
+obstacle pillar_2x2 1.0
+obstacle ambush_corner 5.0
+obstacle patrol_encounter 4.0
 ```
 
 ## Scatter Algorithm
@@ -162,13 +198,26 @@ Within a style pool, blocks are chosen by **weighted random selection**. Sum all
 ```
 function scatter_obstacles(zone, terrain):
     rng = seed_rng(zone.seed)    // deterministic — same seed, same layout
-    obstacles[] = load all .chunk files from resources/obstacles/
-    structured[] = filter(obstacles, style == structured)
-    organic[] = filter(obstacles, style == organic)
+
+    // Build pools from zone's obstacle definitions (name + weight)
+    // Each entry references a loaded ChunkTemplate + the zone-assigned weight
+    structured[] = []
+    organic[] = []
+    for def in zone.obstacle_defs:
+        chunk = Obstacle_find(def.name)   // look up loaded chunk by name
+        if !chunk: warn and skip
+        entry = { chunk, weight: def.weight }
+        if chunk.style == structured:
+            structured.append(entry)
+        else:
+            organic.append(entry)
+
+    if len(structured) == 0 and len(organic) == 0:
+        return   // no obstacles defined for this zone
 
     // Precompute total weights per pool
-    structured_total_weight = sum(b.weight for b in structured)
-    organic_total_weight = sum(b.weight for b in organic)
+    structured_total_weight = sum(e.weight for e in structured)
+    organic_total_weight = sum(e.weight for e in organic)
 
     // Budget: how many obstacles to place
     eligible_area = count cells not in landmark footprints and not walls
@@ -248,7 +297,7 @@ Add obstacle scatter as a new step in `Procgen_generate()`:
 
 ### chunk.c / chunk.h
 
-Extend `ChunkTemplate` with style, weight, and spawn probability:
+Extend `ChunkTemplate` with style and spawn probability:
 ```c
 typedef enum {
     OBSTACLE_ORGANIC,      // Default
@@ -257,13 +306,12 @@ typedef enum {
 
 // Add to ChunkTemplate:
 ObstacleStyle obstacle_style;  // default OBSTACLE_ORGANIC
-float obstacle_weight;         // default 1.0
 
 // Add to ChunkSpawn (or equivalent spawn struct):
 float probability;             // 0.0–1.0, default 1.0
 ```
 
-Parse `style`, `weight`, and spawn probability in `Chunk_load()`.
+Parse `style` and spawn probability in `Chunk_load()`. No weight field — weights are zone-defined.
 
 ### Obstacle library loader
 
@@ -279,13 +327,21 @@ Called once at startup or on first procgen zone load. The library persists acros
 
 ### zone.h
 
-Add obstacle parameters to the Zone struct:
+Add obstacle definitions and scatter parameters to the Zone struct:
 ```c
-float obstacle_density;      // default 0.08
-int obstacle_min_spacing;    // default 8
+typedef struct {
+    char name[64];     // chunk file name (e.g. "pillar_2x2")
+    float weight;      // zone-specific selection weight
+} ObstacleDef;
+
+// Add to Zone:
+ObstacleDef obstacle_defs[MAX_OBSTACLE_DEFS];  // obstacle references + weights
+int obstacle_def_count;                         // how many defined
+float obstacle_density;                         // default 0.08
+int obstacle_min_spacing;                       // default 8
 ```
 
-Parse from zone file in `Zone_load()`.
+Parse `obstacle`, `obstacle_density`, and `obstacle_min_spacing` from zone file in `Zone_load()`. If `obstacle_def_count == 0`, scatter step is a no-op.
 
 ## Influence Strength Query
 
@@ -306,13 +362,15 @@ Optional future enhancement: highlight obstacle block footprints in a distinct c
 ## Edge Cases
 
 - **Block doesn't fit**: If a block extends past the map edge or overlaps existing geometry, skip it and try the next random position. The attempt budget handles this gracefully.
+- **No obstacle definitions in zone**: If the zone file has no `obstacle` lines, scatter is a no-op. Explicit opt-in.
 - **No obstacles loaded**: If `resources/obstacles/` is empty or missing, scatter step is a no-op. No crash.
+- **Unknown obstacle name**: If a zone references a chunk name that doesn't exist in `resources/obstacles/`, log a warning and skip that entry. Other obstacles still work.
 - **All structured / all organic**: If the library only contains one style, that style is used everywhere regardless of influence. Works fine — just less visual variation.
 - **Empty style pool**: If the influence calls for structured but no structured blocks exist, fall back to organic (and vice versa). Never skip a placement just because one pool is empty.
 - **Hand-placed cells**: `cell_hand_placed` cells are never overwritten. `Chunk_stamp` already respects `cell_chunk_stamped`. Obstacle stamps should also set `cell_chunk_stamped` so they don't get overwritten by later steps.
 - **Enemy overflow**: Obstacle spawns are subject to the existing static array limits (`HUNTER_COUNT 128`, `SEEKER_COUNT 128`, etc.). If a spawn can't be created because the pool is full, it's silently skipped. Tune `obstacle_density` and spawn probabilities to keep totals reasonable.
 - **Encounter-only blocks**: Blocks with spawns but no walls are valid. They place enemies in open terrain for random encounters without altering geometry.
-- **Zero-weight blocks**: A block with `weight 0.0` is never selected. Valid but pointless — effectively disabled without removing the file.
+- **Zero-weight obstacle**: A zone `obstacle` line with weight `0.0` is never selected. Valid but pointless — effectively disables that obstacle for this zone without removing the line.
 
 ## Not In Scope
 
@@ -322,16 +380,18 @@ Optional future enhancement: highlight obstacle block footprints in a distinct c
 
 ## Done When
 
-- 10-15 obstacle blocks authored (mix of structured and organic, varied weights, some with enemy spawns, some encounter-only)
+- 10-15 obstacle blocks authored (mix of structured and organic, some with enemy spawns, some encounter-only)
 - Obstacle library loads from `resources/obstacles/`
 - Scatter algorithm places style-matched blocks in moderate-to-sparse terrain
-- Weighted selection respects block weights within each style pool
+- Weighted selection respects zone-defined weights within each style pool
+- Different zones can reuse the same obstacle chunks with different weights
 - Structured blocks cluster near landmarks, organic blocks scatter in the wilds
 - Minimum spacing prevents clumping
 - Random transforms provide variety (rotations + mirrors)
 - Scatter is deterministic — same seed produces same obstacle layout, same enemy spawns
 - Spawn probabilities roll correctly — encounter-only blocks (no geometry) work
 - Open combat areas have tactical cover instead of random noise dots
-- Zone file `obstacle_density` and `obstacle_min_spacing` parameters work
+- Zone file `obstacle` definitions, `obstacle_density`, and `obstacle_min_spacing` parameters work
+- Zones with no `obstacle` lines produce no obstacles (explicit opt-in)
 - Obstacle blocks don't overlap landmarks, hand-placed cells, or map edges
 - Godmode Obstacles export mode writes to `resources/obstacles/`
