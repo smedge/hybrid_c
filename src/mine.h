@@ -14,5 +14,6 @@ void Mine_render(const void *state, const PlaceableComponent *placeable);
 void Mine_render_bloom_source(void);
 void Mine_render_light_source(void);
 void Mine_reset_all(void);
+int Mine_get_count(void);
 
 #endif

@@ -34,6 +34,7 @@
 #include "map_window.h"
 #include "fog_of_war.h"
 #include "progression.h"
+#include "spatial_grid.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -166,6 +167,9 @@ static bool fpsVisible = false;
 static double fpsValue = 0.0;
 static unsigned int fpsAccum = 0;
 static int fpsFrames = 0;
+
+/* Spatial grid watchdog timer */
+static unsigned int spatialWatchdogAccum = 0;
 
 static double ease_in_out_cubic(double t);
 static void start_zone_bgm(void);
@@ -363,6 +367,9 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		View_set_scale(scale);
 
 		/* AI still runs so the world feels alive */
+		SpatialGrid_set_player_bucket(Ship_get_position().x, Ship_get_position().y);
+		Hunter_update_projectiles(ticks);
+		Stalker_update_projectiles(ticks);
 		Entity_ai_update_system(ticks);
 		Destructible_update(ticks);
 		Fragment_update(ticks);
@@ -490,8 +497,19 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	}
 	Entity_user_update_system(&filtered, ticks);
 	PlayerStats_update(ticks);
+
+	SpatialGrid_set_player_bucket(Ship_get_position().x, Ship_get_position().y);
+	Hunter_update_projectiles(ticks);
+	Stalker_update_projectiles(ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
+
+	/* Spatial grid watchdog — validate every 15 seconds */
+	spatialWatchdogAccum += ticks;
+	if (spatialWatchdogAccum >= 15000) {
+		SpatialGrid_validate();
+		spatialWatchdogAccum = 0;
+	}
 	Portal_update_all(ticks);
 	Savepoint_update_all(ticks);
 	Destructible_update(ticks);
@@ -1003,6 +1021,9 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 	}
 
 	/* AI still runs so the world feels alive */
+	SpatialGrid_set_player_bucket(Ship_get_position().x, Ship_get_position().y);
+	Hunter_update_projectiles(ticks);
+	Stalker_update_projectiles(ticks);
 	Entity_ai_update_system(ticks);
 	Destructible_update(ticks);
 	Fragment_update(ticks);

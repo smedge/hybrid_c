@@ -13,6 +13,7 @@
 #include "color.h"
 #include "audio.h"
 #include "map.h"
+#include "spatial_grid.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -299,6 +300,8 @@ void Defender_initialize(Position position)
 
 	highestUsedIndex++;
 
+	SpatialGrid_add((EntityRef){ENTITY_DEFENDER, idx}, position.x, position.y);
+
 	/* Load audio and register with enemy registry once, not per-entity */
 	if (!sampleDeath) {
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
@@ -359,6 +362,30 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	int idx = (int)(d - defenders);
 	PlaceableComponent *pl = &placeables[idx];
 	double dt = ticks / 1000.0;
+
+	/* Dormancy check — only tick respawn timer if dormant */
+	if (!SpatialGrid_is_active(pl->position.x, pl->position.y)) {
+		if (d->aiState == DEFENDER_DEAD) {
+			d->respawnTimer += ticks;
+			if (d->respawnTimer >= RESPAWN_MS) {
+				d->alive = true;
+				d->hp = DEFENDER_HP;
+				d->aiState = DEFENDER_IDLE;
+				d->killedByPlayer = false;
+				SubHeal_init(&d->healCore);
+				SubShield_init(&d->shieldCore);
+				pl->position = d->spawnPoint;
+				pick_wander_target(d);
+				/* NO respawn sound while dormant */
+				SpatialGrid_update((EntityRef){ENTITY_DEFENDER, idx},
+					pl->position.x, pl->position.y,
+					d->spawnPoint.x, d->spawnPoint.y);
+			}
+		}
+		return;
+	}
+
+	Position oldPos = pl->position;
 
 	d->prevPosition = pl->position;
 	d->boosting = false;
@@ -641,6 +668,10 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			}
 		}
 	}
+
+	/* Update spatial grid if position changed */
+	SpatialGrid_update((EntityRef){ENTITY_DEFENDER, idx},
+		oldPos.x, oldPos.y, pl->position.x, pl->position.y);
 }
 
 static void render_hexagon(Position pos, float radius, float thickness,
@@ -902,4 +933,9 @@ void Defender_heal(int index, double amount)
 	d->hp += amount;
 	if (d->hp > DEFENDER_HP)
 		d->hp = DEFENDER_HP;
+}
+
+int Defender_get_count(void)
+{
+	return highestUsedIndex;
 }

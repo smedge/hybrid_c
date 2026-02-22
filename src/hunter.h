@@ -17,5 +17,7 @@ void Hunter_reset_all(void);
 bool Hunter_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index);
 bool Hunter_find_aggro(Position from, double range, Position *out_pos);
 void Hunter_heal(int index, double amount);
+int Hunter_get_count(void);
+void Hunter_update_projectiles(unsigned int ticks);
 
 #endif

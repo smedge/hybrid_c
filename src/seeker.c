@@ -13,6 +13,7 @@
 #include "audio.h"
 #include "map.h"
 #include "enemy_registry.h"
+#include "spatial_grid.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -205,6 +206,8 @@ void Seeker_initialize(Position position)
 
 	highestUsedIndex++;
 
+	SpatialGrid_add((EntityRef){ENTITY_SEEKER, idx}, position.x, position.y);
+
 	/* Load audio and register with enemy registry once, not per-entity */
 	if (!sampleDeath) {
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
@@ -266,6 +269,28 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 	int idx = (int)(s - seekers);
 	PlaceableComponent *pl = &placeables[idx];
 	double dt = ticks / 1000.0;
+
+	/* Dormancy check — only tick respawn timer if dormant */
+	if (!SpatialGrid_is_active(pl->position.x, pl->position.y)) {
+		if (s->aiState == SEEKER_DEAD) {
+			s->respawnTimer += ticks;
+			if (s->respawnTimer >= RESPAWN_MS) {
+				s->alive = true;
+				s->hp = SEEKER_HP;
+				s->aiState = SEEKER_IDLE;
+				s->killedByPlayer = false;
+				pl->position = s->spawnPoint;
+				pick_wander_target(s);
+				/* NO respawn sound while dormant */
+				SpatialGrid_update((EntityRef){ENTITY_SEEKER, idx},
+					pl->position.x, pl->position.y,
+					s->spawnPoint.x, s->spawnPoint.y);
+			}
+		}
+		return;
+	}
+
+	Position oldPos = pl->position;
 
 	if (s->alive)
 		Enemy_check_stealth_proximity(pl->position, s->facing);
@@ -530,6 +555,10 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			}
 		}
 	}
+
+	/* Update spatial grid if position changed */
+	SpatialGrid_update((EntityRef){ENTITY_SEEKER, idx},
+		oldPos.x, oldPos.y, pl->position.x, pl->position.y);
 }
 
 /* Render an elongated diamond (needle) shape */
@@ -832,4 +861,9 @@ void Seeker_heal(int index, double amount)
 	s->hp += amount;
 	if (s->hp > SEEKER_HP)
 		s->hp = SEEKER_HP;
+}
+
+int Seeker_get_count(void)
+{
+	return highestUsedIndex;
 }

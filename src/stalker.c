@@ -14,6 +14,7 @@
 #include "audio.h"
 #include "map.h"
 #include "enemy_registry.h"
+#include "spatial_grid.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -253,6 +254,8 @@ void Stalker_initialize(Position position)
 
 	highestUsedIndex++;
 
+	SpatialGrid_add((EntityRef){ENTITY_STALKER, idx}, position.x, position.y);
+
 	/* Load audio and register with enemy registry once */
 	if (!sampleDeath) {
 		SubProjectile_pool_init(&stalkerProjPool, STALKER_PROJ_POOL_SIZE);
@@ -311,6 +314,30 @@ void Stalker_resolve(void *state, const Collision collision)
 	(void)collision;
 }
 
+void Stalker_update_projectiles(unsigned int ticks)
+{
+	SubProjectile_update(&stalkerProjPool, Sub_Pea_get_config(), ticks);
+
+	/* Check player hit */
+	if (!Ship_is_destroyed()) {
+		Position shipPos = Ship_get_position();
+		Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
+		Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
+		double dmg = SubProjectile_check_hit(&stalkerProjPool, Sub_Pea_get_config(), shipWorld);
+		if (dmg > 0)
+			PlayerStats_damage(dmg);
+	}
+
+	/* Body-hit spark decay */
+	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+		if (sparks[si].active) {
+			sparks[si].ticksLeft -= ticks;
+			if (sparks[si].ticksLeft <= 0)
+				sparks[si].active = false;
+		}
+	}
+}
+
 void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned int ticks)
 {
 	StalkerState *s = (StalkerState *)state;
@@ -318,12 +345,36 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 	PlaceableComponent *pl = &placeables[idx];
 	double dt = ticks / 1000.0;
 
+	/* Keep globalTicks accurate even when stalker[0] is dormant */
+	static unsigned int globalTicks = 0;
+	if (idx == 0) globalTicks += ticks;
+
+	/* Dormancy check — only tick respawn timer if dormant */
+	if (!SpatialGrid_is_active(pl->position.x, pl->position.y)) {
+		if (s->aiState == STALKER_DEAD) {
+			s->respawnTimer += ticks;
+			if (s->respawnTimer >= RESPAWN_MS) {
+				s->alive = true;
+				s->hp = STALKER_HP;
+				s->aiState = STALKER_IDLE;
+				s->killedByPlayer = false;
+				pl->position = s->spawnPoint;
+				pick_wander_target(s);
+				/* NO respawn sound while dormant */
+				SpatialGrid_update((EntityRef){ENTITY_STALKER, idx},
+					pl->position.x, pl->position.y,
+					s->spawnPoint.x, s->spawnPoint.y);
+			}
+		}
+		return;
+	}
+
+	Position oldPos = pl->position;
+
 	if (s->alive)
 		Enemy_check_stealth_proximity(pl->position, s->facing);
 
 	/* Compute stealth alpha */
-	static unsigned int globalTicks = 0;
-	if (idx == 0) globalTicks += ticks;
 	s->stealthAlpha = compute_stealth_alpha(s, globalTicks);
 
 	/* Tick dash cooldown every frame so it doesn't freeze outside DASHING state */
@@ -538,29 +589,9 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			&& s->aiState != STALKER_DASHING)
 		Enemy_apply_gravity(pl, dt);
 
-	/* Update projectiles and sparks from index 0 only */
-	if (idx == 0) {
-		SubProjectile_update(&stalkerProjPool, Sub_Pea_get_config(), ticks);
-
-		/* Check player hit */
-		if (!Ship_is_destroyed()) {
-			Position shipPos = Ship_get_position();
-			Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
-			Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
-			double dmg = SubProjectile_check_hit(&stalkerProjPool, Sub_Pea_get_config(), shipWorld);
-			if (dmg > 0)
-				PlayerStats_damage(dmg);
-		}
-
-		/* Body-hit spark decay */
-		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
-			if (sparks[si].active) {
-				sparks[si].ticksLeft -= ticks;
-				if (sparks[si].ticksLeft <= 0)
-					sparks[si].active = false;
-			}
-		}
-	}
+	/* Update spatial grid if position changed */
+	SpatialGrid_update((EntityRef){ENTITY_STALKER, idx},
+		oldPos.x, oldPos.y, pl->position.x, pl->position.y);
 }
 
 void Stalker_render(const void *state, const PlaceableComponent *placeable)
@@ -839,4 +870,9 @@ void Stalker_heal(int index, double amount)
 	s->hp += amount;
 	if (s->hp > STALKER_HP)
 		s->hp = STALKER_HP;
+}
+
+int Stalker_get_count(void)
+{
+	return highestUsedIndex;
 }

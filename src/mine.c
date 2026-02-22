@@ -8,6 +8,7 @@
 #include "color.h"
 #include "audio.h"
 #include "sub_stealth.h"
+#include "spatial_grid.h"
 
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
@@ -80,6 +81,8 @@ void Mine_initialize(Position position)
 	entityRefs[highestUsedIndex] = Entity_add_entity(entity);
 
 	highestUsedIndex++;
+
+	SpatialGrid_add((EntityRef){ENTITY_MINE, highestUsedIndex - 1}, position.x, position.y);
 
 	/* Load audio once, not per-entity */
 	if (!sampleRespawn) {
@@ -158,6 +161,19 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 	MineState *ms = (MineState *)state;
 	SubMineCore *core = &ms->core;
 
+	/* Dormancy check — only tick DEAD→DORMANT timer */
+	if (!SpatialGrid_is_active(placeable->position.x, placeable->position.y)) {
+		if (core->phase == MINE_PHASE_DEAD) {
+			core->phaseTicks += ticks;
+			if (core->phaseTicks >= enemyMineCfg.dead_duration_ms) {
+				core->phase = MINE_PHASE_DORMANT;
+				core->phaseTicks = 0;
+				ms->killedByPlayer = false;
+			}
+		}
+		return;
+	}
+
 	/* Check for player projectile hits on the mine body */
 	if (core->phase != MINE_PHASE_DEAD && core->phase != MINE_PHASE_EXPLODING) {
 		float bs = enemyMineCfg.body_half_size;
@@ -231,4 +247,9 @@ void Mine_reset_all(void)
 		mines[i].core.blinkTimer = rand() % 1000;
 		mines[i].killedByPlayer = false;
 	}
+}
+
+int Mine_get_count(void)
+{
+	return highestUsedIndex;
 }

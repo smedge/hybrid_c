@@ -1,4 +1,5 @@
 #include "entity.h"
+#include "spatial_grid.h"
 
 #include <stdio.h>
 
@@ -126,6 +127,10 @@ void Entity_collision_system(void)
 		if (!entities[i].collidable->collidesWithOthers)
 			continue;
 
+		if (!SpatialGrid_is_active(entities[i].placeable->position.x,
+								   entities[i].placeable->position.y))
+			continue;
+
 		for (int j = 0; j <= highestIndex; j++)
 		{
 			if (entities[j].empty || entities[j].disabled || entities[j].collidable == 0 ||
@@ -133,6 +138,10 @@ void Entity_collision_system(void)
 				continue;
 
 			if (i == j)
+				continue;
+
+			if (!SpatialGrid_is_active(entities[j].placeable->position.x,
+									   entities[j].placeable->position.y))
 				continue;
 
 			if (!(entities[i].collidable->mask & entities[j].collidable->layer))

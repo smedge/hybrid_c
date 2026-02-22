@@ -65,6 +65,7 @@ bool SubProjectile_try_fire(SubProjectilePool *pool, const SubProjectileConfig *
 				oldest = i;
 		}
 		slot = oldest;
+		fprintf(stderr, "PROJECTILE: pool exhausted, recycling oldest\n");
 	}
 
 	SubProjectile *p = &pool->projectiles[slot];

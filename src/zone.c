@@ -11,6 +11,7 @@
 #include "background.h"
 #include "enemy_registry.h"
 #include "fog_of_war.h"
+#include "spatial_grid.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -332,6 +333,7 @@ void Zone_load(const char *path)
 
 void Zone_unload(void)
 {
+	SpatialGrid_clear();
 	Map_clear();
 	Map_clear_boundary_cell();
 	Mine_cleanup();

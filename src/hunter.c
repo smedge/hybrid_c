@@ -13,6 +13,7 @@
 #include "audio.h"
 #include "map.h"
 #include "enemy_registry.h"
+#include "spatial_grid.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -194,6 +195,8 @@ void Hunter_initialize(Position position)
 
 	highestUsedIndex++;
 
+	SpatialGrid_add((EntityRef){ENTITY_HUNTER, idx}, position.x, position.y);
+
 	/* Load audio and register with enemy registry once, not per-entity */
 	if (!sampleDeath) {
 		SubProjectile_pool_init(&hunterProjPool, hunterProjCfg.pool_size);
@@ -253,6 +256,30 @@ void Hunter_resolve(void *state, const Collision collision)
 	(void)collision;
 }
 
+void Hunter_update_projectiles(unsigned int ticks)
+{
+	SubProjectile_update(&hunterProjPool, &hunterProjCfg, ticks);
+
+	/* Check player hit */
+	if (!Ship_is_destroyed()) {
+		Position shipPos = Ship_get_position();
+		Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
+		Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
+		double dmg = SubProjectile_check_hit(&hunterProjPool, &hunterProjCfg, shipWorld);
+		if (dmg > 0)
+			PlayerStats_damage(dmg);
+	}
+
+	/* Body-hit spark decay */
+	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+		if (sparks[si].active) {
+			sparks[si].ticksLeft -= ticks;
+			if (sparks[si].ticksLeft <= 0)
+				sparks[si].active = false;
+		}
+	}
+}
+
 void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned int ticks)
 {
 	HunterState *h = (HunterState *)state;
@@ -260,6 +287,30 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 	int idx = (int)(h - hunters);
 	PlaceableComponent *pl = &placeables[idx];
 	double dt = ticks / 1000.0;
+
+	/* Dormancy check — only tick respawn timer if dormant */
+	if (!SpatialGrid_is_active(pl->position.x, pl->position.y)) {
+		if (h->aiState == HUNTER_DEAD) {
+			h->respawnTimer += ticks;
+			if (h->respawnTimer >= RESPAWN_MS) {
+				h->alive = true;
+				h->hp = HUNTER_HP;
+				h->aiState = HUNTER_IDLE;
+				h->killedByPlayer = false;
+				h->cooldownTimer = 0;
+				h->burstShotsFired = 0;
+				pl->position = h->spawnPoint;
+				pick_wander_target(h);
+				/* NO respawn sound while dormant */
+				SpatialGrid_update((EntityRef){ENTITY_HUNTER, idx},
+					pl->position.x, pl->position.y,
+					h->spawnPoint.x, h->spawnPoint.y);
+			}
+		}
+		return;
+	}
+
+	Position oldPos = pl->position;
 
 	if (h->alive)
 		Enemy_check_stealth_proximity(pl->position, h->facing);
@@ -410,30 +461,9 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 	if (h->alive && h->aiState != HUNTER_DYING && h->aiState != HUNTER_DEAD)
 		Enemy_apply_gravity(pl, dt);
 
-	/* --- Update projectiles (done for ALL hunters from any update call) --- */
-	/* Only do this from hunter index 0 to avoid processing projectiles N times */
-	if (idx == 0) {
-		SubProjectile_update(&hunterProjPool, &hunterProjCfg, ticks);
-
-		/* Check player hit */
-		if (!Ship_is_destroyed()) {
-			Position shipPos = Ship_get_position();
-			Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
-			Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
-			double dmg = SubProjectile_check_hit(&hunterProjPool, &hunterProjCfg, shipWorld);
-			if (dmg > 0)
-				PlayerStats_damage(dmg);
-		}
-
-		/* Body-hit spark decay */
-		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
-			if (sparks[si].active) {
-				sparks[si].ticksLeft -= ticks;
-				if (sparks[si].ticksLeft <= 0)
-					sparks[si].active = false;
-			}
-		}
-	}
+	/* Update spatial grid if position changed */
+	SpatialGrid_update((EntityRef){ENTITY_HUNTER, idx},
+		oldPos.x, oldPos.y, pl->position.x, pl->position.y);
 }
 
 void Hunter_render(const void *state, const PlaceableComponent *placeable)
@@ -645,4 +675,9 @@ void Hunter_heal(int index, double amount)
 	h->hp += amount;
 	if (h->hp > HUNTER_HP)
 		h->hp = HUNTER_HP;
+}
+
+int Hunter_get_count(void)
+{
+	return highestUsedIndex;
 }

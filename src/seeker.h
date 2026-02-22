@@ -17,5 +17,6 @@ void Seeker_reset_all(void);
 bool Seeker_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index);
 bool Seeker_find_aggro(Position from, double range, Position *out_pos);
 void Seeker_heal(int index, double amount);
+int Seeker_get_count(void);
 
 #endif
