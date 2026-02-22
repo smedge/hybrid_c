@@ -80,9 +80,24 @@ At max zoom-out (0.25 scale), visible world for the reference resolution: 5,760 
 - Render target sizes — unchanged, all FBOs sized from actual drawable pixels
 - `Graphics_get_drawable_size()` — still returns actual pixels
 
+## HiDPI / Retina Gotcha
+
+SDL provides two different size queries:
+- `SDL_GetWindowSize()` → **logical** resolution (e.g., 1440x900 on a Retina Mac)
+- `SDL_GL_GetDrawableSize()` → **actual pixel** resolution (e.g., 2880x1800 on that same Mac)
+
+**The normalization math MUST use logical size** (`SDL_GetWindowSize`). This is what determines how much world the player sees. A Retina Mac at 1440x900 logical is the reference resolution — normalization is a no-op. A 4K laptop at 200% scaling reports 1920x1080 logical — normalization clamps that to 1440 wide, correct behavior.
+
+**Drawable size stays for GPU work only** — `glViewport`, FBO allocation, bloom resolution. These need actual pixel counts for crisp rendering.
+
+If we accidentally use drawable size for normalization, a Retina Mac would compute from 2880x1800 instead of 1440x900, halving the visible world area. Wrong.
+
+**Rule of thumb:** Normalization and projection = logical size. Viewport and FBOs = drawable size. Same split we already follow, just be explicit about it during implementation.
+
 ## Implementation Notes
 
 - Compute `norm_w` and `norm_h` once in the resize handler, cache as statics
+- Use `SDL_GetWindowSize()` (logical) for the normalization input — NOT `SDL_GL_GetDrawableSize()`
 - World projection: `Mat4_ortho(0, norm_w, 0, norm_h, -1, 1)`
 - Mouse-to-world: convert screen pixel coords to normalized coords before applying view inverse
 - UI projection: keep using raw screen pixels

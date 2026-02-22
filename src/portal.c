@@ -211,6 +211,9 @@ void Portal_render_god_labels(void)
 		/* World to screen coordinates */
 		float sx, sy;
 		Mat4_transform_point(&view, (float)p->position.x, (float)p->position.y, &sx, &sy);
+		/* View outputs normalized coords — scale back to screen pixels */
+		sx = sx * ((float)screen.width / screen.norm_w);
+		sy = sy * ((float)screen.height / screen.norm_h);
 		sy = (float)screen.height - sy; /* flip Y for UI projection */
 
 		char buf[128];

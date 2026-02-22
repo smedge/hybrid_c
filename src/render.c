@@ -87,8 +87,8 @@ void Render_grid_lines(const double gridSize, const double bigGridSize,
 	const View view = View_get_view();
 	const Screen screen = Graphics_get_screen();
 
-	const double HALF_SCREEN_WIDTH = (screen.width / 2) / view.scale;
-	const double HALF_SCREEN_HEIGHT = (screen.height / 2) / view.scale;
+	const double HALF_SCREEN_WIDTH = (screen.norm_w / 2) / view.scale;
+	const double HALF_SCREEN_HEIGHT = (screen.norm_h / 2) / view.scale;
 
 	(void)minBigLineSize;
 	(void)minLineSize;

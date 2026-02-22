@@ -32,8 +32,8 @@ void View_update(const Input *input, const unsigned int ticks)
 
 Mat4 View_get_transform(const Screen *screen)
 {
-	double x = (screen->width / 2.0) - (view.position.x * view.scale);
-	double y = (screen->height / 2.0) - (view.position.y * view.scale);
+	double x = (screen->norm_w / 2.0) - (view.position.x * view.scale);
+	double y = (screen->norm_h / 2.0) - (view.position.y * view.scale);
 
 	/* Snap to pixel grid to prevent subpixel jitter on thin geometry */
 	if (pixelSnapping) {
@@ -48,14 +48,18 @@ Mat4 View_get_transform(const Screen *screen)
 
 Position View_get_world_position(const Screen *screen, const Position screenPosition)
 {
+	/* Convert screen pixel coords to normalized projection coords */
+	float sx = (float)screenPosition.x * (screen->norm_w / (float)screen->width);
+	float sy = (float)screenPosition.y * (screen->norm_h / (float)screen->height);
+
 	/* SDL mouse coords: y=0 at top. World projection: y=0 at bottom. Flip Y. */
-	float flipped_y = (float)screen->height - (float)screenPosition.y;
+	float flipped_y = screen->norm_h - sy;
 
 	Mat4 view_mat = View_get_transform(screen);
 	Mat4 inv = Mat4_inverse(&view_mat);
 
 	float wx, wy;
-	Mat4_transform_point(&inv, (float)screenPosition.x, flipped_y, &wx, &wy);
+	Mat4_transform_point(&inv, sx, flipped_y, &wx, &wy);
 
 	Position worldPosition;
 	worldPosition.x = wx;

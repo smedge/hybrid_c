@@ -251,8 +251,8 @@ void CircuitAtlas_render(void)
 	if (view.scale < 0.10) return;
 
 	Screen screen = Graphics_get_screen();
-	float half_w = (float)screen.width * 0.5f / (float)view.scale;
-	float half_h = (float)screen.height * 0.5f / (float)view.scale;
+	float half_w = screen.norm_w * 0.5f / (float)view.scale;
+	float half_h = screen.norm_h * 0.5f / (float)view.scale;
 	float cx = (float)view.position.x;
 	float cy = (float)view.position.y;
 

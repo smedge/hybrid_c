@@ -1248,8 +1248,8 @@ static void god_mode_render_noise_heatmap(void)
 	Screen screen = Graphics_get_screen();
 	View view_state = View_get_view();
 
-	double half_w = (screen.width / view_state.scale) / 2.0;
-	double half_h = (screen.height / view_state.scale) / 2.0;
+	double half_w = (screen.norm_w / view_state.scale) / 2.0;
+	double half_h = (screen.norm_h / view_state.scale) / 2.0;
 	double min_wx = view_state.position.x - half_w;
 	double max_wx = view_state.position.x + half_w;
 	double min_wy = view_state.position.y - half_h;
@@ -1324,6 +1324,9 @@ static void god_mode_render_spawn_labels(void)
 		float sx, sy;
 		Mat4_transform_point(&view, (float)z->spawns[i].world_x,
 			(float)z->spawns[i].world_y, &sx, &sy);
+		/* View outputs normalized coords — scale back to screen pixels */
+		sx = sx * ((float)screen.width / screen.norm_w);
+		sy = sy * ((float)screen.height / screen.norm_h);
 		sy = (float)screen.height - sy;
 
 		Text_render(tr, shaders, &ui_proj, &ident,

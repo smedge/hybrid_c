@@ -214,8 +214,8 @@ void Map_render(const void *state, const PlaceableComponent *placeable)
 
 	/* View frustum culling — only render cells visible on screen */
 	Screen screen = Graphics_get_screen();
-	float half_w = (float)screen.width * 0.5f / (float)view.scale;
-	float half_h = (float)screen.height * 0.5f / (float)view.scale;
+	float half_w = screen.norm_w * 0.5f / (float)view.scale;
+	float half_h = screen.norm_h * 0.5f / (float)view.scale;
 	float cx = (float)view.position.x;
 	float cy = (float)view.position.y;
 
@@ -931,8 +931,8 @@ void Map_render_stencil_mask(void)
 {
 	View view = View_get_view();
 	Screen screen = Graphics_get_screen();
-	float half_w = (float)screen.width * 0.5f / (float)view.scale;
-	float half_h = (float)screen.height * 0.5f / (float)view.scale;
+	float half_w = screen.norm_w * 0.5f / (float)view.scale;
+	float half_h = screen.norm_h * 0.5f / (float)view.scale;
 	float cx = (float)view.position.x;
 	float cy = (float)view.position.y;
 
@@ -1039,8 +1039,8 @@ void Map_render_stencil_mask_all(const Mat4 *proj, const Mat4 *view_mat)
 {
 	View view = View_get_view();
 	Screen screen = Graphics_get_screen();
-	float half_w = (float)screen.width * 0.5f / (float)view.scale;
-	float half_h = (float)screen.height * 0.5f / (float)view.scale;
+	float half_w = screen.norm_w * 0.5f / (float)view.scale;
+	float half_h = screen.norm_h * 0.5f / (float)view.scale;
 	float cx = (float)view.position.x;
 	float cy = (float)view.position.y;
 

@@ -27,6 +27,7 @@ static void create_fullscreen_window(void);
 static void create_windowed_window(void);
 static void initialize_gl(void);
 static void destroy_window(void);
+static void compute_normalized_size(void);
 
 void Graphics_initialize(void)
 {
@@ -73,6 +74,7 @@ void Graphics_resize_window(const unsigned int width,
 {
 	graphics.screen.width = width;
 	graphics.screen.height = height;
+	compute_normalized_size();
 
 	int draw_w, draw_h;
 	SDL_GL_GetDrawableSize(graphics.window, &draw_w, &draw_h);
@@ -108,8 +110,8 @@ Mat4 Graphics_get_ui_projection(void)
 
 Mat4 Graphics_get_world_projection(void)
 {
-	return Mat4_ortho(0, (float)graphics.screen.width,
-		0, (float)graphics.screen.height, -1, 1);
+	return Mat4_ortho(0, graphics.screen.norm_w,
+		0, graphics.screen.norm_h, -1, 1);
 }
 
 const Screen Graphics_get_screen(void)
@@ -232,6 +234,7 @@ static void create_fullscreen_window(void)
 	SDL_GetWindowSize(graphics.window, &w, &h);
 	graphics.screen.width = w;
 	graphics.screen.height = h;
+	compute_normalized_size();
 }
 
 static void create_windowed_window(void)
@@ -248,6 +251,7 @@ static void create_windowed_window(void)
 
 	graphics.screen.width = HYBRID_WINDOWED_WIDTH;
 	graphics.screen.height = HYBRID_WINDOWED_HEIGHT;
+	compute_normalized_size();
 }
 
 static void initialize_gl(void)
@@ -286,4 +290,20 @@ static void destroy_window(void)
 {
 	SDL_GL_DeleteContext(graphics.glcontext);
 	SDL_DestroyWindow(graphics.window);
+}
+
+static void compute_normalized_size(void)
+{
+	const float ref_w = 1440.0f;
+	const float ref_h = 900.0f;
+
+	/* Pick the smaller scale so the largest dimension gets clamped to
+	   reference.  The other axis shrinks proportionally — no player
+	   ever sees more world than the reference in any direction. */
+	float scale_x = ref_w / (float)graphics.screen.width;
+	float scale_y = ref_h / (float)graphics.screen.height;
+	float scale = (scale_x < scale_y) ? scale_x : scale_y;
+
+	graphics.screen.norm_w = (float)graphics.screen.width * scale;
+	graphics.screen.norm_h = (float)graphics.screen.height * scale;
 }

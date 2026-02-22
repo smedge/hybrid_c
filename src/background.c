@@ -261,8 +261,8 @@ void Background_render(void)
 		float drift_y = breath_y + layer->drift.accum_y;
 
 		/* Build view matrix with this layer's drift */
-		double vx = (screen.width / 2.0) - ((v.position.x + drift_x) * bg_scale);
-		double vy = (screen.height / 2.0) - ((v.position.y + drift_y) * bg_scale);
+		double vx = (screen.norm_w / 2.0) - ((v.position.x + drift_x) * bg_scale);
+		double vy = (screen.norm_h / 2.0) - ((v.position.y + drift_y) * bg_scale);
 		vx = floor(vx + 0.5);
 		vy = floor(vy + 0.5);
 		Mat4 t = Mat4_translate((float)vx, (float)vy, 0.0f);
@@ -270,8 +270,8 @@ void Background_render(void)
 
 		float cam_x = (float)v.position.x + drift_x;
 		float cam_y = (float)v.position.y + drift_y;
-		float half_vw = (float)(screen.width / 2.0 / bg_scale);
-		float half_vh = (float)(screen.height / 2.0 / bg_scale);
+		float half_vw = (float)(screen.norm_w / 2.0 / bg_scale);
+		float half_vh = (float)(screen.norm_h / 2.0 / bg_scale);
 
 		/* Push all blobs once at base tile position (no tile offset) */
 		for (int c = 0; c < layer->cloud_count; c++) {
