@@ -36,5 +36,5 @@ obstacle patrol_encounter 4.0
 obstacle patrol_encounter_01 4.0
 
 landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
-landmark_portal exit_point portal_to_001 ./resources/zones/procgen_001.zone portal_to_002
+landmark_portal exit_point portal_to_003 ./resources/zones/procgen_003.zone portal_to_002
 landmark_savepoint exit_point save_002

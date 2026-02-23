@@ -30,7 +30,7 @@ landmark player_start resources/chunks/save_001.chunk 1 moderate 80 0.6 2.0
 landmark_savepoint player_start save_start
 
 landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2.0
-landmark_portal exit_point portal_to_002 ./resources/zones/procgen_002.zone portal_to_001
+landmark_portal exit_point portal_to_003 ./resources/zones/procgen_003.zone portal_to_001
 landmark_savepoint exit_point save_001
 
 # Obstacle scatter

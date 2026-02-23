@@ -6,6 +6,7 @@
 #include "render.h"
 #include "skillbar.h"
 #include "sub_stealth.h"
+#include "sub_egress.h"
 #include "player_stats.h"
 
 #define MAX_PLAYER_MINES 3
@@ -88,6 +89,32 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 			float hs = playerMineCfg.explosion_half_size;
 			if (dx >= -hs && dx <= hs && dy >= -hs && dy <= hs)
 				PlayerStats_damage(100.0);
+		}
+	}
+
+	/* Egress dash detonation — dashing through an armed mine triggers it */
+	if (Sub_Egress_is_dashing()) {
+		Position shipPos = Ship_get_position();
+		for (int i = 0; i < MAX_PLAYER_MINES; i++) {
+			SubMineCore *m = &mines[i];
+			if (m->phase != MINE_PHASE_ARMED)
+				continue;
+
+			float bs = playerMineCfg.body_half_size;
+			Rectangle mineBody = Collision_transform_bounding_box(m->position,
+				(Rectangle){-bs, bs, bs, -bs});
+
+			if (Sub_Egress_check_hit(mineBody) > 0.0) {
+				SubMine_detonate(m);
+				PlayerStats_add_feedback(15.0);
+
+				/* Self-damage check (blocked by i-frames during dash) */
+				double dx = shipPos.x - m->position.x;
+				double dy = shipPos.y - m->position.y;
+				float hs = playerMineCfg.explosion_half_size;
+				if (dx >= -hs && dx <= hs && dy >= -hs && dy <= hs)
+					PlayerStats_damage(100.0);
+			}
 		}
 	}
 }
