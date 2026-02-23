@@ -140,7 +140,8 @@ void Entity_collision_system(void)
 			if (i == j)
 				continue;
 
-			if (!SpatialGrid_is_active(entities[j].placeable->position.x,
+			if (entities[j].collidable->collidesWithOthers &&
+				!SpatialGrid_is_active(entities[j].placeable->position.x,
 									   entities[j].placeable->position.y))
 				continue;
 
