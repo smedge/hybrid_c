@@ -881,6 +881,7 @@ static int find_cell_type(const char *id)
 /* Editor rebuild: tear down existing enemies and respawn from zone data */
 static void rebuild_enemies(void)
 {
+	SpatialGrid_clear();
 	Mine_cleanup();
 	Hunter_cleanup();
 	Seeker_cleanup();
@@ -947,6 +948,7 @@ static void respawn_savepoints(void)
 
 static void apply_zone_to_world(void)
 {
+	SpatialGrid_clear();
 	Map_clear();
 	Mine_cleanup();
 	Hunter_cleanup();

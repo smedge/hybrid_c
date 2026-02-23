@@ -5,7 +5,7 @@
 
 #define BUCKET_SIZE 64
 #define GRID_MAX 16
-#define BUCKET_CAPACITY 128
+#define BUCKET_CAPACITY 256
 
 typedef enum {
 	ENTITY_HUNTER,

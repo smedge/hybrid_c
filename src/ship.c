@@ -28,6 +28,7 @@
 #include "progression.h"
 #include "skillbar.h"
 #include "fog_of_war.h"
+#include "spatial_grid.h"
 
 #include <string.h>
 
@@ -223,6 +224,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Disintegrate_deactivate_all();
 			Sub_Gravwell_deactivate_all();
 			PlayerStats_reset();
+			SpatialGrid_clear();
 			Mine_cleanup();
 			Hunter_cleanup();
 			Seeker_cleanup();
