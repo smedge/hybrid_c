@@ -145,6 +145,7 @@ static int chunkSelA_x = 0, chunkSelA_y = 0;
 static int chunkSelB_x = 0, chunkSelB_y = 0;
 static int chunkExportCounter = 0;
 static int obstacleExportCounter = 0;
+static int stampRotation = 0;  /* 0=0°, 1=90°CW, 2=180°, 3=270°CW */
 
 /* Zone jump menu */
 static bool godZoneMenuOpen = false;
@@ -774,6 +775,17 @@ static void start_zone_bgm(void)
 	}
 }
 
+static void stamp_rotate(int dx, int dy, int w, int h, int rot,
+                         int *out_x, int *out_y)
+{
+	switch (rot) {
+	case 0: *out_x = dx;         *out_y = dy;         break;
+	case 1: *out_x = h - 1 - dy; *out_y = dx;         break;
+	case 2: *out_x = w - 1 - dx; *out_y = h - 1 - dy; break;
+	case 3: *out_x = dy;         *out_y = w - 1 - dx; break;
+	}
+}
+
 static void god_mode_update(const Input *input, const unsigned int ticks)
 {
 	/* Handle zone jump menu */
@@ -902,11 +914,17 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 							? z->cell_grid[sx][sy] : -1;
 					}
 
-				/* Stamp cells at cursor (top-left) */
+				/* Rotated footprint dimensions */
+				int rot_w = (stampRotation % 2 == 0) ? sel_w : sel_h;
+				int rot_h = (stampRotation % 2 == 0) ? sel_h : sel_w;
+
+				/* Stamp cells at cursor (top-left) with rotation */
 				int dst_ox = godModeCursorX, dst_oy = godModeCursorY;
 				for (int dy = 0; dy < sel_h; dy++)
 					for (int dx = 0; dx < sel_w; dx++) {
-						int dst_gx = dst_ox + dx, dst_gy = dst_oy + dy;
+						int rdx, rdy;
+						stamp_rotate(dx, dy, sel_w, sel_h, stampRotation, &rdx, &rdy);
+						int dst_gx = dst_ox + rdx, dst_gy = dst_oy + rdy;
 						int cell_idx = snapshot[dy * sel_w + dx];
 						if (cell_idx >= 0 && cell_idx < z->cell_type_count)
 							Zone_place_cell(dst_gx, dst_gy, z->cell_types[cell_idx].id);
@@ -914,22 +932,47 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 							Zone_remove_cell(dst_gx, dst_gy);
 					}
 
-				/* Copy spawns within source bounds */
+				/* Copy spawns within source bounds, rotated */
 				double swx0 = (src_min_x - HALF_MAP_SIZE) * MAP_CELL_SIZE - MAP_CELL_SIZE * 0.5;
 				double swy0 = (src_min_y - HALF_MAP_SIZE) * MAP_CELL_SIZE - MAP_CELL_SIZE * 0.5;
 				double swx1 = (src_max_x - HALF_MAP_SIZE + 1) * MAP_CELL_SIZE + MAP_CELL_SIZE * 0.5;
 				double swy1 = (src_max_y - HALF_MAP_SIZE + 1) * MAP_CELL_SIZE + MAP_CELL_SIZE * 0.5;
-				double off_x = (dst_ox - src_min_x) * MAP_CELL_SIZE;
-				double off_y = (dst_oy - src_min_y) * MAP_CELL_SIZE;
+				double src_cx = (swx0 + swx1) * 0.5;
+				double src_cy = (swy0 + swy1) * 0.5;
+				double dst_cx = (dst_ox + rot_w * 0.5 - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+				double dst_cy = (dst_oy + rot_h * 0.5 - HALF_MAP_SIZE) * MAP_CELL_SIZE;
 				int orig_count = z->spawn_count;
 				for (int i = 0; i < orig_count; i++) {
-					double wx = z->spawns[i].world_x, wy = z->spawns[i].world_y;
-					if (wx >= swx0 && wx <= swx1 && wy >= swy0 && wy <= swy1)
-						Zone_place_spawn(z->spawns[i].enemy_type, wx + off_x, wy + off_y);
+					double swx = z->spawns[i].world_x, swy = z->spawns[i].world_y;
+					if (swx >= swx0 && swx <= swx1 && swy >= swy0 && swy <= swy1) {
+						/* Relative to source center */
+						double rx = swx - src_cx, ry = swy - src_cy;
+						/* Rotate around center */
+						double rrx, rry;
+						switch (stampRotation) {
+						case 0: rrx = rx;  rry = ry;  break;
+						case 1: rrx = -ry; rry = rx;  break;
+						case 2: rrx = -rx; rry = -ry; break;
+						case 3: rrx = ry;  rry = -rx; break;
+						default: rrx = rx; rry = ry;  break;
+						}
+						Zone_place_spawn(z->spawns[i].enemy_type,
+							dst_cx + rrx, dst_cy + rry);
+					}
 				}
 
-				printf("Stamped %dx%d selection at (%d,%d)\n", sel_w, sel_h, dst_ox, dst_oy);
+				printf("Stamped %dx%d selection at (%d,%d) rot:%d\n",
+					sel_w, sel_h, dst_ox, dst_oy, stampRotation * 90);
 			}
+		}
+	}
+
+	/* Z = rotate stamp 90° CW */
+	if (input->keyZ && !input->keyLControl &&
+	    (godPlacementMode == GOD_MODE_CHUNKS || godPlacementMode == GOD_MODE_OBSTACLES)) {
+		if (chunkSelHasA && chunkSelHasB) {
+			stampRotation = (stampRotation + 1) % 4;
+			printf("Stamp rotation: %d degrees\n", stampRotation * 90);
 		}
 	}
 
@@ -1012,6 +1055,7 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 	                  godPlacementMode == GOD_MODE_OBSTACLES)) {
 		chunkSelHasA = false;
 		chunkSelHasB = false;
+		stampRotation = 0;
 		godMouseRightConsumed = true;
 	}
 	if (rmbClick && godPlacementMode == GOD_MODE_CELLS) {
@@ -1047,7 +1091,7 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 	}
 
 	/* Undo with Ctrl+Z */
-	if (input->keyZ) {
+	if (input->keyZ && input->keyLControl) {
 		Zone_undo();
 	}
 
@@ -1215,7 +1259,7 @@ static void god_mode_render_hud(const Screen *screen)
 		if (chunkSelHasA && chunkSelHasB) {
 			int w = abs(chunkSelB_x - chunkSelA_x) + 1;
 			int h = abs(chunkSelB_y - chunkSelA_y) + 1;
-			snprintf(buf, sizeof(buf), "Selection: %dx%d (Tab=export, V=stamp, RMB=clear)", w, h);
+			snprintf(buf, sizeof(buf), "Sel: %dx%d rot:%d (Tab=exp, V=stamp, Z=rot, RMB=clr)", w, h, stampRotation * 90);
 		} else if (chunkSelHasA) {
 			snprintf(buf, sizeof(buf), "Corner A set — click Corner B");
 		} else {
@@ -1229,7 +1273,7 @@ static void god_mode_render_hud(const Screen *screen)
 		if (chunkSelHasA && chunkSelHasB) {
 			int w = abs(chunkSelB_x - chunkSelA_x) + 1;
 			int h = abs(chunkSelB_y - chunkSelA_y) + 1;
-			snprintf(buf, sizeof(buf), "Selection: %dx%d (Tab=export, V=stamp, RMB=clear)", w, h);
+			snprintf(buf, sizeof(buf), "Sel: %dx%d rot:%d (Tab=exp, V=stamp, Z=rot, RMB=clr)", w, h, stampRotation * 90);
 		} else if (chunkSelHasA) {
 			snprintf(buf, sizeof(buf), "Corner A set — click Corner B");
 		} else {
@@ -1630,22 +1674,54 @@ static void god_mode_render_chunk_selection(void)
 		Render_thick_line(x1, y1, x0, y1, lw, 1.0f, 0.9f, 0.2f, 0.8f);
 		Render_thick_line(x0, y1, x0, y0, lw, 1.0f, 0.9f, 0.2f, 0.8f);
 
-		/* Ghost preview: show stamp footprint at cursor position */
+		/* Detailed ghost preview: per-cell colored preview at cursor with rotation */
 		if (godModeCursorValid) {
 			int sel_w = max_x - min_x + 1;
 			int sel_h = max_y - min_y + 1;
+			int rot_w = (stampRotation % 2 == 0) ? sel_w : sel_h;
+			int rot_h = (stampRotation % 2 == 0) ? sel_h : sel_w;
+			const Zone *z = Zone_get();
+
+			/* Per-cell preview */
+			for (int dy = 0; dy < sel_h; dy++) {
+				for (int dx = 0; dx < sel_w; dx++) {
+					int sx = min_x + dx, sy = min_y + dy;
+					if (sx < 0 || sx >= MAP_SIZE || sy < 0 || sy >= MAP_SIZE) continue;
+					int cell_idx = z->cell_grid[sx][sy];
+					if (cell_idx < 0 || cell_idx >= z->cell_type_count) continue;
+
+					int rdx, rdy;
+					stamp_rotate(dx, dy, sel_w, sel_h, stampRotation, &rdx, &rdy);
+					float cx = (float)(godModeCursorX + rdx - HALF_MAP_SIZE) * s;
+					float cy = (float)(godModeCursorY + rdy - HALF_MAP_SIZE) * s;
+
+					/* Fill with primaryColor */
+					ColorRGB pc = z->cell_types[cell_idx].primaryColor;
+					Render_quad_absolute(cx, cy, cx + s, cy + s,
+						pc.red / 255.0f, pc.green / 255.0f, pc.blue / 255.0f, 0.25f);
+
+					/* Border with outlineColor */
+					ColorRGB oc = z->cell_types[cell_idx].outlineColor;
+					float olw = 1.5f;
+					float or_ = oc.red / 255.0f, og = oc.green / 255.0f, ob = oc.blue / 255.0f;
+					Render_thick_line(cx, cy, cx + s, cy, olw, or_, og, ob, 0.4f);
+					Render_thick_line(cx + s, cy, cx + s, cy + s, olw, or_, og, ob, 0.4f);
+					Render_thick_line(cx + s, cy + s, cx, cy + s, olw, or_, og, ob, 0.4f);
+					Render_thick_line(cx, cy + s, cx, cy, olw, or_, og, ob, 0.4f);
+				}
+			}
+
+			/* Outer boundary around full rotated footprint */
 			float gx0 = (float)(godModeCursorX - HALF_MAP_SIZE) * s;
 			float gy0 = (float)(godModeCursorY - HALF_MAP_SIZE) * s;
-			float gx1 = gx0 + sel_w * s;
-			float gy1 = gy0 + sel_h * s;
-
+			float gx1 = gx0 + rot_w * s;
+			float gy1 = gy0 + rot_h * s;
 			float gr, gg, gb;
 			if (godPlacementMode == GOD_MODE_CHUNKS) {
 				gr = 1.0f; gg = 0.9f; gb = 0.2f;
 			} else {
 				gr = 0.2f; gg = 0.9f; gb = 1.0f;
 			}
-			Render_quad_absolute(gx0, gy0, gx1, gy1, gr, gg, gb, 0.08f);
 			float glw = 2.0f;
 			Render_thick_line(gx0, gy0, gx1, gy0, glw, gr, gg, gb, 0.4f);
 			Render_thick_line(gx1, gy0, gx1, gy1, glw, gr, gg, gb, 0.4f);

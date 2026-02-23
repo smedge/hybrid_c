@@ -358,11 +358,12 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 				s->hp = STALKER_HP;
 				s->aiState = STALKER_IDLE;
 				s->killedByPlayer = false;
+				Position oldPos = pl->position;
 				pl->position = s->spawnPoint;
 				pick_wander_target(s);
 				/* NO respawn sound while dormant */
 				SpatialGrid_update((EntityRef){ENTITY_STALKER, idx},
-					pl->position.x, pl->position.y,
+					oldPos.x, oldPos.y,
 					s->spawnPoint.x, s->spawnPoint.y);
 			}
 		}

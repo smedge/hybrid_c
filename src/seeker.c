@@ -290,11 +290,12 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 				s->hp = SEEKER_HP;
 				s->aiState = SEEKER_IDLE;
 				s->killedByPlayer = false;
+				Position oldPos = pl->position;
 				pl->position = s->spawnPoint;
 				pick_wander_target(s);
 				/* NO respawn sound while dormant */
 				SpatialGrid_update((EntityRef){ENTITY_SEEKER, idx},
-					pl->position.x, pl->position.y,
+					oldPos.x, oldPos.y,
 					s->spawnPoint.x, s->spawnPoint.y);
 			}
 		}

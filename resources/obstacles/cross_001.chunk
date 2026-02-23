@@ -1,0 +1,15 @@
+# Exported from Procgen Builder 01 at grid (640,507)-(644,511)
+chunk cross_001
+size 5 5
+style structured 
+
+wall 2 1 1
+wall 1 2 1
+wall 2 2 0
+wall 3 2 1
+wall 2 3 1
+
+spawn 1 4 hunter 0.6
+spawn 4 4 hunter 0.6
+spawn 4 1 hunter 0.6
+spawn 1 1 hunter 0.6

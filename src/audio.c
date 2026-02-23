@@ -10,7 +10,7 @@ void Audio_initialize(void)
 		printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
 		exit(-1);
 	}
-	Mix_AllocateChannels(32);
+	Mix_AllocateChannels(64);
 }
 
 void Audio_cleanup(void)

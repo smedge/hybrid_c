@@ -299,11 +299,12 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 				h->killedByPlayer = false;
 				h->cooldownTimer = 0;
 				h->burstShotsFired = 0;
+				Position oldPos = pl->position;
 				pl->position = h->spawnPoint;
 				pick_wander_target(h);
 				/* NO respawn sound while dormant */
 				SpatialGrid_update((EntityRef){ENTITY_HUNTER, idx},
-					pl->position.x, pl->position.y,
+					oldPos.x, oldPos.y,
 					h->spawnPoint.x, h->spawnPoint.y);
 			}
 		}

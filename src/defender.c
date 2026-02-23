@@ -385,11 +385,12 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				d->killedByPlayer = false;
 				SubHeal_init(&d->healCore);
 				SubShield_init(&d->shieldCore);
+				Position oldPos = pl->position;
 				pl->position = d->spawnPoint;
 				pick_wander_target(d);
 				/* NO respawn sound while dormant */
 				SpatialGrid_update((EntityRef){ENTITY_DEFENDER, idx},
-					pl->position.x, pl->position.y,
+					oldPos.x, oldPos.y,
 					d->spawnPoint.x, d->spawnPoint.y);
 			}
 		}

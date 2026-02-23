@@ -34,33 +34,20 @@ landmark_portal exit_point portal_to_002 ./resources/zones/procgen_002.zone port
 landmark_savepoint exit_point save_001
 
 # Obstacle scatter
-obstacle_density 0.08
+obstacle_density 0.04
 obstacle_min_spacing 8
-obstacle pillar_2x2 3.0
-obstacle pillar_L 2.0
-obstacle corner_3x3 1.5
-obstacle wall_segment_h 1.5
-obstacle wall_segment_v 1.5
-obstacle ambush_corner 5.0
-obstacle rock_scatter 1.0
-obstacle rock_cluster 1.0
-obstacle cover_u 1.0
-obstacle cover_t 1.0
-obstacle patrol_encounter 4.0
-obstacle sniper_nest 4.0
-obstacle chokepoint 1.0
-obstacle barricade 1.0
+
+obstacle cross_001 1.0
+obstacle patrol_001 1.0
 
 landmark hunter_camp_01 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
 landmark hunter_camp_02 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
 landmark hunter_camp_03 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
 landmark hunter_camp_04 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
 landmark hunter_camp_05 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
-landmark hunter_camp_06 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
 
 landmark seeker_camp_01 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
 landmark seeker_camp_02 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
 landmark seeker_camp_03 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
 landmark seeker_camp_04 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
 landmark seeker_camp_05 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
-landmark seeker_camp_06 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0

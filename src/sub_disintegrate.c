@@ -24,7 +24,7 @@
 #define CARVE_SPEED_DEG   120.0
 #define FEEDBACK_PER_SEC  22.0
 #define DAMAGE_PER_FRAME  15.0
-#define SOUND_INTERVAL_MS 150
+#define SOUND_INTERVAL_MS 250
 #define BEAM_ORIGIN_OFFSET 10.0
 
 /* --- Blob visual rendering --- */

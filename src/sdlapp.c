@@ -493,6 +493,11 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 		input->keyV = true;
 		break;
 
+	case SDLK_z:
+		if (!(event->key.keysym.mod & (KMOD_LCTRL | KMOD_RCTRL)))
+			input->keyZ = true;
+		break;
+
 	case SDLK_TAB:
 		input->keyTab = true;
 		break;
