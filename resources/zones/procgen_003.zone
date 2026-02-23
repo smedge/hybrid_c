@@ -1,0 +1,23 @@
+# Zone: Data Nexus
+name Data Nexus
+size 1024
+
+bgcolor 0 80 110 140
+bgcolor 1 20 50 90
+bgcolor 2 5 12 30
+bgcolor 3 120 60 15
+
+celltype solid 3 6 18 255 60 140 200 255 none
+celltype circuit 75 38 10 120 255 160 30 255 circuit
+
+procgen true
+noise_octaves 5
+noise_frequency 0.01
+noise_lacunarity 2
+noise_persistence 0.5
+noise_wall_threshold -0.2
+
+hotspot_count 20
+hotspot_edge_margin 80
+hotspot_min_separation 150
+landmark_min_separation 120
