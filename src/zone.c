@@ -27,7 +27,9 @@ typedef enum {
 	UNDO_PLACE_PORTAL,
 	UNDO_REMOVE_PORTAL,
 	UNDO_PLACE_SAVEPOINT,
-	UNDO_REMOVE_SAVEPOINT
+	UNDO_REMOVE_SAVEPOINT,
+	UNDO_PLACE_LABEL,
+	UNDO_REMOVE_LABEL
 } UndoType;
 
 typedef struct {
@@ -40,6 +42,8 @@ typedef struct {
 	int portal_index;
 	ZoneSavepoint savepoint;
 	int savepoint_index;
+	ZoneLabel label;
+	int label_index;
 } UndoEntry;
 
 static Zone zone;
@@ -188,6 +192,19 @@ void Zone_load(const char *path)
 				strncpy(zone.savepoints[zone.savepoint_count].id, sid, 31);
 				zone.savepoints[zone.savepoint_count].id[31] = '\0';
 				zone.savepoint_count++;
+			}
+		}
+		else if (strncmp(line, "label ", 6) == 0) {
+			if (zone.label_count >= ZONE_MAX_LABELS) continue;
+			int gx, gy;
+			char text[64] = "";
+			if (sscanf(line + 6, "%d %d %63[^\n]", &gx, &gy, text) >= 3) {
+				ZoneLabel *lb = &zone.labels[zone.label_count];
+				lb->grid_x = gx;
+				lb->grid_y = gy;
+				strncpy(lb->text, text, sizeof(lb->text) - 1);
+				lb->text[sizeof(lb->text) - 1] = '\0';
+				zone.label_count++;
 			}
 		}
 		else if (strncmp(line, "bgcolor ", 8) == 0) {
@@ -502,6 +519,15 @@ void Zone_save(void)
 			zone.savepoints[i].id);
 	}
 
+	/* Labels (always hand-placed) */
+	if (zone.label_count > 0)
+		fprintf(f, "\n");
+	for (int i = 0; i < zone.label_count; i++) {
+		fprintf(f, "label %d %d %s\n",
+			zone.labels[i].grid_x, zone.labels[i].grid_y,
+			zone.labels[i].text);
+	}
+
 	fclose(f);
 }
 
@@ -753,6 +779,58 @@ void Zone_remove_savepoint(int grid_x, int grid_y)
 	zoneDirty = true;
 }
 
+void Zone_place_label(int grid_x, int grid_y, const char *text)
+{
+	if (zone.label_count >= ZONE_MAX_LABELS) return;
+	if (grid_x < 0 || grid_x >= MAP_SIZE || grid_y < 0 || grid_y >= MAP_SIZE) return;
+
+	/* Check for duplicate at same grid position */
+	for (int i = 0; i < zone.label_count; i++) {
+		if (zone.labels[i].grid_x == grid_x &&
+		    zone.labels[i].grid_y == grid_y)
+			return;
+	}
+
+	UndoEntry undo;
+	undo.type = UNDO_REMOVE_LABEL;
+	undo.label_index = zone.label_count;
+	push_undo(undo);
+
+	ZoneLabel *lb = &zone.labels[zone.label_count];
+	lb->grid_x = grid_x;
+	lb->grid_y = grid_y;
+	strncpy(lb->text, text, sizeof(lb->text) - 1);
+	lb->text[sizeof(lb->text) - 1] = '\0';
+	zone.label_count++;
+
+	zoneDirty = true;
+}
+
+void Zone_remove_label(int grid_x, int grid_y)
+{
+	int index = -1;
+	for (int i = 0; i < zone.label_count; i++) {
+		if (zone.labels[i].grid_x == grid_x &&
+		    zone.labels[i].grid_y == grid_y) {
+			index = i;
+			break;
+		}
+	}
+	if (index < 0) return;
+
+	UndoEntry undo;
+	undo.type = UNDO_PLACE_LABEL;
+	undo.label = zone.labels[index];
+	undo.label_index = index;
+	push_undo(undo);
+
+	for (int i = index; i < zone.label_count - 1; i++)
+		zone.labels[i] = zone.labels[i + 1];
+	zone.label_count--;
+
+	zoneDirty = true;
+}
+
 void Zone_undo(void)
 {
 	if (undoCount <= 0) return;
@@ -822,6 +900,20 @@ void Zone_undo(void)
 		if (zone.savepoint_count > undo.savepoint_index)
 			zone.savepoint_count = undo.savepoint_index;
 		respawn_savepoints();
+		break;
+	case UNDO_PLACE_LABEL:
+		/* Re-insert label at original index */
+		if (zone.label_count < ZONE_MAX_LABELS) {
+			for (int i = zone.label_count; i > undo.label_index; i--)
+				zone.labels[i] = zone.labels[i - 1];
+			zone.labels[undo.label_index] = undo.label;
+			zone.label_count++;
+		}
+		break;
+	case UNDO_REMOVE_LABEL:
+		/* Remove last label */
+		if (zone.label_count > undo.label_index)
+			zone.label_count = undo.label_index;
 		break;
 	}
 

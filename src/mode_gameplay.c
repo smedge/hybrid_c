@@ -127,6 +127,7 @@ typedef enum {
 	GOD_MODE_PORTALS,
 	GOD_MODE_CHUNKS,
 	GOD_MODE_OBSTACLES,
+	GOD_MODE_LABELS,
 	GOD_MODE_COUNT
 } GodPlacementMode;
 
@@ -136,7 +137,7 @@ static const char *ENEMY_TYPES[] = {"mine", "hunter", "seeker", "defender", "sta
 #define ENEMY_TYPE_COUNT 5
 static int godEnemyType = 0;
 
-static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks", "Obstacles"};
+static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks", "Obstacles", "Labels"};
 
 /* Chunk export selection */
 static bool chunkSelHasA = false;
@@ -154,6 +155,12 @@ static char godZoneNames[16][64];
 static int godZoneFileCount = 0;
 
 static bool escConsumed = false;
+
+/* Label text entry */
+static bool godLabelTextEntry = false;
+static int godLabelPendingX = 0;
+static int godLabelPendingY = 0;
+static char godLabelTextBuf[64] = "";
 
 /* Procgen debug */
 static bool godNoiseHeatmapActive = false;
@@ -175,10 +182,11 @@ static unsigned int spatialWatchdogAccum = 0;
 static double ease_in_out_cubic(double t);
 static void start_zone_bgm(void);
 static void complete_rebirth(void);
-static void god_mode_update(const Input *input, const unsigned int ticks);
+static void god_mode_update(Input *input, const unsigned int ticks);
 static void god_mode_render_cursor(void);
 static void god_mode_render_hud(const Screen *screen);
 static void god_mode_render_spawn_labels(void);
+static void god_mode_render_zone_labels(void);
 static void god_mode_render_spawn_markers(void);
 static void god_mode_render_noise_heatmap(void);
 static void god_mode_render_chunk_selection(void);
@@ -405,6 +413,12 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 			Progression_unlock_all();
 			View_set_min_zoom(0.01);
 		} else {
+			/* Cancel any in-progress text entry */
+			if (godLabelTextEntry) {
+				godLabelTextEntry = false;
+				((Input *)input)->textInputActive = false;
+				SDL_StopTextInput();
+			}
 			Zone_save_if_dirty();
 			View_set_min_zoom(0.25);
 			View_set_scale(0.5);
@@ -412,7 +426,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	}
 
 	if (godModeActive) {
-		god_mode_update(input, ticks);
+		god_mode_update((Input *)input, ticks);
 		return;
 	}
 
@@ -636,6 +650,7 @@ void Mode_Gameplay_render(void)
 	/* God mode labels (world-space text) */
 	if (godModeActive) {
 		god_mode_render_spawn_labels();
+		god_mode_render_zone_labels();
 		Portal_render_god_labels();
 		Savepoint_render_god_labels();
 	}
@@ -786,7 +801,7 @@ static void stamp_rotate(int dx, int dy, int w, int h, int rot,
 	}
 }
 
-static void god_mode_update(const Input *input, const unsigned int ticks)
+static void god_mode_update(Input *input, const unsigned int ticks)
 {
 	/* Handle zone jump menu */
 	if (godZoneMenuOpen) {
@@ -799,6 +814,27 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 			god_mode_jump_to_zone(godZoneFiles[input->keySlot]);
 			godZoneMenuOpen = false;
 			return;
+		}
+		return;
+	}
+
+	/* Handle label text entry mode */
+	if (godLabelTextEntry) {
+		/* Mirror buffer for render access */
+		strncpy(godLabelTextBuf, input->textInputBuffer, sizeof(godLabelTextBuf) - 1);
+		godLabelTextBuf[sizeof(godLabelTextBuf) - 1] = '\0';
+
+		if (input->textInputConfirmed && input->textInputLen > 0) {
+			Zone_place_label(godLabelPendingX, godLabelPendingY,
+				input->textInputBuffer);
+			godLabelTextEntry = false;
+			input->textInputActive = false;
+			SDL_StopTextInput();
+		}
+		if (input->textInputCancelled) {
+			godLabelTextEntry = false;
+			input->textInputActive = false;
+			SDL_StopTextInput();
 		}
 		return;
 	}
@@ -1045,6 +1081,18 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 			godMouseLeftConsumed = true;
 			break;
 		}
+		case GOD_MODE_LABELS:
+			godLabelPendingX = grid_x;
+			godLabelPendingY = grid_y;
+			godLabelTextEntry = true;
+			input->textInputActive = true;
+			input->textInputBuffer[0] = '\0';
+			input->textInputLen = 0;
+			input->textInputConfirmed = false;
+			input->textInputCancelled = false;
+			SDL_StartTextInput();
+			godMouseLeftConsumed = true;
+			break;
 		default:
 			break;
 		}
@@ -1083,6 +1131,10 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 			break;
 		case GOD_MODE_PORTALS:
 			Zone_remove_portal(grid_x, grid_y);
+			godMouseRightConsumed = true;
+			break;
+		case GOD_MODE_LABELS:
+			Zone_remove_label(grid_x, grid_y);
 			godMouseRightConsumed = true;
 			break;
 		default:
@@ -1168,6 +1220,9 @@ static void god_mode_render_cursor(void)
 		goto render_crosshair;
 	case GOD_MODE_PORTALS:
 		r = 0.5f; g = 0.3f; b = 1.0f;
+		goto render_crosshair;
+	case GOD_MODE_LABELS:
+		r = 0.0f; g = 1.0f; b = 1.0f;
 		goto render_crosshair;
 	case GOD_MODE_CHUNKS: {
 		/* Gold cursor square */
@@ -1283,6 +1338,14 @@ static void god_mode_render_hud(const Screen *screen)
 			buf, cx, ty + line_h * 2,
 			0.2f, 0.9f, 1.0f, 0.8f);
 		break;
+	case GOD_MODE_LABELS: {
+		const Zone *zl = Zone_get();
+		snprintf(buf, sizeof(buf), "Labels: %d  LMB: Place  RMB: Remove", zl->label_count);
+		Text_render(tr, shaders, &proj, &ident,
+			buf, cx, ty + line_h * 2,
+			0.0f, 1.0f, 1.0f, 0.8f);
+		break;
+	}
 	default:
 		break;
 	}
@@ -1328,6 +1391,19 @@ static void god_mode_render_hud(const Screen *screen)
 		Text_render(tr, shaders, &proj, &ident,
 			buf, cx, ty + line_h * 8,
 			0.3f, 0.8f, 1.0f, 0.8f);
+	}
+
+	/* Label text entry prompt */
+	if (godLabelTextEntry) {
+		float lx = (float)screen->width * 0.5f - 100.0f;
+		float ly = (float)screen->height * 0.5f;
+		Render_quad_absolute(lx - 10, ly - 5, lx + 300, ly + 20,
+			0.0f, 0.0f, 0.0f, 0.85f);
+		Render_flush(&proj, &ident);
+		snprintf(buf, sizeof(buf), "Label: %s_", godLabelTextBuf);
+		Text_render(tr, shaders, &proj, &ident,
+			buf, lx, ly,
+			0.0f, 1.0f, 1.0f, 1.0f);
 	}
 
 	/* Zone jump menu */
@@ -1452,6 +1528,34 @@ static void god_mode_render_spawn_labels(void)
 		Text_render(tr, shaders, &ui_proj, &ident,
 			z->spawns[i].enemy_type, sx - 20.0f, sy - 30.0f,
 			1.0f, 0.5f, 0.3f, 0.7f);
+	}
+}
+
+static void god_mode_render_zone_labels(void)
+{
+	const Zone *z = Zone_get();
+	if (z->label_count == 0) return;
+
+	TextRenderer *tr = Graphics_get_text_renderer();
+	Shaders *shaders = Graphics_get_shaders();
+	Screen screen = Graphics_get_screen();
+	Mat4 ui_proj = Graphics_get_ui_projection();
+	Mat4 ident = Mat4_identity();
+	Mat4 view = View_get_transform(&screen);
+
+	for (int i = 0; i < z->label_count; i++) {
+		float wx = (float)(z->labels[i].grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		float wy = (float)(z->labels[i].grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+
+		float sx, sy;
+		Mat4_transform_point(&view, wx, wy, &sx, &sy);
+		sx = sx * ((float)screen.width / screen.norm_w);
+		sy = sy * ((float)screen.height / screen.norm_h);
+		sy = (float)screen.height - sy;
+
+		Text_render(tr, shaders, &ui_proj, &ident,
+			z->labels[i].text, sx - 10.0f, sy - 20.0f,
+			0.0f, 1.0f, 1.0f, 0.9f);
 	}
 }
 

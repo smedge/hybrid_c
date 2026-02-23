@@ -40,6 +40,13 @@ typedef struct {
 	bool keySpace;
 	bool keyEsc;
 	int keySlot;  /* -1 = none, 0-9 = skill bar slot pressed */
+
+	/* Text input (SDL_TEXTINPUT mode) */
+	bool textInputActive;
+	char textInputBuffer[64];
+	int textInputLen;
+	bool textInputConfirmed;
+	bool textInputCancelled;
 } Input;
 
 void input_initialize(Input *input);

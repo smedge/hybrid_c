@@ -13,6 +13,7 @@
 #define ZONE_MAX_SAVEPOINTS 16
 #define ZONE_MAX_LANDMARKS 16
 #define ZONE_MAX_OBSTACLE_DEFS 32
+#define ZONE_MAX_LABELS 64
 
 typedef enum {
 	INFLUENCE_DENSE,
@@ -61,6 +62,11 @@ typedef struct {
 	char name[64];
 	float weight;
 } ObstacleDef;
+
+typedef struct {
+	int grid_x, grid_y;
+	char text[64];
+} ZoneLabel;
 
 typedef struct {
 	char id[32];
@@ -145,6 +151,10 @@ typedef struct {
 	float obstacle_density;
 	int obstacle_min_spacing;
 
+	/* Labels (godmode designer annotations) */
+	ZoneLabel labels[ZONE_MAX_LABELS];
+	int label_count;
+
 	/* Hand-placed counts (for procgen regen — truncate back to these) */
 	int hand_portal_count;
 	int hand_savepoint_count;
@@ -168,6 +178,8 @@ void Zone_place_portal(int grid_x, int grid_y,
 void Zone_remove_portal(int grid_x, int grid_y);
 void Zone_place_savepoint(int grid_x, int grid_y, const char *id);
 void Zone_remove_savepoint(int grid_x, int grid_y);
+void Zone_place_label(int grid_x, int grid_y, const char *text);
+void Zone_remove_label(int grid_x, int grid_y);
 void Zone_undo(void);
 
 const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y);

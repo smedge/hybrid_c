@@ -117,6 +117,8 @@ static void reset_input(Input *input)
 	input->keySpace = false;
 	input->keyEsc = false;
 	input->keySlot = -1;
+	input->textInputConfirmed = false;
+	input->textInputCancelled = false;
 }
 
 static void quit_callback(void) 
@@ -256,11 +258,40 @@ static void handle_sdl_event(Input *input, const SDL_Event *event)
 		handle_sdl_mousebuttonup_event(input, event);
 		break;
 
+	case SDL_TEXTINPUT:
+		if (input->textInputActive) {
+			size_t slen = strlen(event->text.text);
+			for (size_t i = 0; i < slen && input->textInputLen < 63; i++)
+				input->textInputBuffer[input->textInputLen++] = event->text.text[i];
+			input->textInputBuffer[input->textInputLen] = '\0';
+		}
+		break;
+
 	case SDL_KEYDOWN:
+		if (input->textInputActive) {
+			switch (event->key.keysym.sym) {
+			case SDLK_RETURN:
+				input->textInputConfirmed = true;
+				break;
+			case SDLK_BACKSPACE:
+				if (input->textInputLen > 0) {
+					input->textInputLen--;
+					input->textInputBuffer[input->textInputLen] = '\0';
+				}
+				break;
+			case SDLK_ESCAPE:
+				input->textInputCancelled = true;
+				break;
+			default:
+				break;
+			}
+			break;
+		}
 		handle_sdl_keydown_event(input, event);
 		break;
-	
+
 	case SDL_KEYUP:
+		if (input->textInputActive) break;
 		handle_sdl_keyup_event(input, event);
 		break;
 	}
