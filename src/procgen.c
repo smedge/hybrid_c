@@ -460,6 +460,23 @@ static bool block_fits(int ox, int oy, const ChunkTemplate *chunk,
 				return false;
 			if (zone->cell_hand_placed[gx][gy])
 				return false;
+			if (zone->cell_grid[gx][gy] >= 0)
+				return false;
+		}
+	}
+
+	/* Check clearance margin around the footprint for walls */
+	int margin = zone->obstacle_min_spacing;
+	for (int my = -margin; my < th + margin; my++) {
+		for (int mx = -margin; mx < tw + margin; mx++) {
+			if (mx >= 0 && mx < tw && my >= 0 && my < th)
+				continue;  /* inside footprint — already checked */
+			int gx = ox + mx;
+			int gy = oy + my;
+			if (gx < 0 || gx >= zone->size || gy < 0 || gy >= zone->size)
+				continue;  /* OOB is fine */
+			if (zone->cell_grid[gx][gy] >= 0)
+				return false;  /* wall within clearance */
 		}
 	}
 	return true;

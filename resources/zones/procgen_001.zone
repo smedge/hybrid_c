@@ -35,7 +35,7 @@ landmark_savepoint exit_point save_001
 
 # Obstacle scatter
 obstacle_density 0.04
-obstacle_min_spacing 8
+obstacle_min_spacing 4
 
 obstacle cross_001 1.0
 obstacle patrol_001 1.0
