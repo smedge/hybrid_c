@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define STALKER_COUNT 512
+#define STALKER_COUNT 4096
 
 #define STALKER_HP 40.0
 #define STALK_SPEED 300.0
@@ -115,7 +115,7 @@ static Entity *entityRefs[STALKER_COUNT];
 static int highestUsedIndex = 0;
 
 /* Projectile pool (shared across all stalkers, uses sub_pea config) */
-#define STALKER_PROJ_POOL_SIZE 32
+#define STALKER_PROJ_POOL_SIZE 256
 static SubProjectilePool stalkerProjPool;
 
 /* Body-hit sparks */

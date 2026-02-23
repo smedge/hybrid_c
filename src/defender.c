@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define DEFENDER_COUNT 512
+#define DEFENDER_COUNT 4096
 #define DEFENDER_HP 80.0
 #define NORMAL_SPEED 250.0
 #define FLEE_SPEED 400.0
@@ -363,6 +363,17 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	PlaceableComponent *pl = &placeables[idx];
 	double dt = ticks / 1000.0;
 
+	/* Spark decay must run unconditionally (shared pool, not per-entity) */
+	if (idx == 0) {
+		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+			if (sparks[si].active) {
+				sparks[si].ticksLeft -= ticks;
+				if (sparks[si].ticksLeft <= 0)
+					sparks[si].active = false;
+			}
+		}
+	}
+
 	/* Dormancy check — only tick respawn timer if dormant */
 	if (!SpatialGrid_is_active(pl->position.x, pl->position.y)) {
 		if (d->aiState == DEFENDER_DEAD) {
@@ -657,17 +668,6 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	/* Gravity well pull (alive, not dying/dead) */
 	if (d->alive && d->aiState != DEFENDER_DYING && d->aiState != DEFENDER_DEAD)
 		Enemy_apply_gravity(pl, dt);
-
-	/* --- Spark decay (from idx 0 only) --- */
-	if (idx == 0) {
-		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
-			if (sparks[si].active) {
-				sparks[si].ticksLeft -= ticks;
-				if (sparks[si].ticksLeft <= 0)
-					sparks[si].active = false;
-			}
-		}
-	}
 
 	/* Update spatial grid if position changed */
 	SpatialGrid_update((EntityRef){ENTITY_DEFENDER, idx},

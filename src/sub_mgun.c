@@ -17,7 +17,7 @@ static const SubProjectileConfig cfg = {
 	.fire_cooldown_ms = 200,
 	.velocity = 3500.0,
 	.ttl_ms = 1000,
-	.pool_size = 8,
+	.pool_size = 16,
 	.damage = 20.0,
 	.color_r = 1.0f, .color_g = 1.0f, .color_b = 1.0f,
 	.trail_thickness = 3.0f,

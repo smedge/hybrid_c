@@ -6,7 +6,7 @@
 #include "color.h"
 
 #define ZONE_MAX_CELL_TYPES 32
-#define ZONE_MAX_SPAWNS 1024
+#define ZONE_MAX_SPAWNS 65536
 #define ZONE_MAX_UNDO 512
 #define ZONE_MAX_DESTRUCTIBLES 32
 #define ZONE_MAX_PORTALS 16

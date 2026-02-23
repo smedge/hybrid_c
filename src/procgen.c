@@ -412,7 +412,7 @@ typedef struct {
 	int x, y;
 } PlacedObstacle;
 
-#define MAX_PLACED_OBSTACLES 512
+#define MAX_PLACED_OBSTACLES 65536
 
 static const ChunkTemplate *pick_weighted(ObstaclePoolEntry *pool, int count,
                                           float total_weight, Prng *rng)

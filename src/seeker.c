@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define SEEKER_COUNT 512
+#define SEEKER_COUNT 4096
 
 #define SEEKER_HP 60.0
 #define STALK_SPEED 300.0
@@ -269,6 +269,17 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 	int idx = (int)(s - seekers);
 	PlaceableComponent *pl = &placeables[idx];
 	double dt = ticks / 1000.0;
+
+	/* Spark decay must run unconditionally (shared pool, not per-entity) */
+	if (idx == 0) {
+		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+			if (sparks[si].active) {
+				sparks[si].ticksLeft -= ticks;
+				if (sparks[si].ticksLeft <= 0)
+					sparks[si].active = false;
+			}
+		}
+	}
 
 	/* Dormancy check — only tick respawn timer if dormant */
 	if (!SpatialGrid_is_active(pl->position.x, pl->position.y)) {
@@ -544,17 +555,6 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 	if (s->alive && s->aiState != SEEKER_DYING && s->aiState != SEEKER_DEAD
 			&& s->aiState != SEEKER_DASHING)
 		Enemy_apply_gravity(pl, dt);
-
-	/* Spark decay (only from seeker index 0 to avoid N updates) */
-	if (idx == 0) {
-		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
-			if (sparks[si].active) {
-				sparks[si].ticksLeft -= ticks;
-				if (sparks[si].ticksLeft <= 0)
-					sparks[si].active = false;
-			}
-		}
-	}
 
 	/* Update spatial grid if position changed */
 	SpatialGrid_update((EntityRef){ENTITY_SEEKER, idx},

@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define HUNTER_COUNT 512
+#define HUNTER_COUNT 4096
 #define HUNTER_SPEED 400.0
 #define HUNTER_HP 100.0
 #define AGGRO_RANGE 1600.0

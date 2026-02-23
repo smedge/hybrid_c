@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
 
-#define MINE_COUNT 512
+#define MINE_COUNT 4096
 #define MINE_ROTATION 0.0
 
 static const SubMineConfig enemyMineCfg = {
