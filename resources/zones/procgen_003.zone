@@ -26,6 +26,7 @@ obstacle_min_spacing 4
 
 obstacle cross_001 1.0
 obstacle patrol_001 1.0
+obstacle minefield_002 0.3
 
 hotspot_count 20
 hotspot_edge_margin 80

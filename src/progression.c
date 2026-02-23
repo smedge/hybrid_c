@@ -33,6 +33,7 @@ static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_INFERNO] = { "INFERNO", "sub_inferno", FRAG_TYPE_INFERNO, 5, false },
 	[SUB_ID_DISINTEGRATE] = { "DISINTEGRATE", "sub_disintegrate", FRAG_TYPE_DISINTEGRATE, 5, false },
 	[SUB_ID_GRAVWELL] = { "GRAVWELL", "sub_gravwell", FRAG_TYPE_GRAVWELL, 5, false },
+	[SUB_ID_TGUN] = { "TGUN", "sub_tgun", FRAG_TYPE_TGUN, 3, false },
 };
 
 /* Notification state */

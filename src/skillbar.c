@@ -14,6 +14,7 @@
 #include "sub_inferno.h"
 #include "sub_disintegrate.h"
 #include "sub_gravwell.h"
+#include "sub_tgun.h"
 
 #include <math.h>
 #ifndef M_PI
@@ -66,6 +67,8 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Precision beam. Carves through all targets in its path.", true },
 	[SUB_ID_GRAVWELL] = { SUB_ID_GRAVWELL, SUB_TYPE_CONTROL, "sub_gravwell", "GRAV",
 		"Gravity well. Pulls and slows enemies at cursor position.", false },
+	[SUB_ID_TGUN] = { SUB_ID_TGUN, SUB_TYPE_PROJECTILE, "sub_tgun", "TGUN",
+		"Twin gun. Dual alternating streams at double fire rate.", false },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -523,6 +526,26 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 			0.1f, 0.1f, 0.2f, alpha);
 		break;
 	}
+	case SUB_ID_TGUN: {
+		/* Two side-by-side dot streams — twin mgun */
+		float gap = 5.0f;
+		ColorFloat c = {1.0f, 1.0f, 1.0f, alpha};
+		/* Left stream */
+		Position l1 = {cx - gap, cy - 5};
+		Position l2 = {cx - gap, cy};
+		Position l3 = {cx - gap, cy + 5};
+		Render_point(&l1, 4.0, &c);
+		Render_point(&l2, 4.0, &c);
+		Render_point(&l3, 4.0, &c);
+		/* Right stream */
+		Position r1 = {cx + gap, cy - 5};
+		Position r2 = {cx + gap, cy};
+		Position r3 = {cx + gap, cy + 5};
+		Render_point(&r1, 4.0, &c);
+		Render_point(&r2, 4.0, &c);
+		Render_point(&r3, 4.0, &c);
+		break;
+	}
 	default:
 		break;
 	}
@@ -542,6 +565,7 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_INFERNO: return Sub_Inferno_get_cooldown_fraction();
 	case SUB_ID_DISINTEGRATE: return Sub_Disintegrate_get_cooldown_fraction();
 	case SUB_ID_GRAVWELL: return Sub_Gravwell_get_cooldown_fraction();
+	case SUB_ID_TGUN: return Sub_Tgun_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

@@ -21,6 +21,7 @@
 #include "sub_disintegrate.h"
 #include "sub_inferno.h"
 #include "sub_gravwell.h"
+#include "sub_tgun.h"
 #include "map_reflect.h"
 #include "map_lighting.h"
 #include "grid.h"
@@ -621,6 +622,7 @@ void Mode_Gameplay_render(void)
 		Sub_Inferno_render_light_source();
 		Sub_Disintegrate_render_light_source();
 		Sub_Gravwell_render_light_source();
+		Sub_Tgun_render_light_source();
 		Mine_render_light_source();
 		Hunter_render_light_source();
 		Seeker_render_light_source();
@@ -1596,6 +1598,7 @@ static void zone_teardown_and_load(const char *zone_path)
 	Zone_save_if_dirty();
 	Sub_Pea_cleanup();
 	Sub_Mgun_cleanup();
+	Sub_Tgun_cleanup();
 	Sub_Mine_cleanup();
 	Fragment_deactivate_all();
 	Zone_unload();

@@ -17,6 +17,7 @@ typedef enum {
 	SUB_ID_INFERNO,
 	SUB_ID_DISINTEGRATE,
 	SUB_ID_GRAVWELL,
+	SUB_ID_TGUN,
 	SUB_ID_COUNT
 } SubroutineId;
 

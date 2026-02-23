@@ -57,7 +57,7 @@ void Sub_Mgun_update(const Input *userInput, const unsigned int ticks, Placeable
 		Position position_cursor_world = View_get_world_position(&screen, position_cursor);
 
 		if (SubProjectile_try_fire(&pool, &cfg, placeable->position, position_cursor_world))
-			PlayerStats_add_feedback(2.0);
+			PlayerStats_add_feedback(1.0);
 	}
 
 	SubProjectile_update(&pool, &cfg, ticks);

@@ -12,6 +12,7 @@
 #include "sub_egress.h"
 #include "sub_stealth.h"
 #include "sub_gravwell.h"
+#include "sub_tgun.h"
 #include "fragment.h"
 #include "progression.h"
 
@@ -33,6 +34,11 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 	double mgun_dmg = Sub_Mgun_check_hit(hitBox);
 	if (mgun_dmg > 0) {
 		r.damage += mgun_dmg * mul;
+		r.hit = true;
+	}
+	double tgun_dmg = Sub_Tgun_check_hit(hitBox);
+	if (tgun_dmg > 0) {
+		r.damage += tgun_dmg * mul;
 		r.hit = true;
 	}
 	double mine_dmg = Sub_Mine_check_hit(hitBox);
@@ -210,6 +216,7 @@ bool Enemy_check_any_nearby(Position pos, double radius)
 {
 	return Sub_Pea_check_nearby(pos, radius)
 		|| Sub_Mgun_check_nearby(pos, radius)
+		|| Sub_Tgun_check_nearby(pos, radius)
 		|| Sub_Inferno_check_nearby(pos, radius)
 		|| Sub_Disintegrate_check_nearby(pos, radius);
 }
@@ -218,6 +225,7 @@ bool Enemy_check_any_hit(Rectangle hitBox)
 {
 	return Sub_Pea_check_hit(hitBox)
 		|| Sub_Mgun_check_hit(hitBox)
+		|| Sub_Tgun_check_hit(hitBox)
 		|| Sub_Mine_check_hit(hitBox)
 		|| Sub_Inferno_check_hit(hitBox)
 		|| Sub_Disintegrate_check_hit(hitBox)

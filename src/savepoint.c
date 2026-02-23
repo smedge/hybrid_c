@@ -30,7 +30,7 @@
 #define SAVEPOINT_CHARGE_CHANNEL 4
 
 /* Must stay in sync with FragmentType enum order */
-static const char *frag_names[] = {"mine", "elite", "hunter", "seeker", "mend", "aegis", "gravwell", "stalker", "inferno", "disintegrate"};
+static const char *frag_names[] = {"mine", "elite", "hunter", "seeker", "mend", "aegis", "gravwell", "stalker", "inferno", "disintegrate", "tgun"};
 
 typedef enum {
 	SAVEPOINT_IDLE,

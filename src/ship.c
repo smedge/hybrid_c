@@ -12,6 +12,7 @@
 #include "sub_inferno.h"
 #include "sub_disintegrate.h"
 #include "sub_gravwell.h"
+#include "sub_tgun.h"
 #include "color.h"
 #include "shipstate.h"
 #include "audio.h"
@@ -111,6 +112,7 @@ void Ship_initialize()
 	Sub_Inferno_initialize(liveEntity);
 	Sub_Disintegrate_initialize(liveEntity);
 	Sub_Gravwell_initialize();
+	Sub_Tgun_initialize(liveEntity);
 }
 
 void Ship_cleanup()
@@ -126,6 +128,7 @@ void Ship_cleanup()
 	Sub_Inferno_cleanup();
 	Sub_Disintegrate_cleanup();
 	Sub_Gravwell_cleanup();
+	Sub_Tgun_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -223,6 +226,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Inferno_deactivate_all();
 			Sub_Disintegrate_deactivate_all();
 			Sub_Gravwell_deactivate_all();
+			Sub_Tgun_deactivate_all();
 			PlayerStats_reset();
 			SpatialGrid_clear();
 			Mine_cleanup();
@@ -337,6 +341,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Inferno_update(userInput, ticks, placeable);
 		Sub_Disintegrate_update(userInput, ticks, placeable);
 		Sub_Gravwell_update(userInput, ticks);
+		Sub_Tgun_update(userInput, ticks, placeable);
 	}
 }
 
@@ -387,6 +392,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Inferno_render();
 	Sub_Disintegrate_render();
 	Sub_Gravwell_render();
+	Sub_Tgun_render();
 }
 
 void Ship_render_bloom_source(void)
@@ -421,6 +427,7 @@ void Ship_render_bloom_source(void)
 	Sub_Mine_render_bloom_source();
 	Sub_Inferno_render_bloom_source();
 	Sub_Gravwell_render_bloom_source();
+	Sub_Tgun_render_bloom_source();
 	/* Sub_Disintegrate has its own dedicated FBO bloom pass in mode_gameplay */
 }
 

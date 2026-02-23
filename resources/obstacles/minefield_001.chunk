@@ -1,0 +1,9 @@
+# Exported from Procgen Builder 01 at grid (784,496)-(799,511)
+chunk minefield_001
+size 16 16
+
+spawn 0 16 mine 1.0
+spawn 16 16 mine 1.0
+spawn 8 8 mine 1.0
+spawn 0 0 mine 1.0
+spawn 16 0 mine 1.0
