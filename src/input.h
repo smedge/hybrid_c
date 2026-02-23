@@ -33,6 +33,7 @@ typedef struct {
 	bool keyI;
 	bool keyM;
 	bool keyP;
+	bool keyV;
 	bool keyTab;
 	bool keyE;
 	bool keyQ;

@@ -878,6 +878,61 @@ static void god_mode_update(const Input *input, const unsigned int ticks)
 		}
 	}
 
+	/* V = stamp selection at cursor position */
+	if (input->keyV && godModeCursorValid &&
+	    (godPlacementMode == GOD_MODE_CHUNKS ||
+	     godPlacementMode == GOD_MODE_OBSTACLES)) {
+		if (chunkSelHasA && chunkSelHasB) {
+			const Zone *z = Zone_get();
+			int src_min_x = chunkSelA_x < chunkSelB_x ? chunkSelA_x : chunkSelB_x;
+			int src_min_y = chunkSelA_y < chunkSelB_y ? chunkSelA_y : chunkSelB_y;
+			int src_max_x = chunkSelA_x > chunkSelB_x ? chunkSelA_x : chunkSelB_x;
+			int src_max_y = chunkSelA_y > chunkSelB_y ? chunkSelA_y : chunkSelB_y;
+			int sel_w = src_max_x - src_min_x + 1;
+			int sel_h = src_max_y - src_min_y + 1;
+
+			if (sel_w * sel_h <= 16384) {
+				/* Snapshot source cell indices (handles overlapping src/dst) */
+				int snapshot[16384];
+				for (int dy = 0; dy < sel_h; dy++)
+					for (int dx = 0; dx < sel_w; dx++) {
+						int sx = src_min_x + dx, sy = src_min_y + dy;
+						snapshot[dy * sel_w + dx] =
+							(sx >= 0 && sx < MAP_SIZE && sy >= 0 && sy < MAP_SIZE)
+							? z->cell_grid[sx][sy] : -1;
+					}
+
+				/* Stamp cells at cursor (top-left) */
+				int dst_ox = godModeCursorX, dst_oy = godModeCursorY;
+				for (int dy = 0; dy < sel_h; dy++)
+					for (int dx = 0; dx < sel_w; dx++) {
+						int dst_gx = dst_ox + dx, dst_gy = dst_oy + dy;
+						int cell_idx = snapshot[dy * sel_w + dx];
+						if (cell_idx >= 0 && cell_idx < z->cell_type_count)
+							Zone_place_cell(dst_gx, dst_gy, z->cell_types[cell_idx].id);
+						else
+							Zone_remove_cell(dst_gx, dst_gy);
+					}
+
+				/* Copy spawns within source bounds */
+				double swx0 = (src_min_x - HALF_MAP_SIZE) * MAP_CELL_SIZE - MAP_CELL_SIZE * 0.5;
+				double swy0 = (src_min_y - HALF_MAP_SIZE) * MAP_CELL_SIZE - MAP_CELL_SIZE * 0.5;
+				double swx1 = (src_max_x - HALF_MAP_SIZE + 1) * MAP_CELL_SIZE + MAP_CELL_SIZE * 0.5;
+				double swy1 = (src_max_y - HALF_MAP_SIZE + 1) * MAP_CELL_SIZE + MAP_CELL_SIZE * 0.5;
+				double off_x = (dst_ox - src_min_x) * MAP_CELL_SIZE;
+				double off_y = (dst_oy - src_min_y) * MAP_CELL_SIZE;
+				int orig_count = z->spawn_count;
+				for (int i = 0; i < orig_count; i++) {
+					double wx = z->spawns[i].world_x, wy = z->spawns[i].world_y;
+					if (wx >= swx0 && wx <= swx1 && wy >= swy0 && wy <= swy1)
+						Zone_place_spawn(z->spawns[i].enemy_type, wx + off_x, wy + off_y);
+				}
+
+				printf("Stamped %dx%d selection at (%d,%d)\n", sel_w, sel_h, dst_ox, dst_oy);
+			}
+		}
+	}
+
 	/* Reset consumed flags when buttons released */
 	if (!input->mouseLeft) godMouseLeftConsumed = false;
 	if (!input->mouseRight) godMouseRightConsumed = false;
@@ -1160,7 +1215,7 @@ static void god_mode_render_hud(const Screen *screen)
 		if (chunkSelHasA && chunkSelHasB) {
 			int w = abs(chunkSelB_x - chunkSelA_x) + 1;
 			int h = abs(chunkSelB_y - chunkSelA_y) + 1;
-			snprintf(buf, sizeof(buf), "Selection: %dx%d (Tab=export, RMB=clear)", w, h);
+			snprintf(buf, sizeof(buf), "Selection: %dx%d (Tab=export, V=stamp, RMB=clear)", w, h);
 		} else if (chunkSelHasA) {
 			snprintf(buf, sizeof(buf), "Corner A set — click Corner B");
 		} else {
@@ -1174,7 +1229,7 @@ static void god_mode_render_hud(const Screen *screen)
 		if (chunkSelHasA && chunkSelHasB) {
 			int w = abs(chunkSelB_x - chunkSelA_x) + 1;
 			int h = abs(chunkSelB_y - chunkSelA_y) + 1;
-			snprintf(buf, sizeof(buf), "Selection: %dx%d (Tab=export, RMB=clear)", w, h);
+			snprintf(buf, sizeof(buf), "Selection: %dx%d (Tab=export, V=stamp, RMB=clear)", w, h);
 		} else if (chunkSelHasA) {
 			snprintf(buf, sizeof(buf), "Corner A set — click Corner B");
 		} else {
@@ -1574,6 +1629,29 @@ static void god_mode_render_chunk_selection(void)
 		Render_thick_line(x1, y0, x1, y1, lw, 1.0f, 0.9f, 0.2f, 0.8f);
 		Render_thick_line(x1, y1, x0, y1, lw, 1.0f, 0.9f, 0.2f, 0.8f);
 		Render_thick_line(x0, y1, x0, y0, lw, 1.0f, 0.9f, 0.2f, 0.8f);
+
+		/* Ghost preview: show stamp footprint at cursor position */
+		if (godModeCursorValid) {
+			int sel_w = max_x - min_x + 1;
+			int sel_h = max_y - min_y + 1;
+			float gx0 = (float)(godModeCursorX - HALF_MAP_SIZE) * s;
+			float gy0 = (float)(godModeCursorY - HALF_MAP_SIZE) * s;
+			float gx1 = gx0 + sel_w * s;
+			float gy1 = gy0 + sel_h * s;
+
+			float gr, gg, gb;
+			if (godPlacementMode == GOD_MODE_CHUNKS) {
+				gr = 1.0f; gg = 0.9f; gb = 0.2f;
+			} else {
+				gr = 0.2f; gg = 0.9f; gb = 1.0f;
+			}
+			Render_quad_absolute(gx0, gy0, gx1, gy1, gr, gg, gb, 0.08f);
+			float glw = 2.0f;
+			Render_thick_line(gx0, gy0, gx1, gy0, glw, gr, gg, gb, 0.4f);
+			Render_thick_line(gx1, gy0, gx1, gy1, glw, gr, gg, gb, 0.4f);
+			Render_thick_line(gx1, gy1, gx0, gy1, glw, gr, gg, gb, 0.4f);
+			Render_thick_line(gx0, gy1, gx0, gy0, glw, gr, gg, gb, 0.4f);
+		}
 	}
 }
 
