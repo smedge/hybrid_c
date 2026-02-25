@@ -15,6 +15,7 @@
 #include "sub_tgun.h"
 #include "fragment.h"
 #include "progression.h"
+#include "enemy_registry.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -241,6 +242,12 @@ double Enemy_apply_gravity(PlaceableComponent *pl, double dt)
 	pl->position.x += dx;
 	pl->position.y += dy;
 	return speed_mult;
+}
+
+void Enemy_alert_nearby(Position origin, double radius)
+{
+	Position threat = Ship_get_position();
+	EnemyRegistry_alert_nearby(origin, radius, threat);
 }
 
 void Enemy_drop_fragments(Position deathPos, const CarriedSubroutine *subs, int subCount)

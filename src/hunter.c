@@ -204,7 +204,7 @@ void Hunter_initialize(Position position)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal};
+		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal, Hunter_alert_nearby};
 		EnemyRegistry_register(cb);
 	}
 }
@@ -339,6 +339,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			if (h->aiState == HUNTER_IDLE) {
 				h->aiState = HUNTER_CHASING;
 				h->cooldownTimer = 0;
+				Enemy_alert_nearby(pl->position, 1600.0);
 			}
 		}
 
@@ -370,6 +371,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			h->aiState = HUNTER_CHASING;
 			h->cooldownTimer = 0;
+			Enemy_alert_nearby(pl->position, 1600.0);
 		}
 
 		/* Face wander target */
@@ -676,6 +678,20 @@ void Hunter_heal(int index, double amount)
 	h->hp += amount;
 	if (h->hp > HUNTER_HP)
 		h->hp = HUNTER_HP;
+}
+
+void Hunter_alert_nearby(Position origin, double radius, Position threat)
+{
+	(void)threat;
+	for (int i = 0; i < highestUsedIndex; i++) {
+		HunterState *h = &hunters[i];
+		if (!h->alive || h->aiState != HUNTER_IDLE)
+			continue;
+		if (Enemy_distance_between(placeables[i].position, origin) < radius) {
+			h->aiState = HUNTER_CHASING;
+			h->cooldownTimer = 0;
+		}
+	}
 }
 
 int Hunter_get_count(void)

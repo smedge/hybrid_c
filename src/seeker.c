@@ -214,7 +214,7 @@ void Seeker_initialize(Position position)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal};
+		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal, Seeker_alert_nearby};
 		EnemyRegistry_register(cb);
 	}
 }
@@ -328,6 +328,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			/* Getting shot immediately aggroes */
 			if (s->aiState == SEEKER_IDLE) {
 				s->aiState = SEEKER_STALKING;
+				Enemy_alert_nearby(pl->position, 1600.0);
 			}
 		}
 
@@ -357,6 +358,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed() &&
 			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
 			s->aiState = SEEKER_STALKING;
+			Enemy_alert_nearby(pl->position, 1600.0);
 		}
 
 		s->facing = Position_get_heading(pl->position, s->wanderTarget);
@@ -862,6 +864,18 @@ void Seeker_heal(int index, double amount)
 	s->hp += amount;
 	if (s->hp > SEEKER_HP)
 		s->hp = SEEKER_HP;
+}
+
+void Seeker_alert_nearby(Position origin, double radius, Position threat)
+{
+	(void)threat;
+	for (int i = 0; i < highestUsedIndex; i++) {
+		SeekerState *s = &seekers[i];
+		if (!s->alive || s->aiState != SEEKER_IDLE)
+			continue;
+		if (Enemy_distance_between(placeables[i].position, origin) < radius)
+			s->aiState = SEEKER_STALKING;
+	}
 }
 
 int Seeker_get_count(void)

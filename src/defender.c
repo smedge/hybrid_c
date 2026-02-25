@@ -307,7 +307,7 @@ void Defender_initialize(Position position)
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal};
+		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal, Defender_alert_nearby};
 		defenderTypeId = EnemyRegistry_register(cb);
 	}
 }
@@ -443,6 +443,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				/* Getting hit while idle triggers flee */
 				if (d->aiState == DEFENDER_IDLE) {
 					d->aiState = DEFENDER_FLEEING;
+					Enemy_alert_nearby(pl->position, 1600.0);
 				}
 			}
 		}
@@ -487,15 +488,20 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				else if (et->find_aggro && et->find_aggro(pl->position, 1600.0, &pos))
 					d->aiState = DEFENDER_SUPPORTING;
 			}
+			if (d->aiState != DEFENDER_IDLE)
+				Enemy_alert_nearby(pl->position, 1600.0);
 		}
 
 		/* Check aggro — player proximity triggers awareness */
-		Position shipPos = Ship_get_position();
-		double dist = Enemy_distance_between(pl->position, shipPos);
-		bool nearbyShot = Enemy_check_any_nearby(pl->position, 200.0);
-		if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed() &&
-			((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
-			d->aiState = DEFENDER_SUPPORTING;
+		if (d->aiState == DEFENDER_IDLE) {
+			Position shipPos = Ship_get_position();
+			double dist = Enemy_distance_between(pl->position, shipPos);
+			bool nearbyShot = Enemy_check_any_nearby(pl->position, 200.0);
+			if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed() &&
+				((dist < AGGRO_RANGE && Enemy_has_line_of_sight(pl->position, shipPos)) || nearbyShot)) {
+				d->aiState = DEFENDER_SUPPORTING;
+				Enemy_alert_nearby(pl->position, 1600.0);
+			}
 		}
 
 		d->facing = Position_get_heading(pl->position, d->wanderTarget);
@@ -934,6 +940,18 @@ void Defender_heal(int index, double amount)
 	d->hp += amount;
 	if (d->hp > DEFENDER_HP)
 		d->hp = DEFENDER_HP;
+}
+
+void Defender_alert_nearby(Position origin, double radius, Position threat)
+{
+	(void)threat;
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (!d->alive || d->aiState != DEFENDER_IDLE)
+			continue;
+		if (Enemy_distance_between(placeables[i].position, origin) < radius)
+			d->aiState = DEFENDER_SUPPORTING;
+	}
 }
 
 int Defender_get_count(void)

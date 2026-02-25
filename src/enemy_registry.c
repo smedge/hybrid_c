@@ -39,3 +39,11 @@ void EnemyRegistry_heal(int type_id, int index, double amount)
 	if (types[type_id].heal)
 		types[type_id].heal(index, amount);
 }
+
+void EnemyRegistry_alert_nearby(Position origin, double radius, Position threat)
+{
+	for (int i = 0; i < typeCount; i++) {
+		if (types[i].alert_nearby)
+			types[i].alert_nearby(origin, radius, threat);
+	}
+}

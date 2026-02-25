@@ -42,6 +42,9 @@ double Enemy_apply_gravity(PlaceableComponent *pl, double dt);
 bool Enemy_check_any_nearby(Position pos, double radius);
 bool Enemy_check_any_hit(Rectangle hitBox);
 
+/* Alert nearby enemies when one transitions from idle to aggro (single-hop, no chain) */
+void Enemy_alert_nearby(Position origin, double radius);
+
 /* Drop system — maps enemy types to the subroutines they carry */
 typedef struct {
 	int sub_id;       /* SubroutineId — which subroutine this unlocks */
