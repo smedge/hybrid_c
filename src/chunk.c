@@ -267,6 +267,17 @@ bool Chunk_export(int min_gx, int min_gy, int max_gx, int max_gy,
 		}
 	}
 
+	/* Data nodes */
+	for (int i = 0; i < z->datanode_count; i++) {
+		int dgx = z->datanodes[i].grid_x;
+		int dgy = z->datanodes[i].grid_y;
+		if (dgx >= min_gx && dgx <= max_gx && dgy >= min_gy && dgy <= max_gy) {
+			fprintf(f, "spawn %d %d datanode 1.0\n",
+			        dgx - min_gx, dgy - min_gy);
+			spawn_count++;
+		}
+	}
+
 	/* Portals */
 	for (int i = 0; i < z->portal_count; i++) {
 		int pgx = z->portals[i].grid_x;

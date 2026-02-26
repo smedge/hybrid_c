@@ -13,6 +13,7 @@
 #include "ship.h"
 #include "color.h"
 #include "fog_of_war.h"
+#include "data_node.h"
 
 #include <math.h>
 
@@ -348,6 +349,26 @@ void MapWindow_render(const Screen *screen)
 			float sy = qy + (1.0f - z->portals[i].grid_y / (float)texSize) * qh;
 			Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,
 				1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
+
+	/* Data nodes — yellow/grey dots matching minimap */
+	{
+		const Zone *z = Zone_get();
+		float ds = 3.0f;
+		for (int i = 0; i < z->datanode_count; i++) {
+			if (!FogOfWar_is_revealed(z->datanodes[i].grid_x,
+				z->datanodes[i].grid_y))
+				continue;
+			float sx = qx + z->datanodes[i].grid_x * scale;
+			float sy = qy + (1.0f - z->datanodes[i].grid_y / (float)texSize) * qh;
+			if (DataNode_is_collected(z->datanodes[i].node_id)) {
+				Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,
+					0.4f, 0.4f, 0.4f, 0.7f);
+			} else {
+				Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,
+					1.0f, 0.9f, 0.2f, 1.0f);
+			}
 		}
 	}
 

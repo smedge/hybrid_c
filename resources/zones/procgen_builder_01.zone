@@ -5,7 +5,6 @@ bgcolor 0 89 26 140
 bgcolor 1 51 26 128
 bgcolor 2 115 20 102
 bgcolor 3 38 13 89
-
 music resources/music/deadmau5_OpenAlice.mp3
 
 celltype solid 20 0 20 255 128 0 128 255 none
@@ -822,5 +821,11 @@ spawn mine 28000.0 -4800.0
 spawn mine 27200.0 -4000.0
 spawn mine 28800.0 -4000.0
 spawn mine 28000.0 -4000.0
+spawn mine 6400.0 -800.0
+spawn mine 7200.0 -1600.0
+spawn mine 6400.0 -2400.0
+spawn mine 5600.0 -1600.0
+
+datanode 576 496 dn_1
 
 label 647 514 Cross_XXX

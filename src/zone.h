@@ -41,6 +41,12 @@ typedef struct {
 	char savepoint_id[32];
 } LandmarkSavepointWiring;
 
+#define LANDMARK_MAX_DATANODES 2
+
+typedef struct {
+	char node_id[32];
+} LandmarkDataNodeWiring;
+
 typedef struct {
 	char type[32];
 	char chunk_path[256];
@@ -51,6 +57,8 @@ typedef struct {
 	int portal_count;
 	LandmarkSavepointWiring savepoints[LANDMARK_MAX_SAVEPOINTS];
 	int savepoint_count;
+	LandmarkDataNodeWiring datanodes[LANDMARK_MAX_DATANODES];
+	int datanode_count;
 } LandmarkDef;
 
 typedef struct {
@@ -93,6 +101,13 @@ typedef struct {
 	char id[32];
 } ZoneSavepoint;
 
+#define ZONE_MAX_DATANODES 16
+
+typedef struct {
+	int grid_x, grid_y;
+	char node_id[32];
+} ZoneDataNode;
+
 #define ZONE_MAX_MUSIC 3
 
 typedef struct {
@@ -116,6 +131,9 @@ typedef struct {
 
 	ZoneSavepoint savepoints[ZONE_MAX_SAVEPOINTS];
 	int savepoint_count;
+
+	ZoneDataNode datanodes[ZONE_MAX_DATANODES];
+	int datanode_count;
 
 	bool has_bg_colors;
 	ColorRGB bg_colors[4];
@@ -155,10 +173,15 @@ typedef struct {
 	ZoneLabel labels[ZONE_MAX_LABELS];
 	int label_count;
 
+	/* Data node boss triggers */
+	char boss_enter_node_id[32];
+	char boss_defeat_node_id[32];
+
 	/* Hand-placed counts (for procgen regen — truncate back to these) */
 	int hand_portal_count;
 	int hand_savepoint_count;
 	int hand_spawn_count;
+	int hand_datanode_count;
 } Zone;
 
 void Zone_load(const char *path);
@@ -180,6 +203,8 @@ void Zone_place_savepoint(int grid_x, int grid_y, const char *id);
 void Zone_remove_savepoint(int grid_x, int grid_y);
 void Zone_place_label(int grid_x, int grid_y, const char *text);
 void Zone_remove_label(int grid_x, int grid_y);
+void Zone_place_datanode(int grid_x, int grid_y, const char *node_id);
+void Zone_remove_datanode(int grid_x, int grid_y);
 void Zone_undo(void);
 
 const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y);

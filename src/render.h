@@ -34,6 +34,9 @@ void Render_thick_line(float x0, float y0, float x1, float y1,
 void Render_filled_circle(float cx, float cy, float radius, int segments,
 	float r, float g, float b, float a);
 
+void Render_filled_ellipse(float cx, float cy, float rx, float ry,
+	int segments, float r, float g, float b, float a);
+
 void Render_cooldown_pie(float cx, float cy, float radius, float fraction,
 	int segments, float r, float g, float b, float a);
 

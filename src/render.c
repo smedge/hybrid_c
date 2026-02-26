@@ -189,6 +189,23 @@ void Render_filled_circle(float cx, float cy, float radius, int segments,
 	}
 }
 
+void Render_filled_ellipse(float cx, float cy, float rx, float ry,
+	int segments, float r, float g, float b, float a)
+{
+	BatchRenderer *batch = Graphics_get_batch();
+	float step = 2.0f * (float)M_PI / (float)segments;
+
+	for (int i = 0; i < segments; i++) {
+		float a0 = (float)i * step;
+		float a1 = (float)(i + 1) * step;
+		Batch_push_triangle_vertices(batch,
+			cx, cy,
+			cx + rx * cosf(a0), cy + ry * sinf(a0),
+			cx + rx * cosf(a1), cy + ry * sinf(a1),
+			r, g, b, a);
+	}
+}
+
 void Render_cooldown_pie(float cx, float cy, float radius, float fraction,
 	int segments, float r, float g, float b, float a)
 {

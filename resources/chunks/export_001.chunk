@@ -1,9 +1,0 @@
-# Exported from Data Nexus at grid (640,464)-(655,479)
-chunk export_001
-size 16 16
-
-spawn 8 8 defender 1.0
-spawn 7 9 hunter 1.0
-spawn 9 7 hunter 1.0
-spawn 9 9 seeker 1.0
-spawn 7 7 seeker 1.0

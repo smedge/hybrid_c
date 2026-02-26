@@ -9,6 +9,7 @@
 #include "audio.h"
 #include "procgen.h"
 #include "fog_of_war.h"
+#include "data_node.h"
 
 #include <string.h>
 #include <math.h>
@@ -166,6 +167,17 @@ static void do_save(SavepointState *sp)
 			fprintf(f, " %d:%s", s, Skillbar_get_sub_name(sub));
 	}
 	fprintf(f, "\n");
+
+	/* Data node collected IDs */
+	checkpoint.datanode_count = DataNode_collected_count();
+	for (int i = 0; i < checkpoint.datanode_count && i < SAVE_MAX_DATANODES; i++) {
+		const char *nid = DataNode_collected_id(i);
+		if (nid) {
+			strncpy(checkpoint.datanode_ids[i], nid, 31);
+			checkpoint.datanode_ids[i][31] = '\0';
+			fprintf(f, "datanode_collected %s\n", nid);
+		}
+	}
 
 	fclose(f);
 	FogOfWar_save_all_to_disk();
@@ -608,6 +620,14 @@ bool Savepoint_load_from_disk(void)
 					}
 				}
 				tok = strtok(NULL, " ");
+			}
+		}
+		else if (strncmp(line, "datanode_collected ", 18) == 0) {
+			if (checkpoint.datanode_count < SAVE_MAX_DATANODES) {
+				strncpy(checkpoint.datanode_ids[checkpoint.datanode_count],
+					line + 18, 31);
+				checkpoint.datanode_ids[checkpoint.datanode_count][31] = '\0';
+				checkpoint.datanode_count++;
 			}
 		}
 	}

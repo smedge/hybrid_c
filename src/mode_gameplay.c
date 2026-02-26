@@ -36,6 +36,9 @@
 #include "fog_of_war.h"
 #include "progression.h"
 #include "spatial_grid.h"
+#include "narrative.h"
+#include "data_node.h"
+#include "data_logs.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -129,6 +132,7 @@ typedef enum {
 	GOD_MODE_CHUNKS,
 	GOD_MODE_OBSTACLES,
 	GOD_MODE_LABELS,
+	GOD_MODE_DATANODES,
 	GOD_MODE_COUNT
 } GodPlacementMode;
 
@@ -138,7 +142,7 @@ static const char *ENEMY_TYPES[] = {"mine", "hunter", "seeker", "defender", "sta
 #define ENEMY_TYPE_COUNT 5
 static int godEnemyType = 0;
 
-static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks", "Obstacles", "Labels"};
+static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks", "Obstacles", "Labels", "DataNodes"};
 
 /* Chunk export selection */
 static bool chunkSelHasA = false;
@@ -165,6 +169,12 @@ static char godLabelTextBuf[64] = "";
 
 /* Procgen debug */
 static bool godNoiseHeatmapActive = false;
+
+/* God mode notification */
+static char godNotifyText[256] = "";
+static unsigned int godNotifyTimer = 0;
+#define GOD_NOTIFY_DURATION_MS 3000
+#define GOD_NOTIFY_FADE_MS 800
 
 /* Load-from-save state */
 static bool loadFromSave = false;
@@ -207,6 +217,7 @@ void Mode_Gameplay_initialize(void)
 
 	selectedBgm = rand() % 7;
 
+	Narrative_load("./resources/data/messages.dat");
 	View_initialize();
 	Hud_initialize();
 	Background_initialize();
@@ -219,7 +230,9 @@ void Mode_Gameplay_initialize(void)
 	Skillbar_initialize();
 	Catalog_initialize();
 	Settings_initialize();
+	DataLogs_initialize();
 	FogOfWar_initialize();
+	DataNode_clear_collected();
 	Procgen_set_master_seed((uint32_t)time(NULL));
 	Zone_load("./resources/zones/procgen_001.zone");
 	FogOfWar_set_zone("./resources/zones/procgen_001.zone");
@@ -278,6 +291,7 @@ void Mode_Gameplay_initialize_from_save(void)
 
 	selectedBgm = rand() % 7;
 
+	Narrative_load("./resources/data/messages.dat");
 	View_initialize();
 	Hud_initialize();
 	Background_initialize();
@@ -290,7 +304,9 @@ void Mode_Gameplay_initialize_from_save(void)
 	Skillbar_initialize();
 	Catalog_initialize();
 	Settings_initialize();
+	DataLogs_initialize();
 	FogOfWar_initialize();
+	DataNode_clear_collected();
 	if (ckpt->procgen_seed != 0)
 		Procgen_set_master_seed(ckpt->procgen_seed);
 	Zone_load(ckpt->zone_path);
@@ -303,6 +319,10 @@ void Mode_Gameplay_initialize_from_save(void)
 		Fragment_set_count(i, ckpt->fragment_counts[i]);
 	Progression_restore(ckpt->unlocked, ckpt->discovered);
 	Skillbar_restore(ckpt->skillbar);
+
+	/* Restore collected data nodes from checkpoint */
+	for (int i = 0; i < ckpt->datanode_count; i++)
+		DataNode_mark_collected(ckpt->datanode_ids[i]);
 	Catalog_mark_all_seen();
 
 	godModeActive = false;
@@ -325,6 +345,8 @@ void Mode_Gameplay_initialize_from_save(void)
 
 void Mode_Gameplay_cleanup(void)
 {
+	DataLogs_cleanup();
+	Narrative_cleanup();
 	FogOfWar_cleanup();
 	Settings_cleanup();
 	Catalog_cleanup();
@@ -347,7 +369,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	escConsumed = false;
 
 	/* FPS counter */
-	if (input->keyL)
+	if (input->keyBackslash)
 		fpsVisible = !fpsVisible;
 	fpsAccum += ticks;
 	fpsFrames++;
@@ -431,36 +453,63 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		return;
 	}
 
-	/* Toggle catalog (close settings/map if opening) */
-	if (input->keyP && !godModeActive) {
+	/* Dismiss data node reading overlay (any key/click) */
+	bool dataNodeReading = DataNode_is_reading();
+	if (dataNodeReading) {
+		bool any_input = input->keyEsc || input->mouseLeft || input->mouseRight ||
+			input->keySpace || input->keyF || input->keyG || input->keyL;
+		if (any_input)
+			DataNode_dismiss_reading();
+	}
+
+	/* Toggle data logs (close other panels if opening) */
+	if (input->keyL && !godModeActive && !dataNodeReading) {
+		if (!DataLogs_is_open() && Catalog_is_open())
+			Catalog_toggle();
+		if (!DataLogs_is_open() && Settings_is_open())
+			Settings_toggle();
+		if (!DataLogs_is_open() && MapWindow_is_open())
+			MapWindow_toggle();
+		DataLogs_toggle();
+	}
+
+	/* Toggle catalog (close settings/map/logs if opening) */
+	if (input->keyP && !godModeActive && !dataNodeReading) {
 		if (!Catalog_is_open() && Settings_is_open())
 			Settings_toggle();
 		if (!Catalog_is_open() && MapWindow_is_open())
 			MapWindow_toggle();
+		if (!Catalog_is_open() && DataLogs_is_open())
+			DataLogs_toggle();
 		Catalog_toggle();
 	}
 
-	/* Toggle settings (close catalog/map if opening) */
-	if (input->keyI && !godModeActive) {
+	/* Toggle settings (close catalog/map/logs if opening) */
+	if (input->keyI && !godModeActive && !dataNodeReading) {
 		if (!Settings_is_open() && Catalog_is_open())
 			Catalog_toggle();
 		if (!Settings_is_open() && MapWindow_is_open())
 			MapWindow_toggle();
+		if (!Settings_is_open() && DataLogs_is_open())
+			DataLogs_toggle();
 		Settings_toggle();
 	}
 
-	/* Toggle map window (close catalog/settings if opening) */
-	if (input->keyM && !godModeActive) {
+	/* Toggle map window (close catalog/settings/logs if opening) */
+	if (input->keyM && !godModeActive && !dataNodeReading) {
 		if (!MapWindow_is_open() && Catalog_is_open())
 			Catalog_toggle();
 		if (!MapWindow_is_open() && Settings_is_open())
 			Settings_toggle();
+		if (!MapWindow_is_open() && DataLogs_is_open())
+			DataLogs_toggle();
 		MapWindow_toggle();
 	}
 
 	bool catalogWasOpen = Catalog_is_open();
 	bool settingsWasOpen = Settings_is_open();
 	bool mapWasOpen = MapWindow_is_open();
+	bool logsWasOpen = DataLogs_is_open();
 
 	if (catalogWasOpen) {
 		if (input->keyEsc)
@@ -480,6 +529,12 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		MapWindow_update(input);
 	}
 
+	if (logsWasOpen) {
+		if (input->keyEsc)
+			escConsumed = true;
+		DataLogs_update((Input *)input, ticks);
+	}
+
 	/* If a UI panel just closed this frame, consume mouse until released */
 	if (catalogWasOpen && !Catalog_is_open())
 		mouseConsumedUntilRelease = true;
@@ -487,31 +542,42 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 		mouseConsumedUntilRelease = true;
 	if (mapWasOpen && !MapWindow_is_open())
 		mouseConsumedUntilRelease = true;
+	if (logsWasOpen && !DataLogs_is_open())
+		mouseConsumedUntilRelease = true;
 	if (mouseConsumedUntilRelease && !input->mouseLeft)
 		mouseConsumedUntilRelease = false;
 
 	/* UI gets raw input; gameplay gets mouse stripped when UI consumes it */
 	bool ui_wants_mouse = catalogWasOpen || settingsWasOpen || mapWasOpen ||
-		mouseConsumedUntilRelease;
+		logsWasOpen || mouseConsumedUntilRelease;
 
 	cursor_update(input);
-	if (ui_wants_mouse) {
-		Input skillbar_filtered = *input;
-		skillbar_filtered.mouseLeft = false;
-		skillbar_filtered.mouseRight = false;
-		Skillbar_update(&skillbar_filtered, ticks);
-	} else {
-		Skillbar_update(input, ticks);
-	}
 
-	ui_wants_mouse = ui_wants_mouse || Skillbar_consumed_click();
-	Input filtered = *input;
-	if (ui_wants_mouse) {
-		filtered.mouseLeft = false;
-		filtered.mouseRight = false;
-		filtered.mouseMiddle = false;
+	/* During data node reading: world ticks, cursor tracks, but no player actions */
+	if (dataNodeReading) {
+		Input empty = {0};
+		empty.mouseX = input->mouseX;
+		empty.mouseY = input->mouseY;
+		Entity_user_update_system(&empty, ticks);
+	} else {
+		if (ui_wants_mouse) {
+			Input skillbar_filtered = *input;
+			skillbar_filtered.mouseLeft = false;
+			skillbar_filtered.mouseRight = false;
+			Skillbar_update(&skillbar_filtered, ticks);
+		} else {
+			Skillbar_update(input, ticks);
+		}
+
+		ui_wants_mouse = ui_wants_mouse || Skillbar_consumed_click();
+		Input filtered = *input;
+		if (ui_wants_mouse) {
+			filtered.mouseLeft = false;
+			filtered.mouseRight = false;
+			filtered.mouseMiddle = false;
+		}
+		Entity_user_update_system(&filtered, ticks);
 	}
-	Entity_user_update_system(&filtered, ticks);
 	PlayerStats_update(ticks);
 
 	SpatialGrid_set_player_bucket(Ship_get_position().x, Ship_get_position().y);
@@ -528,6 +594,7 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 	}
 	Portal_update_all(ticks);
 	Savepoint_update_all(ticks);
+	DataNode_update_all(ticks);
 	Destructible_update(ticks);
 	Fragment_update(ticks);
 	Progression_update(ticks);
@@ -558,11 +625,14 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 			Ship_force_spawn(ckpt->position);
 			Savepoint_suppress_by_id(ckpt->savepoint_id);
 
-			/* Restore progression + fragment counts */
+			/* Restore progression + fragment counts + data nodes */
 			for (int i = 0; i < FRAG_TYPE_COUNT; i++)
 				Fragment_set_count(i, ckpt->fragment_counts[i]);
 			Progression_restore(ckpt->unlocked, ckpt->discovered);
 			Skillbar_restore(skillSnap);
+			DataNode_clear_collected();
+			for (int i = 0; i < ckpt->datanode_count; i++)
+				DataNode_mark_collected(ckpt->datanode_ids[i]);
 
 			start_zone_bgm();
 		}
@@ -637,6 +707,7 @@ void Mode_Gameplay_render(void)
 
 	/* Entities render on top of lit map cells */
 	Portal_render_deactivated();
+	DataNode_render_all();
 	Entity_render_system();
 	Fragment_render();
 	if (godModeActive) {
@@ -655,6 +726,7 @@ void Mode_Gameplay_render(void)
 		god_mode_render_zone_labels();
 		Portal_render_god_labels();
 		Savepoint_render_god_labels();
+		DataNode_render_god_labels();
 	}
 
 	/* Disintegrate bloom pass (dedicated purple FBO) */
@@ -685,6 +757,7 @@ void Mode_Gameplay_render(void)
 		Sub_Aegis_render_bloom_source();
 		Portal_render_bloom_source();
 		Savepoint_render_bloom_source();
+		DataNode_render_bloom_source();
 		Fragment_render_bloom_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bloom, draw_w, draw_h);
@@ -701,10 +774,13 @@ void Mode_Gameplay_render(void)
 	PlayerStats_render(&screen);
 	Progression_render(&screen);
 	Savepoint_render_notification(&screen);
+	DataNode_render_notification(&screen);
 	Fragment_render_text(&screen);
 	Catalog_render(&screen);
 	Settings_render(&screen);
 	MapWindow_render(&screen);
+	DataLogs_render(&screen);
+	DataNode_render_overlay(&screen);
 	if (godModeActive)
 		god_mode_render_hud(&screen);
 
@@ -805,6 +881,14 @@ static void stamp_rotate(int dx, int dy, int w, int h, int rot,
 
 static void god_mode_update(Input *input, const unsigned int ticks)
 {
+	/* Tick notification timer */
+	if (godNotifyTimer > 0) {
+		if (ticks >= godNotifyTimer)
+			godNotifyTimer = 0;
+		else
+			godNotifyTimer -= ticks;
+	}
+
 	/* Handle zone jump menu */
 	if (godZoneMenuOpen) {
 		if (input->keyEsc) {
@@ -900,6 +984,8 @@ static void god_mode_update(Input *input, const unsigned int ticks)
 				Chunk_export(chunkSelA_x, chunkSelA_y,
 				             chunkSelB_x, chunkSelB_y, path);
 				printf("Chunk exported to: %s\n", path);
+				snprintf(godNotifyText, sizeof(godNotifyText), "Exported: %s", path);
+				godNotifyTimer = GOD_NOTIFY_DURATION_MS;
 			}
 		} else if (godPlacementMode == GOD_MODE_OBSTACLES) {
 			/* Tab = export obstacle if selection is complete */
@@ -911,6 +997,8 @@ static void god_mode_update(Input *input, const unsigned int ticks)
 				Chunk_export(chunkSelA_x, chunkSelA_y,
 				             chunkSelB_x, chunkSelB_y, path);
 				printf("Obstacle exported to: %s\n", path);
+				snprintf(godNotifyText, sizeof(godNotifyText), "Exported: %s", path);
+				godNotifyTimer = GOD_NOTIFY_DURATION_MS;
 			}
 		} else {
 			const Zone *z = Zone_get();
@@ -1083,6 +1171,14 @@ static void god_mode_update(Input *input, const unsigned int ticks)
 			godMouseLeftConsumed = true;
 			break;
 		}
+		case GOD_MODE_DATANODES: {
+			const Zone *z = Zone_get();
+			char id[32];
+			snprintf(id, sizeof(id), "dn_%d", z->datanode_count + 1);
+			Zone_place_datanode(grid_x, grid_y, id);
+			godMouseLeftConsumed = true;
+			break;
+		}
 		case GOD_MODE_LABELS:
 			godLabelPendingX = grid_x;
 			godLabelPendingY = grid_y;
@@ -1137,6 +1233,10 @@ static void god_mode_update(Input *input, const unsigned int ticks)
 			break;
 		case GOD_MODE_LABELS:
 			Zone_remove_label(grid_x, grid_y);
+			godMouseRightConsumed = true;
+			break;
+		case GOD_MODE_DATANODES:
+			Zone_remove_datanode(grid_x, grid_y);
 			godMouseRightConsumed = true;
 			break;
 		default:
@@ -1225,6 +1325,9 @@ static void god_mode_render_cursor(void)
 		goto render_crosshair;
 	case GOD_MODE_LABELS:
 		r = 0.0f; g = 1.0f; b = 1.0f;
+		goto render_crosshair;
+	case GOD_MODE_DATANODES:
+		r = 1.0f; g = 0.9f; b = 0.2f;
 		goto render_crosshair;
 	case GOD_MODE_CHUNKS: {
 		/* Gold cursor square */
@@ -1429,6 +1532,22 @@ static void god_mode_render_hud(const Screen *screen)
 				buf, mx, my + line_h * (i + 1),
 				1.0f, 1.0f, 1.0f, 0.8f);
 		}
+	}
+
+	/* Export notification */
+	if (godNotifyTimer > 0 && godNotifyText[0]) {
+		float alpha = 1.0f;
+		if (godNotifyTimer < GOD_NOTIFY_FADE_MS)
+			alpha = (float)godNotifyTimer / GOD_NOTIFY_FADE_MS;
+		float nw = Text_measure_width(tr, godNotifyText);
+		float nx = (float)screen->width * 0.5f - nw * 0.5f;
+		float ny = (float)screen->height * 0.7f;
+		Render_quad_absolute(nx - 8, ny - 4, nx + nw + 8, ny + 18,
+			0.0f, 0.0f, 0.0f, 0.7f * alpha);
+		Render_flush(&proj, &ident);
+		Text_render(tr, shaders, &proj, &ident,
+			godNotifyText, nx, ny,
+			0.3f, 1.0f, 0.3f, alpha);
 	}
 }
 

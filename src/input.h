@@ -34,6 +34,7 @@ typedef struct {
 	bool keyM;
 	bool keyP;
 	bool keyV;
+	bool keyBackslash;
 	bool keyTab;
 	bool keyE;
 	bool keyQ;

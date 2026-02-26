@@ -8,6 +8,7 @@
 #include "stalker.h"
 #include "portal.h"
 #include "savepoint.h"
+#include "data_node.h"
 #include "background.h"
 #include "enemy_registry.h"
 #include "fog_of_war.h"
@@ -29,7 +30,9 @@ typedef enum {
 	UNDO_PLACE_SAVEPOINT,
 	UNDO_REMOVE_SAVEPOINT,
 	UNDO_PLACE_LABEL,
-	UNDO_REMOVE_LABEL
+	UNDO_REMOVE_LABEL,
+	UNDO_PLACE_DATANODE,
+	UNDO_REMOVE_DATANODE
 } UndoType;
 
 typedef struct {
@@ -44,6 +47,8 @@ typedef struct {
 	int savepoint_index;
 	ZoneLabel label;
 	int label_index;
+	ZoneDataNode datanode;
+	int datanode_index;
 } UndoEntry;
 
 static Zone zone;
@@ -56,6 +61,7 @@ static void apply_zone_to_world(void);
 static void rebuild_enemies(void);
 static void respawn_portals(void);
 static void respawn_savepoints(void);
+static void respawn_datanodes(void);
 static void push_undo(UndoEntry entry);
 
 /* --- Loading --- */
@@ -194,6 +200,19 @@ void Zone_load(const char *path)
 				zone.savepoint_count++;
 			}
 		}
+		else if (strncmp(line, "datanode ", 8) == 0) {
+			if (zone.datanode_count >= ZONE_MAX_DATANODES) continue;
+			int gx, gy;
+			char nid[32];
+			if (sscanf(line + 8, "%d %d %31s", &gx, &gy, nid) == 3) {
+				ZoneDataNode *dn = &zone.datanodes[zone.datanode_count];
+				dn->grid_x = gx;
+				dn->grid_y = gy;
+				strncpy(dn->node_id, nid, 31);
+				dn->node_id[31] = '\0';
+				zone.datanode_count++;
+			}
+		}
 		else if (strncmp(line, "label ", 6) == 0) {
 			if (zone.label_count >= ZONE_MAX_LABELS) continue;
 			int gx, gy;
@@ -296,6 +315,31 @@ void Zone_load(const char *path)
 				}
 			}
 		}
+		else if (strncmp(line, "landmark_datanode ", 18) == 0) {
+			/* landmark_datanode <landmark_type> <node_id> */
+			char lm_type[32], nid[32];
+			if (sscanf(line + 18, "%31s %31s", lm_type, nid) == 2) {
+				for (int i = zone.landmark_count - 1; i >= 0; i--) {
+					if (strcmp(zone.landmarks[i].type, lm_type) == 0) {
+						LandmarkDef *lm = &zone.landmarks[i];
+						if (lm->datanode_count < LANDMARK_MAX_DATANODES) {
+							LandmarkDataNodeWiring *w = &lm->datanodes[lm->datanode_count++];
+							strncpy(w->node_id, nid, 31);
+							w->node_id[31] = '\0';
+						}
+						break;
+					}
+				}
+			}
+		}
+		else if (strncmp(line, "datanode_on_boss_enter ", 22) == 0) {
+			strncpy(zone.boss_enter_node_id, line + 22, sizeof(zone.boss_enter_node_id) - 1);
+			zone.boss_enter_node_id[sizeof(zone.boss_enter_node_id) - 1] = '\0';
+		}
+		else if (strncmp(line, "datanode_on_boss_defeat ", 23) == 0) {
+			strncpy(zone.boss_defeat_node_id, line + 23, sizeof(zone.boss_defeat_node_id) - 1);
+			zone.boss_defeat_node_id[sizeof(zone.boss_defeat_node_id) - 1] = '\0';
+		}
 		else if (strncmp(line, "landmark ", 9) == 0) {
 			if (zone.landmark_count >= ZONE_MAX_LANDMARKS) continue;
 			LandmarkDef *lm = &zone.landmarks[zone.landmark_count];
@@ -337,6 +381,7 @@ void Zone_load(const char *path)
 	zone.hand_portal_count = zone.portal_count;
 	zone.hand_savepoint_count = zone.savepoint_count;
 	zone.hand_spawn_count = zone.spawn_count;
+	zone.hand_datanode_count = zone.datanode_count;
 
 	/* Generate procgen terrain before applying to world */
 	if (zone.procgen)
@@ -361,6 +406,7 @@ void Zone_unload(void)
 	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();
+	DataNode_cleanup();
 	Entity_recalculate_highest_index();
 	memset(&zone, 0, sizeof(zone));
 	undoCount = 0;
@@ -453,7 +499,18 @@ void Zone_save(void)
 				fprintf(f, "landmark_savepoint %s %s\n",
 				        lm->type, lm->savepoints[j].savepoint_id);
 			}
+			/* Data node wiring */
+			for (int j = 0; j < lm->datanode_count; j++) {
+				fprintf(f, "landmark_datanode %s %s\n",
+				        lm->type, lm->datanodes[j].node_id);
+			}
 		}
+
+		/* Boss data node triggers */
+		if (zone.boss_enter_node_id[0])
+			fprintf(f, "datanode_on_boss_enter %s\n", zone.boss_enter_node_id);
+		if (zone.boss_defeat_node_id[0])
+			fprintf(f, "datanode_on_boss_defeat %s\n", zone.boss_defeat_node_id);
 
 		/* Obstacle scatter */
 		if (zone.obstacle_def_count > 0) {
@@ -517,6 +574,16 @@ void Zone_save(void)
 		fprintf(f, "savepoint %d %d %s\n",
 			zone.savepoints[i].grid_x, zone.savepoints[i].grid_y,
 			zone.savepoints[i].id);
+	}
+
+	/* Data nodes (hand-placed only) */
+	int save_datanode_count = zone.procgen ? zone.hand_datanode_count : zone.datanode_count;
+	if (save_datanode_count > 0)
+		fprintf(f, "\n");
+	for (int i = 0; i < save_datanode_count; i++) {
+		fprintf(f, "datanode %d %d %s\n",
+			zone.datanodes[i].grid_x, zone.datanodes[i].grid_y,
+			zone.datanodes[i].node_id);
 	}
 
 	/* Labels (always hand-placed) */
@@ -831,6 +898,64 @@ void Zone_remove_label(int grid_x, int grid_y)
 	zoneDirty = true;
 }
 
+void Zone_place_datanode(int grid_x, int grid_y, const char *node_id)
+{
+	if (zone.datanode_count >= ZONE_MAX_DATANODES) return;
+
+	/* Check for duplicate at same grid position */
+	for (int i = 0; i < zone.datanode_count; i++) {
+		if (zone.datanodes[i].grid_x == grid_x &&
+		    zone.datanodes[i].grid_y == grid_y)
+			return;
+	}
+
+	UndoEntry undo;
+	undo.type = UNDO_REMOVE_DATANODE;
+	undo.datanode_index = zone.datanode_count;
+	push_undo(undo);
+
+	ZoneDataNode *dn = &zone.datanodes[zone.datanode_count];
+	dn->grid_x = grid_x;
+	dn->grid_y = grid_y;
+	strncpy(dn->node_id, node_id, 31);
+	dn->node_id[31] = '\0';
+	zone.datanode_count++;
+
+	/* Spawn in world */
+	double wx = (grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	double wy = (grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+	Position pos = {wx, wy};
+	DataNode_initialize(pos, node_id);
+
+	zoneDirty = true;
+}
+
+void Zone_remove_datanode(int grid_x, int grid_y)
+{
+	int index = -1;
+	for (int i = 0; i < zone.datanode_count; i++) {
+		if (zone.datanodes[i].grid_x == grid_x &&
+		    zone.datanodes[i].grid_y == grid_y) {
+			index = i;
+			break;
+		}
+	}
+	if (index < 0) return;
+
+	UndoEntry undo;
+	undo.type = UNDO_PLACE_DATANODE;
+	undo.datanode = zone.datanodes[index];
+	undo.datanode_index = index;
+	push_undo(undo);
+
+	for (int i = index; i < zone.datanode_count - 1; i++)
+		zone.datanodes[i] = zone.datanodes[i + 1];
+	zone.datanode_count--;
+
+	respawn_datanodes();
+	zoneDirty = true;
+}
+
 void Zone_undo(void)
 {
 	if (undoCount <= 0) return;
@@ -915,6 +1040,22 @@ void Zone_undo(void)
 		if (zone.label_count > undo.label_index)
 			zone.label_count = undo.label_index;
 		break;
+	case UNDO_PLACE_DATANODE:
+		/* Re-insert datanode at original index */
+		if (zone.datanode_count < ZONE_MAX_DATANODES) {
+			for (int i = zone.datanode_count; i > undo.datanode_index; i--)
+				zone.datanodes[i] = zone.datanodes[i - 1];
+			zone.datanodes[undo.datanode_index] = undo.datanode;
+			zone.datanode_count++;
+		}
+		respawn_datanodes();
+		break;
+	case UNDO_REMOVE_DATANODE:
+		/* Remove last datanode */
+		if (zone.datanode_count > undo.datanode_index)
+			zone.datanode_count = undo.datanode_index;
+		respawn_datanodes();
+		break;
 	}
 
 	zoneDirty = true;
@@ -949,6 +1090,7 @@ void Zone_regenerate_procgen(void)
 	zone.portal_count = zone.hand_portal_count;
 	zone.savepoint_count = zone.hand_savepoint_count;
 	zone.spawn_count = zone.hand_spawn_count;
+	zone.datanode_count = zone.hand_datanode_count;
 
 	/* Regenerate from current master seed */
 	Procgen_generate(&zone);
@@ -1038,6 +1180,18 @@ static void respawn_savepoints(void)
 	}
 }
 
+static void respawn_datanodes(void)
+{
+	DataNode_cleanup();
+
+	for (int i = 0; i < zone.datanode_count; i++) {
+		double wx = (zone.datanodes[i].grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		double wy = (zone.datanodes[i].grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		Position pos = {wx, wy};
+		DataNode_initialize(pos, zone.datanodes[i].node_id);
+	}
+}
+
 static void apply_zone_to_world(void)
 {
 	SpatialGrid_clear();
@@ -1097,6 +1251,14 @@ static void apply_zone_to_world(void)
 		double wy = (zone.savepoints[i].grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
 		Position pos = {wx, wy};
 		Savepoint_initialize(pos, zone.savepoints[i].id);
+	}
+
+	/* Spawn data nodes */
+	for (int i = 0; i < zone.datanode_count; i++) {
+		double wx = (zone.datanodes[i].grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		double wy = (zone.datanodes[i].grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE;
+		Position pos = {wx, wy};
+		DataNode_initialize(pos, zone.datanodes[i].node_id);
 	}
 
 	/* Set boundary cell from first cell type (solid walls) */

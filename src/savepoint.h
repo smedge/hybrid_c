@@ -15,6 +15,7 @@
 #define SAVEPOINT_HALF_SIZE (SAVEPOINT_SIZE * 0.5)
 
 #define SAVE_FILE_PATH "./save/checkpoint.sav"
+#define SAVE_MAX_DATANODES 256
 
 typedef struct {
 	bool valid;
@@ -26,6 +27,8 @@ typedef struct {
 	bool discovered[SUB_ID_COUNT];
 	int fragment_counts[FRAG_TYPE_COUNT];
 	SkillbarSnapshot skillbar;
+	char datanode_ids[SAVE_MAX_DATANODES][32];
+	int datanode_count;
 } SaveCheckpoint;
 
 void Savepoint_initialize(Position position, const char *id);

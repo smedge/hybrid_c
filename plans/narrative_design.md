@@ -1099,3 +1099,38 @@ The Hexarch reveals the full scope: Earth's cyberspace grew inside an alien thou
 Subject 7 has not been consulted. Subject 7 has never been consulted about anything.
 
 ---
+
+## Eleven Labs Voice Generation Nodes
+
+### The Hexarch
+
+Alien Master - ElevenFlash 2.5
+Speed .95
+Stability 100%
+Similarity 75%
+
+### Atlas
+Jarvis
+Speed 1.0
+Stability 100%
+Similarity 48%
+
+or VOG
+
+### Elana Vasquez
+
+Vivie, sincere and wise
+
+### Marcus Stone
+
+Jim Peterson
+
+## Yuki Tanaka
+
+Peter - Deep, Steady, Natural
+
+## COnsotrium
+
+Edward - British, Dark Sedductive Low
+
+

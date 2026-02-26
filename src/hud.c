@@ -8,6 +8,7 @@
 #include "skillbar.h"
 #include "portal.h"
 #include "savepoint.h"
+#include "data_node.h"
 #include "zone.h"
 
 #define RADAR_SIZE 200.0f
@@ -60,6 +61,10 @@ static void render_radar(const Screen *screen)
 
 	/* Save point blips */
 	Savepoint_render_minimap((float)ship_pos.x, (float)ship_pos.y,
+		rx, ry, RADAR_SIZE, RADAR_RANGE);
+
+	/* Data node blips */
+	DataNode_render_minimap((float)ship_pos.x, (float)ship_pos.y,
 		rx, ry, RADAR_SIZE, RADAR_RANGE);
 
 	/* Player blip (center) */

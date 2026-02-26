@@ -111,6 +111,7 @@ static void reset_input(Input *input)
 	input->keyM = false;
 	input->keyP = false;
 	input->keyV = false;
+	input->keyBackslash = false;
 	input->keyTab = false;
 	input->keyE = false;
 	input->keyQ = false;
@@ -527,6 +528,10 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 	case SDLK_z:
 		if (!(event->key.keysym.mod & (KMOD_LCTRL | KMOD_RCTRL)))
 			input->keyZ = true;
+		break;
+
+	case SDLK_BACKSLASH:
+		input->keyBackslash = true;
 		break;
 
 	case SDLK_TAB:

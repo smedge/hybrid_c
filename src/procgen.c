@@ -251,6 +251,7 @@ static int resolve_landmarks(Zone *zone, Prng *rng,
 			/* Resolve chunk spawns — portals, savepoints, enemies */
 			int portal_wire_idx = 0;
 			int savepoint_wire_idx = 0;
+			int datanode_wire_idx = 0;
 
 			for (int si = 0; si < chunk.spawn_count; si++) {
 				/* Transform spawn position — spawns sit at intersections,
@@ -269,7 +270,8 @@ static int resolve_landmarks(Zone *zone, Prng *rng,
 				 * enemies store probability and re-roll on each spawn) */
 				float roll = Prng_float(rng);
 				bool is_enemy = strcmp(chunk.spawns[si].entity_type, "portal") != 0 &&
-				                strcmp(chunk.spawns[si].entity_type, "savepoint") != 0;
+				                strcmp(chunk.spawns[si].entity_type, "savepoint") != 0 &&
+				                strcmp(chunk.spawns[si].entity_type, "datanode") != 0;
 				if (!is_enemy && roll > chunk.spawns[si].probability)
 					continue;
 
@@ -299,6 +301,18 @@ static int resolve_landmarks(Zone *zone, Prng *rng,
 						sp->grid_y = gy;
 						strncpy(sp->id, w->savepoint_id, 31);
 						sp->id[31] = '\0';
+					}
+				}
+				else if (strcmp(chunk.spawns[si].entity_type, "datanode") == 0) {
+					/* Wire data node using landmark def's wiring data */
+					if (datanode_wire_idx < def->datanode_count &&
+					    zone->datanode_count < ZONE_MAX_DATANODES) {
+						const LandmarkDataNodeWiring *w = &def->datanodes[datanode_wire_idx++];
+						ZoneDataNode *dn = &zone->datanodes[zone->datanode_count++];
+						dn->grid_x = gx;
+						dn->grid_y = gy;
+						strncpy(dn->node_id, w->node_id, 31);
+						dn->node_id[31] = '\0';
 					}
 				}
 				else {
