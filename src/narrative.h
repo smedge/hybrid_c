@@ -10,6 +10,7 @@ typedef struct {
 	char zone_name[64];
 	char title[NARRATIVE_TITLE_LEN];
 	char voice_path[256];
+	float voice_gain;
 	char body[NARRATIVE_BODY_LEN];
 } NarrativeEntry;
 

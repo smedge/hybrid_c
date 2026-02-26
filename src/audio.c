@@ -79,3 +79,15 @@ void Audio_fade_out_channel(int channel, int ms)
 {
 	Mix_FadeOutChannel(channel, ms);
 }
+
+void Audio_boost_sample(Mix_Chunk *chunk, float gain)
+{
+	Sint16 *samples = (Sint16 *)chunk->abuf;
+	int count = chunk->alen / sizeof(Sint16);
+	for (int i = 0; i < count; i++) {
+		int val = (int)(samples[i] * gain);
+		if (val > 32767) val = 32767;
+		if (val < -32768) val = -32768;
+		samples[i] = (Sint16)val;
+	}
+}

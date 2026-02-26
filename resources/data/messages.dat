@@ -4,6 +4,7 @@
 node data_node_origin_01
 zone The Origin
 title SYSTEM LOG — "Initialization Complete"
+gain 2.0
 voice resources/voices/origin_01_atlas.mp3
 body Welcome to the Cyberspace Navigation Interface, version 7.0. All subsystems nominal. Sensory projection calibrated. Motor subroutine linkage established. You are cleared for exploration of the digital topology. Standard operating parameters apply. If you experience disorientation, perceptual artifacts, or recursive thought patterns, do not be alarmed — this is expected during the calibration window. ATLAS wishes you productive traversal.
 end
@@ -12,13 +13,14 @@ node data_node_origin_02
 zone The Origin
 title CORPORATE MEMO — "Consortium Joint Directive 1144"
 voice resources/voices/origin_02_markus_stone.mp3
-body FROM: Director Marcus Stone, Consortium Oversight/nTO: All Project Staff\nRE: Operational Security Reminder\n\nAll references to Project Hybrid in external communications are prohibited. Internal documentation must use designation "Network Cartography Initiative." Staff are reminded that their NDAs carry criminal penalties. The consortium's investment in this program represents a generational opportunity — and a generational responsibility. The anomalous AI behavior across the network will not investigate itself. I trust everyone understands what is at stake. Loose lips don't
+body FROM: Director Marcus Stone, Consortium Oversight\nTO: All Project Staff\nRE: Operational Security Reminder\n\nAll references to Project Hybrid in external communications are prohibited. Internal documentation must use designation "Network Cartography Initiative." Staff are reminded that their NDAs carry criminal penalties. The consortium's investment in this program represents a generational opportunity — and a generational responsibility. The anomalous AI behavior across the network will not investigate itself. I trust everyone understands what is at stake. Loose lips don't
 end
 
 node data_node_origin_03
 zone The Origin
 title SYSTEM LOG — "Network Topology Report"
 voice resources/voices/origin_03_atlas.mp3
+gain 2.0
 body The Origin hub serves as the central nexus point for all known cyberspace architecture. Three primary conduits extend from this location. Each conduit was traced back to autonomous construction activity by one of the consortium's founding AIs — PROMETHEUS (Nexus), MINERVA (Kairon), and HERMES (Tessera) — though none of these AIs were instructed to build them. The conduits appear to have been constructed during periods of anomalous AI behavior that the consortium initially classified as drift. Beyond these conduits, the topology becomes increasingly complex and hostile. Security program density increases exponentially with distance from origin. Automated probes sent beyond the second topological layer have a 0% survival rate.
 end
 
@@ -33,6 +35,7 @@ node data_node_origin_05
 zone The Origin
 title SYSTEM LOG — "Security Program Classification"
 voice resources/voices/origin_05_atlas.mp3
+gain 2.0
 body THREAT TAXONOMY — ORIGIN SECTOR:\n- MINES: Passive intrusion detection. Proximity-triggered. Avoid or destroy before detonation window closes.\n- HUNTERS: Active patrol programs. Ranged engagement capability. Predictable patrol patterns but aggressive when alerted.\n- SEEKERS: Predatory intercept programs. High-speed dash attacks. Extreme caution advised.\n- DEFENDERS: Support architecture. Heals and shields allied programs. Priority target in group engagements.
 end
 
@@ -47,6 +50,7 @@ node data_node_origin_07
 zone The Origin
 title CORPORATE MEMO — "Budget Allocation Q3"
 voice resources/voices/origin_07_atlas.mp3
+gain 2.0
 body FROM: ATLAS Financial Oversight Module\nTO: Director Stone\n\nProject expenditure for Q3 exceeds allocated budget by 340%. Primary cost drivers: medical facility upgrades (71%), neural interface hardware revision 6.2 (18%), subject acquisition and preparation (11%). The ethics review board has submitted seventeen formal objections this quarter, each requiring legal review at billable rates. Recommend streamlining the objection process or reducing board oversight authority. Efficiency gains estimated at 12%.
 end
 
@@ -54,6 +58,7 @@ node data_node_origin_08
 zone The Origin
 title AI TRANSCRIPT — "ATLAS Status Summary"
 voice resources/voices/origin_08_atlas.mp3
+gain 2.0
 body ATLAS DAILY BRIEFING — AUTOMATED\n\nCurrent subject status: ACTIVE. Traversal metrics nominal. Subroutine acquisition proceeding ahead of projected parameters — the single-subroutine approach appears to be forcing deeper environmental integration than previous multi-equipped subjects achieved. Neural coherence index: 97.2%. Slight anomalies detected in memory formation pathways — subject appears to be generating new memories rather than merely processing environmental data. This is consistent with biological cognitive architecture and is not a cause for concern at this time. Monitoring will continue.\n\nNote: the term "biological cognitive architecture" appears 0 times in the approved project vocabulary. Suggest revision for future reports.
 end
 

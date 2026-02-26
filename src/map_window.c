@@ -259,9 +259,11 @@ void MapWindow_render(const Screen *screen)
 	/* Flush panel geometry before switching shaders */
 	Render_flush(&proj, &ident);
 
-	/* Title floating above window border (same style as settings/catalog) */
+	/* Title floating above window border — show zone name */
+	const char *zone_title = Zone_get()->name;
+	float title_w = Text_measure_width(tr, zone_title);
 	Text_render(tr, shaders, &proj, &ident,
-		"MAP", px + pw * 0.5f - 13.0f, py - 5.0f,
+		zone_title, px + pw * 0.5f - title_w * 0.5f, py - 5.0f,
 		0.7f, 0.7f, 1.0f, 0.9f);
 
 	/*

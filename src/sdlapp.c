@@ -237,14 +237,16 @@ static void handle_sdl_event(Input *input, const SDL_Event *event)
 		handle_sdl_window_event(input, event);
 		break;
 
-	case SDL_MOUSEWHEEL:
-		if (event->wheel.y > 0) {
+	case SDL_MOUSEWHEEL: {
+		/* Check both axes — macOS converts shift+vertical into horizontal */
+		int scroll = event->wheel.y;
+		if (scroll == 0) scroll = -event->wheel.x;
+		if (scroll > 0)
 			input->mouseWheelUp = true;
-		}
-		else if (event->wheel.y < 0) {
+		else if (scroll < 0)
 			input->mouseWheelDown = true;
-		}
 		break;
+	}
 	
 	case SDL_MOUSEMOTION:
 		input->mouseX = event->motion.x;

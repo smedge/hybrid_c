@@ -158,9 +158,11 @@ static void begin_reading(const char *node_id)
 		/* Play voice clip if entry has one */
 		if (readingEntry->voice_path[0] != '\0') {
 			voiceChunk = Mix_LoadWAV(readingEntry->voice_path);
-			if (voiceChunk)
+			if (voiceChunk) {
+				if (readingEntry->voice_gain != 1.0f)
+					Audio_boost_sample(voiceChunk, readingEntry->voice_gain);
 				Mix_PlayChannel(VOICE_CHANNEL, voiceChunk, 0);
-			else
+			} else
 				printf("DataNode: could not load voice %s\n", readingEntry->voice_path);
 		}
 	}

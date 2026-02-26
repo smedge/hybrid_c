@@ -20,5 +20,6 @@ void Audio_play_sample(Mix_Chunk **sample);
 int Audio_play_sample_on_channel(Mix_Chunk **sample, int channel);
 int Audio_loop_sample_on_channel(Mix_Chunk **sample, int channel);
 void Audio_fade_out_channel(int channel, int ms);
+void Audio_boost_sample(Mix_Chunk *chunk, float gain);
 
 #endif

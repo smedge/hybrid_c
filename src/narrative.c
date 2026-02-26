@@ -1,6 +1,7 @@
 #include "narrative.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static NarrativeEntry entries[MAX_NARRATIVE_ENTRIES];
@@ -36,6 +37,7 @@ void Narrative_load(const char *path)
 			}
 			cur = &entries[entryCount];
 			memset(cur, 0, sizeof(*cur));
+			cur->voice_gain = 1.0f;
 			strncpy(cur->node_id, line + 5, sizeof(cur->node_id) - 1);
 		}
 		else if (cur && strncmp(line, "zone ", 5) == 0) {
@@ -46,6 +48,9 @@ void Narrative_load(const char *path)
 		}
 		else if (cur && strncmp(line, "voice ", 6) == 0) {
 			strncpy(cur->voice_path, line + 6, sizeof(cur->voice_path) - 1);
+		}
+		else if (cur && strncmp(line, "gain ", 5) == 0) {
+			cur->voice_gain = (float)atof(line + 5);
 		}
 		else if (cur && strncmp(line, "body ", 5) == 0) {
 			/* Process \n escape sequences into real newlines */
