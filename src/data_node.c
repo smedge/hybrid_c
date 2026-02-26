@@ -61,7 +61,7 @@ static float readingScroll = 0.0f;
 
 /* Music ducking during reading overlay */
 static float duckLevel = 1.0f;   /* current volume multiplier (0..1) */
-#define DUCK_TARGET 0.35f         /* 35% volume while reading (voice clarity) */
+#define DUCK_TARGET 0.30f         /* 30% volume while reading (voice clarity) */
 #define DUCK_RAMP_SPEED 1.5f      /* units per second (~330ms ramp) */
 
 /* Notification */

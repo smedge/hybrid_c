@@ -323,6 +323,7 @@ void Mode_Gameplay_initialize_from_save(void)
 	/* Restore collected data nodes from checkpoint */
 	for (int i = 0; i < ckpt->datanode_count; i++)
 		DataNode_mark_collected(ckpt->datanode_ids[i]);
+	DataNode_refresh_phases();
 	Catalog_mark_all_seen();
 
 	godModeActive = false;
@@ -617,22 +618,11 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 
 		const SaveCheckpoint *ckpt = Savepoint_get_checkpoint();
 		if (ckpt->valid) {
-			SkillbarSnapshot skillSnap = ckpt->skillbar;
-
 			/* Zone swap (no cinematic) — FoW saved/loaded inside */
 			zone_teardown_and_load(ckpt->zone_path);
 
 			Ship_force_spawn(ckpt->position);
 			Savepoint_suppress_by_id(ckpt->savepoint_id);
-
-			/* Restore progression + fragment counts + data nodes */
-			for (int i = 0; i < FRAG_TYPE_COUNT; i++)
-				Fragment_set_count(i, ckpt->fragment_counts[i]);
-			Progression_restore(ckpt->unlocked, ckpt->discovered);
-			Skillbar_restore(skillSnap);
-			DataNode_clear_collected();
-			for (int i = 0; i < ckpt->datanode_count; i++)
-				DataNode_mark_collected(ckpt->datanode_ids[i]);
 
 			start_zone_bgm();
 		}

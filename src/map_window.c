@@ -139,10 +139,10 @@ static void generate_texture(void)
 			int idx = (y * size + x) * 4;
 
 			if (!FogOfWar_is_revealed(x, y)) {
-				/* Unrevealed = black */
-				pixels[idx + 0] = 0;
-				pixels[idx + 1] = 0;
-				pixels[idx + 2] = 0;
+				/* Unrevealed = dark gray (distinguishable from black cyberspace) */
+				pixels[idx + 0] = 25;
+				pixels[idx + 1] = 25;
+				pixels[idx + 2] = 25;
 				pixels[idx + 3] = 255;
 				continue;
 			}

@@ -192,15 +192,6 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			if (ckpt->valid && strcmp(ckpt->zone_path, z->filepath) == 0) {
 				placeable->position = ckpt->position;
 				Savepoint_suppress_by_id(ckpt->savepoint_id);
-				for (int i = 0; i < FRAG_TYPE_COUNT; i++)
-					Fragment_set_count(i, ckpt->fragment_counts[i]);
-				Progression_restore(ckpt->unlocked, ckpt->discovered);
-				Skillbar_restore(ckpt->skillbar);
-				DataNode_clear_collected();
-				for (int di = 0; di < ckpt->datanode_count; di++)
-					DataNode_mark_collected(ckpt->datanode_ids[di]);
-				DataNode_refresh_phases();
-				FogOfWar_load_all_from_disk();
 			} else if (ckpt->valid) {
 				/* Cross-zone respawn — flag for mode_gameplay to handle */
 				Ship_set_pending_cross_zone_respawn(true);
@@ -210,12 +201,6 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 				/* No checkpoint — reset to default state */
 				placeable->position.x = 0.0;
 				placeable->position.y = 0.0;
-				for (int i = 0; i < FRAG_TYPE_COUNT; i++)
-					Fragment_set_count(i, 0);
-				Progression_initialize();
-				Skillbar_initialize();
-				DataNode_clear_collected();
-				DataNode_refresh_phases();
 			}
 
 			placeable->heading = 0.0;
