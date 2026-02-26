@@ -9,6 +9,7 @@ typedef struct {
 	char node_id[32];
 	char zone_name[64];
 	char title[NARRATIVE_TITLE_LEN];
+	char voice_path[256];
 	char body[NARRATIVE_BODY_LEN];
 } NarrativeEntry;
 

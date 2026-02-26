@@ -61,7 +61,7 @@ static float readingScroll = 0.0f;
 
 /* Music ducking during reading overlay */
 static float duckLevel = 1.0f;   /* current volume multiplier (0..1) */
-#define DUCK_TARGET 0.65f         /* 65% volume while reading */
+#define DUCK_TARGET 0.35f         /* 35% volume while reading (voice clarity) */
 #define DUCK_RAMP_SPEED 1.5f      /* units per second (~330ms ramp) */
 
 /* Notification */
@@ -70,6 +70,10 @@ static unsigned int notifyTimer = 0;
 
 /* Audio */
 static Mix_Chunk *sampleCollect = 0;
+
+/* Voice playback */
+#define VOICE_CHANNEL 2
+static Mix_Chunk *voiceChunk = NULL;
 
 void DataNode_initialize(Position position, const char *node_id)
 {
@@ -98,6 +102,14 @@ void DataNode_cleanup(void)
 	readingEntry = NULL;
 	readingScroll = 0.0f;
 	notifyActive = false;
+
+	/* Stop and free any playing voice clip */
+	Mix_HaltChannel(VOICE_CHANNEL);
+	if (voiceChunk) {
+		Mix_FreeChunk(voiceChunk);
+		voiceChunk = NULL;
+	}
+
 	if (duckLevel < 1.0f) {
 		duckLevel = 1.0f;
 		Mix_VolumeMusic(MIX_MAX_VOLUME);
@@ -142,6 +154,15 @@ static void begin_reading(const char *node_id)
 	if (readingEntry) {
 		reading = true;
 		readingScroll = 0.0f;
+
+		/* Play voice clip if entry has one */
+		if (readingEntry->voice_path[0] != '\0') {
+			voiceChunk = Mix_LoadWAV(readingEntry->voice_path);
+			if (voiceChunk)
+				Mix_PlayChannel(VOICE_CHANNEL, voiceChunk, 0);
+			else
+				printf("DataNode: could not load voice %s\n", readingEntry->voice_path);
+		}
 	}
 }
 
@@ -152,6 +173,13 @@ static void end_reading(void)
 	readingScroll = 0.0f;
 	notifyActive = true;
 	notifyTimer = 0;
+
+	/* Stop and free voice clip */
+	Mix_HaltChannel(VOICE_CHANNEL);
+	if (voiceChunk) {
+		Mix_FreeChunk(voiceChunk);
+		voiceChunk = NULL;
+	}
 }
 
 void DataNode_update_all(unsigned int ticks)

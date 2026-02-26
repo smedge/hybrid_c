@@ -44,6 +44,9 @@ void Narrative_load(const char *path)
 		else if (cur && strncmp(line, "title ", 6) == 0) {
 			strncpy(cur->title, line + 6, sizeof(cur->title) - 1);
 		}
+		else if (cur && strncmp(line, "voice ", 6) == 0) {
+			strncpy(cur->voice_path, line + 6, sizeof(cur->voice_path) - 1);
+		}
 		else if (cur && strncmp(line, "body ", 5) == 0) {
 			/* Process \n escape sequences into real newlines */
 			const char *src = line + 5;
