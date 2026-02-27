@@ -41,34 +41,34 @@ typedef struct {
 	const char *name;
 	const char *short_name;
 	const char *description;
-	bool elite;
+	SubroutineTier tier;
 } SubroutineInfo;
 
 static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 	[SUB_ID_PEA]    = { SUB_ID_PEA,    SUB_TYPE_PROJECTILE, "sub_pea",    "PEA",
-		"Basic projectile. Fires toward cursor.", false },
+		"Basic projectile. Fires toward cursor.", TIER_NORMAL },
 	[SUB_ID_MINE]   = { SUB_ID_MINE,   SUB_TYPE_DEPLOYABLE, "sub_mine",   "MINE",
-		"Deployable mine. Detonates after 2 seconds.", false },
+		"Deployable mine. Detonates after 2 seconds.", TIER_NORMAL },
 	[SUB_ID_BOOST]  = { SUB_ID_BOOST,  SUB_TYPE_MOVEMENT,   "sub_boost",  "BOOST",
-		"Hold shift for unlimited speed boost.", true },
+		"Hold shift for unlimited speed boost.", TIER_ELITE },
 	[SUB_ID_EGRESS] = { SUB_ID_EGRESS, SUB_TYPE_MOVEMENT,   "sub_egress", "EGRESS",
-		"Shift-tap dash burst. Quick escape with cooldown.", false },
+		"Shift-tap dash burst. Quick escape with cooldown.", TIER_NORMAL },
 	[SUB_ID_MGUN]   = { SUB_ID_MGUN,   SUB_TYPE_PROJECTILE, "sub_mgun",   "MGUN",
-		"Machine gun. Rapid-fire projectiles at 5 shots/sec.", false },
+		"Machine gun. Rapid-fire projectiles at 5 shots/sec.", TIER_NORMAL },
 	[SUB_ID_MEND]   = { SUB_ID_MEND,   SUB_TYPE_HEALING,    "sub_mend",   "MEND",
-		"Instant heal. Restores 50 integrity.", false },
+		"Instant heal. Restores 50 integrity.", TIER_NORMAL },
 	[SUB_ID_AEGIS]  = { SUB_ID_AEGIS,  SUB_TYPE_SHIELD,     "sub_aegis",  "AEGIS",
-		"Damage shield. Invulnerable for 10 seconds.", false },
+		"Damage shield. Invulnerable for 10 seconds.", TIER_NORMAL },
 	[SUB_ID_STEALTH] = { SUB_ID_STEALTH, SUB_TYPE_STEALTH, "sub_stealth", "STEALTH",
-		"Cloak. Undetectable until you attack. 15s cooldown.", false },
+		"Cloak. Undetectable until you attack. 15s cooldown.", TIER_NORMAL },
 	[SUB_ID_INFERNO] = { SUB_ID_INFERNO, SUB_TYPE_PROJECTILE, "sub_inferno", "INFERNO",
-		"Channel a devastating beam of fire. Melts everything.", true },
+		"Channel a devastating beam of fire. Melts everything.", TIER_ELITE },
 	[SUB_ID_DISINTEGRATE] = { SUB_ID_DISINTEGRATE, SUB_TYPE_PROJECTILE, "sub_disintegrate", "DISINT",
-		"Precision beam. Carves through all targets in its path.", true },
+		"Precision beam. Carves through all targets in its path.", TIER_ELITE },
 	[SUB_ID_GRAVWELL] = { SUB_ID_GRAVWELL, SUB_TYPE_CONTROL, "sub_gravwell", "GRAV",
-		"Gravity well. Pulls and slows enemies at cursor position.", false },
+		"Gravity well. Pulls and slows enemies at cursor position.", TIER_NORMAL },
 	[SUB_ID_TGUN] = { SUB_ID_TGUN, SUB_TYPE_PROJECTILE, "sub_tgun", "TGUN",
-		"Twin gun. Dual alternating streams at double fire rate.", false },
+		"Twin gun. Dual alternating streams at double fire rate.", TIER_RARE },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -212,21 +212,25 @@ void Skillbar_render(const Screen *screen)
 			bool is_active = (active_sub[type] == id);
 			float cooldown = get_cooldown_fraction(id);
 
-			/* Border — gold for elite, white for normal */
+			/* Border — gold for elite, blue for rare, white for normal */
 			float br, bg, bb, ba;
 			float thickness;
-			bool elite = sub_registry[id].elite;
+			SubroutineTier tier = sub_registry[id].tier;
 			if (is_active) {
-				if (elite) {
+				if (tier == TIER_ELITE) {
 					br = 1.0f; bg = 0.84f; bb = 0.0f;
+				} else if (tier == TIER_RARE) {
+					br = 0.1f; bg = 0.1f; bb = 1.0f;
 				} else {
 					br = 1.0f; bg = 1.0f; bb = 1.0f;
 				}
 				ba = 0.9f;
 				thickness = 2.0f;
 			} else {
-				if (elite) {
+				if (tier == TIER_ELITE) {
 					br = 0.5f; bg = 0.42f; bb = 0.0f;
+				} else if (tier == TIER_RARE) {
+					br = 0.05f; bg = 0.05f; bb = 0.5f;
 				} else {
 					br = 0.3f; bg = 0.3f; bb = 0.3f;
 				}
@@ -293,11 +297,23 @@ void Skillbar_auto_equip(SubroutineId id)
 
 	/* Elite limit: only one elite on the skillbar at a time.
 	   Auto-equip skips if an elite is already equipped. */
-	if (sub_registry[id].elite) {
+	if (sub_registry[id].tier == TIER_ELITE) {
 		for (int i = 0; i < SKILLBAR_SLOTS; i++) {
-			if (slots[i] != SUB_NONE && sub_registry[slots[i]].elite)
+			if (slots[i] != SUB_NONE && sub_registry[slots[i]].tier == TIER_ELITE)
 				return;
 		}
+	}
+
+	/* Rare limit: max two rares on the skillbar.
+	   Auto-equip skips if two rares are already equipped. */
+	if (sub_registry[id].tier == TIER_RARE) {
+		int rare_count = 0;
+		for (int i = 0; i < SKILLBAR_SLOTS; i++) {
+			if (slots[i] != SUB_NONE && sub_registry[slots[i]].tier == TIER_RARE)
+				rare_count++;
+		}
+		if (rare_count >= 2)
+			return;
 	}
 
 	/* Find first empty slot */
@@ -343,9 +359,9 @@ void Skillbar_equip(int slot, SubroutineId id)
 	}
 
 	/* Elite limit: only one elite on the bar. Remove existing elite. */
-	if (sub_registry[id].elite) {
+	if (sub_registry[id].tier == TIER_ELITE) {
 		for (int i = 0; i < SKILLBAR_SLOTS; i++) {
-			if (slots[i] != SUB_NONE && sub_registry[slots[i]].elite) {
+			if (slots[i] != SUB_NONE && sub_registry[slots[i]].tier == TIER_ELITE) {
 				SubroutineType oldType = sub_registry[slots[i]].type;
 				if (active_sub[oldType] == slots[i]) {
 					if (oldType == new_type)
@@ -354,6 +370,28 @@ void Skillbar_equip(int slot, SubroutineId id)
 				}
 				slots[i] = SUB_NONE;
 			}
+		}
+	}
+
+	/* Rare limit: max two rares. Remove oldest if already at 2. */
+	if (sub_registry[id].tier == TIER_RARE) {
+		int rare_count = 0;
+		int oldest_rare_slot = -1;
+		for (int i = 0; i < SKILLBAR_SLOTS; i++) {
+			if (slots[i] != SUB_NONE && sub_registry[slots[i]].tier == TIER_RARE) {
+				rare_count++;
+				if (oldest_rare_slot < 0)
+					oldest_rare_slot = i;
+			}
+		}
+		if (rare_count >= 2 && oldest_rare_slot >= 0) {
+			SubroutineType oldType = sub_registry[slots[oldest_rare_slot]].type;
+			if (active_sub[oldType] == slots[oldest_rare_slot]) {
+				if (oldType == new_type)
+					inherit_active = true;
+				active_sub[oldType] = SUB_NONE;
+			}
+			slots[oldest_rare_slot] = SUB_NONE;
 		}
 	}
 
@@ -635,11 +673,21 @@ void Skillbar_render_icon_at(SubroutineId id, float cx, float cy, float alpha)
 	render_icon(id, cx, cy, alpha);
 }
 
-bool Skillbar_is_elite(SubroutineId id)
+SubroutineTier Skillbar_get_tier(SubroutineId id)
 {
 	if (id >= 0 && id < SUB_ID_COUNT)
-		return sub_registry[id].elite;
-	return false;
+		return sub_registry[id].tier;
+	return TIER_NORMAL;
+}
+
+bool Skillbar_is_elite(SubroutineId id)
+{
+	return Skillbar_get_tier(id) == TIER_ELITE;
+}
+
+bool Skillbar_is_rare(SubroutineId id)
+{
+	return Skillbar_get_tier(id) == TIER_RARE;
 }
 
 SkillbarSnapshot Skillbar_snapshot(void)

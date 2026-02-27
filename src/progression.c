@@ -33,12 +33,12 @@ static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_INFERNO] = { "INFERNO", "sub_inferno", FRAG_TYPE_INFERNO, 5, false },
 	[SUB_ID_DISINTEGRATE] = { "DISINTEGRATE", "sub_disintegrate", FRAG_TYPE_DISINTEGRATE, 5, false },
 	[SUB_ID_GRAVWELL] = { "GRAVWELL", "sub_gravwell", FRAG_TYPE_GRAVWELL, 5, false },
-	[SUB_ID_TGUN] = { "TGUN", "sub_tgun", FRAG_TYPE_TGUN, 3, false },
+	[SUB_ID_TGUN] = { "TGUN", "sub_tgun", FRAG_TYPE_TGUN, 50, false },
 };
 
 /* Notification state */
 static bool notifyActive = false;
-static bool notifyElite = false;
+static SubroutineTier notifyTier = TIER_NORMAL;
 static unsigned int notifyTimer = 0;
 static char notifyText[64];
 
@@ -51,7 +51,7 @@ void Progression_initialize(void)
 	}
 
 	notifyActive = false;
-	notifyElite = false;
+	notifyTier = TIER_NORMAL;
 	notifyTimer = 0;
 
 }
@@ -74,7 +74,7 @@ void Progression_update(unsigned int ticks)
 			entries[i].discovered = true;
 
 			if (count < entries[i].threshold) {
-				notifyElite = false;
+				notifyTier = TIER_NORMAL;
 
 				const char *type_names[] = {
 					"Projectile", "Deployable", "Movement", "Shield", "Healing", "Stealth", "Control"
@@ -90,8 +90,8 @@ void Progression_update(unsigned int ticks)
 		if (count >= entries[i].threshold) {
 			entries[i].unlocked = true;
 
-			notifyElite = Skillbar_is_elite(i);
-			if (notifyElite)
+			notifyTier = Skillbar_get_tier(i);
+			if (notifyTier == TIER_ELITE || notifyTier == TIER_RARE)
 				snprintf(notifyText, sizeof(notifyText),
 					">> %s ", entries[i].sub_name);
 			else
@@ -126,8 +126,17 @@ void Progression_render(const Screen *screen)
 			alpha = (float)remaining / NOTIFY_FADE_MS;
 
 		float tw = Text_measure_width(tr, notifyText);
-		if (notifyElite)
-			tw += Text_measure_width(tr, "ELITE ") + Text_measure_width(tr, "UNLOCKED <<");
+		const char *tier_label = NULL;
+		float tier_r = 0, tier_g = 0, tier_b = 0;
+		if (notifyTier == TIER_ELITE) {
+			tier_label = "ELITE ";
+			tier_r = 1.0f; tier_g = 0.84f; tier_b = 0.0f;
+		} else if (notifyTier == TIER_RARE) {
+			tier_label = "RARE ";
+			tier_r = 0.1f; tier_g = 0.1f; tier_b = 1.0f;
+		}
+		if (tier_label)
+			tw += Text_measure_width(tr, tier_label) + Text_measure_width(tr, "UNLOCKED <<");
 		float nx = (float)screen->width * 0.5f - tw * 0.5f;
 		float ny = (float)screen->height * 0.3f;
 
@@ -135,12 +144,12 @@ void Progression_render(const Screen *screen)
 			notifyText, nx, ny,
 			1.0f, 0.0f, 1.0f, alpha);
 
-		if (notifyElite) {
+		if (tier_label) {
 			float cx = nx + Text_measure_width(tr, notifyText);
 			Text_render(tr, shaders, &proj, &ident,
-				"ELITE ", cx, ny,
-				1.0f, 0.84f, 0.0f, alpha);
-			cx += Text_measure_width(tr, "ELITE ");
+				tier_label, cx, ny,
+				tier_r, tier_g, tier_b, alpha);
+			cx += Text_measure_width(tr, tier_label);
 			Text_render(tr, shaders, &proj, &ident,
 				"UNLOCKED <<", cx, ny,
 				1.0f, 0.0f, 1.0f, alpha);

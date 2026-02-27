@@ -603,8 +603,8 @@ void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
 
 	View_set_position(Ship_get_position());
 
-	/* Reveal fog of war around player (skip while dead) */
-	if (!Ship_is_destroyed())
+	/* Reveal fog of war around player (skip while dead or pending cross-zone respawn) */
+	if (!Ship_is_destroyed() && !Ship_has_pending_cross_zone_respawn())
 		FogOfWar_update(Ship_get_position());
 
 	/* Check for portal transition trigger */

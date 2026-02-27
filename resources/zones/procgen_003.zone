@@ -21,11 +21,12 @@ noise_lacunarity 2
 noise_persistence 0.5
 noise_wall_threshold -0.2
 
-obstacle_density 0.04
+obstacle_density 0.06
 obstacle_min_spacing 4
 
 obstacle cross_001 1.0
 obstacle patrol_001 1.0
+obstacle patrol_002 0.4
 obstacle minefield_002 0.3
 
 hotspot_count 20
@@ -40,3 +41,37 @@ landmark_savepoint exit_point save_001
 landmark exit_point2 resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2.0
 landmark_portal exit_point2 portal_to_002 ./resources/zones/procgen_002.zone portal_to_003
 landmark_savepoint exit_point2 save_002
+
+landmark exit_point3 resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2.0
+landmark_portal exit_point3 portal_to_004 ./resources/zones/procgen_004.zone portal_to_003
+landmark_savepoint exit_point3 save_003
+
+landmark data_node_origin_01 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_origin_01 data_node_origin_01
+
+landmark data_node_origin_02 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_origin_02 data_node_origin_02
+
+landmark data_node_origin_03 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_origin_03 data_node_origin_03
+
+landmark data_node_origin_04 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_origin_04 data_node_origin_04
+
+landmark data_node_origin_05 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_origin_05 data_node_origin_05
+
+landmark data_node_origin_06 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_origin_06 data_node_origin_06
+
+landmark data_node_origin_07 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_origin_07 data_node_origin_07
+
+landmark data_node_origin_08 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_origin_08 data_node_origin_08
+
+#landmark data_node_origin_09 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+#landmark_datanode data_node_origin_09 data_node_origin_09
+
+#landmark data_node_origin_10 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+#landmark_datanode data_node_origin_10 data_node_origin_10

@@ -1,0 +1,8 @@
+# Exported from Procgen Builder 01 at grid (707,506)-(709,508)
+chunk patrol_002
+size 3 3
+
+spawn 2 2 stalker 0.4
+spawn 1 1 stalker 0.4
+spawn 1 2 hunter 0.8
+spawn 2 1 hunter 0.8

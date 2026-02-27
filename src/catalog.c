@@ -555,8 +555,11 @@ void Catalog_render(const Screen *screen)
 			float icon_cy = iy + ITEM_HEIGHT * 0.5f;
 			float half = ITEM_ICON_SIZE * 0.5f;
 			float br, bg, bb;
-			if (Skillbar_is_elite(i)) {
+			SubroutineTier tier = Skillbar_get_tier(i);
+			if (tier == TIER_ELITE) {
 				br = 1.0f; bg = 0.84f; bb = 0.0f;
+			} else if (tier == TIER_RARE) {
+				br = 0.1f; bg = 0.1f; bb = 1.0f;
 			} else {
 				br = 1.0f; bg = 1.0f; bb = 1.0f;
 			}
@@ -703,22 +706,31 @@ void Catalog_render(const Screen *screen)
 		char tbuf[128];
 
 		if (unlocked) {
-			/* Name — leave room for ELITE tag and [Slot N] if equipped */
-			bool elite = Skillbar_is_elite(i);
-			float elite_w = elite ? Text_measure_width(tr, " ELITE") : 0.0f;
+			/* Name — leave room for tier tag and [Slot N] if equipped */
+			SubroutineTier tier = Skillbar_get_tier(i);
+			const char *tier_label = NULL;
+			float tier_r = 0, tier_g = 0, tier_b = 0;
+			if (tier == TIER_ELITE) {
+				tier_label = " ELITE";
+				tier_r = 1.0f; tier_g = 0.84f; tier_b = 0.0f;
+			} else if (tier == TIER_RARE) {
+				tier_label = " RARE";
+				tier_r = 0.1f; tier_g = 0.1f; tier_b = 1.0f;
+			}
+			float tier_w = tier_label ? Text_measure_width(tr, tier_label) : 0.0f;
 			float name_budget = equipped_slot >= 0
-				? max_text_w - 90.0f - elite_w : max_text_w - elite_w;
+				? max_text_w - 90.0f - tier_w : max_text_w - tier_w;
 			truncate_text(tr, Skillbar_get_sub_name(i),
 				name_budget, tbuf, sizeof(tbuf));
 			Text_render(tr, shaders, &proj, &ident,
 				tbuf, name_x, name_y,
 				0.9f, 0.9f, 1.0f, 0.95f);
 
-			if (elite) {
+			if (tier_label) {
 				float after_name = name_x + Text_measure_width(tr, tbuf);
 				Text_render(tr, shaders, &proj, &ident,
-					" ELITE", after_name, name_y,
-					1.0f, 0.84f, 0.0f, 0.95f);
+					tier_label, after_name, name_y,
+					tier_r, tier_g, tier_b, 0.95f);
 			}
 
 			marquee_text(tr, Skillbar_get_sub_description(i),

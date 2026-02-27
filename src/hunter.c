@@ -41,6 +41,7 @@
 
 static const CarriedSubroutine hunterCarried[] = {
 	{ SUB_ID_MGUN, FRAG_TYPE_HUNTER },
+	{ SUB_ID_TGUN, FRAG_TYPE_TGUN },
 };
 
 typedef enum {
@@ -439,7 +440,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 
 			/* Drop fragment */
 			if (h->killedByPlayer)
-				Enemy_drop_fragments(pl->position, hunterCarried, 1);
+				Enemy_drop_fragments(pl->position, hunterCarried, 2);
 		}
 		break;
 

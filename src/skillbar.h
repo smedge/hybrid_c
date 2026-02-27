@@ -20,6 +20,12 @@ typedef enum {
 	SUB_TYPE_COUNT
 } SubroutineType;
 
+typedef enum {
+	TIER_NORMAL,
+	TIER_RARE,
+	TIER_ELITE
+} SubroutineTier;
+
 void Skillbar_initialize(void);
 void Skillbar_cleanup(void);
 void Skillbar_update(const Input *input, const unsigned int ticks);
@@ -39,7 +45,9 @@ int Skillbar_find_equipped_slot(SubroutineId id);
 void Skillbar_swap_slots(int a, int b);
 int Skillbar_slot_at_position(float x, float y, const Screen *screen);
 void Skillbar_render_icon_at(SubroutineId id, float cx, float cy, float alpha);
+SubroutineTier Skillbar_get_tier(SubroutineId id);
 bool Skillbar_is_elite(SubroutineId id);
+bool Skillbar_is_rare(SubroutineId id);
 
 /* Snapshot/restore for zone transitions */
 typedef struct {
