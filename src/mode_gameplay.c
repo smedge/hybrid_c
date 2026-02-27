@@ -765,6 +765,7 @@ void Mode_Gameplay_render(void)
 	Progression_render(&screen);
 	Savepoint_render_notification(&screen);
 	DataNode_render_notification(&screen);
+	DataNode_render_voice_indicator(&screen);
 	Fragment_render_text(&screen);
 	Catalog_render(&screen);
 	Settings_render(&screen);

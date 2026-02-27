@@ -14,6 +14,7 @@ void DataNode_update_all(unsigned int ticks);
 void DataNode_render_all(void);
 void DataNode_render_bloom_source(void);
 void DataNode_render_notification(const Screen *screen);
+void DataNode_render_voice_indicator(const Screen *screen);
 void DataNode_render_overlay(const Screen *screen);
 bool DataNode_is_reading(void);
 bool DataNode_dismiss_reading(void);

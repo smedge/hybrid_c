@@ -69,6 +69,15 @@ static float sfxDuckLevel = 1.0f;
 static bool sfxDucking = false;
 #define SFX_DUCK_TARGET 0.50f     /* 50% SFX volume while voice plays */
 
+/* Voice indicator (top-right HUD while voice plays after overlay dismissed) */
+static bool voiceIndicatorActive = false;
+static bool voiceIndicatorFading = false;
+static unsigned int voiceIndicatorFadeTimer = 0;
+static unsigned int voiceIndicatorAnimTimer = 0;
+static char voiceIndicatorTitle[128];
+#define VOICE_INDICATOR_FADE_MS 1000
+#define VOICE_INDICATOR_DISK_R 8.0f
+
 /* Notification */
 static bool notifyActive = false;
 static unsigned int notifyTimer = 0;
@@ -107,6 +116,7 @@ void DataNode_cleanup(void)
 	readingEntry = NULL;
 	readingScroll = 0.0f;
 	notifyActive = false;
+	voiceIndicatorActive = false;
 
 	/* Stop and free any playing voice clip */
 	Mix_HaltChannel(VOICE_CHANNEL);
@@ -145,7 +155,7 @@ void DataNode_refresh_phases(void)
 			n->charge_timer = 0;
 		}
 	}
-	/* Cancel any active reading overlay and voice */
+	/* Cancel any active reading overlay, voice, and indicator */
 	if (reading || voiceChunk) {
 		reading = false;
 		readingEntry = NULL;
@@ -156,6 +166,7 @@ void DataNode_refresh_phases(void)
 			voiceChunk = NULL;
 		}
 	}
+	voiceIndicatorActive = false;
 }
 
 static void collect_node(DataNodeState *n)
@@ -180,6 +191,7 @@ static void begin_reading(const char *node_id)
 			Mix_FreeChunk(voiceChunk);
 			voiceChunk = NULL;
 		}
+		voiceIndicatorActive = false;
 
 		/* Play voice clip if entry has one */
 		if (readingEntry->voice_path[0] != '\0') {
@@ -196,6 +208,17 @@ static void begin_reading(const char *node_id)
 
 static void end_reading(void)
 {
+	/* Activate voice indicator if clip is still audibly playing */
+	if (voiceChunk && Mix_Playing(VOICE_CHANNEL) && readingEntry) {
+		voiceIndicatorActive = true;
+		voiceIndicatorFading = false;
+		voiceIndicatorFadeTimer = 0;
+		voiceIndicatorAnimTimer = 0;
+		strncpy(voiceIndicatorTitle, readingEntry->title,
+			sizeof(voiceIndicatorTitle) - 1);
+		voiceIndicatorTitle[sizeof(voiceIndicatorTitle) - 1] = '\0';
+	}
+
 	reading = false;
 	readingEntry = NULL;
 	readingScroll = 0.0f;
@@ -291,6 +314,20 @@ void DataNode_update_all(unsigned int ticks)
 	if (voiceChunk && !Mix_Playing(VOICE_CHANNEL)) {
 		Mix_FreeChunk(voiceChunk);
 		voiceChunk = NULL;
+	}
+
+	/* Voice indicator: tick anim while active, start fade when voice ends */
+	if (voiceIndicatorActive) {
+		voiceIndicatorAnimTimer += ticks;
+		if (voiceIndicatorFading) {
+			voiceIndicatorFadeTimer += ticks;
+			if (voiceIndicatorFadeTimer >= VOICE_INDICATOR_FADE_MS)
+				voiceIndicatorActive = false;
+		} else if (!voiceChunk) {
+			/* Voice just finished — begin fade-out */
+			voiceIndicatorFading = true;
+			voiceIndicatorFadeTimer = 0;
+		}
 	}
 
 	/* Duck music while reading overlay is open OR voice clip is still playing */
@@ -458,6 +495,56 @@ void DataNode_render_notification(const Screen *screen)
 	float ny = screen->height * 0.3f;
 	Text_render(tr, shaders, &proj, &ident, msg, nx, ny,
 		1.0f, 1.0f, 1.0f, alpha);
+}
+
+void DataNode_render_voice_indicator(const Screen *screen)
+{
+	if (!voiceIndicatorActive) return;
+
+	float alpha = 1.0f;
+	if (voiceIndicatorFading) {
+		int remaining = (int)VOICE_INDICATOR_FADE_MS - (int)voiceIndicatorFadeTimer;
+		if (remaining < 0) remaining = 0;
+		alpha = (float)remaining / VOICE_INDICATOR_FADE_MS;
+	}
+
+	TextRenderer *tr = Graphics_get_text_renderer();
+	Shaders *shaders = Graphics_get_shaders();
+	Mat4 proj = Graphics_get_ui_projection();
+	Mat4 ident = Mat4_identity();
+
+	float margin = 15.0f;
+	float gap = 10.0f;
+	float r = VOICE_INDICATOR_DISK_R;
+
+	/* Align text baseline with Integrity label (player_stats: MARGIN_Y=10, BAR_HEIGHT=16) */
+	float text_y = 10.0f + 16.0f * 0.5f + tr->font_size * 0.15f + 1.0f;
+	float tw = Text_measure_width(tr, voiceIndicatorTitle);
+	float text_x = screen->width - margin - tw;
+
+	/* Disk vertically centered on text (visual center = bar center line) */
+	float disk_cx = text_x - gap - r;
+	float disk_cy = 10.0f + 16.0f * 0.5f;
+
+	/* Spinning disk (same animation as world data nodes) */
+	float t = voiceIndicatorAnimTimer / 1000.0f;
+	float spin_rad = (float)(fmod(t * SPIN_DEG_PER_SEC, 360.0) * PI / 180.0);
+	float h_scale = (float)fabs(cos(spin_rad));
+	if (h_scale < 0.15f) h_scale = 0.15f;
+
+	Render_filled_ellipse(disk_cx, disk_cy, r * h_scale, r, DISK_SEGMENTS,
+		0.9f, 0.95f, 1.0f, alpha);
+
+	/* Inner hole */
+	float hr = r * HOLE_RATIO * h_scale;
+	float vr = r * HOLE_RATIO;
+	Render_filled_ellipse(disk_cx, disk_cy, hr, vr, DISK_SEGMENTS,
+		0.0f, 0.0f, 0.0f, alpha);
+
+	Render_flush(&proj, &ident);
+
+	Text_render(tr, shaders, &proj, &ident, voiceIndicatorTitle,
+		text_x, text_y, 1.0f, 1.0f, 1.0f, alpha);
 }
 
 /* --- Message overlay --- */

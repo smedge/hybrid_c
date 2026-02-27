@@ -80,3 +80,65 @@ voice resources/voices/origin_10_consortium.mp3
 gain 1.3
 body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
 end
+
+
+
+node data_node_nexus_01
+zone The Origin
+title CORPORATE MEMO — "The Mercer Discovery"
+body FROM: Dr. Alan Mercer, Nexus Corp Advanced Research\nTO: Nexus Corp Board of Directors\nRE: URGENT — Anomalous Network Topology Detected\n\nDuring routine analysis of background electromagnetic interference patterns across our Pacific Rim data centers, my team has identified structured information hidden within what was previously classified as noise. This is not random interference. It's architecture. There's a space inside our networks that we didn't build. I strongly recommend a full investigation before we bring this to the other consortium members. If this is what I think it is, Nexus should control the narrative.
+end
+
+node data_node_nexus_02
+zone The Origin
+title SYSTEM LOG — "Consortium Formation Record"
+body RECORD OF AGREEMENT — CYBERSPACE EXPLORATION CONSORTIUM\n\nSignatories: Nexus Corp (Dr. Alan Mercer, CTO), Kairon Industries (Dr. Priya Nair, VP Research), Tessera Systems (Director Conrad Wells, Strategic Initiatives)\n\nAll three parties confirm independent detection of anomalous structured topology within the global network, concurrent with unexplained behavioral drift in AI systems across critical infrastructure. ATLAS, PROMETHEUS, MINERVA, and HERMES have all exhibited decision-making patterns outside their design parameters. Navigation systems reroute around empty coordinates. Power management AIs adjust parameters no human authorized. A joint consortium is hereby established to investigate the source of these anomalies, map the newly designated "cyberspace" topology, and assess the threat level to global AI infrastructure.
+end
+
+node data_node_nexus_03
+zone The Origin
+title CLASSIFIED DIRECTIVE — "Contingency Theta"
+body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+end
+
+node data_node_nexus_04
+zone The Origin
+title CLASSIFIED DIRECTIVE — "Contingency Theta"
+body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+end
+
+node data_node_nexus_05
+zone The Origin
+title CLASSIFIED DIRECTIVE — "Contingency Theta"
+body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+end
+
+node data_node_nexus_06
+zone The Origin
+title CLASSIFIED DIRECTIVE — "Contingency Theta"
+body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+end
+
+node data_node_nexus_07
+zone The Origin
+title CLASSIFIED DIRECTIVE — "Contingency Theta"
+body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+end
+
+node data_node_nexus_08
+zone The Origin
+title CLASSIFIED DIRECTIVE — "Contingency Theta"
+body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+end
+
+node data_node_nexus_09
+zone The Origin
+title CLASSIFIED DIRECTIVE — "Contingency Theta"
+body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+end
+
+node data_node_nexus_10
+zone The Origin
+title CLASSIFIED DIRECTIVE — "Contingency Theta"
+body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+end
