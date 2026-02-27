@@ -783,15 +783,16 @@ void Procgen_generate(Zone *zone)
 
 	/* ─── Terrain Generation with Influence ─── */
 
-	/* Find circuit vs solid type indices */
+	/* Find first circuit and first solid type indices for procgen terrain.
+	   Additional celltypes beyond these are for landmarks/hand-placement only. */
 	int circuit_idx = -1;
 	int solid_idx = -1;
 	bool has_both = false;
 	for (int i = 0; i < zone->wall_type_count; i++) {
 		int idx = zone->wall_type_indices[i];
-		if (strcmp(zone->cell_types[idx].pattern, "circuit") == 0)
+		if (circuit_idx < 0 && strcmp(zone->cell_types[idx].pattern, "circuit") == 0)
 			circuit_idx = idx;
-		else
+		else if (solid_idx < 0)
 			solid_idx = idx;
 	}
 	has_both = (circuit_idx >= 0 && solid_idx >= 0);

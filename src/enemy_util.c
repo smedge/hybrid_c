@@ -15,6 +15,7 @@
 #include "sub_tgun.h"
 #include "fragment.h"
 #include "progression.h"
+#include "skillbar.h"
 #include "enemy_registry.h"
 
 #include <math.h>
@@ -252,19 +253,39 @@ void Enemy_alert_nearby(Position origin, double radius)
 
 void Enemy_drop_fragments(Position deathPos, const CarriedSubroutine *subs, int subCount)
 {
-	/* Collect indices of locked (not yet unlocked) subroutines */
-	int locked[8];
-	int lockedCount = 0;
+	/* Separate locked subs into normal and rare pools.
+	   Rare subs only become eligible once ALL normal subs are unlocked. */
+	int normal[8];
+	int normalCount = 0;
+	int rare[8];
+	int rareCount = 0;
+	bool allNormalUnlocked = true;
 
-	for (int i = 0; i < subCount && lockedCount < 8; i++) {
-		if (!Progression_is_unlocked(subs[i].sub_id))
-			locked[lockedCount++] = i;
+	for (int i = 0; i < subCount; i++) {
+		if (Skillbar_get_tier(subs[i].sub_id) == TIER_RARE) {
+			if (!Progression_is_unlocked(subs[i].sub_id) && rareCount < 8)
+				rare[rareCount++] = i;
+		} else {
+			if (!Progression_is_unlocked(subs[i].sub_id)) {
+				if (normalCount < 8)
+					normal[normalCount++] = i;
+				allNormalUnlocked = false;
+			}
+		}
 	}
 
-	if (lockedCount == 0)
+	/* Drop normal fragments: always, pick one at random */
+	if (normalCount > 0) {
+		int pick = rand() % normalCount;
+		Fragment_spawn(deathPos, subs[normal[pick]].frag_type);
 		return;
+	}
 
-	/* Pick one at random, equal weight */
-	int pick = rand() % lockedCount;
-	Fragment_spawn(deathPos, subs[locked[pick]].frag_type);
+	/* All normal subs unlocked — rare subs become eligible at 10% drop rate */
+	if (allNormalUnlocked && rareCount > 0) {
+		if ((rand() % 100) < 10) {
+			int pick = rand() % rareCount;
+			Fragment_spawn(deathPos, subs[rare[pick]].frag_type);
+		}
+	}
 }

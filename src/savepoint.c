@@ -615,10 +615,10 @@ bool Savepoint_load_from_disk(void)
 				tok = strtok(NULL, " ");
 			}
 		}
-		else if (strncmp(line, "datanode_collected ", 18) == 0) {
+		else if (strncmp(line, "datanode_collected ", 19) == 0) {
 			if (checkpoint.datanode_count < SAVE_MAX_DATANODES) {
 				strncpy(checkpoint.datanode_ids[checkpoint.datanode_count],
-					line + 18, 31);
+					line + 19, 31);
 				checkpoint.datanode_ids[checkpoint.datanode_count][31] = '\0';
 				checkpoint.datanode_count++;
 			}
