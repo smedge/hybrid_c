@@ -59,10 +59,15 @@ static bool reading = false;
 static const NarrativeEntry *readingEntry = NULL;
 static float readingScroll = 0.0f;
 
-/* Music ducking during reading overlay */
-static float duckLevel = 1.0f;   /* current volume multiplier (0..1) */
-#define DUCK_TARGET 0.30f         /* 30% volume while reading (voice clarity) */
+/* Music ducking during voice playback */
+static float duckLevel = 1.0f;   /* current music volume multiplier (0..1) */
+#define DUCK_TARGET 0.30f         /* 30% music volume while voice plays */
 #define DUCK_RAMP_SPEED 1.5f      /* units per second (~330ms ramp) */
+
+/* SFX ducking during voice playback */
+static float sfxDuckLevel = 1.0f;
+static bool sfxDucking = false;
+#define SFX_DUCK_TARGET 0.50f     /* 50% SFX volume while voice plays */
 
 /* Notification */
 static bool notifyActive = false;
@@ -114,6 +119,15 @@ void DataNode_cleanup(void)
 		duckLevel = 1.0f;
 		Mix_VolumeMusic(MIX_MAX_VOLUME);
 	}
+
+	if (sfxDuckLevel < 1.0f || sfxDucking) {
+		sfxDuckLevel = 1.0f;
+		sfxDucking = false;
+		for (int ch = 0; ch < 64; ch++) {
+			if (ch == VOICE_CHANNEL) continue;
+			Mix_Volume(ch, MIX_MAX_VOLUME);
+		}
+	}
 }
 
 void DataNode_refresh_phases(void)
@@ -131,11 +145,16 @@ void DataNode_refresh_phases(void)
 			n->charge_timer = 0;
 		}
 	}
-	/* Cancel any active reading overlay */
-	if (reading) {
+	/* Cancel any active reading overlay and voice */
+	if (reading || voiceChunk) {
 		reading = false;
 		readingEntry = NULL;
 		readingScroll = 0.0f;
+		Mix_HaltChannel(VOICE_CHANNEL);
+		if (voiceChunk) {
+			Mix_FreeChunk(voiceChunk);
+			voiceChunk = NULL;
+		}
 	}
 }
 
@@ -154,6 +173,13 @@ static void begin_reading(const char *node_id)
 	if (readingEntry) {
 		reading = true;
 		readingScroll = 0.0f;
+
+		/* Stop any still-playing voice from a previous node */
+		if (voiceChunk) {
+			Mix_HaltChannel(VOICE_CHANNEL);
+			Mix_FreeChunk(voiceChunk);
+			voiceChunk = NULL;
+		}
 
 		/* Play voice clip if entry has one */
 		if (readingEntry->voice_path[0] != '\0') {
@@ -176,12 +202,8 @@ static void end_reading(void)
 	notifyActive = true;
 	notifyTimer = 0;
 
-	/* Stop and free voice clip */
-	Mix_HaltChannel(VOICE_CHANNEL);
-	if (voiceChunk) {
-		Mix_FreeChunk(voiceChunk);
-		voiceChunk = NULL;
-	}
+	/* Voice clip keeps playing — music stays ducked until clip finishes.
+	 * Cleanup happens in DataNode_update_all when Mix_Playing returns 0. */
 }
 
 void DataNode_update_all(unsigned int ticks)
@@ -265,8 +287,14 @@ void DataNode_update_all(unsigned int ticks)
 		}
 	}
 
-	/* Duck music volume while reading overlay is open */
-	float target = reading ? DUCK_TARGET : 1.0f;
+	/* Free voice clip once it finishes playing (after overlay dismissed) */
+	if (voiceChunk && !Mix_Playing(VOICE_CHANNEL)) {
+		Mix_FreeChunk(voiceChunk);
+		voiceChunk = NULL;
+	}
+
+	/* Duck music while reading overlay is open OR voice clip is still playing */
+	float target = (reading || voiceChunk) ? DUCK_TARGET : 1.0f;
 	if (duckLevel != target) {
 		float dt = ticks / 1000.0f;
 		float step = DUCK_RAMP_SPEED * dt;
@@ -278,6 +306,36 @@ void DataNode_update_all(unsigned int ticks)
 			if (duckLevel > target) duckLevel = target;
 		}
 		Mix_VolumeMusic((int)(duckLevel * MIX_MAX_VOLUME));
+	}
+
+	/* Duck SFX channels while voice is playing */
+	float sfx_target = (reading || voiceChunk) ? SFX_DUCK_TARGET : 1.0f;
+	if (sfxDuckLevel != sfx_target) {
+		float dt = ticks / 1000.0f;
+		float step = DUCK_RAMP_SPEED * dt;
+		if (sfxDuckLevel > sfx_target) {
+			sfxDuckLevel -= step;
+			if (sfxDuckLevel < sfx_target) sfxDuckLevel = sfx_target;
+		} else {
+			sfxDuckLevel += step;
+			if (sfxDuckLevel > sfx_target) sfxDuckLevel = sfx_target;
+		}
+	}
+	if (sfxDuckLevel < 1.0f) {
+		/* Apply to all channels except the voice channel */
+		int sfx_vol = (int)(sfxDuckLevel * MIX_MAX_VOLUME);
+		for (int ch = 0; ch < 64; ch++) {
+			if (ch == VOICE_CHANNEL) continue;
+			Mix_Volume(ch, sfx_vol);
+		}
+		sfxDucking = true;
+	} else if (sfxDucking) {
+		/* One final restore pass when ducking ends */
+		for (int ch = 0; ch < 64; ch++) {
+			if (ch == VOICE_CHANNEL) continue;
+			Mix_Volume(ch, MIX_MAX_VOLUME);
+		}
+		sfxDucking = false;
 	}
 }
 

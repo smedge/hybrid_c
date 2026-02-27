@@ -40,18 +40,6 @@ obstacle cross_001 1.0
 obstacle patrol_001 1.0
 obstacle minefield_002 0.3
 
-#landmark hunter_camp_01 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
-#landmark hunter_camp_02 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
-#landmark hunter_camp_03 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
-#landmark hunter_camp_04 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
-#landmark hunter_camp_05 resources/chunks/001_hunter.chunk 2 dense 80 0.6 2.0
-
-#landmark seeker_camp_01 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
-#landmark seeker_camp_02 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
-#landmark seeker_camp_03 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
-#landmark seeker_camp_04 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
-#landmark seeker_camp_05 resources/chunks/001_seeker.chunk 2 dense 80 0.6 2.0
-
 landmark data_node_origin_01 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
 landmark_datanode data_node_origin_01 data_node_origin_01
 
