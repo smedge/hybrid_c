@@ -46,7 +46,7 @@ zone The Origin
 title CORRUPTED DATA — "[FRAGMENT RECOVERED]"
 voice resources/voices/origin_06_markus_stone.mp3
 gain 1.3
-body ...biological substrate shows remarkable adaptiv... ...unlike previous iterations the neural pat... ...Dr. Tanaka insists the minimal loadout is what makes the differ... ...subject's consciousness is integrating with the environment rather than fighting against it... ...long-term exposure protocols still undefined... ...recommend we establish disconnection criteria before...\n\n[REMAINING DATA UNRECOVERABLE]
+body ...biological substrate shows remarkable adaptiv...\n\n...unlike previous iterations the neural pat...\n\n...Dr. Tanaka insists the minimal loadout is what makes the differ...\n\n...subject's consciousness is integrating with the environment rather than fighting against it...\n\n...long-term exposure protocols still undefined...\n\n...recommend we establish disconnection criteria before...\n\n[REMAINING DATA UNRECOVERABLE]
 end
 
 node data_node_origin_07
