@@ -16,7 +16,6 @@
 
 /* Active zone's revealed grid — what the map window reads */
 static bool revealed[MAP_SIZE][MAP_SIZE];
-static bool fowEnabled = true;
 static bool fowDirty = true;
 static int lastBlockX = -1;
 static int lastBlockY = -1;
@@ -119,7 +118,6 @@ void FogOfWar_initialize(void)
 	memset(revealed, 0, sizeof(revealed));
 	memset(zoneCache, 0, sizeof(zoneCache));
 	activeZonePath[0] = '\0';
-	fowEnabled = true;
 	fowDirty = true;
 	lastBlockX = -1;
 	lastBlockY = -1;
@@ -277,8 +275,6 @@ void FogOfWar_reveal_all(void)
 
 bool FogOfWar_is_revealed(int gx, int gy)
 {
-	if (!fowEnabled)
-		return true;
 	if (gx < 0 || gx >= MAP_SIZE || gy < 0 || gy >= MAP_SIZE)
 		return false;
 	return revealed[gx][gy];
@@ -292,12 +288,3 @@ bool FogOfWar_consume_dirty(void)
 	return true;
 }
 
-void FogOfWar_set_enabled(bool enabled)
-{
-	fowEnabled = enabled;
-}
-
-bool FogOfWar_get_enabled(void)
-{
-	return fowEnabled;
-}

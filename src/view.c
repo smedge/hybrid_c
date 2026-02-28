@@ -1,4 +1,5 @@
 #include "view.h"
+#include "graphics.h"
 #include <math.h>
 
 const double MAX_ZOOM = 4.0;
@@ -35,10 +36,15 @@ Mat4 View_get_transform(const Screen *screen)
 	double x = (screen->norm_w / 2.0) - (view.position.x * view.scale);
 	double y = (screen->norm_h / 2.0) - (view.position.y * view.scale);
 
-	/* Snap to pixel grid to prevent subpixel jitter on thin geometry */
+	/* Snap to physical pixel grid to prevent subpixel jitter on thin geometry.
+	   One norm unit != one physical pixel — compute the actual pixel step. */
 	if (pixelSnapping) {
-		x = floor(x + 0.5);
-		y = floor(y + 0.5);
+		int draw_w, draw_h;
+		Graphics_get_drawable_size(&draw_w, &draw_h);
+		double pixel_x = (double)screen->norm_w / (double)draw_w;
+		double pixel_y = (double)screen->norm_h / (double)draw_h;
+		x = floor(x / pixel_x + 0.5) * pixel_x;
+		y = floor(y / pixel_y + 0.5) * pixel_y;
 	}
 
 	Mat4 t = Mat4_translate((float)x, (float)y, 0.0f);

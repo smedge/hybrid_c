@@ -245,16 +245,20 @@ void Fragment_render_text(const Screen *screen)
 	float vs = (float)view.scale;
 	float ts = vs * 2.0f;
 
+	float scale_w = screen->width / screen->norm_w;
+	float scale_h = screen->height / screen->norm_h;
+
 	for (int i = 0; i < MAX_FRAGMENTS; i++) {
 		Fragment *f = &fragments[i];
 		if (!f->active)
 			continue;
 
-		/* World to screen conversion (use real view scale) */
-		float sx = (float)(f->position.x - view.position.x) * vs
+		/* World to screen conversion — scale by screen/norm ratio
+		   so text aligns with the pill rendered through world projection */
+		float sx = (float)(f->position.x - view.position.x) * vs * scale_w
 			+ screen->width / 2.0f;
 		float sy = screen->height / 2.0f
-			- (float)(f->position.y - view.position.y) * vs;
+			- (float)(f->position.y - view.position.y) * vs * scale_h;
 
 		/* Scale text with zoom: translate origin to screen pos, scale, translate back */
 		Mat4 t1 = Mat4_translate(sx, sy, 0.0f);

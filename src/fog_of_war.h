@@ -24,7 +24,5 @@ void FogOfWar_load_all_from_disk(void);
 void FogOfWar_delete_all_saves(void);
 
 bool FogOfWar_consume_dirty(void);
-void FogOfWar_set_enabled(bool enabled);
-bool FogOfWar_get_enabled(void);
 
 #endif
