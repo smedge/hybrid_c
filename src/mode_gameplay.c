@@ -39,6 +39,7 @@
 #include "narrative.h"
 #include "data_node.h"
 #include "data_logs.h"
+#include "palette_editor.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -133,6 +134,7 @@ typedef enum {
 	GOD_MODE_OBSTACLES,
 	GOD_MODE_LABELS,
 	GOD_MODE_DATANODES,
+	GOD_MODE_PALETTE,
 	GOD_MODE_COUNT
 } GodPlacementMode;
 
@@ -142,7 +144,7 @@ static const char *ENEMY_TYPES[] = {"mine", "hunter", "seeker", "defender", "sta
 #define ENEMY_TYPE_COUNT 5
 static int godEnemyType = 0;
 
-static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks", "Obstacles", "Labels", "DataNodes"};
+static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks", "Obstacles", "Labels", "DataNodes", "Palette"};
 
 /* Chunk export selection */
 static bool chunkSelHasA = false;
@@ -957,10 +959,22 @@ static void god_mode_update(Input *input, const unsigned int ticks)
 
 	/* Mode switching: Q = prev, E = next */
 	if (input->keyQ) {
+		GodPlacementMode prev = godPlacementMode;
 		godPlacementMode = (godPlacementMode + GOD_MODE_COUNT - 1) % GOD_MODE_COUNT;
+		if (prev == GOD_MODE_PALETTE) PaletteEditor_exit();
+		if (godPlacementMode == GOD_MODE_PALETTE) PaletteEditor_enter();
 	}
 	if (input->keyE) {
+		GodPlacementMode prev = godPlacementMode;
 		godPlacementMode = (godPlacementMode + 1) % GOD_MODE_COUNT;
+		if (prev == GOD_MODE_PALETTE) PaletteEditor_exit();
+		if (godPlacementMode == GOD_MODE_PALETTE) PaletteEditor_enter();
+	}
+
+	/* Palette mode handles its own input */
+	if (godPlacementMode == GOD_MODE_PALETTE) {
+		PaletteEditor_update(input, ticks);
+		return;
 	}
 
 	/* Tab cycles sub-type within mode (or exports chunk/obstacle selection) */
@@ -1366,6 +1380,28 @@ static void god_mode_render_cursor(void)
 
 static void god_mode_render_hud(const Screen *screen)
 {
+	if (godPlacementMode == GOD_MODE_PALETTE) {
+		TextRenderer *tr = Graphics_get_text_renderer();
+		Shaders *shaders = Graphics_get_shaders();
+		Mat4 proj = Graphics_get_ui_projection();
+		Mat4 ident = Mat4_identity();
+		Render_flush(&proj, &ident);
+
+		/* Still show "GOD MODE" + mode name top-center */
+		float cx = (float)screen->width * 0.5f - 60.0f;
+		Text_render(tr, shaders, &proj, &ident,
+			"GOD MODE", cx, 20.0f,
+			1.0f, 0.3f, 0.3f, 1.0f);
+		char buf[128];
+		snprintf(buf, sizeof(buf), "Mode: %s (Q/E)", GOD_MODE_NAMES[godPlacementMode]);
+		Text_render(tr, shaders, &proj, &ident,
+			buf, cx, 38.0f,
+			1.0f, 1.0f, 1.0f, 0.8f);
+
+		PaletteEditor_render(screen);
+		return;
+	}
+
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
 	Mat4 proj = Graphics_get_ui_projection();

@@ -429,6 +429,22 @@ static void handle_sdl_keydown_event(Input *input, const SDL_Event *event)
 		input->keyS = true;
 		break;
 			
+	case SDLK_UP:
+		input->keyUp = true;
+		break;
+
+	case SDLK_DOWN:
+		input->keyDown = true;
+		break;
+
+	case SDLK_LEFT:
+		input->keyLeft = true;
+		break;
+
+	case SDLK_RIGHT:
+		input->keyRight = true;
+		break;
+
 	case SDLK_z:
 		if (event->key.keysym.mod & KMOD_LCTRL)
 			input->keyZ = true;
@@ -462,7 +478,23 @@ static void handle_sdl_keyup_event(Input *input, const SDL_Event *event)
 	case SDLK_LSHIFT:
 		input->keyLShift = false;
 		break;
-			
+
+	case SDLK_UP:
+		input->keyUp = false;
+		break;
+
+	case SDLK_DOWN:
+		input->keyDown = false;
+		break;
+
+	case SDLK_LEFT:
+		input->keyLeft = false;
+		break;
+
+	case SDLK_RIGHT:
+		input->keyRight = false;
+		break;
+
 	case SDLK_a:
 		input->keyA = false;
 		break;

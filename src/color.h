@@ -17,4 +17,13 @@ typedef struct {
 
 ColorFloat Color_rgb_to_float(const ColorRGB *rgbColor);
 
+typedef struct {
+	float h; /* 0-360 */
+	float s; /* 0-1 */
+	float v; /* 0-1 */
+} ColorHSV;
+
+ColorHSV Color_rgb_to_hsv(float r, float g, float b);
+void Color_hsv_to_rgb(ColorHSV hsv, float *r, float *g, float *b);
+
 #endif

@@ -4,7 +4,7 @@
 node data_node_origin_01
 zone The Origin
 title SYSTEM LOG — "Initialization Complete"
-gain 2.3
+gain 2.8
 voice resources/voices/origin_01_atlas.mp3
 body Welcome to the Cyberspace Navigation Interface, version 7.0. All subsystems nominal. Sensory projection calibrated. Motor subroutine linkage established. You are cleared for exploration of the digital topology. Standard operating parameters apply. If you experience disorientation, perceptual artifacts, or recursive thought patterns, do not be alarmed — this is expected during the calibration window. ATLAS wishes you productive traversal.
 end
@@ -143,7 +143,7 @@ node data_node_nexus_08
 zone Nexus Corridor
 title ETHICS FILING — "Formal Objection — Dr. James Chen"
 voice resources/voices/nexus_08_james_chen.mp3
-gain 2.5
+gain 2.8
 body TO: Consortium Ethics Review Board\nFROM: Dr. James Chen, Board Chair\nRE: FORMAL OBJECTION #9 — Project Hybrid Subject Selection\n\nI am filing this objection under protest, as my previous eight objections have been overruled without substantive review. The subjects are not informed of the procedure's true nature. The consent forms describe a study that bears no resemblance to what actually occurs. Informed consent is structurally impossible when the subject cannot comprehend what will be done to them — and the procedure, once performed, cannot be undone. The time dilation alone raises questions about psychological torture that no review board should dismiss. I am requesting an independent external audit. If this request is denied, I will be forced to consider my obligations under whistleblower protection statutes.\n\n[HANDWRITTEN ANNOTATION AT BOTTOM]: "Chen's been reassigned to the Kuala Lumpur office. — Stone"
 end
 

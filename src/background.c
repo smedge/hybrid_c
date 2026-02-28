@@ -19,6 +19,7 @@ typedef struct {
 	float drift_dx, drift_dy;
 	float pulse_phase, pulse_speed;
 	float vert_mult[IRREG_SEGS];
+	int palette_idx;
 } Blob;
 
 typedef struct {
@@ -77,6 +78,21 @@ void Background_set_palette(const float colors[4][3])
 void Background_reset_palette(void)
 {
 	memcpy(palette, default_palette, sizeof(palette));
+}
+
+void Background_recolor(void)
+{
+	for (int l = 0; l < NUM_LAYERS; l++) {
+		for (int c = 0; c < layers[l].cloud_count; c++) {
+			for (int b = 0; b < BLOBS_PER_CLOUD; b++) {
+				Blob *blob = &layers[l].clouds[c].blobs[b];
+				int p = blob->palette_idx;
+				blob->r = palette[p][0];
+				blob->g = palette[p][1];
+				blob->b = palette[p][2];
+			}
+		}
+	}
 }
 
 static unsigned int bg_xorshift(unsigned int *state)
@@ -160,6 +176,7 @@ void Background_initialize(void)
 				blob->x = cx + ox;
 				blob->y = cy + oy;
 				blob->radius = rad;
+				blob->palette_idx = pal;
 				blob->r = palette[pal][0];
 				blob->g = palette[pal][1];
 				blob->b = palette[pal][2];

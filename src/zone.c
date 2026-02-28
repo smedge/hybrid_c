@@ -956,6 +956,52 @@ void Zone_remove_datanode(int grid_x, int grid_y)
 	zoneDirty = true;
 }
 
+void Zone_set_bg_color(int idx, ColorRGB color)
+{
+	if (idx < 0 || idx >= 4) return;
+	zone.bg_colors[idx] = color;
+	zone.has_bg_colors = true;
+
+	float colors[4][3];
+	for (int i = 0; i < 4; i++) {
+		colors[i][0] = zone.bg_colors[i].red / 255.0f;
+		colors[i][1] = zone.bg_colors[i].green / 255.0f;
+		colors[i][2] = zone.bg_colors[i].blue / 255.0f;
+	}
+	Background_set_palette(colors);
+	Background_recolor();
+
+	zoneDirty = true;
+}
+
+void Zone_set_celltype_colors(int type_idx, ColorRGB primary, ColorRGB outline)
+{
+	if (type_idx < 0 || type_idx >= zone.cell_type_count) return;
+
+	zone.cell_types[type_idx].primaryColor = primary;
+	zone.cell_types[type_idx].outlineColor = outline;
+
+	bool is_circuit = strcmp(zone.cell_types[type_idx].pattern, "circuit") == 0;
+
+	/* Update all map cells that use this type */
+	for (int x = 0; x < MAP_SIZE; x++) {
+		for (int y = 0; y < MAP_SIZE; y++) {
+			if (zone.cell_grid[x][y] == type_idx) {
+				MapCell cell = {false, is_circuit, primary, outline};
+				Map_set_cell(x, y, &cell);
+			}
+		}
+	}
+
+	/* Boundary cell uses first celltype */
+	if (type_idx == 0) {
+		MapCell boundary = {false, false, primary, outline};
+		Map_set_boundary_cell(&boundary);
+	}
+
+	zoneDirty = true;
+}
+
 void Zone_undo(void)
 {
 	if (undoCount <= 0) return;

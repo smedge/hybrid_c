@@ -18,6 +18,11 @@ typedef struct {
 	bool keyS;
 	bool keyD;
 
+	bool keyUp;
+	bool keyDown;
+	bool keyLeft;
+	bool keyRight;
+
 	bool keyLShift;
 	bool keyLControl;
 

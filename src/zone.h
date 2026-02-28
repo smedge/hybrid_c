@@ -212,6 +212,10 @@ const ZoneDestructible *Zone_get_destructible(int grid_x, int grid_y);
 /* Enemy lifecycle (for deferred spawning during rebirth) */
 void Zone_spawn_enemies(void);
 
+/* Color mutation (for palette editor) */
+void Zone_set_bg_color(int idx, ColorRGB color);
+void Zone_set_celltype_colors(int type_idx, ColorRGB primary, ColorRGB outline);
+
 /* Procgen: regenerate non-hand-placed cells from current master seed */
 void Zone_regenerate_procgen(void);
 
