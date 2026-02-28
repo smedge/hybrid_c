@@ -1110,6 +1110,7 @@ Stability 100%
 Similarity 75%
 
 ### Atlas
+
 Jarvis
 Speed 1.0
 Stability 100%
@@ -1129,7 +1130,7 @@ Jim Peterson
 
 Peter - Deep, Steady, Natural
 
-## COnsotrium
+## Consortium
 
 Edward - British, Dark Sedductive Low
 

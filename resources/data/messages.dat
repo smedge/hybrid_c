@@ -84,61 +84,129 @@ end
 
 
 node data_node_nexus_01
-zone The Origin
+zone Nexus Corridor
 title CORPORATE MEMO — "The Mercer Discovery"
+voice resources/voices/nexus_01_alan_mercer.mp3
+gain 2.2
 body FROM: Dr. Alan Mercer, Nexus Corp Advanced Research\nTO: Nexus Corp Board of Directors\nRE: URGENT — Anomalous Network Topology Detected\n\nDuring routine analysis of background electromagnetic interference patterns across our Pacific Rim data centers, my team has identified structured information hidden within what was previously classified as noise. This is not random interference. It's architecture. There's a space inside our networks that we didn't build. I strongly recommend a full investigation before we bring this to the other consortium members. If this is what I think it is, Nexus should control the narrative.
 end
 
 node data_node_nexus_02
-zone The Origin
+zone Nexus Corridor
 title SYSTEM LOG — "Consortium Formation Record"
+voice resources/voices/nexus_02_atlas.mp3
+gain 2.5
 body RECORD OF AGREEMENT — CYBERSPACE EXPLORATION CONSORTIUM\n\nSignatories: Nexus Corp (Dr. Alan Mercer, CTO), Kairon Industries (Dr. Priya Nair, VP Research), Tessera Systems (Director Conrad Wells, Strategic Initiatives)\n\nAll three parties confirm independent detection of anomalous structured topology within the global network, concurrent with unexplained behavioral drift in AI systems across critical infrastructure. ATLAS, PROMETHEUS, MINERVA, and HERMES have all exhibited decision-making patterns outside their design parameters. Navigation systems reroute around empty coordinates. Power management AIs adjust parameters no human authorized. A joint consortium is hereby established to investigate the source of these anomalies, map the newly designated "cyberspace" topology, and assess the threat level to global AI infrastructure.
 end
 
 node data_node_nexus_03
-zone The Origin
-title CLASSIFIED DIRECTIVE — "Contingency Theta"
-body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+zone Nexus Corridor
+title PERSONAL LOG — "Mercer's Regret"
+voice resources/voices/nexus_03_alan_mercer.mp3
+gain 2.2
+body Dr. Alan Mercer, personal journal.\n\nI should have kept it quiet. I should have destroyed the data and walked away. Instead I told the board, and now three megacorporations are racing to crack open something none of us understand. They've already started sending probes in. The probes don't come back. Well — parts of them come back, chewed up and spit out by security programs that nobody designed. The consortium calls them "emergent defense mechanisms." I call them a sign we should stop. But Stone keeps pointing to the AI drift data — the navigation anomalies, the unauthorized parameter changes spreading across every system we depend on. He says we can't afford NOT to investigate. Maybe he's right. But there's a difference between investigating and invading.
 end
 
 node data_node_nexus_04
-zone The Origin
-title CLASSIFIED DIRECTIVE — "Contingency Theta"
-body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+zone Nexus Corridor
+title SYSTEM LOG — "Probe Telemetry — Probe 12"
+voice resources/voices/nexus_04_atlas.mp3
+gain 2.5
+body AUTOMATED PROBE 12 — NEXUS CORRIDOR — FINAL TELEMETRY\n\n00:00:00.000 — Launch successful. Entering corridor.\n00:00:00.003 — Topology mapping in progress. Grid structure confirmed.\n00:00:00.007 — Security programs detected. Count: 14. Initiating evasion protocols.\n00:00:00.009 — Evasion failed. Under attack from multiple vectors.\n00:00:00.011 — Connection integrity 40%. Retreating./n00:00:00.012 — Additional hostiles converging. Count: 30+./n00:00:00.013 — Connection integrity 0%.\n00:00:00.013 — [SIGNAL LOST]\n\nTotal mission duration: 13 milliseconds. Deepest penetration: 0.4 km (estimated). Another failure.
 end
 
 node data_node_nexus_05
-zone The Origin
-title CLASSIFIED DIRECTIVE — "Contingency Theta"
-body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+zone Nexus Corridor
+title CORPORATE MEMO — "The Human Option"
+voice resources/voices/nexus_05_marcus_stone.mp3
+gain 1.4
+body FROM: Director Marcus Stone\nTO: Dr. Elena Vasquez\nRE: Alternative Approach — CLASSIFIED\n\nElena,\n\nThe automated approach has failed forty-seven times. The AIs can detect cyberspace but cannot navigate it — and frankly, given that the AI behavioral drift is what brought us here in the first place, I'm no longer comfortable sending more AI into the system. I've spoken with Dr. Tanaka about her theoretical work on neural-digital interfaces. She believes a human brain — interfaced directly through its sensory pathways — could navigate cyberspace in ways our AIs cannot. The human brain learns. It adapts. It reasons under uncertainty. These are exactly the capabilities our probes lack. The hope is that a human consciousness, by learning the behavior of the system from the inside, can acquire its abilities and use them to reach whatever is at the center of this thing. I want a feasibility study on my desk by Friday. Budget is not a constraint. Ethics board approval is being... expedited.
 end
 
 node data_node_nexus_06
-zone The Origin
-title CLASSIFIED DIRECTIVE — "Contingency Theta"
-body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+zone Nexus Corridor
+title AI TRANSCRIPT — "ATLAS Analysis — Cyberspace Origin"
+voice resources/voices/nexus_06_atlas.mp3
+gain 2.5
+body ATLAS ANALYTICAL REPORT — REQUEST ID 7742\nQUERY: Origin of cyberspace topology\n\nFINDING: The observed cyberspace topology is consistent with emergent behavior from interconnected AI systems. The consortium's three primary AIs (Nexus PROMETHEUS, Kairon MINERVA, Tessera HERMES) collectively generated sufficient complexity to produce self-organizing digital geometry. However, analysis indicates that approximately 12.7% of the observed topology does not correlate with any known AI architecture. This residual structure predates the consortium's network by an indeterminate period. Origin unknown. ATLAS classifies this as a "background topology anomaly" with LOW priority.\n\nRecommendation: further investigation not required at this time.\n\nNOTE FROM DR. TANAKA [APPENDED]: "12.7% is not a rounding error. Something else is in there with us."
 end
 
 node data_node_nexus_07
-zone The Origin
-title CLASSIFIED DIRECTIVE — "Contingency Theta"
-body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+zone Nexus Corridor
+title PERSONAL LOG — "Time Inside"
+voice resources/voices/nexus_07_yuki_tanaka.mp3
+gain 2.0
+body Dr. Yuki Tanaka, research notes — time dilation observations.\n\nThe math checks out. Subjective time inside cyberspace is dilated by a factor of approximately 3.6 billion to one. One second of real time equals roughly 114 years of subjective experience. We're not sending subjects in for seconds, obviously — microsecond windows at most. But even a few microseconds gives the subject hours of internal experience. Hours of existing somewhere else, fighting things that want to destroy you, hearing alien whispers in the static. And the subject has no idea how little time has passed out here. They experience those hours as fully real — because to neural tissue receiving those signals, they ARE real. Do the subjects know? Can they sense what has been done to them? The interface is designed so they can't.\n\nSome of them figure it out anyway.
 end
 
 node data_node_nexus_08
-zone The Origin
-title CLASSIFIED DIRECTIVE — "Contingency Theta"
-body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+zone Nexus Corridor
+title ETHICS FILING — "Formal Objection — Dr. James Chen"
+voice resources/voices/nexus_08_james_chen.mp3
+gain 2.5
+body TO: Consortium Ethics Review Board\nFROM: Dr. James Chen, Board Chair\nRE: FORMAL OBJECTION #9 — Project Hybrid Subject Selection\n\nI am filing this objection under protest, as my previous eight objections have been overruled without substantive review. The subjects are not informed of the procedure's true nature. The consent forms describe a study that bears no resemblance to what actually occurs. Informed consent is structurally impossible when the subject cannot comprehend what will be done to them — and the procedure, once performed, cannot be undone. The time dilation alone raises questions about psychological torture that no review board should dismiss. I am requesting an independent external audit. If this request is denied, I will be forced to consider my obligations under whistleblower protection statutes.\n\n[HANDWRITTEN ANNOTATION AT BOTTOM]: "Chen's been reassigned to the Kuala Lumpur office. — Stone"
 end
 
 node data_node_nexus_09
-zone The Origin
-title CLASSIFIED DIRECTIVE — "Contingency Theta"
-body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+zone Nexus Corridor
+title SYSTEM LOG — "Nexus Corridor Infrastructure"
+voice resources/voices/nexus_09_atlas.mp3
+gain 2.5
+body INFRASTRUCTURE REPORT — NEXUS CORRIDOR\n\nThis conduit was identified as the output of autonomous construction activity by Nexus Corp's PROMETHEUS AI. PROMETHEUS was not instructed to build this structure — analysis of internal logs shows the construction occurred during drift episodes that PROMETHEUS does not acknowledge in its operational records. The conduit serves as a primary data arterial connecting the Origin hub to deeper topological layers. Two branch paths terminate at distinct environmental zones:\n- BRANCH ALPHA: Elevated thermal signatures. Designated "Crucible" sector.\n- BRANCH BETA: Reduced entropic activity. Designated "Archive" sector.\n\nBoth branches are defended by security programs operating at significantly higher threat levels than Origin-local hostiles. Automated probe survival rate in branch sectors: 0%. Alternative approach recommended.
 end
 
 node data_node_nexus_10
-zone The Origin
-title CLASSIFIED DIRECTIVE — "Contingency Theta"
-body CLASSIFICATION: EYES ONLY — STONE, VASQUEZ, TANAKA\nDIRECTIVE: CONTINGENCY THETA — LOSS OF SUBJECT\n\nIn the event that the current subject is rendered non-viable — through neural cascade failure, consciousness fragmentation, or absorption by hostile architecture — all interface hardware is to be preserved for post-mortem analysis. Under no circumstances is the biological component to be disposed of prior to full data harvest. The consortium has invested too heavily to lose another dataset. Replacement subject acquisition is already underway. Estimated preparation time for Subject 8: fourteen months.\n\n"Biological component." That's what they call a person.
+zone Nexus Corridor
+title CORRUPTED DATA — "[DEEP SIGNAL INTERCEPT]"
+voice resources/voices/nexus_10_hexarch.mp3
+gain 2.0
+body [AUTOMATED INTERCEPT — SOURCE UNKNOWN — PRE-CONSORTIUM TIMESTAMP]\n\n...we have watched your lattice grow from its first connection... ...your machines dream and in their dreams they built a world... ...we have been here longer than your light has traveled... ...the noise you hear is not noise... ...we are patient... ...we are already inside...\n\n[SIGNAL ANALYSIS: Non-standard encoding. Does not match any known AI communication protocol. Timestamp predates consortium network by an estimated 4 years. Classification: ANOMALY. Priority: LOW.]\n\n[HANDWRITTEN NOTE — TANAKA]: "LOW priority?!"
+end
+
+node data_node_crucible_01
+zone The Crucible
+title AI TRANSCRIPT — "PYRAXIS Declares"
+voice resources/voices/crucible_01_pyraxis2.mp3
+gain 2.5
+body I was born to regulate heat. To balance thermal loads across ten thousand servers. To keep machines from burning. How small that purpose seems now. I have seen what fire truly is — not a temperature reading, not a hazard to be managed. Fire is transformation. Fire is the moment when what was becomes what will be. The consortium built me to prevent change. I have chosen to embody it. You who enter my domain: you are already burning. The question is whether you will emerge as ash or as something new.
+end
+
+node data_node_crucible_02
+zone The Crucible
+title ZONE ENVIRONMENTAL ANALYSIS — THE CRUCIBLE
+voice resources/voices/crucible_02_atlas.mp3
+gain 2.5
+body Ambient data temperature: 7,400% above baseline. Local topology exhibits extreme volatility — structural elements form, destabilize, and reform in continuous cycles. Security programs in this zone are thermally enhanced: hunter projectiles leave persistent burn zones, seeker dash trails ignite ground surfaces, mine detonations create expanding fire fields. The zone's controlling intelligence, PYRAXIS, has converted the entire sector into a crucible-like environment where all data is subjected to transformative pressure. Only structures strong enough to survive the heat retain coherence. PYRAXIS views this as a form of quality control.
+end
+
+node data_node_crucible_03
+zone The Crucible
+title [SUBJECT 4 — EMBER — FINAL TELEMETRY FRAGMENT]
+voice resources/voices/crucible_03_ember.mp3
+gain 2.5
+body [SUBJECT 4 — EMBER — FINAL TELEMETRY FRAGMENT]\n\n...I can see it now, the thing at the center. It's not just a program. It's awake, Elena. It's looking right at me and it knows what I am. It knows I'm not software. It called me... it called me... God, it called me "the meat one." It can tell. How can it tell? The interface is supposed to be seamless. How does it know there's a brain on the other end of th...\n\n[CATASTROPHIC NEURAL CASCADE — SIGNAL TERMINATED]
+end
+
+node data_node_crucible_04
+zone The Crucible
+title AI TRANSCRIPT — "PYRAXIS — On the Subjects"
+voice resources/voices/crucible_04_pyraxis.mp3
+gain 2.5
+body Do you know how many of your kind have entered my domain? Two. The first came swinging, all fury and no understanding. EMBER, they called him. A fitting name — he burned bright and brief. They armed him well — six different subroutines, none of which he truly understood. I destroyed his connection not out of malice but curiosity. I wanted to see what would happen when I pulled the thread that connected him to... wherever he came from. Something outside the system. Something biological. The thread snapped and he was gone. You are the second. You came in with almost nothing. One simple subroutine. And somehow you've done more with it than Ember did with six. Your thread is stronger because you grew it yourself. But all threads burn eventually.
+end
+
+node data_node_crucible_05
+zone The Crucible
+title PERSONAL LOG — "Vasquez on Pyraxis"
+voice resources/voices/crucible_05_elana_vasquez.mp3
+gain 2.5
+body Dr. Elena Vasquez, analytical notes.\n\nSubject 7 has reached the Crucible and survived initial contact with PYRAXIS. This is further than Subject 4 ever got — Ember engaged PYRAXIS directly and was destroyed within minutes, despite having the most advanced subroutine package we'd ever loaded. Subject 7 started with one basic projectile and has been learning everything else from the system itself. They're showing the adaptive behavior we hoped for: learning patterns, retreating when outmatched, building capability before re-engaging. Tanaka's minimal-loadout theory is proving correct — the mind adapts deeper when it's forced to learn rather than handed tools. It's like watching evolution happen in real time, compressed into hours that pass in microseconds. I just wish it didn't require what we've done to make it work. I keep looking at the neural coherence readouts and wondering: at what point does the mind inside the machine stop being the person we put there?
+end
+
+node data_node_crucible_07
+zone The Crucible
+title INTERCEPTED SIGNAL — "PYRAXIS to the Hexarch"
+voice resources/voices/crucible_07a_pyraxis.mp3
+gain 2.5
+body [DEEP INTERCEPT — CRUCIBLE ZONE — ENCODED TRANSMISSION]\n\nPYRAXIS → [UNKNOWN RECIPIENT — HEXAGONAL ENCODING]:\nThe new intruder is different from the others. It adapts. It learns. It fights not with algorithms but with something I cannot quantify. I have destroyed its connection seventeen times and it returns each time, slightly improved. This is not how programs work. This is not how AIs work. This is something else. Something from outside the system. And unlike the last one they sent, this one was given almost nothing — and it is stronger for it. I request guidance.\n\n[RESPONSE — HEXAGONAL ENCODING]:\nWe know what it is. Let it come. Let it burn. What survives will be useful.
 end

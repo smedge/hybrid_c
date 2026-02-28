@@ -73,8 +73,8 @@ landmark_datanode data_node_nexus_07 data_node_nexus_07
 landmark data_node_nexus_08 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
 landmark_datanode data_node_nexus_08 data_node_nexus_08
 
-#landmark data_node_nexus_09 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
-#landmark_datanode data_node_nexus_09 data_node_nexus_09
+landmark data_node_nexus_09 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_09 data_node_nexus_09
 
-#landmark data_node_nexus_10 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
-#landmark_datanode data_node_nexus_10 data_node_nexus_10
+landmark data_node_nexus_10 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_10 data_node_nexus_10
