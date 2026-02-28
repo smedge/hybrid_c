@@ -50,11 +50,12 @@ landmark_datanode data_node_crucible_06 data_node_crucible_06
 landmark data_node_crucible_07 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_crucible_07 data_node_crucible_07
 
-landmark data_node_crucible_08 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
-landmark_datanode data_node_crucible_08 data_node_crucible_08
+#landmark data_node_crucible_08 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
+#landmark_datanode data_node_crucible_08 data_node_crucible_08
 
-obstacle_density 0.05
+obstacle_density 0.06
 obstacle_min_spacing 10
+
 obstacle ambush_corner 4
 obstacle sniper_nest 3
 obstacle patrol_encounter 4

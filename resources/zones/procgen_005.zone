@@ -1,0 +1,80 @@
+# Zone: Nexus Corridor
+name Nexus Corridor
+size 1024
+
+bgcolor 0 80 110 80
+bgcolor 1 20 50 90
+bgcolor 2 5 12 30
+bgcolor 3 120 15 15
+
+celltype solid 15 8 1 255 180 90 60 255 none
+celltype circuit 10 36 10 120 30 128 30 255 circuit
+
+celltype solid_cru 10 10 10 255 128 128 128 255 none
+celltype circuit_cru 40 15 15 180 180 0 0 255 circuit
+
+music resources/music/deadmau5_Avarita.mp3
+music resources/music/deadmau5_ReJaded.mp3
+music resources/music/deadmau5_GG.mp3
+
+procgen true
+noise_octaves 5
+noise_frequency 0.01
+noise_lacunarity 2
+noise_persistence 0.5
+noise_wall_threshold -0.2
+
+obstacle_density 0.06
+obstacle_min_spacing 4
+
+obstacle cross_001 1.0
+obstacle patrol_001 1.0
+obstacle patrol_002 0.4
+obstacle minefield_002 0.3
+
+hotspot_count 20
+hotspot_edge_margin 80
+hotspot_min_separation 150
+landmark_min_separation 120
+
+landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2.0
+landmark_portal exit_point portal_to_001 ./resources/zones/procgen_001.zone portal_to_003
+landmark_savepoint exit_point save_001
+
+landmark exit_point2 resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2.0
+landmark_portal exit_point2 portal_to_002 ./resources/zones/procgen_002.zone portal_to_003
+landmark_savepoint exit_point2 save_002
+
+landmark exit_point3 resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2.0
+landmark_portal exit_point3 portal_to_004 ./resources/zones/procgen_004.zone portal_to_003
+landmark_savepoint exit_point3 save_003
+
+landmark data_node_nexus_01 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_01 data_node_nexus_01
+
+landmark data_node_nexus_02 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_02 data_node_nexus_02
+
+landmark data_node_nexus_03 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_03 data_node_nexus_03
+
+landmark data_node_nexus_04 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_04 data_node_nexus_04
+
+landmark data_node_nexus_05 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_05 data_node_nexus_05
+
+landmark data_node_nexus_06 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_06 data_node_nexus_06
+
+landmark data_node_nexus_07 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_07 data_node_nexus_07
+
+landmark data_node_nexus_08 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_08 data_node_nexus_08
+
+landmark data_node_nexus_09 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_09 data_node_nexus_09
+
+landmark data_node_nexus_10 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark_datanode data_node_nexus_10 data_node_nexus_10

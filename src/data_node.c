@@ -89,6 +89,11 @@ static Mix_Chunk *sampleCollect = 0;
 #define VOICE_CHANNEL 2
 static Mix_Chunk *voiceChunk = NULL;
 
+/* Sequential multi-clip voice playback */
+static const NarrativeEntry *voiceEntry = NULL;
+static int voiceClipIndex = 0;
+static int voiceClipCount = 0;
+
 void DataNode_initialize(Position position, const char *node_id)
 {
 	if (nodeCount >= DATANODE_COUNT) {
@@ -124,6 +129,9 @@ void DataNode_cleanup(void)
 		Mix_FreeChunk(voiceChunk);
 		voiceChunk = NULL;
 	}
+	voiceEntry = NULL;
+	voiceClipIndex = 0;
+	voiceClipCount = 0;
 
 	if (duckLevel < 1.0f) {
 		duckLevel = 1.0f;
@@ -165,6 +173,9 @@ void DataNode_refresh_phases(void)
 			Mix_FreeChunk(voiceChunk);
 			voiceChunk = NULL;
 		}
+		voiceEntry = NULL;
+		voiceClipIndex = 0;
+		voiceClipCount = 0;
 	}
 	voiceIndicatorActive = false;
 }
@@ -175,6 +186,29 @@ static void collect_node(DataNodeState *n)
 		strncpy(collectedIds[collectedCount], n->node_id, 31);
 		collectedIds[collectedCount][31] = '\0';
 		collectedCount++;
+	}
+}
+
+static void play_next_voice_clip(void)
+{
+	/* Free previous clip */
+	if (voiceChunk) {
+		Mix_HaltChannel(VOICE_CHANNEL);
+		Mix_FreeChunk(voiceChunk);
+		voiceChunk = NULL;
+	}
+
+	if (!voiceEntry || voiceClipIndex >= voiceClipCount)
+		return;
+
+	voiceChunk = Mix_LoadWAV(voiceEntry->voice_paths[voiceClipIndex]);
+	if (voiceChunk) {
+		if (voiceEntry->voice_gains[voiceClipIndex] != 1.0f)
+			Audio_boost_sample(voiceChunk, voiceEntry->voice_gains[voiceClipIndex]);
+		Mix_PlayChannel(VOICE_CHANNEL, voiceChunk, 0);
+	} else {
+		printf("DataNode: could not load voice %s\n",
+			voiceEntry->voice_paths[voiceClipIndex]);
 	}
 }
 
@@ -193,28 +227,27 @@ static void begin_reading(const char *node_id)
 		}
 		voiceIndicatorActive = false;
 
-		/* Play voice clip if entry has one */
-		if (readingEntry->voice_path[0] != '\0') {
-			voiceChunk = Mix_LoadWAV(readingEntry->voice_path);
-			if (voiceChunk) {
-				if (readingEntry->voice_gain != 1.0f)
-					Audio_boost_sample(voiceChunk, readingEntry->voice_gain);
-				Mix_PlayChannel(VOICE_CHANNEL, voiceChunk, 0);
-			} else
-				printf("DataNode: could not load voice %s\n", readingEntry->voice_path);
-		}
+		/* Initialize sequential voice playback */
+		voiceEntry = readingEntry;
+		voiceClipIndex = 0;
+		voiceClipCount = readingEntry->voice_count;
+
+		if (voiceClipCount > 0)
+			play_next_voice_clip();
 	}
 }
 
 static void end_reading(void)
 {
-	/* Activate voice indicator if clip is still audibly playing */
-	if (voiceChunk && Mix_Playing(VOICE_CHANNEL) && readingEntry) {
+	/* Activate voice indicator if any clips are still playing */
+	bool voice_still_playing = (voiceClipIndex < voiceClipCount) ||
+		(voiceChunk && Mix_Playing(VOICE_CHANNEL));
+	if (voice_still_playing && voiceEntry) {
 		voiceIndicatorActive = true;
 		voiceIndicatorFading = false;
 		voiceIndicatorFadeTimer = 0;
 		voiceIndicatorAnimTimer = 0;
-		strncpy(voiceIndicatorTitle, readingEntry->title,
+		strncpy(voiceIndicatorTitle, voiceEntry->title,
 			sizeof(voiceIndicatorTitle) - 1);
 		voiceIndicatorTitle[sizeof(voiceIndicatorTitle) - 1] = '\0';
 	}
@@ -225,8 +258,8 @@ static void end_reading(void)
 	notifyActive = true;
 	notifyTimer = 0;
 
-	/* Voice clip keeps playing — music stays ducked until clip finishes.
-	 * Cleanup happens in DataNode_update_all when Mix_Playing returns 0. */
+	/* Voice clips keep playing — music stays ducked until all clips finish.
+	 * Cleanup happens in DataNode_update_all when all clips are done. */
 }
 
 void DataNode_update_all(unsigned int ticks)
@@ -310,10 +343,20 @@ void DataNode_update_all(unsigned int ticks)
 		}
 	}
 
-	/* Free voice clip once it finishes playing (after overlay dismissed) */
+	/* Advance sequential voice clips; free when all done */
 	if (voiceChunk && !Mix_Playing(VOICE_CHANNEL)) {
 		Mix_FreeChunk(voiceChunk);
 		voiceChunk = NULL;
+
+		voiceClipIndex++;
+		if (voiceClipIndex < voiceClipCount) {
+			play_next_voice_clip();
+		} else {
+			/* All clips finished */
+			voiceEntry = NULL;
+			voiceClipIndex = 0;
+			voiceClipCount = 0;
+		}
 	}
 
 	/* Voice indicator: tick anim while active, start fade when voice ends */

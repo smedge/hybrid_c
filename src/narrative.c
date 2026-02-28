@@ -37,7 +37,6 @@ void Narrative_load(const char *path)
 			}
 			cur = &entries[entryCount];
 			memset(cur, 0, sizeof(*cur));
-			cur->voice_gain = 1.0f;
 			strncpy(cur->node_id, line + 5, sizeof(cur->node_id) - 1);
 		}
 		else if (cur && strncmp(line, "zone ", 5) == 0) {
@@ -47,10 +46,17 @@ void Narrative_load(const char *path)
 			strncpy(cur->title, line + 6, sizeof(cur->title) - 1);
 		}
 		else if (cur && strncmp(line, "voice ", 6) == 0) {
-			strncpy(cur->voice_path, line + 6, sizeof(cur->voice_path) - 1);
+			if (cur->voice_count < MAX_VOICE_CLIPS) {
+				int idx = cur->voice_count;
+				strncpy(cur->voice_paths[idx], line + 6, 255);
+				cur->voice_paths[idx][255] = '\0';
+				cur->voice_gains[idx] = 1.0f;
+				cur->voice_count++;
+			}
 		}
 		else if (cur && strncmp(line, "gain ", 5) == 0) {
-			cur->voice_gain = (float)atof(line + 5);
+			if (cur->voice_count > 0)
+				cur->voice_gains[cur->voice_count - 1] = (float)atof(line + 5);
 		}
 		else if (cur && strncmp(line, "body ", 5) == 0) {
 			/* Process \n escape sequences into real newlines */

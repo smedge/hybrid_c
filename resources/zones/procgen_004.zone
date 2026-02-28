@@ -7,7 +7,7 @@ bgcolor 1 140 170 215
 bgcolor 2 200 218 240
 bgcolor 3 120 155 200
 
-celltype solid 64 64 64 255 50 85 255 255 none
+celltype solid 64 64 64 255 10 10 10 255 none
 celltype circuit 128 128 128 32 50 85 255 255 circuit
 
 music resources/music/deadmau5_AuralPsynapse.mp3
