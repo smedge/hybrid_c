@@ -11,9 +11,15 @@ static const char *color_vert_src =
 	"layout(location = 2) in float a_pointSize;\n"
 	"uniform mat4 u_projection;\n"
 	"uniform mat4 u_view;\n"
+	"uniform vec2 u_viewport_size;\n"
 	"out vec4 v_color;\n"
 	"void main() {\n"
 	"    gl_Position = u_projection * u_view * vec4(a_position, 0.0, 1.0);\n"
+	"    if (u_viewport_size.x > 0.0) {\n"
+	"        vec2 pixel = (gl_Position.xy + 1.0) * 0.5 * u_viewport_size;\n"
+	"        pixel = floor(pixel + 0.5);\n"
+	"        gl_Position.xy = pixel / u_viewport_size * 2.0 - 1.0;\n"
+	"    }\n"
 	"    gl_PointSize = a_pointSize;\n"
 	"    v_color = a_color;\n"
 	"}\n";
@@ -98,6 +104,7 @@ static ShaderProgram build_program(const char *vert_src, const char *frag_src)
 	sp.program = link_program(v, f);
 	sp.u_projection = glGetUniformLocation(sp.program, "u_projection");
 	sp.u_view = glGetUniformLocation(sp.program, "u_view");
+	sp.u_viewport_size = glGetUniformLocation(sp.program, "u_viewport_size");
 	return sp;
 }
 
@@ -121,4 +128,11 @@ void Shader_set_matrices(const ShaderProgram *sp,
 	glUseProgram(sp->program);
 	glUniformMatrix4fv(sp->u_projection, 1, GL_FALSE, projection->m);
 	glUniformMatrix4fv(sp->u_view, 1, GL_FALSE, view->m);
+}
+
+void Shader_set_pixel_snap(const ShaderProgram *sp, int draw_w, int draw_h)
+{
+	glUseProgram(sp->program);
+	if (sp->u_viewport_size >= 0)
+		glUniform2f(sp->u_viewport_size, (float)draw_w, (float)draw_h);
 }

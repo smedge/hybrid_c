@@ -152,7 +152,7 @@ void CircuitAtlas_initialize(void)
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
 		ATLAS_WIDTH, ATLAS_HEIGHT, 0,
 		GL_RED, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	/* Create temporary FBO */
@@ -187,6 +187,10 @@ void CircuitAtlas_initialize(void)
 
 		Render_flush(&proj, &identity);
 	}
+
+	/* Generate mipmaps so thin trace lines survive minification at low zoom */
+	glBindTexture(GL_TEXTURE_2D, s_atlas_tex);
+	glGenerateMipmap(GL_TEXTURE_2D);
 
 	/* Cleanup FBO, restore state */
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);

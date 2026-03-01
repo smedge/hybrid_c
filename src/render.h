@@ -45,5 +45,7 @@ void Render_flush(const Mat4 *projection, const Mat4 *view);
 void Render_flush_keep(const Mat4 *projection, const Mat4 *view);
 void Render_redraw(const Mat4 *projection, const Mat4 *view);
 void Render_clear(void);
+void Render_set_pixel_snap(int draw_w, int draw_h);
+float Render_get_pixel_world_size(void);
 
 #endif

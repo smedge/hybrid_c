@@ -656,6 +656,10 @@ void Mode_Gameplay_render(void)
 		Bloom_composite(bg_bloom, draw_w, draw_h);
 	}
 
+	/* Snap world-pass vertices to physical pixel grid (eliminates sub-pixel
+	   line flicker on displays where norm units != physical pixels) */
+	Render_set_pixel_snap(draw_w, draw_h);
+
 	/* Grid renders first so map fills always cover it (even on auto-flush) */
 	Grid_render(NULL, NULL);
 	Render_flush(&world_proj, &view);
@@ -758,7 +762,8 @@ void Mode_Gameplay_render(void)
 		Bloom_composite(bloom, draw_w, draw_h);
 	}
 
-	/* UI pass */
+	/* UI pass — disable pixel snap (UI coords are already pixel-aligned) */
+	Render_set_pixel_snap(0, 0);
 	Mat4 ui_proj = Graphics_get_ui_projection();
 	Mat4 identity = Mat4_identity();
 	Render_set_pass(&ui_proj, &identity);

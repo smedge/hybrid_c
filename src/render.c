@@ -3,6 +3,10 @@
 #include <math.h>
 #include <OpenGL/gl3.h>
 
+/* Size of one physical pixel in world-space units (set by Render_set_pixel_snap).
+   Used to snap thick line widths to exact pixel counts. */
+static float pixelWorldSize = 0.0f;
+
 static int get_nearest_grid_start_point(int x, const double GRID_SIZE);
 
 void Render_point(const Position *position, const float size,
@@ -160,8 +164,17 @@ void Render_thick_line(float x0, float y0, float x1, float y1,
 	float len = sqrtf(dx * dx + dy * dy);
 	if (len < 0.001f) return;
 
-	float nx = (-dy / len) * thickness * 0.5f;
-	float ny = (dx / len) * thickness * 0.5f;
+	/* Snap thickness to integer physical pixels when pixel snap is active,
+	   so that vertex-shader snapping doesn't oscillate the line width */
+	float t = thickness;
+	if (pixelWorldSize > 0.0f) {
+		float px = t / pixelWorldSize;
+		float snapped = (px < 1.0f) ? 1.0f : floorf(px + 0.5f);
+		t = snapped * pixelWorldSize;
+	}
+
+	float nx = (-dy / len) * t * 0.5f;
+	float ny = (dx / len) * t * 0.5f;
 
 	BatchRenderer *batch = Graphics_get_batch();
 	Batch_push_triangle_vertices(batch,
@@ -266,6 +279,25 @@ void Render_clear(void)
 {
 	BatchRenderer *batch = Graphics_get_batch();
 	Batch_clear(batch);
+}
+
+void Render_set_pixel_snap(int draw_w, int draw_h)
+{
+	Shaders *shaders = Graphics_get_shaders();
+	Shader_set_pixel_snap(&shaders->color_shader, draw_w, draw_h);
+
+	if (draw_w > 0) {
+		Screen screen = Graphics_get_screen();
+		View view = View_get_view();
+		pixelWorldSize = screen.norm_w / ((float)draw_w * (float)view.scale);
+	} else {
+		pixelWorldSize = 0.0f;
+	}
+}
+
+float Render_get_pixel_world_size(void)
+{
+	return pixelWorldSize;
 }
 
 static int get_nearest_grid_start_point(int x, const double GRID_SIZE)

@@ -61,7 +61,7 @@ node data_node_origin_08
 zone The Origin
 title AI TRANSCRIPT — "ATLAS Status Summary"
 voice resources/voices/origin_08_atlas.mp3
-gain 2.3
+gain 2.5
 body ATLAS DAILY BRIEFING — AUTOMATED\n\nCurrent subject status: ACTIVE. Traversal metrics nominal. Subroutine acquisition proceeding ahead of projected parameters — the single-subroutine approach appears to be forcing deeper environmental integration than previous multi-equipped subjects achieved. Neural coherence index: 97.2%. Slight anomalies detected in memory formation pathways — subject appears to be generating new memories rather than merely processing environmental data. This is consistent with biological cognitive architecture and is not a cause for concern at this time. Monitoring will continue.\n\nNote: the term "biological cognitive architecture" appears 0 times in the approved project vocabulary. Suggest revision for future reports.
 end
 

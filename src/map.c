@@ -209,11 +209,23 @@ void Map_render(const void *state, const PlaceableComponent *placeable)
 	(void)placeable;
 
 	View view = View_get_view();
-	float outlineThickness = 2.0f / (float)view.scale;
-	if (outlineThickness < 2.0f) outlineThickness = 2.0f;
 
 	/* View frustum culling — only render cells visible on screen */
 	Screen screen = Graphics_get_screen();
+
+	/* Compute outline thickness snapped to exact physical pixels.
+	   Render_set_pixel_snap() provides the pixel-to-world ratio. */
+	float pw = Render_get_pixel_world_size();
+	float outlineThickness;
+	if (pw > 0.0f) {
+		float desired = 2.0f / (float)view.scale;
+		float px = desired / pw;
+		float snapped = (px < 2.0f) ? 2.0f : floorf(px + 0.5f);
+		outlineThickness = snapped * pw;
+	} else {
+		outlineThickness = 2.0f / (float)view.scale;
+		if (outlineThickness < 2.0f) outlineThickness = 2.0f;
+	}
 	float half_w = screen.norm_w * 0.5f / (float)view.scale;
 	float half_h = screen.norm_h * 0.5f / (float)view.scale;
 	float cx = (float)view.position.x;
