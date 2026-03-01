@@ -17,14 +17,14 @@ void cursor_render(void)
 	if (!visible)
 		return;
 
-	/* Red center dot */
-	Position pos = {x, y};
-	ColorFloat red = {0.9f, 0.0f, 0.0f, 0.70f};
-	Render_point(&pos, 2.0f, &red);
-
-	/* White crosshair lines */
+	/* Red center dot (rendered as quad so it shares the triangle pipeline
+	   with the crosshair lines — GL points rasterize on a different grid) */
 	float fx = (float)x;
 	float fy = (float)y;
+	Render_quad_absolute(fx - 1.0f, fy - 1.0f, fx + 1.0f, fy + 1.0f,
+		0.9f, 0.0f, 0.0f, 0.70f);
+
+	/* White crosshair lines */
 	Render_thick_line(fx, fy + 7.0f, fx, fy + 3.0f,
 		1.0f, 0.9f, 0.9f, 0.9f, 0.50f);
 	Render_thick_line(fx + 7.0f, fy, fx + 3.0f, fy,
