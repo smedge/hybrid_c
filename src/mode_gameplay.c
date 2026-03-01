@@ -798,11 +798,10 @@ void Mode_Gameplay_render(void)
 	if (gameplayState >= WARP_PULL && gameplayState <= WARP_RESUME)
 		warp_render_effects(&screen);
 
-	/* Flush everything so far, then render cursor on top */
+	/* Flush everything so far, then render cursor on top (invert blend) */
 	Render_flush(&ui_proj, &identity);
 	if (gameplayState == GAMEPLAY_ACTIVE && !godModeActive)
-		cursor_render();
-	Render_flush(&ui_proj, &identity);
+		cursor_render(&ui_proj, &identity);
 
 	Graphics_flip();
 }

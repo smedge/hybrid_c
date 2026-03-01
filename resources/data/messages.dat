@@ -4,7 +4,7 @@
 node data_node_origin_01
 zone The Origin
 title SYSTEM LOG — "Initialization Complete"
-gain 2.8
+gain 3.2
 voice resources/voices/origin_01_atlas.mp3
 body Welcome to the Cyberspace Navigation Interface, version 7.0. All subsystems nominal. Sensory projection calibrated. Motor subroutine linkage established. You are cleared for exploration of the digital topology. Standard operating parameters apply. If you experience disorientation, perceptual artifacts, or recursive thought patterns, do not be alarmed — this is expected during the calibration window. ATLAS wishes you productive traversal.
 end

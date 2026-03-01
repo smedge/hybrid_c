@@ -238,9 +238,8 @@ void Mode_Mainmenu_render(void)
 	if (dialogOpen)
 		render_dialog(&screen);
 
-	cursor_render();
-
 	Render_flush(&ui_proj, &identity);
+	cursor_render(&ui_proj, &identity);
 
 	Graphics_flip();
 }
