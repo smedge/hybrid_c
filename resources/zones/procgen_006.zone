@@ -1,16 +1,16 @@
 # Zone: Kairon Passage
 name Kairon Passage
 size 1024
-bgcolor 0 57 57 161
-bgcolor 1 94 94 129
-bgcolor 2 154 123 150
-bgcolor 3 169 77 144
+bgcolor 0 57 63 161
+bgcolor 1 0 0 124
+bgcolor 2 183 59 166
+bgcolor 3 170 77 145
 music resources/music/deadmau5_Avarita.mp3
 music resources/music/deadmau5_ReJaded.mp3
 music resources/music/deadmau5_GG.mp3
 
-celltype solid 1 0 13 255 84 188 255 255 none
-celltype circuit 40 13 12 120 255 81 215 255 circuit
+celltype solid 1 0 13 255 42 135 255 255 none
+celltype circuit 37 12 11 128 255 85 233 255 circuit
 celltype solid_cru 10 10 10 255 128 128 128 255 none
 celltype circuit_cru 40 15 15 180 180 0 0 255 circuit
 
