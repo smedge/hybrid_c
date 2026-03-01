@@ -24,6 +24,7 @@
 #define SLOT_SIZE 50.0f
 #define SLOT_SPACING 60.0f
 #define SLOT_MARGIN 10.0f
+#define SLOT_CHAMF 8.0f
 #define PIE_SEGMENTS 32
 #define PIE_RADIUS 22.0f
 
@@ -189,22 +190,33 @@ void Skillbar_render(const Screen *screen)
 		float bx = base_x + i * SLOT_SPACING;
 		float by = base_y;
 		int id = slots[i];
+		float ch = SLOT_CHAMF;
 
-		/* Slot background */
-		Render_quad_absolute(bx, by, bx + SLOT_SIZE, by + SLOT_SIZE,
-			0.1f, 0.1f, 0.1f, 0.8f);
+		/* Chamfered vertices: sharp NW + SE, chamfered NE + SW */
+		float vx[6] = { bx,              bx + SLOT_SIZE - ch, bx + SLOT_SIZE,
+		                 bx + SLOT_SIZE,  bx + ch,             bx };
+		float vy[6] = { by,              by,                   by + ch,
+		                 by + SLOT_SIZE,  by + SLOT_SIZE,       by + SLOT_SIZE - ch };
+
+		/* Slot background — chamfered polygon fill */
+		float fcx = bx + SLOT_SIZE * 0.5f;
+		float fcy = by + SLOT_SIZE * 0.5f;
+		BatchRenderer *batch = Graphics_get_batch();
+		for (int v = 0; v < 6; v++) {
+			int nv = (v + 1) % 6;
+			Batch_push_triangle_vertices(batch,
+				fcx, fcy, vx[v], vy[v], vx[nv], vy[nv],
+				0.1f, 0.1f, 0.1f, 0.8f);
+		}
 
 		if (id == SUB_NONE) {
 			/* Empty slot border */
 			float brc = 0.3f;
-			Render_thick_line(bx, by, bx + SLOT_SIZE, by,
-				1.0f, brc, brc, brc, 0.8f);
-			Render_thick_line(bx, by + SLOT_SIZE, bx + SLOT_SIZE, by + SLOT_SIZE,
-				1.0f, brc, brc, brc, 0.8f);
-			Render_thick_line(bx, by, bx, by + SLOT_SIZE,
-				1.0f, brc, brc, brc, 0.8f);
-			Render_thick_line(bx + SLOT_SIZE, by, bx + SLOT_SIZE, by + SLOT_SIZE,
-				1.0f, brc, brc, brc, 0.8f);
+			for (int v = 0; v < 6; v++) {
+				int nv = (v + 1) % 6;
+				Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
+					1.0f, brc, brc, brc, 0.8f);
+			}
 		}
 
 		if (id != SUB_NONE) {
@@ -238,18 +250,12 @@ void Skillbar_render(const Screen *screen)
 				thickness = 1.0f;
 			}
 
-			/* Top */
-			Render_thick_line(bx, by, bx + SLOT_SIZE, by,
-				thickness, br, bg, bb, ba);
-			/* Bottom */
-			Render_thick_line(bx, by + SLOT_SIZE, bx + SLOT_SIZE, by + SLOT_SIZE,
-				thickness, br, bg, bb, ba);
-			/* Left */
-			Render_thick_line(bx, by, bx, by + SLOT_SIZE,
-				thickness, br, bg, bb, ba);
-			/* Right */
-			Render_thick_line(bx + SLOT_SIZE, by, bx + SLOT_SIZE, by + SLOT_SIZE,
-				thickness, br, bg, bb, ba);
+			/* Chamfered border */
+			for (int v = 0; v < 6; v++) {
+				int nv = (v + 1) % 6;
+				Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
+					thickness, br, bg, bb, ba);
+			}
 
 			/* Icon */
 			float icon_cx = bx + SLOT_SIZE * 0.5f;
@@ -265,9 +271,10 @@ void Skillbar_render(const Screen *screen)
 			}
 		}
 
-		/* Number label */
-		float lx = bx + 2.0f;
-		float ly = by + SLOT_SIZE - 2.0f;
+		/* Number label — SE corner with padding */
+		float lw = Text_measure_width(tr, labels[i]);
+		float lx = bx + SLOT_SIZE - lw - 4.0f;
+		float ly = by + SLOT_SIZE - 4.0f;
 		Text_render(tr, shaders, &proj, &ident,
 			labels[i], lx, ly,
 			1.0f, 1.0f, 1.0f, 0.5f);

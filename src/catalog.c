@@ -638,38 +638,50 @@ void Catalog_render(const Screen *screen)
 
 	/* Slot highlights during drag */
 	if (drag.active && drag.threshold_met) {
+		float ch = 8.0f;
 		for (int s = 0; s < SKILLBAR_SLOTS; s++) {
 			float bx = 10.0f + s * 60.0f;
 			float by = (float)screen->height - 50.0f - 10.0f;
 			float sz = 50.0f;
-
-			Render_thick_line(bx, by, bx + sz, by,
-				2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
-			Render_thick_line(bx, by + sz, bx + sz, by + sz,
-				2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
-			Render_thick_line(bx, by, bx, by + sz,
-				2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
-			Render_thick_line(bx + sz, by, bx + sz, by + sz,
-				2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
+			float hvx[6] = { bx,       bx + sz - ch, bx + sz,
+			                  bx + sz,  bx + ch,      bx };
+			float hvy[6] = { by,       by,            by + ch,
+			                  by + sz,  by + sz,       by + sz - ch };
+			for (int v = 0; v < 6; v++) {
+				int nv = (v + 1) % 6;
+				Render_thick_line(hvx[v], hvy[v], hvx[nv], hvy[nv],
+					2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
+			}
 		}
 	}
 
-	/* Drag ghost — slot border + icon */
+	/* Drag ghost — chamfered slot border + icon */
 	if (drag.active && drag.threshold_met) {
 		float gx = drag.current_x - 25.0f;
 		float gy = drag.current_y - 25.0f;
 		float gsz = 50.0f;
+		float ch = 8.0f;
+		float gvx[6] = { gx,        gx + gsz - ch, gx + gsz,
+		                  gx + gsz,  gx + ch,        gx };
+		float gvy[6] = { gy,        gy,              gy + ch,
+		                  gy + gsz,  gy + gsz,        gy + gsz - ch };
 
-		Render_quad_absolute(gx, gy, gx + gsz, gy + gsz,
-			0.1f, 0.1f, 0.1f, 0.4f);
-		Render_thick_line(gx, gy, gx + gsz, gy,
-			1.0f, 1.0f, 1.0f, 1.0f, 0.4f);
-		Render_thick_line(gx, gy + gsz, gx + gsz, gy + gsz,
-			1.0f, 1.0f, 1.0f, 1.0f, 0.4f);
-		Render_thick_line(gx, gy, gx, gy + gsz,
-			1.0f, 1.0f, 1.0f, 1.0f, 0.4f);
-		Render_thick_line(gx + gsz, gy, gx + gsz, gy + gsz,
-			1.0f, 1.0f, 1.0f, 1.0f, 0.4f);
+		/* Fill */
+		float gcx = gx + gsz * 0.5f;
+		float gcy = gy + gsz * 0.5f;
+		BatchRenderer *batch = Graphics_get_batch();
+		for (int v = 0; v < 6; v++) {
+			int nv = (v + 1) % 6;
+			Batch_push_triangle_vertices(batch,
+				gcx, gcy, gvx[v], gvy[v], gvx[nv], gvy[nv],
+				0.1f, 0.1f, 0.1f, 0.4f);
+		}
+		/* Border */
+		for (int v = 0; v < 6; v++) {
+			int nv = (v + 1) % 6;
+			Render_thick_line(gvx[v], gvy[v], gvx[nv], gvy[nv],
+				1.0f, 1.0f, 1.0f, 1.0f, 0.4f);
+		}
 
 		Skillbar_render_icon_at(drag.source_id,
 			drag.current_x, drag.current_y, 0.5f);
