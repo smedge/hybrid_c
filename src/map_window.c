@@ -329,8 +329,8 @@ void MapWindow_render(const Screen *screen)
 	 */
 	float scale = qw / (float)texSize;
 
-	/* POI pulse — once per second */
-	float pulse = 0.7f + 0.3f * sinf((float)SDL_GetTicks() / 1000.0f * 2.0f * (float)M_PI);
+	/* POI pulse — once per two seconds */
+	float pulse = 0.7f + 0.3f * sinf((float)SDL_GetTicks() / 1000.0f * (float)M_PI);
 
 	/* Savepoints — cyan dots (0.0, 0.9, 0.9) matching minimap */
 	{

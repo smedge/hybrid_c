@@ -712,33 +712,55 @@ void Settings_render(const Screen *screen)
 	float btn_total = BUTTON_WIDTH * 2.0f + btn_gap;
 	float btn_offset = (content_width - btn_total) * 0.5f;
 
-	/* Cancel button */
+	/* Cancel button — chamfered NE+SW */
 	float cancel_x = content_x + btn_offset;
-	Render_quad_absolute(cancel_x, btn_y,
-		cancel_x + BUTTON_WIDTH, btn_y + BUTTON_HEIGHT,
-		0.15f, 0.12f, 0.12f, 0.9f);
-	Render_thick_line(cancel_x, btn_y,
-		cancel_x + BUTTON_WIDTH, btn_y, 1.0f, 0.4f, 0.3f, 0.3f, 0.7f);
-	Render_thick_line(cancel_x, btn_y + BUTTON_HEIGHT,
-		cancel_x + BUTTON_WIDTH, btn_y + BUTTON_HEIGHT, 1.0f, 0.4f, 0.3f, 0.3f, 0.7f);
-	Render_thick_line(cancel_x, btn_y,
-		cancel_x, btn_y + BUTTON_HEIGHT, 1.0f, 0.4f, 0.3f, 0.3f, 0.7f);
-	Render_thick_line(cancel_x + BUTTON_WIDTH, btn_y,
-		cancel_x + BUTTON_WIDTH, btn_y + BUTTON_HEIGHT, 1.0f, 0.4f, 0.3f, 0.3f, 0.7f);
+	{
+		BatchRenderer *batch = Graphics_get_batch();
+		float bx = cancel_x, by = btn_y;
+		float bw = BUTTON_WIDTH, bh = BUTTON_HEIGHT;
+		float ch = 8.0f;
+		float cvx[6] = { bx,        bx + bw - ch, bx + bw,
+		                  bx + bw,   bx + ch,      bx };
+		float cvy[6] = { by,        by,            by + ch,
+		                  by + bh,   by + bh,       by + bh - ch };
+		float cx = bx + bw * 0.5f, cy = by + bh * 0.5f;
+		for (int i = 0; i < 6; i++) {
+			int j = (i + 1) % 6;
+			Batch_push_triangle_vertices(batch,
+				cx, cy, cvx[i], cvy[i], cvx[j], cvy[j],
+				0.15f, 0.12f, 0.12f, 0.9f);
+		}
+		for (int i = 0; i < 6; i++) {
+			int j = (i + 1) % 6;
+			Render_thick_line(cvx[i], cvy[i], cvx[j], cvy[j],
+				1.0f, 0.4f, 0.3f, 0.3f, 0.7f);
+		}
+	}
 
-	/* OK button */
+	/* OK button — chamfered NE+SW */
 	float ok_x = cancel_x + BUTTON_WIDTH + btn_gap;
-	Render_quad_absolute(ok_x, btn_y,
-		ok_x + BUTTON_WIDTH, btn_y + BUTTON_HEIGHT,
-		0.12f, 0.15f, 0.2f, 0.9f);
-	Render_thick_line(ok_x, btn_y,
-		ok_x + BUTTON_WIDTH, btn_y, 1.0f, 0.3f, 0.4f, 0.6f, 0.7f);
-	Render_thick_line(ok_x, btn_y + BUTTON_HEIGHT,
-		ok_x + BUTTON_WIDTH, btn_y + BUTTON_HEIGHT, 1.0f, 0.3f, 0.4f, 0.6f, 0.7f);
-	Render_thick_line(ok_x, btn_y,
-		ok_x, btn_y + BUTTON_HEIGHT, 1.0f, 0.3f, 0.4f, 0.6f, 0.7f);
-	Render_thick_line(ok_x + BUTTON_WIDTH, btn_y,
-		ok_x + BUTTON_WIDTH, btn_y + BUTTON_HEIGHT, 1.0f, 0.3f, 0.4f, 0.6f, 0.7f);
+	{
+		BatchRenderer *batch = Graphics_get_batch();
+		float bx = ok_x, by = btn_y;
+		float bw = BUTTON_WIDTH, bh = BUTTON_HEIGHT;
+		float ch = 8.0f;
+		float cvx[6] = { bx,        bx + bw - ch, bx + bw,
+		                  bx + bw,   bx + ch,      bx };
+		float cvy[6] = { by,        by,            by + ch,
+		                  by + bh,   by + bh,       by + bh - ch };
+		float cx = bx + bw * 0.5f, cy = by + bh * 0.5f;
+		for (int i = 0; i < 6; i++) {
+			int j = (i + 1) % 6;
+			Batch_push_triangle_vertices(batch,
+				cx, cy, cvx[i], cvy[i], cvx[j], cvy[j],
+				0.12f, 0.15f, 0.2f, 0.9f);
+		}
+		for (int i = 0; i < 6; i++) {
+			int j = (i + 1) % 6;
+			Render_thick_line(cvx[i], cvy[i], cvx[j], cvy[j],
+				1.0f, 0.3f, 0.4f, 0.6f, 0.7f);
+		}
+	}
 
 	/* Flush all geometry so text renders on top */
 	Render_flush(&proj, &ident);

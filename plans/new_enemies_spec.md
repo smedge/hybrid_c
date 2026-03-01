@@ -177,7 +177,7 @@ Swarmer-heavy zones are the "you need AoE" gate. Players with only single-target
 ### Visual Design
 - Mother: larger hexagonal cluster, pulsing/shifting like cells dividing
 - Drones: tiny triangles or diamonds, each slightly different orbit phase
-- Color: yellow/amber (distinct from hunter orange)
+- Color: magenta (distinct from all other enemy types)
 - Split animation: mother geometry fractures outward
 - Reform: drones spiral inward, snap together
 
