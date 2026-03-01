@@ -262,6 +262,36 @@ static void end_reading(void)
 	 * Cleanup happens in DataNode_update_all when all clips are done. */
 }
 
+void DataNode_play_voice(const NarrativeEntry *entry)
+{
+	if (!entry || entry->voice_count <= 0)
+		return;
+
+	/* Halt/free any current voice playback */
+	Mix_HaltChannel(VOICE_CHANNEL);
+	if (voiceChunk) {
+		Mix_FreeChunk(voiceChunk);
+		voiceChunk = NULL;
+	}
+
+	/* Reset indicator state */
+	voiceIndicatorFading = false;
+	voiceIndicatorFadeTimer = 0;
+	voiceIndicatorAnimTimer = 0;
+
+	/* Set up sequential voice clip playback */
+	voiceEntry = entry;
+	voiceClipIndex = 0;
+	voiceClipCount = entry->voice_count;
+
+	strncpy(voiceIndicatorTitle, entry->title,
+		sizeof(voiceIndicatorTitle) - 1);
+	voiceIndicatorTitle[sizeof(voiceIndicatorTitle) - 1] = '\0';
+
+	play_next_voice_clip();
+	voiceIndicatorActive = true;
+}
+
 void DataNode_update_all(unsigned int ticks)
 {
 	Position ship_pos = Ship_get_position();

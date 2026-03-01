@@ -3,6 +3,7 @@
 #include "render.h"
 #include "text.h"
 #include "graphics.h"
+#include "batch.h"
 #include "view.h"
 #include "map_lighting.h"
 #include "map_reflect.h"
@@ -17,6 +18,7 @@
 #define TAB_WIDTH 140.0f
 #define TAB_HEIGHT 35.0f
 #define TAB_GAP 5.0f
+#define TAB_CHAMF 6.0f
 
 #define BUTTON_WIDTH 80.0f
 #define BUTTON_HEIGHT 30.0f
@@ -355,20 +357,35 @@ void Settings_render(const Screen *screen)
 		float tg_col = selected ? 0.15f : 0.1f;
 		float tb_col = selected ? 0.25f : 0.15f;
 
-		Render_quad_absolute(tab_x, tab_y,
-			tab_x + TAB_WIDTH, tab_y + TAB_HEIGHT,
-			tr_col, tg_col, tb_col, 0.9f);
-
 		if (selected) {
+			/* Chamfered fill: sharp NW + SE, chamfered NE + SW */
+			float c = TAB_CHAMF;
+			float tx0 = tab_x, ty0 = tab_y;
+			float tx1 = tab_x + TAB_WIDTH, ty1 = tab_y + TAB_HEIGHT;
+			float vx[6] = { tx0,      tx1 - c, tx1,
+			                tx1,      tx0 + c, tx0 };
+			float vy[6] = { ty0,      ty0,     ty0 + c,
+			                ty1,      ty1,     ty1 - c };
+			float fcx = (tx0 + tx1) * 0.5f;
+			float fcy = (ty0 + ty1) * 0.5f;
+			BatchRenderer *batch = Graphics_get_batch();
+			for (int v = 0; v < 6; v++) {
+				int nv = (v + 1) % 6;
+				Batch_push_triangle_vertices(batch,
+					fcx, fcy, vx[v], vy[v], vx[nv], vy[nv],
+					tr_col, tg_col, tb_col, 0.9f);
+			}
+			/* Chamfered border */
 			float tc = 0.5f;
-			Render_thick_line(tab_x, tab_y,
-				tab_x + TAB_WIDTH, tab_y, 1.0f, tc, tc, 1.0f, 0.8f);
-			Render_thick_line(tab_x, tab_y + TAB_HEIGHT,
-				tab_x + TAB_WIDTH, tab_y + TAB_HEIGHT, 1.0f, tc, tc, 1.0f, 0.8f);
-			Render_thick_line(tab_x, tab_y,
-				tab_x, tab_y + TAB_HEIGHT, 1.0f, tc, tc, 1.0f, 0.8f);
-			Render_thick_line(tab_x + TAB_WIDTH, tab_y,
-				tab_x + TAB_WIDTH, tab_y + TAB_HEIGHT, 1.0f, tc, tc, 1.0f, 0.8f);
+			for (int v = 0; v < 6; v++) {
+				int nv = (v + 1) % 6;
+				Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
+					1.0f, tc, tc, 1.0f, 0.8f);
+			}
+		} else {
+			Render_quad_absolute(tab_x, tab_y,
+				tab_x + TAB_WIDTH, tab_y + TAB_HEIGHT,
+				tr_col, tg_col, tb_col, 0.9f);
 		}
 
 		tab_y += TAB_HEIGHT + TAB_GAP;

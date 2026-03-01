@@ -3,6 +3,7 @@
 
 #include "position.h"
 #include "screen.h"
+#include "narrative.h"
 #include <stdbool.h>
 
 #define DATANODE_COUNT 16
@@ -28,6 +29,9 @@ int DataNode_collected_count(void);
 const char *DataNode_collected_id(int index);
 void DataNode_mark_collected(const char *node_id);
 void DataNode_clear_collected(void);
+
+/* Replay voice from data logs (voice-only, no reading overlay) */
+void DataNode_play_voice(const NarrativeEntry *entry);
 
 /* God mode labels */
 void DataNode_render_god_labels(void);

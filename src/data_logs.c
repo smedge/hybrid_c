@@ -8,6 +8,8 @@
 #include "data_node.h"
 
 #include <OpenGL/gl3.h>
+#include "batch.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -23,6 +25,13 @@
 #define BODY_LINE_HEIGHT 16.0f
 #define SCROLLBAR_WIDTH 8.0f
 #define INDICATOR_WIDTH 16.0f
+#define TAB_CHAMF 6.0f
+
+/* Replay button */
+#define REPLAY_BTN_H    22.0f
+#define REPLAY_BTN_W   100.0f
+#define REPLAY_BTN_GAP   8.0f
+#define REPLAY_CHAMF     4.0f
 
 /* Catalog-matched colors */
 #define BG_R 0.08f
@@ -196,6 +205,8 @@ static float measure_body_height(TextRenderer *tr, const NarrativeEntry *e, floa
 	}
 	if (linelen > 0)
 		h += BODY_LINE_HEIGHT;
+	if (e->voice_count > 0)
+		h += REPLAY_BTN_GAP + REPLAY_BTN_H;
 	return h + 20.0f + PADDING; /* top gap (separator+spacing) + bottom padding */
 }
 
@@ -291,8 +302,23 @@ void DataLogs_update(Input *input, unsigned int ticks)
 
 			if (expandedEntry == i) {
 				const NarrativeEntry *e = get_entry_for_tab(selectedTab, i);
-				if (e)
-					cursor_y += measure_body_height(tr, e, content_w - INDICATOR_WIDTH - 4.0f);
+				if (e) {
+					float body_h = measure_body_height(tr, e, content_w - INDICATOR_WIDTH - 4.0f);
+
+					/* Replay button click check */
+					if (e->voice_count > 0) {
+						float btn_top = cursor_y + body_h - PADDING - REPLAY_BTN_H;
+						float btn_x = content_x + INDICATOR_WIDTH + 4.0f;
+						if (mx >= btn_x && mx <= btn_x + REPLAY_BTN_W &&
+						    my >= btn_top && my <= btn_top + REPLAY_BTN_H) {
+							DataNode_play_voice(e);
+							mouseWasDown = mouseDown;
+							return;
+						}
+					}
+
+					cursor_y += body_h;
+				}
 			}
 		}
 	}
@@ -312,13 +338,6 @@ static void render_panel_border(float px, float py, float pw, float ph)
 	Render_thick_line(px, py + ph, px, py, BORDER_W, BORDER_R, BORDER_G, BORDER_B, BORDER_A);
 }
 
-static void render_tab_border(float x, float y, float w, float h)
-{
-	Render_thick_line(x, y, x + w, y, BORDER_W, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
-	Render_thick_line(x + w, y, x + w, y + h, BORDER_W, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
-	Render_thick_line(x + w, y + h, x, y + h, BORDER_W, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
-	Render_thick_line(x, y + h, x, y, BORDER_W, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
-}
 
 static void render_body_text(TextRenderer *tr, Shaders *shaders, Mat4 *proj, Mat4 *ident,
 	const NarrativeEntry *e, float x, float max_w,
@@ -378,6 +397,61 @@ static void render_body_text(TextRenderer *tr, Shaders *shaders, Mat4 *proj, Mat
 	*cursor_y += PADDING;
 }
 
+static void render_chamfered_button(TextRenderer *tr, Shaders *shaders,
+	Mat4 *proj, Mat4 *ident,
+	float bx, float by, float bw, float bh,
+	float clip_top, float clip_bottom)
+{
+	/* Skip if entirely outside clip region */
+	if (by + bh < clip_top || by > clip_bottom)
+		return;
+
+	float c = REPLAY_CHAMF;
+	BatchRenderer *batch = Graphics_get_batch();
+
+	/* 6-vertex polygon: sharp NW + SE, chamfered NE + SW (clockwise) */
+	float cx = bx + bw * 0.5f;
+	float cy = by + bh * 0.5f;
+	float vx[6] = { bx,         bx + bw - c, bx + bw,
+	                bx + bw,     bx + c,      bx };
+	float vy[6] = { by,         by,          by + c,
+	                by + bh,     by + bh,     by + bh - c };
+
+	for (int i = 0; i < 6; i++) {
+		int j = (i + 1) % 6;
+		Batch_push_triangle_vertices(batch,
+			cx, cy, vx[i], vy[i], vx[j], vy[j],
+			TAB_SEL_BG_R, TAB_SEL_BG_G, TAB_SEL_BG_B, 0.9f);
+	}
+
+	/* Outline */
+	for (int i = 0; i < 6; i++) {
+		int j = (i + 1) % 6;
+		Render_thick_line(vx[i], vy[i], vx[j], vy[j],
+			1.0f, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
+	}
+
+	/* Play triangle (right-pointing) */
+	float tri_h = 10.0f;
+	float tri_w = 8.0f;
+	float tri_x = bx + 12.0f;
+	float tri_cy = by + bh * 0.5f;
+	Batch_push_triangle_vertices(batch,
+		tri_x, tri_cy - tri_h * 0.5f,
+		tri_x, tri_cy + tri_h * 0.5f,
+		tri_x + tri_w, tri_cy,
+		TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
+
+	Render_flush(proj, ident);
+
+	/* "REPLAY" text */
+	float text_x = tri_x + tri_w + 6.0f;
+	float text_y = by + bh * 0.5f + 5.0f;
+	Text_render(tr, shaders, proj, ident, "REPLAY",
+		text_x, text_y,
+		TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, 0.9f);
+}
+
 void DataLogs_render(const Screen *screen)
 {
 	if (!logsOpen) return;
@@ -435,9 +509,29 @@ void DataLogs_render(const Screen *screen)
 	for (int t = 0; t < zoneTabCount; t++) {
 		float ty = tab_y + t * (TAB_HEIGHT + TAB_GAP);
 		if (t == selectedTab) {
-			Render_quad_absolute(tab_x, ty, tab_x + TAB_WIDTH, ty + TAB_HEIGHT,
-				TAB_SEL_BG_R, TAB_SEL_BG_G, TAB_SEL_BG_B, 0.9f);
-			render_tab_border(tab_x, ty, TAB_WIDTH, TAB_HEIGHT);
+			/* Chamfered fill: sharp NW + SE, chamfered NE + SW */
+			float c = TAB_CHAMF;
+			float tx0 = tab_x, ty0 = ty;
+			float tx1 = tab_x + TAB_WIDTH, ty1 = ty + TAB_HEIGHT;
+			float vx[6] = { tx0,      tx1 - c, tx1,
+			                tx1,      tx0 + c, tx0 };
+			float vy[6] = { ty0,      ty0,     ty0 + c,
+			                ty1,      ty1,     ty1 - c };
+			float fcx = (tx0 + tx1) * 0.5f;
+			float fcy = (ty0 + ty1) * 0.5f;
+			BatchRenderer *batch = Graphics_get_batch();
+			for (int v = 0; v < 6; v++) {
+				int nv = (v + 1) % 6;
+				Batch_push_triangle_vertices(batch,
+					fcx, fcy, vx[v], vy[v], vx[nv], vy[nv],
+					TAB_SEL_BG_R, TAB_SEL_BG_G, TAB_SEL_BG_B, 0.9f);
+			}
+			/* Chamfered border */
+			for (int v = 0; v < 6; v++) {
+				int nv = (v + 1) % 6;
+				Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
+					1.0f, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
+			}
 		} else {
 			Render_quad_absolute(tab_x, ty, tab_x + TAB_WIDTH, ty + TAB_HEIGHT,
 				TAB_UNSEL_BG_R, TAB_UNSEL_BG_G, TAB_UNSEL_BG_B, 0.9f);
@@ -590,6 +684,15 @@ void DataLogs_render(const Screen *screen)
 					body_x, body_w,
 					content_top, content_top + content_h,
 					&cursor_y);
+
+				/* Replay button (only for entries with voice clips) */
+				if (e->voice_count > 0) {
+					float btn_y = cursor_y - PADDING + REPLAY_BTN_GAP;
+					render_chamfered_button(tr, shaders, &proj, &ident,
+						body_x, btn_y, REPLAY_BTN_W, REPLAY_BTN_H,
+						content_top, content_top + content_h);
+					cursor_y = btn_y + REPLAY_BTN_H + PADDING;
+				}
 			}
 		}
 	}
