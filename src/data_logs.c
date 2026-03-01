@@ -33,6 +33,10 @@
 #define REPLAY_BTN_GAP   8.0f
 #define REPLAY_CHAMF     4.0f
 
+/* Tab marquee */
+#define MARQUEE_PAUSE_MS 1500
+#define MARQUEE_CHAR_MS  80
+
 /* Catalog-matched colors */
 #define BG_R 0.08f
 #define BG_G 0.08f
@@ -71,6 +75,7 @@ static int selectedTab = 0;
 static float scrollOffset = 0.0f;
 static int expandedEntry = -1; /* index within current tab's entries, -1 = none */
 static bool mouseWasDown = false;
+static unsigned int tabMarqueeTimer = 0;
 
 /* Drag-to-scroll state */
 static bool dragging = false;
@@ -160,6 +165,7 @@ void DataLogs_toggle(void)
 		rebuild_tabs();
 		scrollOffset = 0.0f;
 		expandedEntry = -1;
+		tabMarqueeTimer = 0;
 		if (selectedTab >= zoneTabCount)
 			selectedTab = 0;
 	}
@@ -210,10 +216,116 @@ static float measure_body_height(TextRenderer *tr, const NarrativeEntry *e, floa
 	return h + 20.0f + PADDING; /* top gap (separator+spacing) + bottom padding */
 }
 
+static void truncate_text(TextRenderer *tr, const char *text,
+	float max_width, char *buf, int buf_size)
+{
+	float w = Text_measure_width(tr, text);
+	if (w <= max_width) {
+		snprintf(buf, buf_size, "%s", text);
+		return;
+	}
+
+	float ellipsis_w = Text_measure_width(tr, "..");
+	float budget = max_width - ellipsis_w;
+	float accum = 0.0f;
+	int fit = 0;
+	for (int i = 0; text[i]; i++) {
+		int ch = (unsigned char)text[i];
+		if (ch < 32 || ch > 127)
+			continue;
+		accum += tr->char_data[ch - 32][6];
+		if (accum > budget)
+			break;
+		fit = i + 1;
+	}
+	if (fit + 2 < buf_size) {
+		memcpy(buf, text, fit);
+		buf[fit] = '.';
+		buf[fit + 1] = '.';
+		buf[fit + 2] = '\0';
+	} else {
+		snprintf(buf, buf_size, "..");
+	}
+}
+
+static void marquee_text(TextRenderer *tr, const char *text,
+	float max_width, unsigned int timer, char *buf, int buf_size)
+{
+	float full_w = Text_measure_width(tr, text);
+	if (full_w <= max_width) {
+		snprintf(buf, buf_size, "%s", text);
+		return;
+	}
+
+	int len = (int)strlen(text);
+	float ellipsis_w = Text_measure_width(tr, "..");
+
+	/* Count how many chars we can skip before the end is visible */
+	int max_skip = 0;
+	for (int s = 1; s < len; s++) {
+		float remaining_w = 0.0f;
+		for (int j = s; text[j]; j++) {
+			int ch = (unsigned char)text[j];
+			if (ch >= 32 && ch <= 127)
+				remaining_w += tr->char_data[ch - 32][6];
+		}
+		if (ellipsis_w + remaining_w <= max_width) {
+			max_skip = s;
+			break;
+		}
+		max_skip = s;
+	}
+	if (max_skip == 0) {
+		truncate_text(tr, text, max_width, buf, buf_size);
+		return;
+	}
+
+	/* Cycle: pause → scroll forward → pause → snap back */
+	unsigned int scroll_duration = max_skip * MARQUEE_CHAR_MS;
+	unsigned int cycle = MARQUEE_PAUSE_MS + scroll_duration + MARQUEE_PAUSE_MS;
+	unsigned int t = timer % cycle;
+
+	int char_offset = 0;
+	if (t < MARQUEE_PAUSE_MS) {
+		char_offset = 0;
+	} else if (t < MARQUEE_PAUSE_MS + scroll_duration) {
+		char_offset = (t - MARQUEE_PAUSE_MS) / MARQUEE_CHAR_MS;
+		if (char_offset > max_skip) char_offset = max_skip;
+	} else {
+		char_offset = max_skip;
+	}
+
+	/* Build the visible string */
+	const char *visible = text + char_offset;
+	if (char_offset == 0) {
+		truncate_text(tr, visible, max_width, buf, buf_size);
+	} else {
+		float budget = max_width - ellipsis_w;
+		int fit = 0;
+		float accum = 0.0f;
+		for (int i = 0; visible[i]; i++) {
+			int ch = (unsigned char)visible[i];
+			if (ch >= 32 && ch <= 127)
+				accum += tr->char_data[ch - 32][6];
+			if (accum > budget)
+				break;
+			fit = i + 1;
+		}
+		if (2 + fit < buf_size) {
+			buf[0] = '.'; buf[1] = '.';
+			memcpy(buf + 2, visible, fit);
+			buf[2 + fit] = '\0';
+		} else {
+			snprintf(buf, buf_size, "..");
+		}
+	}
+}
+
 void DataLogs_update(Input *input, unsigned int ticks)
 {
-	(void)ticks;
 	if (!logsOpen) return;
+
+	tabMarqueeTimer += ticks;
 
 	if (input->keyEsc) {
 		logsOpen = false;
@@ -275,6 +387,7 @@ void DataLogs_update(Input *input, unsigned int ticks)
 				selectedTab = t;
 				scrollOffset = 0.0f;
 				expandedEntry = -1;
+				tabMarqueeTimer = 0;
 				mouseWasDown = mouseDown;
 				return;
 			}
@@ -593,13 +706,14 @@ void DataLogs_render(const Screen *screen)
 	for (int t = 0; t < zoneTabCount; t++) {
 		float ty = tab_y + t * (TAB_HEIGHT + TAB_GAP);
 		float alpha = (t == selectedTab) ? 0.9f : 0.5f;
-		char label[32];
-		strncpy(label, zoneTabs[t], 31);
-		label[31] = '\0';
-		float lw = Text_measure_width(tr, label);
-		while (lw > TAB_WIDTH - 16.0f && strlen(label) > 4) {
-			label[strlen(label) - 1] = '\0';
-			lw = Text_measure_width(tr, label);
+		float max_label_w = TAB_WIDTH - 16.0f;
+		char label[64];
+		if (t == selectedTab) {
+			marquee_text(tr, zoneTabs[t], max_label_w,
+				tabMarqueeTimer, label, sizeof(label));
+		} else {
+			truncate_text(tr, zoneTabs[t], max_label_w,
+				label, sizeof(label));
 		}
 		Text_render(tr, shaders, &proj, &ident, label,
 			tab_x + 8.0f, ty + TAB_HEIGHT * 0.5f + 5.0f,
