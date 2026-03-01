@@ -187,7 +187,7 @@ node data_node_crucible_03
 zone The Crucible
 title [SUBJECT 4 — EMBER — FINAL TELEMETRY FRAGMENT]
 voice resources/voices/crucible_03_ember.mp3
-gain 2.2
+gain 3.0
 body [SUBJECT 4 — EMBER — FINAL TELEMETRY FRAGMENT]\n\n...I can see it now, the thing at the center. It's not just a program. It's awake, Elena. It's looking right at me and it knows what I am. It knows I'm not software. It called me... it called me... God, it called me "the meat one." It can tell. How can it tell? The interface is supposed to be seamless. How does it know there's a brain on the other end of th...\n\n[CATASTROPHIC NEURAL CASCADE — SIGNAL TERMINATED]
 end
 
@@ -203,7 +203,7 @@ node data_node_crucible_05
 zone The Crucible
 title PERSONAL LOG — "Vasquez on Pyraxis"
 voice resources/voices/crucible_05_elana_vasquez.mp3
-gain 2.0
+gain 1.8
 body Dr. Elena Vasquez, analytical notes.\n\nSubject 7 has reached the Crucible and survived initial contact with PYRAXIS. This is further than Subject 4 ever got — Ember engaged PYRAXIS directly and was destroyed within minutes, despite having the most advanced subroutine package we'd ever loaded. Subject 7 started with one basic projectile and has been learning everything else from the system itself. They're showing the adaptive behavior we hoped for: learning patterns, retreating when outmatched, building capability before re-engaging. Tanaka's minimal-loadout theory is proving correct — the mind adapts deeper when it's forced to learn rather than handed tools. It's like watching evolution happen in real time, compressed into hours that pass in microseconds. I just wish it didn't require what we've done to make it work. I keep looking at the neural coherence readouts and wondering: at what point does the mind inside the machine stop being the person we put there?
 end
 

@@ -15,7 +15,12 @@
 #include "fog_of_war.h"
 #include "data_node.h"
 
+#include <SDL2/SDL.h>
 #include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 /* Shader source */
 static const char *vert_src =
@@ -324,6 +329,9 @@ void MapWindow_render(const Screen *screen)
 	 */
 	float scale = qw / (float)texSize;
 
+	/* POI pulse — once per second */
+	float pulse = 0.7f + 0.3f * sinf((float)SDL_GetTicks() / 1000.0f * 2.0f * (float)M_PI);
+
 	/* Savepoints — cyan dots (0.0, 0.9, 0.9) matching minimap */
 	{
 		const Zone *z = Zone_get();
@@ -335,7 +343,7 @@ void MapWindow_render(const Screen *screen)
 			float sx = qx + z->savepoints[i].grid_x * scale;
 			float sy = qy + (1.0f - z->savepoints[i].grid_y / (float)texSize) * qh;
 			Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,
-				0.0f, 0.9f, 0.9f, 1.0f);
+				0.0f, 0.9f, 0.9f, pulse);
 		}
 	}
 
@@ -350,7 +358,7 @@ void MapWindow_render(const Screen *screen)
 			float sx = qx + z->portals[i].grid_x * scale;
 			float sy = qy + (1.0f - z->portals[i].grid_y / (float)texSize) * qh;
 			Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,
-				1.0f, 1.0f, 1.0f, 1.0f);
+				1.0f, 1.0f, 1.0f, pulse);
 		}
 	}
 
@@ -369,12 +377,12 @@ void MapWindow_render(const Screen *screen)
 					0.4f, 0.4f, 0.4f, 0.7f);
 			} else {
 				Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,
-					1.0f, 0.9f, 0.2f, 1.0f);
+					1.0f, 0.9f, 0.2f, pulse);
 			}
 		}
 	}
 
-	/* Player — red dot (1.0, 0.3, 0.3) matching minimap */
+	/* Player — red dot (1.0, 0.3, 0.3), pulsing */
 	{
 		Position ship = Ship_get_position();
 		float gx = (float)(ship.x / MAP_CELL_SIZE) + HALF_MAP_SIZE;
@@ -383,7 +391,7 @@ void MapWindow_render(const Screen *screen)
 		float sy = qy + (1.0f - gy / (float)texSize) * qh;
 		float ds = 3.0f;
 		Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,
-			1.0f, 0.3f, 0.3f, 1.0f);
+			1.0f, 0.3f, 0.3f, pulse);
 	}
 
 	/* Flush landmark dots then render text */

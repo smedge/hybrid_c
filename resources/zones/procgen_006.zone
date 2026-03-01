@@ -1,16 +1,16 @@
-# Zone: The Miasma
-name The Miasma
+# Zone: Kairon Passage
+name Kairon Passage
 size 1024
-bgcolor 0 0 0 0
-bgcolor 1 0 0 0
-bgcolor 2 19 86 39
-bgcolor 3 187 117 82
+bgcolor 0 57 57 161
+bgcolor 1 94 94 129
+bgcolor 2 154 123 150
+bgcolor 3 169 77 144
 music resources/music/deadmau5_Avarita.mp3
 music resources/music/deadmau5_ReJaded.mp3
 music resources/music/deadmau5_GG.mp3
 
-celltype solid 0 6 2 255 255 255 255 255 none
-celltype circuit 10 36 10 120 0 255 1 255 circuit
+celltype solid 1 0 13 255 84 188 255 255 none
+celltype circuit 40 13 12 120 255 81 215 255 circuit
 celltype solid_cru 10 10 10 255 128 128 128 255 none
 celltype circuit_cru 40 15 15 180 180 0 0 255 circuit
 
@@ -24,7 +24,6 @@ hotspot_count 20
 hotspot_edge_margin 80
 hotspot_min_separation 150
 landmark_min_separation 120
-
 landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
 landmark_portal exit_point portal_to_001 ./resources/zones/procgen_001.zone portal_to_003
 landmark_savepoint exit_point save_001
@@ -34,8 +33,6 @@ landmark_savepoint exit_point2 save_002
 landmark exit_point3 resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
 landmark_portal exit_point3 portal_to_004 ./resources/zones/procgen_004.zone portal_to_003
 landmark_savepoint exit_point3 save_003
-
-
 obstacle_density 0.06
 obstacle_min_spacing 4
 obstacle cross_001 1

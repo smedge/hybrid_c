@@ -7,6 +7,7 @@
 #include "graphics.h"
 #include "mat4.h"
 
+#include <SDL2/SDL.h>
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -292,7 +293,6 @@ void Portal_render_minimap(float ship_x, float ship_y,
 		float mx = screen_x + half_size + (dx / half_range) * half_size;
 		float my = screen_y + half_size - (dy / half_range) * half_size;
 
-		/* Bright cyan dot */
 		float s = 2.5f;
 		Render_quad_absolute(mx - s, my - s, mx + s, my + s,
 			1.0f, 1.0f, 1.0f, 1.0f);

@@ -668,7 +668,6 @@ void Savepoint_render_minimap(float ship_x, float ship_y,
 		float mx = screen_x + half_size + (dx / half_range) * half_size;
 		float my = screen_y + half_size - (dy / half_range) * half_size;
 
-		/* Cyan dot */
 		float s = 2.5f;
 		Render_quad_absolute(mx - s, my - s, mx + s, my + s,
 			0.0f, 0.9f, 0.9f, 1.0f);

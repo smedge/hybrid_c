@@ -957,11 +957,10 @@ void DataNode_render_minimap(float ship_x, float ship_y,
 
 		float s = 2.5f;
 		if (n->phase == DATANODE_DONE) {
-			/* Grey dot — collected */
+			/* Grey dot — collected (no pulse) */
 			Render_quad_absolute(mx - s, my - s, mx + s, my + s,
 				0.4f, 0.4f, 0.4f, 0.7f);
 		} else {
-			/* Yellow dot — uncollected */
 			Render_quad_absolute(mx - s, my - s, mx + s, my + s,
 				1.0f, 0.9f, 0.2f, 1.0f);
 		}

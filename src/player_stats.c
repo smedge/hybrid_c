@@ -4,6 +4,7 @@
 #include "render.h"
 #include "text.h"
 #include "graphics.h"
+#include "batch.h"
 #include "mat4.h"
 #include "audio.h"
 
@@ -31,6 +32,7 @@
 #define BAR_WIDTH    160.0f
 #define BAR_HEIGHT   16.0f
 #define BAR_GAP      10.0f
+#define BAR_CHAMF    4.0f
 #define BORDER_COLOR 0.3f
 
 /* --- State --- */
@@ -141,14 +143,82 @@ void PlayerStats_update(unsigned int ticks)
 
 static void render_bar_border(float x, float y, float w, float h)
 {
-	Render_thick_line(x, y, x + w, y,
-		1.0f, BORDER_COLOR, BORDER_COLOR, BORDER_COLOR, 0.8f);
-	Render_thick_line(x, y + h, x + w, y + h,
-		1.0f, BORDER_COLOR, BORDER_COLOR, BORDER_COLOR, 0.8f);
-	Render_thick_line(x, y, x, y + h,
-		1.0f, BORDER_COLOR, BORDER_COLOR, BORDER_COLOR, 0.8f);
-	Render_thick_line(x + w, y, x + w, y + h,
-		1.0f, BORDER_COLOR, BORDER_COLOR, BORDER_COLOR, 0.8f);
+	float c = BAR_CHAMF;
+	float vx[6] = { x,      x+w-c, x+w,
+	                 x+w,    x+c,   x };
+	float vy[6] = { y,      y,      y+c,
+	                 y+h,    y+h,    y+h-c };
+	for (int v = 0; v < 6; v++) {
+		int nv = (v + 1) % 6;
+		Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
+			1.0f, BORDER_COLOR, BORDER_COLOR, BORDER_COLOR, 0.8f);
+	}
+}
+
+static void render_bar_bg(float x, float y, float w, float h)
+{
+	float c = BAR_CHAMF;
+	float vx[6] = { x,      x+w-c, x+w,
+	                 x+w,    x+c,   x };
+	float vy[6] = { y,      y,      y+c,
+	                 y+h,    y+h,    y+h-c };
+	float cx = x + w * 0.5f;
+	float cy = y + h * 0.5f;
+	BatchRenderer *batch = Graphics_get_batch();
+	for (int v = 0; v < 6; v++) {
+		int nv = (v + 1) % 6;
+		Batch_push_triangle_vertices(batch,
+			cx, cy, vx[v], vy[v], vx[nv], vy[nv],
+			0.1f, 0.1f, 0.1f, 0.8f);
+	}
+}
+
+static void render_bar_fill(float bx, float y, float w, float h,
+	float fill_frac, float r, float g, float b, float a)
+{
+	if (fill_frac <= 0.0f) return;
+	float fw = w * fill_frac;
+	if (fw > w) fw = w;
+	float c = BAR_CHAMF;
+
+	float vx[6], vy[6];
+	int count;
+
+	if (fw >= w - 0.5f) {
+		/* Full bar — standard 6-vertex chamfer */
+		vx[0] = bx;     vy[0] = y;
+		vx[1] = bx+w-c; vy[1] = y;
+		vx[2] = bx+w;   vy[2] = y+c;
+		vx[3] = bx+w;   vy[3] = y+h;
+		vx[4] = bx+c;   vy[4] = y+h;
+		vx[5] = bx;     vy[5] = y+h-c;
+		count = 6;
+	} else if (fw > c) {
+		/* Partial — SW chamfered, right edge straight */
+		vx[0] = bx;     vy[0] = y;
+		vx[1] = bx+fw;  vy[1] = y;
+		vx[2] = bx+fw;  vy[2] = y+h;
+		vx[3] = bx+c;   vy[3] = y+h;
+		vx[4] = bx;     vy[4] = y+h-c;
+		count = 5;
+	} else {
+		/* Tiny fill — plain rect */
+		vx[0] = bx;     vy[0] = y;
+		vx[1] = bx+fw;  vy[1] = y;
+		vx[2] = bx+fw;  vy[2] = y+h;
+		vx[3] = bx;     vy[3] = y+h;
+		count = 4;
+	}
+
+	float cx = bx + fw * 0.5f;
+	float cy = y + h * 0.5f;
+	BatchRenderer *batch = Graphics_get_batch();
+	for (int v = 0; v < count; v++) {
+		int nv = (v + 1) % count;
+		Batch_push_triangle_vertices(batch,
+			cx, cy, vx[v], vy[v], vx[nv], vy[nv],
+			r, g, b, a);
+	}
 }
 
 void PlayerStats_render(const Screen *screen)
@@ -188,8 +258,7 @@ void PlayerStats_render(const Screen *screen)
 	/* --- Integrity bar --- */
 	float iy = MARGIN_Y;
 
-	Render_quad_absolute(barX, iy, barX + BAR_WIDTH, iy + BAR_HEIGHT,
-		0.1f, 0.1f, 0.1f, 0.8f);
+	render_bar_bg(barX, iy, BAR_WIDTH, BAR_HEIGHT);
 
 	/* Fill: green -> yellow -> red */
 	float ir, ig, ib;
@@ -204,19 +273,14 @@ void PlayerStats_render(const Screen *screen)
 		ig = 0.8f * t;
 		ib = 0.0f;
 	}
-	float fillWidth = BAR_WIDTH * intFrac;
-	if (fillWidth > 0.0f) {
-		Render_quad_absolute(barX, iy, barX + fillWidth, iy + BAR_HEIGHT,
-			ir, ig, ib, 0.9f);
-	}
+	render_bar_fill(barX, iy, BAR_WIDTH, BAR_HEIGHT, intFrac, ir, ig, ib, 0.9f);
 
 	render_bar_border(barX, iy, BAR_WIDTH, BAR_HEIGHT);
 
 	/* --- Feedback bar --- */
 	float fy = iy + BAR_HEIGHT + BAR_GAP;
 
-	Render_quad_absolute(barX, fy, barX + BAR_WIDTH, fy + BAR_HEIGHT,
-		0.1f, 0.1f, 0.1f, 0.8f);
+	render_bar_bg(barX, fy, BAR_WIDTH, BAR_HEIGHT);
 
 	/* Fill: cyan -> yellow -> magenta */
 	float fr, fg, fb;
@@ -231,13 +295,10 @@ void PlayerStats_render(const Screen *screen)
 		fg = 0.8f * (1.0f - t);
 		fb = 0.8f * t;
 	}
-	float fbFillWidth = BAR_WIDTH * fbFrac;
 	/* 4Hz blink when feedback is full: 250ms period, visible first 125ms */
 	bool fbFillVisible = (feedback < FEEDBACK_MAX) || ((feedbackFlashTimer % 250) < 125);
-	if (fbFillWidth > 0.0f && fbFillVisible) {
-		Render_quad_absolute(barX, fy, barX + fbFillWidth, fy + BAR_HEIGHT,
-			fr, fg, fb, 0.9f);
-	}
+	if (fbFillVisible)
+		render_bar_fill(barX, fy, BAR_WIDTH, BAR_HEIGHT, fbFrac, fr, fg, fb, 0.9f);
 
 	render_bar_border(barX, fy, BAR_WIDTH, BAR_HEIGHT);
 

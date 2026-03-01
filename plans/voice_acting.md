@@ -58,3 +58,13 @@ Malyx is better!
 
 Declan Sage
 Flas V2.5
+
+## Cryonis
+
+Shireen - Shimmering Smooth Light
+Female Humanoid - Futureistic
+Jessican Anne Bogart - Eloquent Villian ***
+
+## Toxis
+
+Cassius - Velvety

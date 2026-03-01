@@ -575,6 +575,7 @@ void Catalog_render(const Screen *screen)
 			float icon_cx = item_area_x + ITEM_ICON_SIZE * 0.5f + 10.0f;
 			float icon_cy = iy + ITEM_HEIGHT * 0.5f;
 			float half = ITEM_ICON_SIZE * 0.5f;
+			float ich = 8.0f;
 			float br, bg, bb;
 			SubroutineTier tier = Skillbar_get_tier(i);
 			if (tier == TIER_ELITE) {
@@ -584,18 +585,17 @@ void Catalog_render(const Screen *screen)
 			} else {
 				br = 1.0f; bg = 1.0f; bb = 1.0f;
 			}
-			Render_thick_line(icon_cx - half, icon_cy - half,
-				icon_cx + half, icon_cy - half,
-				1.0f, br, bg, bb, 0.6f);
-			Render_thick_line(icon_cx - half, icon_cy + half,
-				icon_cx + half, icon_cy + half,
-				1.0f, br, bg, bb, 0.6f);
-			Render_thick_line(icon_cx - half, icon_cy - half,
-				icon_cx - half, icon_cy + half,
-				1.0f, br, bg, bb, 0.6f);
-			Render_thick_line(icon_cx + half, icon_cy - half,
-				icon_cx + half, icon_cy + half,
-				1.0f, br, bg, bb, 0.6f);
+			float ix0 = icon_cx - half, iy0 = icon_cy - half;
+			float ix1 = icon_cx + half, iy1 = icon_cy + half;
+			float ivx[6] = { ix0,       ix1 - ich, ix1,
+			                  ix1,       ix0 + ich, ix0 };
+			float ivy[6] = { iy0,       iy0,        iy0 + ich,
+			                  iy1,       iy1,        iy1 - ich };
+			for (int v = 0; v < 6; v++) {
+				int nv = (v + 1) % 6;
+				Render_thick_line(ivx[v], ivy[v], ivx[nv], ivy[nv],
+					1.0f, br, bg, bb, 0.6f);
+			}
 			Skillbar_render_icon_at(i, icon_cx, icon_cy, 1.0f);
 		}
 
@@ -604,18 +604,18 @@ void Catalog_render(const Screen *screen)
 			float icon_cx = item_area_x + ITEM_ICON_SIZE * 0.5f + 10.0f;
 			float icon_cy = iy + ITEM_HEIGHT * 0.5f;
 			float half = ITEM_ICON_SIZE * 0.5f;
-			Render_thick_line(icon_cx - half, icon_cy - half,
-				icon_cx + half, icon_cy - half,
-				1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
-			Render_thick_line(icon_cx - half, icon_cy + half,
-				icon_cx + half, icon_cy + half,
-				1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
-			Render_thick_line(icon_cx - half, icon_cy - half,
-				icon_cx - half, icon_cy + half,
-				1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
-			Render_thick_line(icon_cx + half, icon_cy - half,
-				icon_cx + half, icon_cy + half,
-				1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
+			float ich = 8.0f;
+			float ix0 = icon_cx - half, iy0 = icon_cy - half;
+			float ix1 = icon_cx + half, iy1 = icon_cy + half;
+			float ivx[6] = { ix0,       ix1 - ich, ix1,
+			                  ix1,       ix0 + ich, ix0 };
+			float ivy[6] = { iy0,       iy0,        iy0 + ich,
+			                  iy1,       iy1,        iy1 - ich };
+			for (int v = 0; v < 6; v++) {
+				int nv = (v + 1) % 6;
+				Render_thick_line(ivx[v], ivy[v], ivx[nv], ivy[nv],
+					1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
+			}
 
 			float name_x = item_area_x + ITEM_ICON_SIZE + 25.0f;
 			float desc_y = iy + 22.0f + 18.0f;

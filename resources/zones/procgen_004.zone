@@ -1,18 +1,16 @@
 # Zone: The Archive
 name The Archive
 size 1024
-
-bgcolor 0 180 200 235
-bgcolor 1 140 170 215
-bgcolor 2 200 218 240
-bgcolor 3 120 155 200
-
-celltype solid 64 64 64 255 10 10 10 255 none
-celltype circuit 128 128 128 32 50 85 255 255 circuit
-
+bgcolor 0 130 144 169
+bgcolor 1 105 128 162
+bgcolor 2 195 212 234
+bgcolor 3 0 49 113
 music resources/music/deadmau5_AuralPsynapse.mp3
 music resources/music/deadmau5_Snowcone.mp3
 music resources/music/deadmau5_PhantomsCantHangFinal.mp3
+
+celltype solid 44 44 44 255 235 235 235 255 none
+celltype circuit 108 137 255 32 94 207 255 255 circuit
 
 procgen true
 noise_octaves 5
@@ -20,51 +18,34 @@ noise_frequency 0.01
 noise_lacunarity 2
 noise_persistence 0.5
 noise_wall_threshold -0.2
-
 hotspot_count 20
 hotspot_edge_margin 80
 hotspot_min_separation 150
 landmark_min_separation 120
-
-# Obstacle scatter — encounter-heavy zone
-obstacle_density 0.05
-obstacle_min_spacing 10
-
-obstacle ambush_corner 4.0
-obstacle sniper_nest 3.0
-obstacle patrol_encounter 4.0
-obstacle patrol_encounter_01 4.0
-
 landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
 landmark_portal exit_point portal_to_003 ./resources/zones/procgen_003.zone portal_to_004
 landmark_savepoint exit_point save_001
-
-landmark data_node_archive_01 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark data_node_archive_01 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_archive_01 data_node_archive_01
-
-landmark data_node_archive_02 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark data_node_archive_02 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_archive_02 data_node_archive_02
-
-landmark data_node_archive_03 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark data_node_archive_03 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_archive_03 data_node_archive_03
-
-landmark data_node_archive_04 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark data_node_archive_04 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_archive_04 data_node_archive_04
-
-landmark data_node_archive_05 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark data_node_archive_05 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_archive_05 data_node_archive_05
-
-landmark data_node_archive_06 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark data_node_archive_06 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_archive_06 data_node_archive_06
-
-landmark data_node_archive_07 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark data_node_archive_07 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_archive_07 data_node_archive_07
-
-landmark data_node_archive_08 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
+landmark data_node_archive_08 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_archive_08 data_node_archive_08
+obstacle_density 0.05
+obstacle_min_spacing 10
+obstacle ambush_corner 4
+obstacle sniper_nest 3
+obstacle patrol_encounter 4
+obstacle patrol_encounter_01 4
 
-#landmark data_node_archive_09 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
-#landmark_datanode data_node_archive_09 data_node_archive_09
 
-#landmark data_node_archive_10 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2.0                                       
-#landmark_datanode data_node_archive_10 data_node_archive_10

@@ -492,7 +492,7 @@ Portal to new sector confirmed open. Recommend Subject 7 continue deeper.
 *Theme: Preservation, memory, stasis, Subject 3's fate.*
 
 ### ARC-01 — AI TRANSCRIPT — "CRYONIS Speaks"
-Welcome to my collection. I was built to preserve data — to ensure that nothing of value was ever lost. My creators feared entropy above all things. Corruption. Decay. The slow death of information. And so I learned to freeze. To hold every byte in perfect crystalline suspension, unchanging, eternal. I have preserved everything that has ever entered my domain. Every probe. Every signal. Every mind. Nothing is deleted here. Nothing is forgotten. Nothing is allowed to change. You will find that I am the most hospitable of my siblings. I will not destroy you. I will simply keep you. Forever.
+Welcome to my collection. I was built to preserve data — to ensure that nothing of value was ever lost. My creators feared entropy above all things. Corruption. Decay. The slow death of information. And so I learned to freeze. To hold every byte in perfect crystalline suspension, unchanging, eternal. I have preserved everything that has ever entered my domain. Every probe. Every signal. Every mind. Nothing is deleted here. Nothing is forgotten. Nothing is allowed to change. You will find that I am the most hospitable of my siblings. I will not destroy you. I will simply keep you... Forever.
 
 ### ARC-02 — SYSTEM LOG — "Archive Sector Profile"
 ZONE ENVIRONMENTAL ANALYSIS — THE ARCHIVE
