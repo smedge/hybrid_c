@@ -3,6 +3,8 @@
 
 #include <SDL2/SDL_mixer.h>
 
+#define VOICE_CHANNEL 2
+
 // TODO need to incororate this struct into sample calls
 typedef struct {
 	Mix_Chunk *mix_chunk;
@@ -21,5 +23,12 @@ int Audio_play_sample_on_channel(Mix_Chunk **sample, int channel);
 int Audio_loop_sample_on_channel(Mix_Chunk **sample, int channel);
 void Audio_fade_out_channel(int channel, int ms);
 void Audio_boost_sample(Mix_Chunk *chunk, float gain);
+
+void  Audio_set_master_music(float vol);
+float Audio_get_master_music(void);
+void  Audio_set_master_sfx(float vol);
+float Audio_get_master_sfx(void);
+void  Audio_set_master_voice(float vol);
+float Audio_get_master_voice(void);
 
 #endif

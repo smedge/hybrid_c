@@ -8,6 +8,7 @@
 #include "map_lighting.h"
 #include "map_reflect.h"
 #include "map.h"
+#include "audio.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -29,13 +30,24 @@
 
 /* Tabs */
 #define TAB_GRAPHICS 0
-#define TAB_KEYBINDS 1
-#define TAB_COUNT 2
+#define TAB_AUDIO    1
+#define TAB_KEYBINDS 2
+#define TAB_COUNT 3
 
 static const char *tab_names[TAB_COUNT] = {
 	"Graphics",
+	"Audio",
 	"Keybinds"
 };
+
+/* Slider constants */
+#define SLIDER_WIDTH   200.0f
+#define SLIDER_HEIGHT   12.0f
+#define SLIDER_KNOB_W   10.0f
+#define SLIDER_KNOB_H   20.0f
+#define SLIDER_LEFT_PAD  16.0f   /* space for "0" + gap left of bar */
+#define SLIDER_RIGHT_PAD 72.0f   /* space for gap + "100" + gap + value right of bar */
+#define SLIDER_COMBO_W  (SLIDER_LEFT_PAD + SLIDER_WIDTH + SLIDER_RIGHT_PAD)
 
 /* State */
 static bool settingsOpen = false;
@@ -50,6 +62,15 @@ static bool pendingBloom = true;
 static bool pendingLighting = true;
 static bool pendingReflections = true;
 static bool pendingCircuitTraces = true;
+
+/* Audio pending values */
+static float pendingMusicVol = 1.0f;
+static float pendingSFXVol   = 1.0f;
+static float pendingVoiceVol = 1.0f;
+static float origMusicVol = 1.0f;
+static float origSFXVol   = 1.0f;
+static float origVoiceVol = 1.0f;
+static int draggingSlider = -1;  /* -1=none, 0=music, 1=sfx, 2=voice */
 
 /* Mouse tracking */
 static bool mouseWasDown = false;
@@ -95,6 +116,12 @@ void Settings_load(void)
 			MapReflect_set_enabled(value != 0);
 		else if (strcmp(key, "circuit_traces") == 0)
 			Map_set_circuit_traces(value != 0);
+		else if (strcmp(key, "music_volume") == 0)
+			Audio_set_master_music(value / 100.0f);
+		else if (strcmp(key, "sfx_volume") == 0)
+			Audio_set_master_sfx(value / 100.0f);
+		else if (strcmp(key, "voice_volume") == 0)
+			Audio_set_master_voice(value / 100.0f);
 	}
 	fclose(f);
 	printf("Settings_load: done. ms=%d aa=%d fs=%d\n",
@@ -118,6 +145,9 @@ void Settings_save(void)
 	fprintf(f, "lighting %d\n", MapLighting_get_enabled() ? 1 : 0);
 	fprintf(f, "reflections %d\n", MapReflect_get_enabled() ? 1 : 0);
 	fprintf(f, "circuit_traces %d\n", Map_get_circuit_traces() ? 1 : 0);
+	fprintf(f, "music_volume %d\n", (int)(Audio_get_master_music() * 100.0f + 0.5f));
+	fprintf(f, "sfx_volume %d\n", (int)(Audio_get_master_sfx() * 100.0f + 0.5f));
+	fprintf(f, "voice_volume %d\n", (int)(Audio_get_master_voice() * 100.0f + 0.5f));
 	fclose(f);
 	printf("Settings saved to %s\n", SETTINGS_FILE_PATH);
 }
@@ -135,6 +165,9 @@ void Settings_initialize(void)
 	pendingLighting = MapLighting_get_enabled();
 	pendingReflections = MapReflect_get_enabled();
 	pendingCircuitTraces = Map_get_circuit_traces();
+	pendingMusicVol = Audio_get_master_music();
+	pendingSFXVol   = Audio_get_master_sfx();
+	pendingVoiceVol = Audio_get_master_voice();
 }
 
 void Settings_cleanup(void)
@@ -150,8 +183,8 @@ void Settings_toggle(void)
 {
 	settingsOpen = !settingsOpen;
 	if (settingsOpen) {
-		selectedTab = 0;
 		mouseWasDown = false;
+		draggingSlider = -1;
 		/* Copy current values to pending */
 		pendingMultisampling = Graphics_get_multisampling();
 		pendingAntialiasing = Graphics_get_antialiasing();
@@ -161,6 +194,12 @@ void Settings_toggle(void)
 		pendingLighting = MapLighting_get_enabled();
 		pendingReflections = MapReflect_get_enabled();
 		pendingCircuitTraces = Map_get_circuit_traces();
+		pendingMusicVol = Audio_get_master_music();
+		pendingSFXVol   = Audio_get_master_sfx();
+		pendingVoiceVol = Audio_get_master_voice();
+		origMusicVol = pendingMusicVol;
+		origSFXVol   = pendingSFXVol;
+		origVoiceVol = pendingVoiceVol;
 	}
 }
 
@@ -171,8 +210,11 @@ void Settings_update(const Input *input, const unsigned int ticks)
 	if (!settingsOpen)
 		return;
 
-	/* ESC closes settings */
+	/* ESC closes settings (cancel) */
 	if (input->keyEsc) {
+		Audio_set_master_music(origMusicVol);
+		Audio_set_master_sfx(origSFXVol);
+		Audio_set_master_voice(origVoiceVol);
 		settingsOpen = false;
 		mouseWasDown = false;
 		return;
@@ -272,6 +314,49 @@ void Settings_update(const Input *input, const unsigned int ticks)
 		}
 	}
 
+	/* Audio tab slider interaction */
+	if (selectedTab == TAB_AUDIO) {
+		float combo_x = content_x + (content_width - SLIDER_COMBO_W) * 0.5f;
+		float slider_x = combo_x + SLIDER_LEFT_PAD;
+		float group_start = content_y + 40.0f;
+		float group_spacing = 75.0f;
+		float knob_offset = 22.0f;  /* label height + gap before slider */
+
+		float *volumes[3] = { &pendingMusicVol, &pendingSFXVol, &pendingVoiceVol };
+		void (*setters[3])(float) = { Audio_set_master_music, Audio_set_master_sfx, Audio_set_master_voice };
+
+		/* Mouse down on a slider track → begin drag */
+		if (clicked) {
+			for (int s = 0; s < 3; s++) {
+				float knob_y = group_start + s * group_spacing + knob_offset;
+				if (mx >= slider_x && mx <= slider_x + SLIDER_WIDTH &&
+					my >= knob_y && my <= knob_y + SLIDER_KNOB_H) {
+					draggingSlider = s;
+					float val = (mx - slider_x) / SLIDER_WIDTH;
+					if (val < 0.0f) val = 0.0f;
+					if (val > 1.0f) val = 1.0f;
+					*volumes[s] = val;
+					setters[s](val);
+					break;
+				}
+			}
+		}
+
+		/* Continue drag while mouse held */
+		if (draggingSlider >= 0 && input->mouseLeft) {
+			float val = (mx - slider_x) / SLIDER_WIDTH;
+			if (val < 0.0f) val = 0.0f;
+			if (val > 1.0f) val = 1.0f;
+			*volumes[draggingSlider] = val;
+			setters[draggingSlider](val);
+		}
+
+		/* Release drag */
+		if (draggingSlider >= 0 && !input->mouseLeft) {
+			draggingSlider = -1;
+		}
+	}
+
 	/* Button clicks */
 	if (clicked) {
 		float btn_y = py + ph - BUTTON_HEIGHT - BUTTON_GAP;
@@ -283,7 +368,10 @@ void Settings_update(const Input *input, const unsigned int ticks)
 		float cancel_x = content_x + btn_offset;
 		if (mx >= cancel_x && mx <= cancel_x + BUTTON_WIDTH &&
 			my >= btn_y && my <= btn_y + BUTTON_HEIGHT) {
-			/* Discard pending, close */
+			/* Discard pending, restore audio to pre-open values */
+			Audio_set_master_music(origMusicVol);
+			Audio_set_master_sfx(origSFXVol);
+			Audio_set_master_voice(origVoiceVol);
 			settingsOpen = false;
 			mouseWasDown = false;
 			return;
@@ -308,6 +396,9 @@ void Settings_update(const Input *input, const unsigned int ticks)
 			MapLighting_set_enabled(pendingLighting);
 			MapReflect_set_enabled(pendingReflections);
 			Map_set_circuit_traces(pendingCircuitTraces);
+			Audio_set_master_music(pendingMusicVol);
+			Audio_set_master_sfx(pendingSFXVol);
+			Audio_set_master_voice(pendingVoiceVol);
 			Settings_save();
 			if (msChanged || aaChanged || fsChanged)
 				Graphics_recreate();
@@ -571,6 +662,50 @@ void Settings_render(const Screen *screen)
 
 	}
 
+	/* Audio tab slider geometry */
+	if (selectedTab == TAB_AUDIO) {
+		float combo_x = content_x + (content_width - SLIDER_COMBO_W) * 0.5f;
+		float slider_x = combo_x + SLIDER_LEFT_PAD;
+		float group_start = content_y + 40.0f;
+		float group_spacing = 75.0f;
+		float knob_offset = 22.0f;
+
+		float volumes[3] = { pendingMusicVol, pendingSFXVol, pendingVoiceVol };
+
+		for (int s = 0; s < 3; s++) {
+			float knob_y = group_start + s * group_spacing + knob_offset;
+			float track_y = knob_y + (SLIDER_KNOB_H - SLIDER_HEIGHT) * 0.5f;
+			float knob_x = slider_x + volumes[s] * SLIDER_WIDTH - SLIDER_KNOB_W * 0.5f;
+			float fill_end = slider_x + volumes[s] * SLIDER_WIDTH;
+
+			/* Track background */
+			Render_quad_absolute(slider_x, track_y,
+				slider_x + SLIDER_WIDTH, track_y + SLIDER_HEIGHT,
+				0.15f, 0.15f, 0.2f, 0.9f);
+
+			/* Fill */
+			if (fill_end > slider_x) {
+				Render_quad_absolute(slider_x, track_y,
+					fill_end, track_y + SLIDER_HEIGHT,
+					0.3f, 0.5f, 0.8f, 0.9f);
+			}
+
+			/* Knob */
+			Render_quad_absolute(knob_x, knob_y,
+				knob_x + SLIDER_KNOB_W, knob_y + SLIDER_KNOB_H,
+				0.8f, 0.85f, 0.95f, 0.95f);
+			/* Knob border */
+			Render_thick_line(knob_x, knob_y,
+				knob_x + SLIDER_KNOB_W, knob_y, 1.0f, 0.5f, 0.5f, 0.6f, 0.8f);
+			Render_thick_line(knob_x, knob_y + SLIDER_KNOB_H,
+				knob_x + SLIDER_KNOB_W, knob_y + SLIDER_KNOB_H, 1.0f, 0.5f, 0.5f, 0.6f, 0.8f);
+			Render_thick_line(knob_x, knob_y,
+				knob_x, knob_y + SLIDER_KNOB_H, 1.0f, 0.5f, 0.5f, 0.6f, 0.8f);
+			Render_thick_line(knob_x + SLIDER_KNOB_W, knob_y,
+				knob_x + SLIDER_KNOB_W, knob_y + SLIDER_KNOB_H, 1.0f, 0.5f, 0.5f, 0.6f, 0.8f);
+		}
+	}
+
 	/* Buttons */
 	float btn_y = py + ph - BUTTON_HEIGHT - BUTTON_GAP;
 	float btn_gap = 40.0f;
@@ -748,6 +883,48 @@ void Settings_render(const Screen *screen)
 			pendingCircuitTraces ? 0.3f : 0.6f,
 			0.9f);
 
+	}
+
+	/* Audio tab text */
+	if (selectedTab == TAB_AUDIO) {
+		float combo_x = content_x + (content_width - SLIDER_COMBO_W) * 0.5f;
+		float slider_x = combo_x + SLIDER_LEFT_PAD;
+		float group_start = content_y + 40.0f;
+		float group_spacing = 75.0f;
+		float knob_offset = 22.0f;
+		float combo_center = combo_x + SLIDER_COMBO_W * 0.5f;
+
+		const char *labels[3] = { "Background Music", "Sound Effects", "Voice Recordings" };
+
+		for (int s = 0; s < 3; s++) {
+			float gy = group_start + s * group_spacing;
+			float knob_y = gy + knob_offset;
+			float bar_center_y = knob_y + SLIDER_KNOB_H * 0.5f + 4.0f;
+
+			/* Label centered above combo */
+			float lw = Text_measure_width(tr, labels[s]);
+			Text_render(tr, shaders, &proj, &ident,
+				labels[s], combo_center - lw * 0.5f, gy + 14.0f,
+				0.8f, 0.8f, 0.9f, 0.9f);
+
+			/* "0" left of slider */
+			Text_render(tr, shaders, &proj, &ident,
+				"0", slider_x - 16.0f, bar_center_y,
+				0.5f, 0.5f, 0.55f, 0.7f);
+
+			/* "100" right of slider */
+			Text_render(tr, shaders, &proj, &ident,
+				"100", slider_x + SLIDER_WIDTH + 6.0f, bar_center_y,
+				0.5f, 0.5f, 0.55f, 0.7f);
+
+			/* Current value */
+			float volumes[3] = { pendingMusicVol, pendingSFXVol, pendingVoiceVol };
+			char val_buf[8];
+			snprintf(val_buf, sizeof(val_buf), "%d", (int)(volumes[s] * 100.0f + 0.5f));
+			Text_render(tr, shaders, &proj, &ident,
+				val_buf, slider_x + SLIDER_WIDTH + 42.0f, bar_center_y,
+				0.6f, 0.75f, 1.0f, 0.9f);
+		}
 	}
 
 	/* Button text */

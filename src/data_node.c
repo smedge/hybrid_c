@@ -86,7 +86,6 @@ static unsigned int notifyTimer = 0;
 static Mix_Chunk *sampleCollect = 0;
 
 /* Voice playback */
-#define VOICE_CHANNEL 2
 static Mix_Chunk *voiceChunk = NULL;
 
 /* Sequential multi-clip voice playback */
@@ -135,15 +134,16 @@ void DataNode_cleanup(void)
 
 	if (duckLevel < 1.0f) {
 		duckLevel = 1.0f;
-		Mix_VolumeMusic(MIX_MAX_VOLUME);
+		Mix_VolumeMusic((int)(Audio_get_master_music() * MIX_MAX_VOLUME));
 	}
 
 	if (sfxDuckLevel < 1.0f || sfxDucking) {
 		sfxDuckLevel = 1.0f;
 		sfxDucking = false;
+		int vol = (int)(Audio_get_master_sfx() * MIX_MAX_VOLUME);
 		for (int ch = 0; ch < 64; ch++) {
 			if (ch == VOICE_CHANNEL) continue;
-			Mix_Volume(ch, MIX_MAX_VOLUME);
+			Mix_Volume(ch, vol);
 		}
 	}
 }
@@ -415,7 +415,7 @@ void DataNode_update_all(unsigned int ticks)
 			duckLevel += step;
 			if (duckLevel > target) duckLevel = target;
 		}
-		Mix_VolumeMusic((int)(duckLevel * MIX_MAX_VOLUME));
+		Mix_VolumeMusic((int)(duckLevel * Audio_get_master_music() * MIX_MAX_VOLUME));
 	}
 
 	/* Duck SFX channels while voice is playing */
@@ -433,7 +433,7 @@ void DataNode_update_all(unsigned int ticks)
 	}
 	if (sfxDuckLevel < 1.0f) {
 		/* Apply to all channels except the voice channel */
-		int sfx_vol = (int)(sfxDuckLevel * MIX_MAX_VOLUME);
+		int sfx_vol = (int)(sfxDuckLevel * Audio_get_master_sfx() * MIX_MAX_VOLUME);
 		for (int ch = 0; ch < 64; ch++) {
 			if (ch == VOICE_CHANNEL) continue;
 			Mix_Volume(ch, sfx_vol);
@@ -441,9 +441,10 @@ void DataNode_update_all(unsigned int ticks)
 		sfxDucking = true;
 	} else if (sfxDucking) {
 		/* One final restore pass when ducking ends */
+		int sfx_vol = (int)(Audio_get_master_sfx() * MIX_MAX_VOLUME);
 		for (int ch = 0; ch < 64; ch++) {
 			if (ch == VOICE_CHANNEL) continue;
-			Mix_Volume(ch, MIX_MAX_VOLUME);
+			Mix_Volume(ch, sfx_vol);
 		}
 		sfxDucking = false;
 	}

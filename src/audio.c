@@ -2,6 +2,10 @@
 
 static Mix_Music *music = NULL;
 
+static float masterMusic = 1.0f;
+static float masterSFX   = 1.0f;
+static float masterVoice = 1.0f;
+
 // TODO audio files/resonrces SHOUD be managed here, not in the entities
 
 void Audio_initialize(void)
@@ -79,6 +83,39 @@ void Audio_fade_out_channel(int channel, int ms)
 {
 	Mix_FadeOutChannel(channel, ms);
 }
+
+void Audio_set_master_music(float vol)
+{
+	if (vol < 0.0f) vol = 0.0f;
+	if (vol > 1.0f) vol = 1.0f;
+	masterMusic = vol;
+	Mix_VolumeMusic((int)(masterMusic * MIX_MAX_VOLUME));
+}
+
+float Audio_get_master_music(void) { return masterMusic; }
+
+void Audio_set_master_sfx(float vol)
+{
+	if (vol < 0.0f) vol = 0.0f;
+	if (vol > 1.0f) vol = 1.0f;
+	masterSFX = vol;
+	for (int ch = 0; ch < 64; ch++) {
+		if (ch == VOICE_CHANNEL) continue;
+		Mix_Volume(ch, (int)(masterSFX * MIX_MAX_VOLUME));
+	}
+}
+
+float Audio_get_master_sfx(void) { return masterSFX; }
+
+void Audio_set_master_voice(float vol)
+{
+	if (vol < 0.0f) vol = 0.0f;
+	if (vol > 1.0f) vol = 1.0f;
+	masterVoice = vol;
+	Mix_Volume(VOICE_CHANNEL, (int)(masterVoice * MIX_MAX_VOLUME));
+}
+
+float Audio_get_master_voice(void) { return masterVoice; }
 
 void Audio_boost_sample(Mix_Chunk *chunk, float gain)
 {
