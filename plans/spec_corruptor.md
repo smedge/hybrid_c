@@ -88,32 +88,7 @@ The corruptor uses three subroutines in its AI, all of which are droppable for t
 | Feedback cost | 30 (2x mine explosion) |
 | Visual | Blue-white expanding explosion (same geometry as mine blast, blue palette) |
 
-**The Big Question: Enemy Feedback**
-
-Currently, enemies do not have a feedback system. They have HP and that's it. sub_emp against the player is straightforward (spike their feedback bar), but what does sub_emp do when the PLAYER uses it against ENEMIES?
-
-Options to explore:
-
-**Option A: Enemies gain a feedback system**
-- Every enemy gets a feedback stat (max 100, decays over time)
-- Enemy subroutine usage generates feedback (hunter shooting, seeker dashing, defender healing/shielding)
-- At max feedback, enemies can't use their subroutines (stunned/silenced)
-- EMP on enemies = spike their feedback, disabling abilities temporarily
-- **Pro**: True system unification, deep gameplay implications
-- **Con**: Major architectural change, balance implications for ALL enemies, visual/UX complexity
-
-**Option B: EMP is a "silence" effect on enemies**
-- EMP disables enemy subroutine usage for N seconds (no sprint, no heal, no shield, no shooting)
-- Functionally similar to Option A's outcome but without the full feedback system
-- **Pro**: Simpler to implement, clear gameplay effect
-- **Con**: Doesn't create the same systemic depth, "silence" is a different mechanic than feedback
-
-**Option C: EMP deals feedback damage to enemies (simplified)**
-- Enemies don't have a full feedback bar but EMP deals a burst of "disruption damage" (reduced HP damage + brief slow/stun)
-- **Pro**: Easiest to implement
-- **Con**: Feels like just another damage ability with extra steps
-
-**Recommendation**: Option A is the most interesting long-term but is a significant architectural investment. Option B gets us 80% of the gameplay for 20% of the work. Worth discussing which path to take before implementation.
+**Enemy Feedback**: See the Feedback Unification section below for full details. Enemies have the same feedback system as the player — universal 15/sec decay, spillover damages integrity, and per-instance aggression determines how far past the limit they'll push.
 
 ### sub_resist (Shield?, Normal Tier)
 
@@ -128,7 +103,7 @@ Options to explore:
 | Damage reduction | 50% |
 | Duration | 5 seconds |
 | Cooldown | 15 seconds |
-| Feedback cost (player) | 15-20? |
+| Feedback cost | 25 |
 | Target (enemy) | Single ally |
 | Target (player) | Self |
 
@@ -198,6 +173,83 @@ Corruptor + Defender composition: defender shields/heals the corruptor as it ret
   - sub_resist (normal): 10 fragments
   - sub_emp (rare): 15 fragments, only drops once both normal corruptor skills are collected (50% drop rate per kill after that)
 - **First appearance**: Nexus Corridor (not a starter enemy)
+
+---
+
+## Feedback Unification
+
+Enemies gain a feedback system identical to the player's. This is required for sub_emp to work symmetrically and enriches all combat.
+
+### Universal Rules
+
+| Parameter | Value | Notes |
+|---|---|---|
+| Feedback max | 100 | Same as player |
+| Decay rate | 15/sec | Same as player, universal across all enemies |
+| Grace period | 500ms | Decay pauses briefly after feedback is generated |
+| EMP debuff | Decay halved (7.5/sec) for 10s | Applied by sub_emp |
+| Spillover | Excess feedback above max deals 1:1 integrity damage | Same as player |
+
+### Ability Gate
+Before using any ability, an enemy checks: `feedback + cost <= max` (or aggression override, see below). If it can't afford the ability, it skips it — no frozen/stunned state, the enemy still moves, patrols, chases, flees. It just can't fire its abilities.
+
+### Behavior When Feedback-Locked
+Enemies are NOT stunned. They continue their normal movement/positioning AI:
+- **Hunters**: Chase/patrol but can't fire bursts
+- **Seekers**: Stalk/orbit but can't dash
+- **Defenders**: Follow allies but can't heal or shield
+- **Corruptors**: Position near allies but can't sprint, EMP, or resist
+- **Mines**: Unaffected (passive, no ability cost)
+
+The enemy appears impotent but not frozen. Experienced players learn to recognize and exploit these windows.
+
+### Per-Enemy Ability Costs (Initial Tuning)
+
+| Enemy | Ability | Cost | Notes |
+|---|---|---|---|
+| Hunter | 3-shot burst | 15 | ~6-7 bursts before feedback-locked at sustained fire |
+| Seeker | Dash attack | 40 | One dash = significant commitment, 2 dashes = near max |
+| Defender | Heal | 20 | Can heal ~5x before dry |
+| Defender | Aegis (self-shield) | 30 | Expensive — can't shield AND heal freely |
+| Corruptor | Sprint | 0 | Free — sprint is just movement |
+| Corruptor | EMP | 30 | Big commitment |
+| Corruptor | Resist | 15 | Moderate — can buff a couple allies between decays |
+
+### Aggression Scale (1-10)
+
+Each enemy instance spawns with a random integer aggression value from 1-10. This determines how they handle the feedback limit.
+
+| Aggression | Behavior |
+|---|---|
+| 1-3 | **Conservative.** Stops using abilities at max feedback. Waits for decay. |
+| 4-6 | **Moderate.** Will push past the limit for a couple extra ability uses. Takes some spillover damage but backs off before it gets dangerous. |
+| 7-9 | **Aggressive.** Keeps firing well past the limit. Takes significant self-damage from spillover. Will fight through 40-60% HP loss from feedback alone. |
+| 10 | **Kamikaze.** No limit. Will burn itself to death through spillover if it means finishing the player. Takes one for the team knowing it respawns in 30 seconds. |
+
+**Implementation**: When `feedback + cost > max`, the enemy rolls against its aggression. Higher aggression = more likely to force the ability through and eat the spillover. Aggression 10 always forces through, no check.
+
+**Spillover cap by aggression** (rough guideline):
+- Aggression 1-3: 0 spillover tolerance (never push past max)
+- Aggression 4-6: Up to ~20-30 spillover HP loss before stopping
+- Aggression 7-9: Up to ~40-60 spillover HP loss before stopping
+- Aggression 10: No cap — fires until dead
+
+**EMP + Aggression interaction**: An EMP'd group of aggressive enemies becomes chaotic. Conservative enemies shut down for 10+ seconds. Aggressive ones keep firing, eating massive spillover from the halved decay. A kamikaze enemy that gets EMP'd is essentially on a self-destruct timer as it keeps attacking. This creates emergent variety in every encounter.
+
+**Fragment drop rule**: Fragments only drop when the player lands the killing blow. Enemies that die from their own feedback spillover, or any other non-player source, do not drop fragments.
+
+**Tuning note**: Aggression distribution can be adjusted per zone. Early zones might weight toward 1-5 (forgiving). Late zones might weight toward 5-10 (punishing). Boss encounters could have fixed high aggression.
+
+### Feedback-Locked Visual Tell
+
+The player needs to see when an enemy is tapped out. Options (pick one or combine):
+- **Color desaturation**: Enemy color fades/greys out as feedback increases
+- **Flicker/stutter**: Enemy geometry briefly flickers when at max feedback
+- **Small bar**: Appears above enemy only when feedback > 50%, disappears when drained
+
+Recommend: subtle desaturation + flicker at max. No bar initially — keep the HUD clean, let players learn to read the behavioral tell (it stopped shooting), then add the visual confirmation.
+
+---
 
 ## Open Questions
 
