@@ -7,6 +7,7 @@
 #include "narrative.h"
 #include "data_node.h"
 
+#include <OpenGL/gl3.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -61,6 +62,12 @@ static int selectedTab = 0;
 static float scrollOffset = 0.0f;
 static int expandedEntry = -1; /* index within current tab's entries, -1 = none */
 static bool mouseWasDown = false;
+
+/* Drag-to-scroll state */
+static bool dragging = false;
+static float dragMouseStartY = 0.0f;
+static float dragStartScroll = 0.0f;
+#define DRAG_THRESHOLD 4.0f
 
 /* Cached zone tab list — rebuilt when window opens */
 static char zoneTabs[MAX_ZONE_TABS][64];
@@ -189,7 +196,7 @@ static float measure_body_height(TextRenderer *tr, const NarrativeEntry *e, floa
 	}
 	if (linelen > 0)
 		h += BODY_LINE_HEIGHT;
-	return h + PADDING; /* bottom padding for expanded body */
+	return h + 20.0f + PADDING; /* top gap (separator+spacing) + bottom padding */
 }
 
 void DataLogs_update(Input *input, unsigned int ticks)
@@ -202,76 +209,97 @@ void DataLogs_update(Input *input, unsigned int ticks)
 		return;
 	}
 
-	/* Scroll with mouse wheel */
-	if (input->mouseWheelUp)
+	/* Scroll with mouse wheel — consume events so gameplay doesn't zoom */
+	if (input->mouseWheelUp) {
 		scrollOffset -= 30.0f;
-	if (input->mouseWheelDown)
+		input->mouseWheelUp = false;
+	}
+	if (input->mouseWheelDown) {
 		scrollOffset += 30.0f;
+		input->mouseWheelDown = false;
+	}
 	if (scrollOffset < 0.0f) scrollOffset = 0.0f;
 
-	/* Click handling */
 	bool mouseDown = input->mouseLeft;
-	bool clicked = mouseDown && !mouseWasDown;
-	mouseWasDown = mouseDown;
-
-	if (!clicked) return;
-
 	float mx = (float)input->mouseX;
 	float my = (float)input->mouseY;
 
-	/* Window position */
 	Screen screen = Graphics_get_screen();
 	float px = panel_x(&screen);
 	float py = panel_y(&screen);
 
-	/* Check if click is outside window → close */
-	if (mx < px || mx > px + DLOG_WIDTH || my < py || my > py + DLOG_HEIGHT) {
-		logsOpen = false;
-		return;
-	}
-
-	/* Tab clicks (left column) */
-	float tab_x = px + TAB_GAP;
-	float tab_y = py + TAB_GAP;
-	for (int t = 0; t < zoneTabCount; t++) {
-		float ty = tab_y + t * (TAB_HEIGHT + TAB_GAP);
-		if (mx >= tab_x && mx <= tab_x + TAB_WIDTH &&
-		    my >= ty && my <= ty + TAB_HEIGHT) {
-			selectedTab = t;
-			scrollOffset = 0.0f;
-			expandedEntry = -1;
+	/* Mouse just pressed */
+	if (mouseDown && !mouseWasDown) {
+		/* Outside window → close */
+		if (mx < px || mx > px + DLOG_WIDTH || my < py || my > py + DLOG_HEIGHT) {
+			logsOpen = false;
+			mouseWasDown = mouseDown;
 			return;
 		}
+		dragMouseStartY = my;
+		dragStartScroll = scrollOffset;
+		dragging = false;
 	}
 
-	/* Content area clicks (accordion titles) */
-	float content_x = px + TAB_WIDTH + TAB_GAP * 2.0f;
-	float content_top = py + TAB_GAP;
-	float content_w = DLOG_WIDTH - TAB_WIDTH - TAB_GAP * 3.0f - SCROLLBAR_WIDTH;
-
-	TextRenderer *tr = Graphics_get_text_renderer();
-	int entry_count = count_entries_for_tab(selectedTab);
-	float cursor_y = content_top - scrollOffset;
-
-	for (int i = 0; i < entry_count; i++) {
-		/* Title row */
-		if (my >= cursor_y && my <= cursor_y + TITLE_ROW_HEIGHT &&
-		    mx >= content_x && mx <= content_x + content_w + SCROLLBAR_WIDTH) {
-			if (expandedEntry == i)
-				expandedEntry = -1; /* collapse */
-			else
-				expandedEntry = i; /* expand (auto-collapses previous) */
-			return;
-		}
-		cursor_y += TITLE_ROW_HEIGHT;
-
-		/* If expanded, skip over body height */
-		if (expandedEntry == i) {
-			const NarrativeEntry *e = get_entry_for_tab(selectedTab, i);
-			if (e)
-				cursor_y += measure_body_height(tr, e, content_w - INDICATOR_WIDTH - 4.0f);
+	/* Mouse held — check for drag-to-scroll */
+	if (mouseDown && mouseWasDown) {
+		float dy = my - dragMouseStartY;
+		if (!dragging && fabsf(dy) > DRAG_THRESHOLD)
+			dragging = true;
+		if (dragging) {
+			scrollOffset = dragStartScroll + dy;
+			if (scrollOffset < 0.0f) scrollOffset = 0.0f;
 		}
 	}
+
+	/* Mouse just released — if it wasn't a drag, handle as click */
+	if (!mouseDown && mouseWasDown && !dragging) {
+		/* Tab clicks (left column) */
+		float tab_x = px + TAB_GAP;
+		float tab_y = py + TAB_GAP;
+		for (int t = 0; t < zoneTabCount; t++) {
+			float ty = tab_y + t * (TAB_HEIGHT + TAB_GAP);
+			if (mx >= tab_x && mx <= tab_x + TAB_WIDTH &&
+			    my >= ty && my <= ty + TAB_HEIGHT) {
+				selectedTab = t;
+				scrollOffset = 0.0f;
+				expandedEntry = -1;
+				mouseWasDown = mouseDown;
+				return;
+			}
+		}
+
+		/* Content area clicks (accordion titles) */
+		float content_x = px + TAB_WIDTH + TAB_GAP * 2.0f;
+		float content_top = py + TAB_GAP;
+		float content_w = DLOG_WIDTH - TAB_WIDTH - TAB_GAP * 3.0f - SCROLLBAR_WIDTH;
+
+		TextRenderer *tr = Graphics_get_text_renderer();
+		int entry_count = count_entries_for_tab(selectedTab);
+		float cursor_y = content_top - scrollOffset;
+
+		for (int i = 0; i < entry_count; i++) {
+			if (my >= cursor_y && my <= cursor_y + TITLE_ROW_HEIGHT &&
+			    mx >= content_x && mx <= content_x + content_w + SCROLLBAR_WIDTH) {
+				if (expandedEntry == i)
+					expandedEntry = -1;
+				else
+					expandedEntry = i;
+				break;
+			}
+			cursor_y += TITLE_ROW_HEIGHT;
+
+			if (expandedEntry == i) {
+				const NarrativeEntry *e = get_entry_for_tab(selectedTab, i);
+				if (e)
+					cursor_y += measure_body_height(tr, e, content_w - INDICATOR_WIDTH - 4.0f);
+			}
+		}
+	}
+
+	if (!mouseDown)
+		dragging = false;
+	mouseWasDown = mouseDown;
 }
 
 /* --- Render helpers --- */
@@ -439,25 +467,7 @@ void DataLogs_render(const Screen *screen)
 	if (max_scroll < 0.0f) max_scroll = 0.0f;
 	if (scrollOffset > max_scroll) scrollOffset = max_scroll;
 
-	/* Render title row quads */
-	{
-		float cursor_y = content_top - scrollOffset;
-		for (int i = 0; i < entry_count; i++) {
-			if (cursor_y + TITLE_ROW_HEIGHT > content_top && cursor_y < content_top + content_h) {
-				/* Item background (subtle alternating) */
-				Render_quad_absolute(content_x, cursor_y,
-					content_x + content_w + SCROLLBAR_WIDTH, cursor_y + TITLE_ROW_HEIGHT,
-					0.12f, 0.12f, 0.14f, (i % 2 == 0) ? 0.9f : 0.6f);
-			}
-			cursor_y += TITLE_ROW_HEIGHT;
-			if (expandedEntry == i) {
-				const NarrativeEntry *e = get_entry_for_tab(selectedTab, i);
-				if (e) cursor_y += measure_body_height(tr, e, content_w - INDICATOR_WIDTH - 4.0f);
-			}
-		}
-	}
-
-	/* Scrollbar */
+	/* Scrollbar (not clipped) */
 	if (total_h > content_h && max_scroll > 0.0f) {
 		float sb_x = px + DLOG_WIDTH - SCROLLBAR_WIDTH - TAB_GAP;
 		float track_y = content_top;
@@ -473,10 +483,10 @@ void DataLogs_render(const Screen *screen)
 			0.7f, 0.7f, 0.7f, 0.4f);
 	}
 
-	/* ── Flush geometry, switch to text ── */
+	/* Flush panel chrome (background, border, tabs, scrollbar) before scissor */
 	Render_flush(&proj, &ident);
 
-	/* ── Title (floating above panel border, centered) ── */
+	/* ── Title (floating above panel border) ── */
 	{
 		const char *title = "DATA LOGS";
 		float tw = Text_measure_width(tr, title);
@@ -489,7 +499,6 @@ void DataLogs_render(const Screen *screen)
 	for (int t = 0; t < zoneTabCount; t++) {
 		float ty = tab_y + t * (TAB_HEIGHT + TAB_GAP);
 		float alpha = (t == selectedTab) ? 0.9f : 0.5f;
-		/* Truncate long zone names */
 		char label[32];
 		strncpy(label, zoneTabs[t], 31);
 		label[31] = '\0';
@@ -499,11 +508,38 @@ void DataLogs_render(const Screen *screen)
 			lw = Text_measure_width(tr, label);
 		}
 		Text_render(tr, shaders, &proj, &ident, label,
-			tab_x + 8.0f, ty + TAB_HEIGHT * 0.5f - 3.0f,
+			tab_x + 8.0f, ty + TAB_HEIGHT * 0.5f + 5.0f,
 			1.0f, 1.0f, 1.0f, alpha);
 	}
 
-	/* ── Accordion entries (text) ── */
+	/* ── Scissor-clipped scrollable content ── */
+	int draw_w, draw_h;
+	Graphics_get_drawable_size(&draw_w, &draw_h);
+	float dpi_x = (float)draw_w / screen->width;
+	float dpi_y = (float)draw_h / screen->height;
+	glEnable(GL_SCISSOR_TEST);
+	glScissor((int)(content_x * dpi_x),
+		draw_h - (int)((content_top + content_h) * dpi_y),
+		(int)((content_w + SCROLLBAR_WIDTH) * dpi_x),
+		(int)(content_h * dpi_y));
+
+	/* Title row backgrounds */
+	{
+		float cursor_y = content_top - scrollOffset;
+		for (int i = 0; i < entry_count; i++) {
+			Render_quad_absolute(content_x, cursor_y,
+				content_x + content_w, cursor_y + TITLE_ROW_HEIGHT,
+				0.12f, 0.12f, 0.14f, (i % 2 == 0) ? 0.9f : 0.6f);
+			cursor_y += TITLE_ROW_HEIGHT;
+			if (expandedEntry == i) {
+				const NarrativeEntry *e = get_entry_for_tab(selectedTab, i);
+				if (e) cursor_y += measure_body_height(tr, e, content_w - INDICATOR_WIDTH - 4.0f);
+			}
+		}
+	}
+	Render_flush(&proj, &ident);
+
+	/* Accordion entries (text) */
 	{
 		float cursor_y = content_top - scrollOffset;
 		float text_x = content_x + INDICATOR_WIDTH;
@@ -515,31 +551,40 @@ void DataLogs_render(const Screen *screen)
 			if (!e) { cursor_y += TITLE_ROW_HEIGHT; continue; }
 
 			/* Title row */
-			if (cursor_y + TITLE_ROW_HEIGHT > content_top && cursor_y < content_top + content_h) {
-				/* Expand/collapse indicator — Y aligned to tab text baseline */
-				float text_y = cursor_y + TAB_HEIGHT * 0.5f - 3.0f;
-				const char *indicator = (expandedEntry == i) ? "v" : ">";
-				Text_render(tr, shaders, &proj, &ident, indicator,
-					content_x + 4.0f, text_y,
-					0.4f, 0.8f, 0.9f, 0.8f);
+			float text_y = cursor_y + TITLE_ROW_HEIGHT * 0.5f + 5.0f;
+			const char *indicator = (expandedEntry == i) ? "v" : ">";
+			Text_render(tr, shaders, &proj, &ident, indicator,
+				content_x + 4.0f, text_y,
+				0.4f, 0.8f, 0.9f, 0.8f);
 
-				/* Title text */
-				Text_render(tr, shaders, &proj, &ident, e->title,
-					text_x, text_y,
-					0.9f, 0.9f, 1.0f, 0.95f);
+			/* Title text — truncate with ".." if too wide */
+			float title_avail = content_w - INDICATOR_WIDTH - 4.0f;
+			char truncTitle[256];
+			strncpy(truncTitle, e->title, 255);
+			truncTitle[255] = '\0';
+			if (Text_measure_width(tr, truncTitle) > title_avail) {
+				int len = (int)strlen(truncTitle);
+				while (len > 2) {
+					truncTitle[--len] = '\0';
+					char test[260];
+					snprintf(test, sizeof(test), "%s..", truncTitle);
+					if (Text_measure_width(tr, test) <= title_avail)
+						break;
+				}
+				strcat(truncTitle, "..");
 			}
+			Text_render(tr, shaders, &proj, &ident, truncTitle,
+				text_x, text_y,
+				0.9f, 0.9f, 1.0f, 0.95f);
 			cursor_y += TITLE_ROW_HEIGHT;
 
 			/* Expanded body */
 			if (expandedEntry == i) {
-				/* Separator line under title */
-				if (cursor_y > content_top && cursor_y < content_top + content_h) {
-					Render_thick_line(body_x, cursor_y - 2.0f,
-						body_x + body_w - 20.0f, cursor_y - 2.0f,
-						1.0f, SEP_R, SEP_G, SEP_B, SEP_A);
-					Render_flush(&proj, &ident);
-				}
-				cursor_y += 10.0f;
+				Render_thick_line(body_x, cursor_y - 2.0f,
+					body_x + body_w - 20.0f, cursor_y - 2.0f,
+					1.0f, SEP_R, SEP_G, SEP_B, SEP_A);
+				Render_flush(&proj, &ident);
+				cursor_y += 20.0f;
 
 				render_body_text(tr, shaders, &proj, &ident, e,
 					body_x, body_w,
@@ -548,6 +593,8 @@ void DataLogs_render(const Screen *screen)
 			}
 		}
 	}
+
+	glDisable(GL_SCISSOR_TEST);
 
 	/* ── Key hints (below panel, matching catalog style) ── */
 	Text_render(tr, shaders, &proj, &ident,

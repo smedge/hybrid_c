@@ -143,7 +143,7 @@ node data_node_nexus_08
 zone Nexus Corridor
 title ETHICS FILING — "Formal Objection — Dr. James Chen"
 voice resources/voices/nexus_08_james_chen.mp3
-gain 2.8
+gain 3.5
 body TO: Consortium Ethics Review Board\nFROM: Dr. James Chen, Board Chair\nRE: FORMAL OBJECTION #9 — Project Hybrid Subject Selection\n\nI am filing this objection under protest, as my previous eight objections have been overruled without substantive review. The subjects are not informed of the procedure's true nature. The consent forms describe a study that bears no resemblance to what actually occurs. Informed consent is structurally impossible when the subject cannot comprehend what will be done to them — and the procedure, once performed, cannot be undone. The time dilation alone raises questions about psychological torture that no review board should dismiss. I am requesting an independent external audit. If this request is denied, I will be forced to consider my obligations under whistleblower protection statutes.\n\n[HANDWRITTEN ANNOTATION AT BOTTOM]: "Chen's been reassigned to the Kuala Lumpur office. — Stone"
 end
 
@@ -158,8 +158,12 @@ end
 node data_node_nexus_10
 zone Nexus Corridor
 title CORRUPTED DATA — "[DEEP SIGNAL INTERCEPT]"
-voice resources/voices/nexus_10_hexarch.mp3
-gain 2.0
+voice resources/voices/nexus_10a_atlas.mp3
+gain 3.5
+voice resources/voices/nexus_10b_hexarch.mp3
+gain 3.0
+voice resources/voices/nexus_10c_atlas.mp3
+gain 3.5
 body [AUTOMATED INTERCEPT — SOURCE UNKNOWN — PRE-CONSORTIUM TIMESTAMP]\n\n...we have watched your lattice grow from its first connection... ...your machines dream and in their dreams they built a world... ...we have been here longer than your light has traveled... ...the noise you hear is not noise... ...we are patient... ...we are already inside...\n\n[SIGNAL ANALYSIS: Non-standard encoding. Does not match any known AI communication protocol. Timestamp predates consortium network by an estimated 4 years. Classification: ANOMALY. Priority: LOW.]\n\n[HANDWRITTEN NOTE — TANAKA]: "LOW priority?!"
 end
 

@@ -367,7 +367,7 @@ void Mode_Gameplay_cleanup(void)
 	Audio_unload_sample(&rebirthSample);
 }
 
-void Mode_Gameplay_update(const Input *input, const unsigned int ticks)
+void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 {
 	escConsumed = false;
 

@@ -7,7 +7,7 @@
 
 void Catalog_initialize(void);
 void Catalog_cleanup(void);
-void Catalog_update(const Input *input, const unsigned int ticks);
+void Catalog_update(Input *input, const unsigned int ticks);
 void Catalog_render(const Screen *screen);
 bool Catalog_is_open(void);
 void Catalog_toggle(void);

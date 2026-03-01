@@ -29,7 +29,7 @@
 void Mode_Gameplay_initialize(void);
 void Mode_Gameplay_initialize_from_save(void);
 void Mode_Gameplay_cleanup(void);
-void Mode_Gameplay_update(const Input *input, const unsigned int ticks);
+void Mode_Gameplay_update(Input *input, const unsigned int ticks);
 void Mode_Gameplay_render(void);
 bool Mode_Gameplay_consumed_esc(void);
 

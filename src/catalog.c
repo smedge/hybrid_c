@@ -288,7 +288,7 @@ void Catalog_mark_all_seen(void)
 		seenState[i] = get_sub_state(i);
 }
 
-void Catalog_update(const Input *input, const unsigned int ticks)
+void Catalog_update(Input *input, const unsigned int ticks)
 {
 	if (!catalogOpen)
 		return;
@@ -344,10 +344,14 @@ void Catalog_update(const Input *input, const unsigned int ticks)
 	float max_scroll = total_content - item_area_h;
 	if (max_scroll < 0.0f) max_scroll = 0.0f;
 
-	if (input->mouseWheelUp)
+	if (input->mouseWheelUp) {
 		scrollOffset -= ITEM_HEIGHT;
-	if (input->mouseWheelDown)
+		input->mouseWheelUp = false;
+	}
+	if (input->mouseWheelDown) {
 		scrollOffset += ITEM_HEIGHT;
+		input->mouseWheelDown = false;
+	}
 	if (scrollOffset < 0.0f) scrollOffset = 0.0f;
 	if (scrollOffset > max_scroll) scrollOffset = max_scroll;
 
@@ -623,13 +627,13 @@ void Catalog_render(const Screen *screen)
 			float sz = 50.0f;
 
 			Render_thick_line(bx, by, bx + sz, by,
-				2.0f, 1.0f, 1.0f, 0.0f, 0.6f);
+				2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
 			Render_thick_line(bx, by + sz, bx + sz, by + sz,
-				2.0f, 1.0f, 1.0f, 0.0f, 0.6f);
+				2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
 			Render_thick_line(bx, by, bx, by + sz,
-				2.0f, 1.0f, 1.0f, 0.0f, 0.6f);
+				2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
 			Render_thick_line(bx + sz, by, bx + sz, by + sz,
-				2.0f, 1.0f, 1.0f, 0.0f, 0.6f);
+				2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
 		}
 	}
 

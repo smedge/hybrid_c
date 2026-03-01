@@ -18,7 +18,7 @@ static SdlApp sdlApp;
 static void initialize(void); 
 static void cleanup(void);
 static void loop(void);
-static void update(const Input *input, const unsigned int ticks);
+static void update(Input *input, const unsigned int ticks);
 static void render(void);
 static void reset_input(Input *input);
 
@@ -183,7 +183,7 @@ static void change_mode(const Mode mode)
 	initialize_mode();
 }
 
-static void update(const Input* const input, const unsigned int ticks)
+static void update(Input *input, const unsigned int ticks)
 {
 	switch (sdlApp.mode) {
 	case INTRO:
