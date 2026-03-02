@@ -21,6 +21,14 @@ void PlayerStats_set_iframes(int ms);
 bool PlayerStats_has_iframes(void);
 void PlayerStats_boost_regen(int duration_ms, double multiplier);
 
+/* EMP debuff: spikes feedback to max, halves decay rate */
+void PlayerStats_apply_emp(unsigned int duration_ms);
+bool PlayerStats_is_emp_debuffed(void);
+
+/* Damage resistance: reduces incoming damage by 50% */
+void PlayerStats_set_resist(bool enabled, unsigned int duration_ms);
+bool PlayerStats_has_resist(void);
+
 /* Snapshot/restore for zone transitions */
 typedef struct {
 	double integrity;

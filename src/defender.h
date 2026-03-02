@@ -19,6 +19,7 @@ bool Defender_find_wounded(Position from, double range, double hp_threshold, Pos
 bool Defender_find_aggro(Position from, double range, Position *out_pos);
 void Defender_heal(int index, double amount);
 void Defender_alert_nearby(Position origin, double radius, Position threat);
+void Defender_apply_emp(Position center, double half_size, unsigned int duration_ms);
 int Defender_get_count(void);
 
 #endif

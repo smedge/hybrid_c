@@ -22,6 +22,9 @@
 #include "sub_inferno.h"
 #include "sub_gravwell.h"
 #include "sub_tgun.h"
+#include "sub_emp.h"
+#include "sub_resist.h"
+#include "corruptor.h"
 #include "map_reflect.h"
 #include "map_lighting.h"
 #include "grid.h"
@@ -689,10 +692,13 @@ void Mode_Gameplay_render(void)
 		Sub_Disintegrate_render_light_source();
 		Sub_Gravwell_render_light_source();
 		Sub_Tgun_render_light_source();
+		Sub_Emp_render_light_source();
+		Sub_Resist_render_light_source();
 		Mine_render_light_source();
 		Hunter_render_light_source();
 		Seeker_render_light_source();
 		Stalker_render_light_source();
+		Corruptor_render_light_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(lb, draw_w, draw_h);
 
@@ -750,7 +756,10 @@ void Mode_Gameplay_render(void)
 		Seeker_render_bloom_source();
 		Defender_render_bloom_source();
 		Stalker_render_bloom_source();
+		Corruptor_render_bloom_source();
 		Sub_Aegis_render_bloom_source();
+		Sub_Emp_render_bloom_source();
+		Sub_Resist_render_bloom_source();
 		Portal_render_bloom_source();
 		Savepoint_render_bloom_source();
 		DataNode_render_bloom_source();

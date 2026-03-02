@@ -6,6 +6,7 @@
 #include "seeker.h"
 #include "defender.h"
 #include "stalker.h"
+#include "corruptor.h"
 #include "portal.h"
 #include "savepoint.h"
 #include "data_node.h"
@@ -403,6 +404,7 @@ void Zone_unload(void)
 	Seeker_cleanup();
 	Defender_cleanup();
 	Stalker_cleanup();
+	Corruptor_cleanup();
 	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();
@@ -1167,6 +1169,7 @@ static void rebuild_enemies(void)
 	Seeker_cleanup();
 	Defender_cleanup();
 	Stalker_cleanup();
+	Corruptor_cleanup();
 	EnemyRegistry_clear();
 	Entity_recalculate_highest_index();
 	Zone_spawn_enemies();
@@ -1196,6 +1199,8 @@ void Zone_spawn_enemies(void)
 			Defender_initialize(pos);
 		else if (strcmp(sp->enemy_type, "stalker") == 0)
 			Stalker_initialize(pos);
+		else if (strcmp(sp->enemy_type, "corruptor") == 0)
+			Corruptor_initialize(pos);
 	}
 }
 
@@ -1247,6 +1252,7 @@ static void apply_zone_to_world(void)
 	Seeker_cleanup();
 	Defender_cleanup();
 	Stalker_cleanup();
+	Corruptor_cleanup();
 	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();

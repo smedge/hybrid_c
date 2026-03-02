@@ -32,7 +32,8 @@ static const char *tab_names[SUB_TYPE_COUNT] = {
 	"Shield",
 	"Healing",
 	"Stealth",
-	"Control"
+	"Control",
+	"Area Effect"
 };
 
 /* State */

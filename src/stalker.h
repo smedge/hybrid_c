@@ -18,6 +18,7 @@ bool Stalker_find_wounded(Position from, double range, double hp_threshold, Posi
 bool Stalker_find_aggro(Position from, double range, Position *out_pos);
 void Stalker_heal(int index, double amount);
 void Stalker_alert_nearby(Position origin, double radius, Position threat);
+void Stalker_apply_emp(Position center, double half_size, unsigned int duration_ms);
 int Stalker_get_count(void);
 void Stalker_update_projectiles(unsigned int ticks);
 

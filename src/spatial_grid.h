@@ -12,7 +12,8 @@ typedef enum {
 	ENTITY_SEEKER,
 	ENTITY_MINE,
 	ENTITY_DEFENDER,
-	ENTITY_STALKER
+	ENTITY_STALKER,
+	ENTITY_CORRUPTOR
 } SpatialEntityType;
 
 typedef struct {

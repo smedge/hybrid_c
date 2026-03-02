@@ -34,6 +34,9 @@ static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_DISINTEGRATE] = { "DISINTEGRATE", "sub_disintegrate", FRAG_TYPE_DISINTEGRATE, 5, false },
 	[SUB_ID_GRAVWELL] = { "GRAVWELL", "sub_gravwell", FRAG_TYPE_GRAVWELL, 5, false },
 	[SUB_ID_TGUN] = { "TGUN", "sub_tgun", FRAG_TYPE_TGUN, 50, false },
+	[SUB_ID_SPRINT] = { "SPRINT", "sub_sprint", FRAG_TYPE_CORRUPTOR, 10, false },
+	[SUB_ID_EMP] = { "EMP", "sub_emp", FRAG_TYPE_CORRUPTOR, 15, false },
+	[SUB_ID_RESIST] = { "RESIST", "sub_resist", FRAG_TYPE_CORRUPTOR, 10, false },
 };
 
 /* Notification state */
@@ -77,7 +80,7 @@ void Progression_update(unsigned int ticks)
 				notifyTier = TIER_NORMAL;
 
 				const char *type_names[] = {
-					"Projectile", "Deployable", "Movement", "Shield", "Healing", "Stealth", "Control"
+					"Projectile", "Deployable", "Movement", "Shield", "Healing", "Stealth", "Control", "Area Effect"
 				};
 				SubroutineType type = Skillbar_get_sub_type(i);
 				snprintf(notifyText, sizeof(notifyText),

@@ -2,6 +2,7 @@
 #include "sub_shield_core.h"
 #include "sub_heal_core.h"
 #include "enemy_util.h"
+#include "enemy_feedback.h"
 #include "enemy_registry.h"
 #include "fragment.h"
 #include "progression.h"
@@ -118,6 +119,9 @@ typedef struct {
 	/* Death/respawn */
 	int deathTimer;
 	int respawnTimer;
+
+	/* Feedback */
+	EnemyFeedback fb;
 } DefenderState;
 
 /* Shared singleton components */
@@ -249,6 +253,16 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 	if (bestType < 0)
 		return false;
 
+	/* Heal costs 20 feedback — spend only after confirming a target */
+	double hpBefore = d->hp;
+	if (!EnemyFeedback_try_spend(&d->fb, 20.0, &d->hp))
+		return false;
+	if (d->hp < hpBefore) {
+		int idx = (int)(d - defenders);
+		activate_spark(placeables[idx].position, false);
+		Audio_play_sample(&sampleHit);
+	}
+
 	EnemyRegistry_heal(bestType, bestIdx, defHealCfg.heal_amount);
 
 	SubHeal_try_activate(&d->healCore, &defHealCfg, pl->position, bestPos);
@@ -257,6 +271,27 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 
 static void activate_aegis(DefenderState *d)
 {
+	/* Already active or on cooldown — don't spend feedback */
+	if (SubShield_is_active(&d->shieldCore) || d->shieldCore.cooldownMs > 0)
+		return;
+
+	/* Aegis costs 30 feedback */
+	double hpBefore = d->hp;
+	if (!EnemyFeedback_try_spend(&d->fb, 30.0, &d->hp))
+		return;
+	if (d->hp < hpBefore) {
+		int idx = (int)(d - defenders);
+		activate_spark(placeables[idx].position, false);
+		Audio_play_sample(&sampleHit);
+	}
+	/* Feedback spillover self-kill */
+	if (d->hp <= 0.0) {
+		d->alive = false;
+		d->aiState = DEFENDER_DYING;
+		d->deathTimer = 0;
+		d->killedByPlayer = false;
+		return;
+	}
 	SubShield_try_activate(&d->shieldCore, &defShieldCfg);
 }
 
@@ -284,6 +319,7 @@ void Defender_initialize(Position position)
 	d->prevPosition = position;
 	d->deathTimer = 0;
 	d->respawnTimer = 0;
+	EnemyFeedback_init(&d->fb);
 	pick_wander_target(d);
 
 	placeables[idx].position = position;
@@ -307,7 +343,7 @@ void Defender_initialize(Position position)
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal, Defender_alert_nearby};
+		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal, Defender_alert_nearby, Defender_apply_emp};
 		defenderTypeId = EnemyRegistry_register(cb);
 	}
 }
@@ -385,6 +421,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				d->killedByPlayer = false;
 				SubHeal_init(&d->healCore);
 				SubShield_init(&d->shieldCore);
+				EnemyFeedback_reset(&d->fb);
 				Position oldPos = pl->position;
 				pl->position = d->spawnPoint;
 				pick_wander_target(d);
@@ -398,6 +435,9 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	}
 
 	Position oldPos = pl->position;
+
+	/* Tick feedback decay */
+	EnemyFeedback_update(&d->fb, ticks);
 
 	d->prevPosition = pl->position;
 	d->boosting = false;
@@ -665,6 +705,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			d->killedByPlayer = false;
 			SubHeal_init(&d->healCore);
 			SubShield_init(&d->shieldCore);
+			EnemyFeedback_reset(&d->fb);
 			pl->position = d->spawnPoint;
 			pick_wander_target(d);
 			Audio_play_sample(&sampleRespawn);
@@ -821,6 +862,7 @@ void Defender_reset_all(void)
 		d->killedByPlayer = false;
 		SubHeal_init(&d->healCore);
 		SubShield_init(&d->shieldCore);
+		EnemyFeedback_reset(&d->fb);
 		d->boosting = false;
 		d->deathTimer = 0;
 		d->respawnTimer = 0;
@@ -951,6 +993,20 @@ void Defender_alert_nearby(Position origin, double radius, Position threat)
 			continue;
 		if (Enemy_distance_between(placeables[i].position, origin) < radius)
 			d->aiState = DEFENDER_SUPPORTING;
+	}
+}
+
+void Defender_apply_emp(Position center, double half_size, unsigned int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (!d->alive || d->aiState == DEFENDER_DYING || d->aiState == DEFENDER_DEAD)
+			continue;
+		double dx = placeables[i].position.x - center.x;
+		double dy = placeables[i].position.y - center.y;
+		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
+			continue;
+		EnemyFeedback_apply_emp(&d->fb, duration_ms);
 	}
 }
 

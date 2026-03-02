@@ -47,3 +47,11 @@ void EnemyRegistry_alert_nearby(Position origin, double radius, Position threat)
 			types[i].alert_nearby(origin, radius, threat);
 	}
 }
+
+void EnemyRegistry_apply_emp(Position center, double half_size, unsigned int duration_ms)
+{
+	for (int i = 0; i < typeCount; i++) {
+		if (types[i].apply_emp)
+			types[i].apply_emp(center, half_size, duration_ms);
+	}
+}

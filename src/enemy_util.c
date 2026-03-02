@@ -4,6 +4,7 @@
 #include "render.h"
 #include "color.h"
 #include "ship.h"
+#include "corruptor.h"
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
@@ -61,6 +62,12 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 	if (egress_dmg > 0) {
 		r.damage += egress_dmg * mul;
 		r.hit = true;
+	}
+
+	/* Corruptor resist aura — halves all damage */
+	if (r.hit && Corruptor_is_resist_buffing(enemyPos)) {
+		r.damage *= 0.5;
+		r.mine_damage *= 0.5;
 	}
 
 	return r;

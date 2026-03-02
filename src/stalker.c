@@ -2,6 +2,7 @@
 #include "sub_pea.h"
 #include "sub_egress.h"
 #include "enemy_util.h"
+#include "enemy_feedback.h"
 #include "defender.h"
 #include "fragment.h"
 #include "progression.h"
@@ -93,6 +94,9 @@ typedef struct {
 
 	/* Stealth alpha (computed each frame) */
 	float stealthAlpha;
+
+	/* Feedback */
+	EnemyFeedback fb;
 } StalkerState;
 
 /* Shared singleton components */
@@ -238,6 +242,7 @@ void Stalker_initialize(Position position)
 	s->deathTimer = 0;
 	s->respawnTimer = 0;
 	s->stealthAlpha = STEALTH_ALPHA_MIN;
+	EnemyFeedback_init(&s->fb);
 	pick_wander_target(s);
 
 	placeables[idx].position = position;
@@ -263,7 +268,7 @@ void Stalker_initialize(Position position)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Stalker_find_wounded, Stalker_find_aggro, Stalker_heal, Stalker_alert_nearby};
+		EnemyTypeCallbacks cb = {Stalker_find_wounded, Stalker_find_aggro, Stalker_heal, Stalker_alert_nearby, Stalker_apply_emp};
 		EnemyRegistry_register(cb);
 	}
 }
@@ -358,6 +363,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 				s->hp = STALKER_HP;
 				s->aiState = STALKER_IDLE;
 				s->killedByPlayer = false;
+				EnemyFeedback_reset(&s->fb);
 				Position oldPos = pl->position;
 				pl->position = s->spawnPoint;
 				pick_wander_target(s);
@@ -371,6 +377,9 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 	}
 
 	Position oldPos = pl->position;
+
+	/* Tick feedback decay */
+	EnemyFeedback_update(&s->fb, ticks);
 
 	if (s->alive)
 		Enemy_check_stealth_proximity(pl->position, s->facing);
@@ -458,8 +467,24 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		Enemy_move_toward(pl, shipPos, STALK_SPEED, dt, WALL_CHECK_DIST);
 		s->facing = Position_get_heading(pl->position, shipPos);
 
-		/* Within strike range → begin windup */
-		if (dist < STRIKE_RANGE) {
+		/* Within strike range → begin windup (costs 40 feedback) */
+		if (dist < STRIKE_RANGE && !s->dashCore.active && s->dashCore.cooldownMs <= 0) {
+			double hpBefore = s->hp;
+			if (!EnemyFeedback_try_spend(&s->fb, 40.0, &s->hp))
+				break;
+			if (s->hp < hpBefore) {
+				activate_spark(pl->position, false);
+				Audio_play_sample(&sampleHit);
+			}
+			/* Feedback spillover self-kill */
+			if (s->hp <= 0.0) {
+				s->alive = false;
+				s->aiState = STALKER_DYING;
+				s->deathTimer = 0;
+				s->killedByPlayer = false;
+				Audio_play_sample(&sampleDeath);
+				break;
+			}
 			s->aiState = STALKER_WINDING_UP;
 			s->windupTimer = 0;
 
@@ -541,10 +566,25 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		Enemy_move_away_from(pl, shipPos, RETREAT_SPEED, dt, WALL_CHECK_DIST);
 		s->facing = Position_get_heading(pl->position, shipPos);
 
-		/* Parting shot 1s into retreat */
+		/* Parting shot 1s into retreat (costs 5 feedback) */
 		if (!s->retreatShotFired && s->retreatTimer >= RETREAT_SHOT_MS) {
-			SubProjectile_try_fire(&stalkerProjPool, Sub_Pea_get_config(), pl->position, shipPos);
-			s->retreatShotFired = true;
+			double hpBefore = s->hp;
+			if (EnemyFeedback_try_spend(&s->fb, 5.0, &s->hp)) {
+				if (s->hp < hpBefore) {
+					activate_spark(pl->position, false);
+					Audio_play_sample(&sampleHit);
+				}
+				SubProjectile_try_fire(&stalkerProjPool, Sub_Pea_get_config(), pl->position, shipPos);
+				s->retreatShotFired = true;
+				if (s->hp <= 0.0) {
+					s->alive = false;
+					s->aiState = STALKER_DYING;
+					s->deathTimer = 0;
+					s->killedByPlayer = false;
+					Audio_play_sample(&sampleDeath);
+					break;
+				}
+			}
 		}
 
 		/* Re-stealth after 3s */
@@ -580,6 +620,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			s->hp = STALKER_HP;
 			s->aiState = STALKER_IDLE;
 			s->killedByPlayer = false;
+			EnemyFeedback_reset(&s->fb);
 			pl->position = s->spawnPoint;
 			pick_wander_target(s);
 			Audio_play_sample(&sampleRespawn);
@@ -796,6 +837,7 @@ void Stalker_reset_all(void)
 		s->retreatShotFired = false;
 		s->deathTimer = 0;
 		s->respawnTimer = 0;
+		EnemyFeedback_reset(&s->fb);
 		placeables[i].position = s->spawnPoint;
 		pick_wander_target(s);
 	}
@@ -884,6 +926,20 @@ void Stalker_alert_nearby(Position origin, double radius, Position threat)
 			continue;
 		if (Enemy_distance_between(placeables[i].position, origin) < radius)
 			s->aiState = STALKER_STALKING;
+	}
+}
+
+void Stalker_apply_emp(Position center, double half_size, unsigned int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		StalkerState *s = &stalkers[i];
+		if (!s->alive || s->aiState == STALKER_DYING || s->aiState == STALKER_DEAD)
+			continue;
+		double dx = placeables[i].position.x - center.x;
+		double dy = placeables[i].position.y - center.y;
+		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
+			continue;
+		EnemyFeedback_apply_emp(&s->fb, duration_ms);
 	}
 }
 

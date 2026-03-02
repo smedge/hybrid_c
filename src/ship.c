@@ -13,6 +13,10 @@
 #include "sub_disintegrate.h"
 #include "sub_gravwell.h"
 #include "sub_tgun.h"
+#include "sub_sprint.h"
+#include "sub_emp.h"
+#include "sub_resist.h"
+#include "corruptor.h"
 #include "color.h"
 #include "shipstate.h"
 #include "audio.h"
@@ -114,6 +118,9 @@ void Ship_initialize()
 	Sub_Disintegrate_initialize(liveEntity);
 	Sub_Gravwell_initialize();
 	Sub_Tgun_initialize(liveEntity);
+	Sub_Sprint_initialize();
+	Sub_Emp_initialize();
+	Sub_Resist_initialize();
 }
 
 void Ship_cleanup()
@@ -130,6 +137,9 @@ void Ship_cleanup()
 	Sub_Disintegrate_cleanup();
 	Sub_Gravwell_cleanup();
 	Sub_Tgun_cleanup();
+	Sub_Sprint_cleanup();
+	Sub_Emp_cleanup();
+	Sub_Resist_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -212,6 +222,9 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Mend_initialize();
 			Sub_Aegis_initialize();
 			Sub_Stealth_initialize();
+			Sub_Sprint_initialize();
+			Sub_Emp_initialize();
+			Sub_Resist_initialize();
 			Sub_Pea_deactivate_all();
 			Sub_Mgun_deactivate_all();
 			Sub_Mine_deactivate_all();
@@ -226,6 +239,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Seeker_cleanup();
 			Defender_cleanup();
 			Stalker_cleanup();
+			Corruptor_cleanup();
 			EnemyRegistry_clear();
 			Zone_spawn_enemies();
 			Entity_recalculate_highest_index();
@@ -246,13 +260,15 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Seeker_deaggro_all();
 			Defender_deaggro_all();
 			Stalker_deaggro_all();
+			Corruptor_deaggro_all();
 		}
 
 		/* Update movement subs */
 		Sub_Boost_update(userInput, ticks);
 		Sub_Egress_update(userInput, ticks);
+		Sub_Sprint_update(userInput, ticks);
 
-		isBoosting = Sub_Boost_is_boosting() || Sub_Egress_is_dashing();
+		isBoosting = Sub_Boost_is_boosting() || Sub_Egress_is_dashing() || Sub_Sprint_is_sprinting();
 
 		/* Egress dash phases through enemies/mines (but not walls) */
 		if (Sub_Egress_is_dashing())
@@ -270,6 +286,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		} else {
 			double maxSpeed;
 			if (Sub_Boost_is_boosting())
+				maxSpeed = FAST_VELOCITY;
+			else if (Sub_Sprint_is_sprinting())
 				maxSpeed = FAST_VELOCITY;
 			else if (userInput->keyLControl)
 				maxSpeed = SLOW_VELOCITY;
@@ -334,6 +352,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Disintegrate_update(userInput, ticks, placeable);
 		Sub_Gravwell_update(userInput, ticks);
 		Sub_Tgun_update(userInput, ticks, placeable);
+		Sub_Emp_update(userInput, ticks);
+		Sub_Resist_update(userInput, ticks);
 	}
 }
 
@@ -385,6 +405,8 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Disintegrate_render();
 	Sub_Gravwell_render();
 	Sub_Tgun_render();
+	Sub_Emp_render();
+	Sub_Resist_render();
 }
 
 void Ship_render_bloom_source(void)
@@ -420,6 +442,8 @@ void Ship_render_bloom_source(void)
 	Sub_Inferno_render_bloom_source();
 	Sub_Gravwell_render_bloom_source();
 	Sub_Tgun_render_bloom_source();
+	Sub_Emp_render_bloom_source();
+	Sub_Resist_render_bloom_source();
 	/* Sub_Disintegrate has its own dedicated FBO bloom pass in mode_gameplay */
 }
 

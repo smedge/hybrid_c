@@ -1,6 +1,7 @@
 #include "hunter.h"
 #include "sub_projectile_core.h"
 #include "enemy_util.h"
+#include "enemy_feedback.h"
 #include "defender.h"
 #include "fragment.h"
 #include "progression.h"
@@ -72,6 +73,9 @@ typedef struct {
 	/* Death/respawn */
 	int deathTimer;
 	int respawnTimer;
+
+	/* Feedback */
+	EnemyFeedback fb;
 } HunterState;
 
 /* Shared singleton components */
@@ -180,6 +184,7 @@ void Hunter_initialize(Position position)
 	h->cooldownTimer = 0;
 	h->deathTimer = 0;
 	h->respawnTimer = 0;
+	EnemyFeedback_init(&h->fb);
 	pick_wander_target(h);
 
 	placeables[idx].position = position;
@@ -205,7 +210,7 @@ void Hunter_initialize(Position position)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal, Hunter_alert_nearby};
+		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal, Hunter_alert_nearby, Hunter_apply_emp};
 		EnemyRegistry_register(cb);
 	}
 }
@@ -300,6 +305,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 				h->killedByPlayer = false;
 				h->cooldownTimer = 0;
 				h->burstShotsFired = 0;
+				EnemyFeedback_reset(&h->fb);
 				Position oldPos = pl->position;
 				pl->position = h->spawnPoint;
 				pick_wander_target(h);
@@ -313,6 +319,9 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 	}
 
 	Position oldPos = pl->position;
+
+	/* Tick feedback decay */
+	EnemyFeedback_update(&h->fb, ticks);
 
 	if (h->alive)
 		Enemy_check_stealth_proximity(pl->position, h->facing);
@@ -399,11 +408,26 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 		if (h->cooldownTimer > 0)
 			h->cooldownTimer -= ticks;
 
-		/* In fire range and off cooldown? Start burst */
+		/* In fire range and off cooldown? Start burst (costs 15 feedback) */
 		if (dist < FIRE_RANGE && h->cooldownTimer <= 0) {
-			h->aiState = HUNTER_SHOOTING;
-			h->burstShotsFired = 0;
-			h->burstTimer = 0;
+			double hpBefore = h->hp;
+			if (EnemyFeedback_try_spend(&h->fb, 15.0, &h->hp)) {
+				if (h->hp < hpBefore) {
+					activate_spark(pl->position, false);
+					Audio_play_sample(&sampleHit);
+				}
+				h->aiState = HUNTER_SHOOTING;
+				h->burstShotsFired = 0;
+				h->burstTimer = 0;
+				/* Feedback spillover self-kill */
+				if (h->hp <= 0.0) {
+					h->alive = false;
+					h->aiState = HUNTER_DYING;
+					h->deathTimer = 0;
+					h->killedByPlayer = false;
+					Audio_play_sample(&sampleDeath);
+				}
+			}
 		}
 		break;
 	}
@@ -454,6 +478,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			h->killedByPlayer = false;
 			h->cooldownTimer = 0;
 			h->burstShotsFired = 0;
+			EnemyFeedback_reset(&h->fb);
 			pl->position = h->spawnPoint;
 			pick_wander_target(h);
 			Audio_play_sample(&sampleRespawn);
@@ -602,6 +627,7 @@ void Hunter_reset_all(void)
 		h->burstTimer = 0;
 		h->deathTimer = 0;
 		h->respawnTimer = 0;
+		EnemyFeedback_reset(&h->fb);
 		placeables[i].position = h->spawnPoint;
 		pick_wander_target(h);
 	}
@@ -692,6 +718,20 @@ void Hunter_alert_nearby(Position origin, double radius, Position threat)
 			h->aiState = HUNTER_CHASING;
 			h->cooldownTimer = 0;
 		}
+	}
+}
+
+void Hunter_apply_emp(Position center, double half_size, unsigned int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		HunterState *h = &hunters[i];
+		if (!h->alive || h->aiState == HUNTER_DYING || h->aiState == HUNTER_DEAD)
+			continue;
+		double dx = placeables[i].position.x - center.x;
+		double dy = placeables[i].position.y - center.y;
+		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
+			continue;
+		EnemyFeedback_apply_emp(&h->fb, duration_ms);
 	}
 }
 

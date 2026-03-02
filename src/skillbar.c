@@ -15,6 +15,9 @@
 #include "sub_disintegrate.h"
 #include "sub_gravwell.h"
 #include "sub_tgun.h"
+#include "sub_sprint.h"
+#include "sub_emp.h"
+#include "sub_resist.h"
 
 #include <math.h>
 #ifndef M_PI
@@ -70,6 +73,12 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Gravity well. Pulls and slows enemies at cursor position.", TIER_NORMAL },
 	[SUB_ID_TGUN] = { SUB_ID_TGUN, SUB_TYPE_PROJECTILE, "sub_tgun", "TGUN",
 		"Twin gun. Dual alternating streams at double fire rate.", TIER_RARE },
+	[SUB_ID_SPRINT] = { SUB_ID_SPRINT, SUB_TYPE_MOVEMENT, "sub_sprint", "SPRINT",
+		"Sprint burst. 3x speed for 5 seconds.", TIER_NORMAL },
+	[SUB_ID_EMP] = { SUB_ID_EMP, SUB_TYPE_AREA_EFFECT, "sub_emp", "EMP",
+		"EMP blast. Maxes feedback on all nearby enemies.", TIER_RARE },
+	[SUB_ID_RESIST] = { SUB_ID_RESIST, SUB_TYPE_SHIELD, "sub_resist", "RESIST",
+		"Damage resistance. 50% damage reduction for 5 seconds.", TIER_NORMAL },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -100,6 +109,14 @@ static void toggle_slot(int slot)
 		Sub_Gravwell_try_activate();
 		if (Sub_Gravwell_is_active())
 			active_sub[SUB_TYPE_CONTROL] = SUB_ID_GRAVWELL;
+		return;
+	}
+
+	/* EMP: instant-cast area effect, border tracks active state */
+	if (id == SUB_ID_EMP) {
+		Sub_Emp_try_activate();
+		if (Sub_Emp_is_active())
+			active_sub[SUB_TYPE_AREA_EFFECT] = SUB_ID_EMP;
 		return;
 	}
 
@@ -150,6 +167,11 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 	if (active_sub[SUB_TYPE_CONTROL] == SUB_ID_GRAVWELL
 			&& !Sub_Gravwell_is_active())
 		active_sub[SUB_TYPE_CONTROL] = SUB_NONE;
+
+	/* Sync EMP border with active state (clears when visual ends) */
+	if (active_sub[SUB_TYPE_AREA_EFFECT] == SUB_ID_EMP
+			&& !Sub_Emp_is_active())
+		active_sub[SUB_TYPE_AREA_EFFECT] = SUB_NONE;
 
 	clickConsumed = false;
 
@@ -339,7 +361,7 @@ void Skillbar_auto_equip(SubroutineId id)
 	/* Auto-activate if no other sub of this type is active.
 	   Stealth/Gravwell are ability-activated, not toggle-activated — never auto-activate. */
 	SubroutineType type = sub_registry[id].type;
-	if (type != SUB_TYPE_STEALTH && type != SUB_TYPE_CONTROL && active_sub[type] == SUB_NONE)
+	if (type != SUB_TYPE_STEALTH && type != SUB_TYPE_CONTROL && type != SUB_TYPE_AREA_EFFECT && active_sub[type] == SUB_NONE)
 		active_sub[type] = id;
 }
 
@@ -591,6 +613,45 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Render_point(&r3, 4.0, &c);
 		break;
 	}
+	case SUB_ID_SPRINT: {
+		/* Single chevron (>) — lighter version of boost */
+		float sz = 7.0f;
+		float t = 1.5f;
+		Render_thick_line(cx - 4, cy - sz, cx + 4, cy, t, 1.0f, 1.0f, 1.0f, alpha);
+		Render_thick_line(cx + 4, cy, cx - 4, cy + sz, t, 1.0f, 1.0f, 1.0f, alpha);
+		break;
+	}
+	case SUB_ID_EMP: {
+		/* Expanding ring — concentric circles */
+		float t = 1.5f;
+		Render_filled_circle(cx, cy, 3.0f, 8, 0.3f, 0.7f, 1.0f, alpha);
+		for (int ring = 0; ring < 2; ring++) {
+			float r = 6.0f + ring * 4.0f;
+			float a = alpha * (1.0f - ring * 0.3f);
+			for (int seg = 0; seg < 8; seg++) {
+				float a0 = seg * 45.0f * (float)M_PI / 180.0f;
+				float a1 = (seg + 1) * 45.0f * (float)M_PI / 180.0f;
+				Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
+					cx + cosf(a1) * r, cy + sinf(a1) * r,
+					t, 0.3f, 0.7f, 1.0f, a);
+			}
+		}
+		break;
+	}
+	case SUB_ID_RESIST: {
+		/* Shield outline with inner glow — warm yellow/orange */
+		float r = 8.0f;
+		float t = 1.5f;
+		for (int i = 0; i < 6; i++) {
+			float a0 = i * 60.0f * (float)M_PI / 180.0f;
+			float a1 = (i + 1) * 60.0f * (float)M_PI / 180.0f;
+			Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
+				cx + cosf(a1) * r, cy + sinf(a1) * r,
+				t, 1.0f, 0.7f, 0.2f, alpha);
+		}
+		Render_filled_circle(cx, cy, 3.0f, 6, 1.0f, 0.7f, 0.2f, alpha * 0.5f);
+		break;
+	}
 	default:
 		break;
 	}
@@ -611,6 +672,9 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_DISINTEGRATE: return Sub_Disintegrate_get_cooldown_fraction();
 	case SUB_ID_GRAVWELL: return Sub_Gravwell_get_cooldown_fraction();
 	case SUB_ID_TGUN: return Sub_Tgun_get_cooldown_fraction();
+	case SUB_ID_SPRINT: return Sub_Sprint_get_cooldown_fraction();
+	case SUB_ID_EMP: return Sub_Emp_get_cooldown_fraction();
+	case SUB_ID_RESIST: return Sub_Resist_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

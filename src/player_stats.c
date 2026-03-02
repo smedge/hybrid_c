@@ -49,6 +49,10 @@ static int shieldBreakGrace;
 static int iframeMs;
 static int regenBoostMs;
 static double regenBoostMultiplier;
+static bool empDebuffed;
+static int empDebuffMs;
+static bool hasResist;
+static int resistMs;
 static Mix_Chunk *sampleHurt = 0;
 
 void PlayerStats_initialize(void)
@@ -65,6 +69,10 @@ void PlayerStats_initialize(void)
 	iframeMs = 0;
 	regenBoostMs = 0;
 	regenBoostMultiplier = 1.0;
+	empDebuffed = false;
+	empDebuffMs = 0;
+	hasResist = false;
+	resistMs = 0;
 
 	Audio_load_sample(&sampleHurt, "resources/sounds/samus_hurt.wav");
 }
@@ -118,9 +126,30 @@ void PlayerStats_update(unsigned int ticks)
 	else
 		feedbackFlashTimer = 0;
 
-	/* Feedback decay after grace period */
+	/* EMP debuff decay */
+	if (empDebuffed) {
+		empDebuffMs -= (int)ticks;
+		if (empDebuffMs <= 0) {
+			empDebuffMs = 0;
+			empDebuffed = false;
+		}
+	}
+
+	/* Damage resistance decay */
+	if (hasResist) {
+		resistMs -= (int)ticks;
+		if (resistMs <= 0) {
+			resistMs = 0;
+			hasResist = false;
+		}
+	}
+
+	/* Feedback decay after grace period (halved when EMP debuffed) */
 	if (timeSinceLastFeedback >= FEEDBACK_GRACE_MS) {
-		feedback -= FEEDBACK_DECAY * dt;
+		double decay = FEEDBACK_DECAY;
+		if (empDebuffed)
+			decay *= 0.5;
+		feedback -= decay * dt;
 		if (feedback < 0.0)
 			feedback = 0.0;
 	}
@@ -356,6 +385,8 @@ void PlayerStats_damage(double amount)
 			Sub_Aegis_on_hit();
 		return;
 	}
+	if (hasResist)
+		amount *= 0.5;
 	integrity -= amount;
 	if (integrity < 0.0)
 		integrity = 0.0;
@@ -443,6 +474,10 @@ void PlayerStats_reset(void)
 	iframeMs = 0;
 	regenBoostMs = 0;
 	regenBoostMultiplier = 1.0;
+	empDebuffed = false;
+	empDebuffMs = 0;
+	hasResist = false;
+	resistMs = 0;
 }
 
 PlayerStatsSnapshot PlayerStats_snapshot(void)
@@ -465,4 +500,32 @@ void PlayerStats_restore(PlayerStatsSnapshot snap)
 	feedbackFlashTimer = 0;
 	shielded = snap.shielded;
 	shieldBreakGrace = 0;
+	empDebuffed = false;
+	empDebuffMs = 0;
+	hasResist = false;
+	resistMs = 0;
+}
+
+void PlayerStats_apply_emp(unsigned int duration_ms)
+{
+	feedback = FEEDBACK_MAX;
+	timeSinceLastFeedback = 0;
+	empDebuffed = true;
+	empDebuffMs = (int)duration_ms;
+}
+
+bool PlayerStats_is_emp_debuffed(void)
+{
+	return empDebuffed;
+}
+
+void PlayerStats_set_resist(bool enabled, unsigned int duration_ms)
+{
+	hasResist = enabled;
+	resistMs = enabled ? (int)duration_ms : 0;
+}
+
+bool PlayerStats_has_resist(void)
+{
+	return hasResist;
 }

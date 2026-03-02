@@ -1,6 +1,7 @@
 #include "seeker.h"
 #include "sub_dash_core.h"
 #include "enemy_util.h"
+#include "enemy_feedback.h"
 #include "defender.h"
 #include "fragment.h"
 #include "progression.h"
@@ -102,6 +103,9 @@ typedef struct {
 
 	/* Windup flash */
 	int windupTimer;
+
+	/* Feedback */
+	EnemyFeedback fb;
 } SeekerState;
 
 /* Shared singleton components */
@@ -190,6 +194,7 @@ void Seeker_initialize(Position position)
 	s->deathTimer = 0;
 	s->respawnTimer = 0;
 	s->windupTimer = 0;
+	EnemyFeedback_init(&s->fb);
 	pick_wander_target(s);
 
 	placeables[idx].position = position;
@@ -214,7 +219,7 @@ void Seeker_initialize(Position position)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal, Seeker_alert_nearby};
+		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal, Seeker_alert_nearby, Seeker_apply_emp};
 		EnemyRegistry_register(cb);
 	}
 }
@@ -290,6 +295,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 				s->hp = SEEKER_HP;
 				s->aiState = SEEKER_IDLE;
 				s->killedByPlayer = false;
+				EnemyFeedback_reset(&s->fb);
 				Position oldPos = pl->position;
 				pl->position = s->spawnPoint;
 				pick_wander_target(s);
@@ -303,6 +309,9 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 	}
 
 	Position oldPos = pl->position;
+
+	/* Tick feedback decay */
+	EnemyFeedback_update(&s->fb, ticks);
 
 	if (s->alive)
 		Enemy_check_stealth_proximity(pl->position, s->facing);
@@ -418,6 +427,26 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 
 		s->orbitTimer -= ticks;
 		if (s->orbitTimer <= 0) {
+			/* Dash costs 40 feedback */
+			double hpBefore = s->hp;
+			if (!EnemyFeedback_try_spend(&s->fb, 40.0, &s->hp)) {
+				/* Can't afford — keep orbiting */
+				s->orbitTimer = ORBIT_MIN_MS + (rand() % (ORBIT_MAX_MS - ORBIT_MIN_MS));
+				break;
+			}
+			if (s->hp < hpBefore) {
+				activate_spark(pl->position, false);
+				Audio_play_sample(&sampleHit);
+			}
+			/* Feedback spillover self-kill */
+			if (s->hp <= 0.0) {
+				s->alive = false;
+				s->aiState = SEEKER_DYING;
+				s->deathTimer = 0;
+				s->killedByPlayer = false;
+				Audio_play_sample(&sampleDeath);
+				break;
+			}
 			/* Transition to windup */
 			s->aiState = SEEKER_WINDING_UP;
 			s->windupTimer = 0;
@@ -547,6 +576,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			s->hp = SEEKER_HP;
 			s->aiState = SEEKER_IDLE;
 			s->killedByPlayer = false;
+			EnemyFeedback_reset(&s->fb);
 			pl->position = s->spawnPoint;
 			pick_wander_target(s);
 			Audio_play_sample(&sampleRespawn);
@@ -789,6 +819,7 @@ void Seeker_reset_all(void)
 		s->recoverVelY = 0.0;
 		s->deathTimer = 0;
 		s->respawnTimer = 0;
+		EnemyFeedback_reset(&s->fb);
 		placeables[i].position = s->spawnPoint;
 		pick_wander_target(s);
 	}
@@ -875,6 +906,20 @@ void Seeker_alert_nearby(Position origin, double radius, Position threat)
 			continue;
 		if (Enemy_distance_between(placeables[i].position, origin) < radius)
 			s->aiState = SEEKER_STALKING;
+	}
+}
+
+void Seeker_apply_emp(Position center, double half_size, unsigned int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		SeekerState *s = &seekers[i];
+		if (!s->alive || s->aiState == SEEKER_DYING || s->aiState == SEEKER_DEAD)
+			continue;
+		double dx = placeables[i].position.x - center.x;
+		double dy = placeables[i].position.y - center.y;
+		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
+			continue;
+		EnemyFeedback_apply_emp(&s->fb, duration_ms);
 	}
 }
 

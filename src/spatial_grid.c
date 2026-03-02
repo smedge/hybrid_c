@@ -5,6 +5,7 @@
 #include "mine.h"
 #include "defender.h"
 #include "stalker.h"
+#include "corruptor.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,6 +32,7 @@ static bool entity_is_valid(EntityRef ref)
 	case ENTITY_MINE:     return ref.index < Mine_get_count();
 	case ENTITY_DEFENDER: return ref.index < Defender_get_count();
 	case ENTITY_STALKER:  return ref.index < Stalker_get_count();
+	case ENTITY_CORRUPTOR: return ref.index < Corruptor_get_count();
 	}
 	return false;
 }

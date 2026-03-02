@@ -18,6 +18,7 @@ bool Hunter_find_wounded(Position from, double range, double hp_threshold, Posit
 bool Hunter_find_aggro(Position from, double range, Position *out_pos);
 void Hunter_heal(int index, double amount);
 void Hunter_alert_nearby(Position origin, double radius, Position threat);
+void Hunter_apply_emp(Position center, double half_size, unsigned int duration_ms);
 int Hunter_get_count(void);
 void Hunter_update_projectiles(unsigned int ticks);
 

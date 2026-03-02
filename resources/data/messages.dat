@@ -29,7 +29,7 @@ node data_node_origin_04
 zone The Origin
 title PERSONAL LOG — "First Impressions"
 voice resources/voices/origin_04_elana_vasquez.mp3
-gain 1.3
+gain 1.2
 body Dr. Elena Vasquez, personal log, day 1 of active monitoring.\n\nThe subject is moving. Actually moving through the grid under their own volition. After six attempts, six failures, I almost didn't believe it would work this time. The coupling is holding stable. Sensory feedback is clean. They're navigating the local architecture like it's the most natural thing in the world. Tanaka was right about the minimal loadout — one subroutine, no pre-loaded combat packages, just the subject and the grid. Let them adapt on their own. I keep reminding myself that what feels like minutes to them is barely a blink out here. I have to stay objective. But God, it's working.
 end
 
