@@ -34,19 +34,6 @@
 #define RESIST_RANGE 800.0
 #define RESIST_FEEDBACK_COST 20.0
 
-static const SubEmpConfig corruptorEmpCfg = {
-	.cooldown_ms = 30000,
-	.visual_ms = 167,
-	.half_size = 400.0f,
-	.ring_max_radius = 400.0f,
-	.inner_ring_ratio = 0.7f,
-	.segments = 16,
-	.outer_r = 0.4f, .outer_g = 0.7f, .outer_b = 1.0f,
-	.outer_thickness = 2.5f,
-	.inner_r = 0.8f, .inner_g = 0.9f, .inner_b = 1.0f,
-	.inner_thickness = 1.5f,
-	.inner_alpha_mult = 0.6f,
-};
 
 #define RESPAWN_MS 30000
 #define BODY_SIZE 10.0
@@ -105,6 +92,8 @@ typedef struct {
 
 	/* Resist aura */
 	SubResistCore resistCore;
+	bool hasResistTarget;
+	Position resistBeamTarget;
 
 	/* Death/respawn */
 	int deathTimer;
@@ -197,20 +186,26 @@ static void try_apply_resist(CorruptorState *c, Position myPos)
 	if (c->resistCore.active || c->resistCore.cooldownMs > 0)
 		return;
 
-	/* Check if there's a threatened ally nearby — or use self */
+	/* Reactive resist: only activate when a nearby ally (or self) has taken damage */
+	bool shouldActivate = false;
+
+	/* Check nearby allies via registry — any damage at all triggers resist */
 	int typeCount = EnemyRegistry_type_count();
-	bool hasAlly = false;
 	for (int t = 0; t < typeCount; t++) {
 		const EnemyTypeCallbacks *et = EnemyRegistry_get_type(t);
 		Position pos;
-		if (et->find_aggro && et->find_aggro(myPos, RESIST_RANGE, &pos)) {
-			hasAlly = true;
+		int eidx;
+		if (et->find_wounded && et->find_wounded(myPos, RESIST_RANGE, 9999.0, &pos, &eidx)) {
+			shouldActivate = true;
 			break;
 		}
 	}
 
-	/* Only spend feedback if there's someone to protect (including self in combat) */
-	if (!hasAlly && c->aiState != CORRUPTOR_SUPPORTING)
+	/* Self-check — corruptor itself is wounded */
+	if (!shouldActivate && c->hp < CORRUPTOR_HP)
+		shouldActivate = true;
+
+	if (!shouldActivate)
 		return;
 
 	double hpBefore = c->hp;
@@ -255,6 +250,8 @@ void Corruptor_initialize(Position position)
 	SubSprint_init(&c->sprintCore);
 	SubEmp_init(&c->empCore);
 	SubResist_init(&c->resistCore);
+	c->hasResistTarget = false;
+	c->resistBeamTarget = position;
 	c->deathTimer = 0;
 	c->respawnTimer = 0;
 	EnemyFeedback_init(&c->fb);
@@ -363,6 +360,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 				SubSprint_init(&c->sprintCore);
 				SubEmp_init(&c->empCore);
 				SubResist_init(&c->resistCore);
+				c->hasResistTarget = false;
 				EnemyFeedback_reset(&c->fb);
 				Position oldPos = pl->position;
 				pl->position = c->spawnPoint;
@@ -385,8 +383,40 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 	currentUpdaterIdx = idx;
 
 	/* Tick cores */
-	SubEmp_update(&c->empCore, &corruptorEmpCfg, ticks);
+	SubEmp_update(&c->empCore, SubEmp_get_config(), ticks);
 	SubResist_update(&c->resistCore, SubResist_get_config(), ticks);
+
+	/* Update resist beam target — find nearest ally in resist range each frame */
+	if (c->resistCore.active) {
+		c->hasResistTarget = false;
+		double bestDist = RESIST_RANGE + 1.0;
+		int typeCount = EnemyRegistry_type_count();
+		for (int t = 0; t < typeCount; t++) {
+			const EnemyTypeCallbacks *et = EnemyRegistry_get_type(t);
+			Position pos;
+			int eidx;
+			/* Wounded allies first */
+			if (et->find_wounded && et->find_wounded(pl->position, RESIST_RANGE, 9999.0, &pos, &eidx)) {
+				double dist = Enemy_distance_between(pl->position, pos);
+				if (dist < bestDist) {
+					bestDist = dist;
+					c->resistBeamTarget = pos;
+					c->hasResistTarget = true;
+				}
+			}
+			/* Aggro'd allies as fallback — tracks even at full HP */
+			if (et->find_aggro && et->find_aggro(pl->position, RESIST_RANGE, &pos)) {
+				double dist = Enemy_distance_between(pl->position, pos);
+				if (dist < bestDist) {
+					bestDist = dist;
+					c->resistBeamTarget = pos;
+					c->hasResistTarget = true;
+				}
+			}
+		}
+	} else {
+		c->hasResistTarget = false;
+	}
 
 	if (c->alive)
 		Enemy_check_stealth_proximity(pl->position, c->facing);
@@ -472,15 +502,14 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			break;
 		}
 
-		/* Try to apply resist aura to protect allies (or self) */
-		try_apply_resist(c, pl->position);
-
-		/* Check if we should sprint in for EMP attack */
+		/* Priority 1: Sprint in for EMP attack */
 		if (can_engage_player(c, pl->position)) {
-			/* Committed charge — transition to sprinting */
 			c->aiState = CORRUPTOR_SPRINTING;
 			break;
 		}
+
+		/* Priority 2: Reactive resist — protect ally that's taking damage */
+		try_apply_resist(c, pl->position);
 
 		/* Orbit at medium distance — stay near allies but not too close to player */
 		double targetDist = SPRINT_ENGAGE_MIN;
@@ -523,7 +552,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 
 				/* Fire EMP at player */
 				PlayerStats_apply_emp(EMP_PLAYER_DURATION_MS);
-				SubEmp_try_activate(&c->empCore, &corruptorEmpCfg, pl->position);
+				SubEmp_try_activate(&c->empCore, SubEmp_get_config(), pl->position);
 				c->aiState = CORRUPTOR_EMP_FIRING;
 			} else {
 				/* Can't afford — abort to retreat */
@@ -598,6 +627,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			SubSprint_init(&c->sprintCore);
 			SubEmp_init(&c->empCore);
 			SubResist_init(&c->resistCore);
+			c->hasResistTarget = false;
 			EnemyFeedback_reset(&c->fb);
 			pl->position = c->spawnPoint;
 			pick_wander_target(c);
@@ -668,11 +698,13 @@ void Corruptor_render(const void *state, const PlaceableComponent *placeable)
 	/* Center dot */
 	Render_point(&placeable->position, 4.0, bodyColor);
 
-	/* Resist aura */
+	/* Resist aura + beam to protected ally */
 	SubResist_render_ring(&c->resistCore, SubResist_get_config(), placeable->position);
+	if (c->hasResistTarget)
+		SubResist_render_beam(&c->resistCore, SubResist_get_config(), placeable->position, c->resistBeamTarget);
 
 	/* EMP visual — expanding ring */
-	SubEmp_render_ring(&c->empCore, &corruptorEmpCfg);
+	SubEmp_render_ring(&c->empCore, SubEmp_get_config());
 
 	/* Sparks (from idx 0 only) */
 	if (idx == 0) {
@@ -719,11 +751,13 @@ void Corruptor_render_bloom_source(void)
 		/* Body glow */
 		Render_point(&pl->position, 6.0, bodyColor);
 
-		/* Resist aura bloom */
+		/* Resist aura bloom + beam bloom */
 		SubResist_render_bloom(&c->resistCore, SubResist_get_config(), pl->position);
+		if (c->hasResistTarget)
+			SubResist_render_beam_bloom(&c->resistCore, SubResist_get_config(), pl->position, c->resistBeamTarget);
 
 		/* EMP ring bloom */
-		SubEmp_render_bloom(&c->empCore, &corruptorEmpCfg);
+		SubEmp_render_bloom(&c->empCore, SubEmp_get_config());
 	}
 
 	/* Spark bloom */
@@ -749,7 +783,7 @@ void Corruptor_render_light_source(void)
 		Render_point(&pl->position, 4.0, &colorBody);
 
 		/* EMP flash — bright light during firing */
-		SubEmp_render_light(&c->empCore, &corruptorEmpCfg);
+		SubEmp_render_light(&c->empCore, SubEmp_get_config());
 	}
 }
 
@@ -778,6 +812,7 @@ void Corruptor_reset_all(void)
 		SubSprint_init(&c->sprintCore);
 		SubEmp_init(&c->empCore);
 		SubResist_init(&c->resistCore);
+		c->hasResistTarget = false;
 		c->deathTimer = 0;
 		c->respawnTimer = 0;
 		EnemyFeedback_reset(&c->fb);

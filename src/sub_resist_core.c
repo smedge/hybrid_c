@@ -19,6 +19,8 @@ static const SubResistConfig resistCfg = {
 	.bloom_radius = 24.0f,
 	.bloom_segments = 12,
 	.bloom_alpha = 0.3f,
+	.beam_thickness = 1.5f,
+	.bloom_beam_thickness = 2.5f,
 };
 
 const SubResistConfig *SubResist_get_config(void)
@@ -109,4 +111,28 @@ void SubResist_render_bloom(const SubResistCore *core, const SubResistConfig *cf
 		(float)pos.x, (float)pos.y,
 		cfg->bloom_radius, cfg->bloom_segments,
 		cfg->color_r, cfg->color_g, cfg->color_b, cfg->bloom_alpha * pulse);
+}
+
+void SubResist_render_beam(const SubResistCore *core, const SubResistConfig *cfg, Position origin, Position target)
+{
+	if (!core->active)
+		return;
+
+	float pulse = 0.7f + 0.3f * sinf((float)core->activeTimer * cfg->pulse_speed);
+	Render_thick_line(
+		(float)origin.x, (float)origin.y,
+		(float)target.x, (float)target.y,
+		cfg->beam_thickness, cfg->color_r, cfg->color_g, cfg->color_b, 0.5f * pulse);
+}
+
+void SubResist_render_beam_bloom(const SubResistCore *core, const SubResistConfig *cfg, Position origin, Position target)
+{
+	if (!core->active)
+		return;
+
+	float pulse = 0.7f + 0.3f * sinf((float)core->activeTimer * cfg->pulse_speed);
+	Render_thick_line(
+		(float)origin.x, (float)origin.y,
+		(float)target.x, (float)target.y,
+		cfg->bloom_beam_thickness, cfg->color_r, cfg->color_g, cfg->color_b, 0.3f * pulse);
 }

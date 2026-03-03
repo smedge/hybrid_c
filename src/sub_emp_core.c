@@ -8,6 +8,25 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+static const SubEmpConfig empCfg = {
+	.cooldown_ms = 30000,
+	.visual_ms = 167,
+	.half_size = 400.0f,
+	.ring_max_radius = 400.0f,
+	.inner_ring_ratio = 0.6f,
+	.segments = 24,
+	.outer_r = 0.5f, .outer_g = 0.8f, .outer_b = 1.0f,
+	.outer_thickness = 3.0f,
+	.inner_r = 0.8f, .inner_g = 0.95f, .inner_b = 1.0f,
+	.inner_thickness = 2.0f,
+	.inner_alpha_mult = 0.8f,
+};
+
+const SubEmpConfig *SubEmp_get_config(void)
+{
+	return &empCfg;
+}
+
 static Mix_Chunk *sampleFire = 0;
 
 void SubEmp_initialize_audio(void)

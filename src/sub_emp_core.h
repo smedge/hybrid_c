@@ -38,4 +38,7 @@ void SubEmp_render_ring(const SubEmpCore *core, const SubEmpConfig *cfg);
 void SubEmp_render_bloom(const SubEmpCore *core, const SubEmpConfig *cfg);
 void SubEmp_render_light(const SubEmpCore *core, const SubEmpConfig *cfg);
 
+/* Single shared config — same skill, same tuning for player and enemies */
+const SubEmpConfig *SubEmp_get_config(void);
+
 #endif

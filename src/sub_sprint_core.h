@@ -20,4 +20,7 @@ bool SubSprint_update(SubSprintCore *core, const SubSprintConfig *cfg, unsigned 
 bool SubSprint_is_active(const SubSprintCore *core);
 float SubSprint_get_cooldown_fraction(const SubSprintCore *core, const SubSprintConfig *cfg);
 
+/* Single shared config — same skill, same tuning for player and enemies */
+const SubSprintConfig *SubSprint_get_config(void);
+
 #endif

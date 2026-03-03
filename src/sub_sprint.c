@@ -8,10 +8,6 @@
 
 #define FEEDBACK_COST 0.0
 
-static const SubSprintConfig playerSprintCfg = {
-	.duration_ms = 5000,
-	.cooldown_ms = 15000
-};
 
 static SubSprintCore sprintCore;
 static bool shiftWasDown;
@@ -33,13 +29,13 @@ void Sub_Sprint_update(const Input *input, unsigned int ticks)
 		return;
 	}
 
-	SubSprint_update(&sprintCore, &playerSprintCfg, ticks);
+	SubSprint_update(&sprintCore, SubSprint_get_config(), ticks);
 
 	/* Edge-detect shift press (same pattern as egress) */
 	bool shiftDown = input->keyLShift && Skillbar_is_active(SUB_ID_SPRINT);
 
 	if (shiftDown && !shiftWasDown && !sprintCore.active && sprintCore.cooldownMs <= 0) {
-		SubSprint_try_activate(&sprintCore, &playerSprintCfg);
+		SubSprint_try_activate(&sprintCore, SubSprint_get_config());
 		/* 0 feedback cost, but keep the add call for consistency */
 		if (FEEDBACK_COST > 0.0)
 			PlayerStats_add_feedback(FEEDBACK_COST);
@@ -55,5 +51,5 @@ bool Sub_Sprint_is_sprinting(void)
 
 float Sub_Sprint_get_cooldown_fraction(void)
 {
-	return SubSprint_get_cooldown_fraction(&sprintCore, &playerSprintCfg);
+	return SubSprint_get_cooldown_fraction(&sprintCore, SubSprint_get_config());
 }

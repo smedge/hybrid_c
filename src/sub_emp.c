@@ -11,19 +11,6 @@
 #define EMP_FEEDBACK_COST 30.0
 #define EMP_DURATION_MS 10000
 
-static const SubEmpConfig playerEmpCfg = {
-	.cooldown_ms = 30000,
-	.visual_ms = 167,
-	.half_size = 400.0f,
-	.ring_max_radius = 400.0f,
-	.inner_ring_ratio = 0.6f,
-	.segments = 24,
-	.outer_r = 0.5f, .outer_g = 0.8f, .outer_b = 1.0f,
-	.outer_thickness = 3.0f,
-	.inner_r = 0.8f, .inner_g = 0.95f, .inner_b = 1.0f,
-	.inner_thickness = 2.0f,
-	.inner_alpha_mult = 0.8f,
-};
 
 static SubEmpCore empCore;
 static bool keyWasDown;
@@ -50,9 +37,9 @@ void Sub_Emp_try_activate(void)
 		return;
 
 	Position center = Ship_get_position();
-	if (SubEmp_try_activate(&empCore, &playerEmpCfg, center)) {
+	if (SubEmp_try_activate(&empCore, SubEmp_get_config(), center)) {
 		PlayerStats_add_feedback(EMP_FEEDBACK_COST);
-		EnemyRegistry_apply_emp(center, playerEmpCfg.half_size, EMP_DURATION_MS);
+		EnemyRegistry_apply_emp(center, SubEmp_get_config()->half_size, EMP_DURATION_MS);
 	}
 }
 
@@ -63,7 +50,7 @@ void Sub_Emp_update(const Input *input, unsigned int ticks)
 		return;
 	}
 
-	SubEmp_update(&empCore, &playerEmpCfg, ticks);
+	SubEmp_update(&empCore, SubEmp_get_config(), ticks);
 
 	/* V key activation (edge-detect) */
 	bool keyDown = input->keyV && Skillbar_find_equipped_slot(SUB_ID_EMP) >= 0;
@@ -79,20 +66,20 @@ bool Sub_Emp_is_active(void)
 
 void Sub_Emp_render(void)
 {
-	SubEmp_render_ring(&empCore, &playerEmpCfg);
+	SubEmp_render_ring(&empCore, SubEmp_get_config());
 }
 
 void Sub_Emp_render_bloom_source(void)
 {
-	SubEmp_render_bloom(&empCore, &playerEmpCfg);
+	SubEmp_render_bloom(&empCore, SubEmp_get_config());
 }
 
 void Sub_Emp_render_light_source(void)
 {
-	SubEmp_render_light(&empCore, &playerEmpCfg);
+	SubEmp_render_light(&empCore, SubEmp_get_config());
 }
 
 float Sub_Emp_get_cooldown_fraction(void)
 {
-	return SubEmp_get_cooldown_fraction(&empCore, &playerEmpCfg);
+	return SubEmp_get_cooldown_fraction(&empCore, SubEmp_get_config());
 }

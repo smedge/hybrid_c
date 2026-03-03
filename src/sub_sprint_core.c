@@ -1,5 +1,15 @@
 #include "sub_sprint_core.h"
 
+static const SubSprintConfig sprintCfg = {
+	.duration_ms = 5000,
+	.cooldown_ms = 15000,
+};
+
+const SubSprintConfig *SubSprint_get_config(void)
+{
+	return &sprintCfg;
+}
+
 void SubSprint_init(SubSprintCore *core)
 {
 	core->active = false;

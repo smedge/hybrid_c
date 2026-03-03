@@ -14,6 +14,8 @@ typedef struct {
 	float bloom_radius;
 	int bloom_segments;
 	float bloom_alpha;
+	float beam_thickness;
+	float bloom_beam_thickness;
 } SubResistConfig;
 
 typedef struct {
@@ -33,5 +35,7 @@ const SubResistConfig *SubResist_get_config(void);
 
 void SubResist_render_ring(const SubResistCore *core, const SubResistConfig *cfg, Position pos);
 void SubResist_render_bloom(const SubResistCore *core, const SubResistConfig *cfg, Position pos);
+void SubResist_render_beam(const SubResistCore *core, const SubResistConfig *cfg, Position origin, Position target);
+void SubResist_render_beam_bloom(const SubResistCore *core, const SubResistConfig *cfg, Position origin, Position target);
 
 #endif
