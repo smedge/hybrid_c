@@ -819,8 +819,8 @@ static void complete_rebirth(void)
 {
 	gameplayState = GAMEPLAY_ACTIVE;
 
-	/* Spawn enemies now that rebirth zoom is done */
-	Zone_spawn_enemies();
+	/* Clean up all enemies and respawn fresh (rerolls probabilities) */
+	Zone_rebuild_enemies();
 
 	/* Spawn ship — at checkpoint if loading, otherwise origin */
 	Position spawn = {0.0, 0.0};

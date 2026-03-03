@@ -68,3 +68,4 @@ Jessican Anne Bogart - Eloquent Villian ***
 ## Toxis
 
 Cassius - Velvety
+Aegis 07 - AI ALignment ||||||||| 0/10 ***

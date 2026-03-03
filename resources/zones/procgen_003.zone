@@ -10,9 +10,6 @@ bgcolor 3 120 60 15
 celltype solid 3 6 18 255 60 140 200 255 none
 celltype circuit 75 38 10 120 255 160 30 255 circuit
 
-celltype solid_cru 10 10 10 255 128 128 128 255 none
-celltype circuit_cru 40 15 15 180 180 0 0 255 circuit
-
 music resources/music/deadmau5_Avarita.mp3
 music resources/music/deadmau5_ReJaded.mp3
 music resources/music/deadmau5_GG.mp3
@@ -27,10 +24,10 @@ noise_wall_threshold -0.2
 obstacle_density 0.06
 obstacle_min_spacing 4
 
-obstacle cross_001 1.0
+obstacle cross_001 0.3
 obstacle patrol_001 1.0
-obstacle patrol_002 0.4
-obstacle patrol_003 0.4
+obstacle patrol_002 0.5
+obstacle patrol_003 0.5
 obstacle minefield_002 0.3
 
 hotspot_count 20

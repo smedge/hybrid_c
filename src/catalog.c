@@ -677,11 +677,15 @@ void Catalog_render(const Screen *screen)
 				gcx, gcy, gvx[v], gvy[v], gvx[nv], gvy[nv],
 				0.1f, 0.1f, 0.1f, 0.4f);
 		}
-		/* Border */
+		/* Border — gold for elite, blue for rare, white for normal */
+		float gbr = 1.0f, gbg = 1.0f, gbb = 1.0f;
+		SubroutineTier gtier = Skillbar_get_tier(drag.source_id);
+		if (gtier == TIER_ELITE) { gbr = 1.0f; gbg = 0.84f; gbb = 0.0f; }
+		else if (gtier == TIER_RARE) { gbr = 0.1f; gbg = 0.1f; gbb = 1.0f; }
 		for (int v = 0; v < 6; v++) {
 			int nv = (v + 1) % 6;
 			Render_thick_line(gvx[v], gvy[v], gvx[nv], gvy[nv],
-				1.0f, 1.0f, 1.0f, 1.0f, 0.4f);
+				1.0f, gbr, gbg, gbb, 0.4f);
 		}
 
 		Skillbar_render_icon_at(drag.source_id,

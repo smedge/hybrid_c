@@ -59,7 +59,7 @@ static bool zoneDirty = false;
 
 static int find_cell_type(const char *id);
 static void apply_zone_to_world(void);
-static void rebuild_enemies(void);
+/* Now public — declared in zone.h */
 static void respawn_portals(void);
 static void respawn_savepoints(void);
 static void respawn_datanodes(void);
@@ -710,7 +710,7 @@ void Zone_remove_spawn(int index)
 		zone.spawns[i] = zone.spawns[i + 1];
 	zone.spawn_count--;
 
-	rebuild_enemies();
+	Zone_rebuild_enemies();
 	zoneDirty = true;
 }
 
@@ -1037,13 +1037,13 @@ void Zone_undo(void)
 			zone.spawns[undo.spawn_index] = undo.spawn;
 			zone.spawn_count++;
 		}
-		rebuild_enemies();
+		Zone_rebuild_enemies();
 		break;
 	case UNDO_REMOVE_SPAWN:
 		/* Remove last spawn */
 		if (zone.spawn_count > undo.spawn_index)
 			zone.spawn_count = undo.spawn_index;
-		rebuild_enemies();
+		Zone_rebuild_enemies();
 		break;
 	case UNDO_PLACE_PORTAL:
 		/* Re-insert portal at original index */
@@ -1163,8 +1163,8 @@ static int find_cell_type(const char *id)
 	return -1;
 }
 
-/* Editor rebuild: tear down existing enemies and respawn from zone data */
-static void rebuild_enemies(void)
+/* Tear down existing enemies and respawn from zone data (rerolls probabilities) */
+void Zone_rebuild_enemies(void)
 {
 	SpatialGrid_clear();
 	Mine_cleanup();

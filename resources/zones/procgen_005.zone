@@ -7,6 +7,7 @@ bgcolor 2 19 86 39
 bgcolor 3 187 117 82
 music resources/music/deadmau5_SuckFest9001.mp3
 music resources/music/deadmau5_CityInFlorida.mp3
+music resources/music/deadmau5_Patience.mp3
 
 celltype solid 0 6 2 255 255 255 255 255 none
 celltype circuit 10 36 10 120 0 255 1 255 circuit
@@ -25,21 +26,16 @@ hotspot_min_separation 150
 landmark_min_separation 120
 
 landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
-landmark_portal exit_point portal_to_001 ./resources/zones/procgen_001.zone portal_to_003
+landmark_portal exit_point portal_to_006 ./resources/zones/procgen_006.zone portal_to_005
 landmark_savepoint exit_point save_001
-landmark exit_point2 resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
-landmark_portal exit_point2 portal_to_002 ./resources/zones/procgen_002.zone portal_to_003
-landmark_savepoint exit_point2 save_002
-landmark exit_point3 resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
-landmark_portal exit_point3 portal_to_004 ./resources/zones/procgen_004.zone portal_to_003
-landmark_savepoint exit_point3 save_003
 
 
 obstacle_density 0.06
 obstacle_min_spacing 4
-obstacle cross_001 1
+obstacle cross_001 0.3
 obstacle patrol_001 1
-obstacle patrol_002 0.4
+obstacle patrol_002 1
+obstacle patrol_003 1
 obstacle minefield_002 0.3
 
 

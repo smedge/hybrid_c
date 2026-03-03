@@ -56,7 +56,8 @@ landmark_datanode data_node_crucible_07 data_node_crucible_07
 obstacle_density 0.06
 obstacle_min_spacing 10
 
-obstacle ambush_corner 4
-obstacle sniper_nest 3
-obstacle patrol_encounter 4
-obstacle patrol_encounter_01 4
+obstacle cross_001 0.3
+obstacle patrol_001 1
+obstacle patrol_002 1
+obstacle patrol_003 1
+obstacle minefield_002 0.3
