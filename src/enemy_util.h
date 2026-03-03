@@ -55,4 +55,7 @@ typedef struct {
    Does nothing if all carried subs are already unlocked. */
 void Enemy_drop_fragments(Position deathPos, const CarriedSubroutine *subs, int subCount);
 
+/* Render a resist aura indicator if this position is covered by a corruptor's resist */
+void Enemy_render_resist_indicator(Position pos);
+
 #endif

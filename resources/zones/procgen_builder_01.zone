@@ -858,6 +858,10 @@ spawn mine 6400.0 -800.0
 spawn mine 7200.0 -1600.0
 spawn mine 6400.0 -2400.0
 spawn mine 5600.0 -1600.0
+spawn hunter 20600.0 -100.0
+spawn hunter 20700.0 -200.0
+spawn defender 20700.0 -100.0
+spawn corruptor 20600.0 -200.0
 
 datanode 576 496 dn_1
 

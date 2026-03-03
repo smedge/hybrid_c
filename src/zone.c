@@ -687,6 +687,9 @@ void Zone_place_spawn(const char *enemy_type, double world_x, double world_y)
 	} else if (strcmp(enemy_type, "stalker") == 0) {
 		Position pos = {world_x, world_y};
 		Stalker_initialize(pos);
+	} else if (strcmp(enemy_type, "corruptor") == 0) {
+		Position pos = {world_x, world_y};
+		Corruptor_initialize(pos);
 	}
 
 	zoneDirty = true;

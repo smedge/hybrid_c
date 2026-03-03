@@ -680,6 +680,8 @@ void Seeker_render(const void *state, const PlaceableComponent *placeable)
 	/* Center dot */
 	Render_point(&placeable->position, 3.0, bodyColor);
 
+	Enemy_render_resist_indicator(placeable->position);
+
 	/* Render hit sparks (only from index 0) */
 	int idx = (int)((SeekerState *)state - seekers);
 	if (idx == 0) {

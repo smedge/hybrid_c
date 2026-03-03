@@ -48,19 +48,6 @@ static const SubEmpConfig corruptorEmpCfg = {
 	.inner_alpha_mult = 0.6f,
 };
 
-static const SubResistConfig corruptorResistCfg = {
-	.duration_ms = 5000,
-	.cooldown_ms = 15000,
-	.ring_radius = 16.0f,
-	.ring_thickness = 1.5f,
-	.color_r = 1.0f,
-	.color_g = 0.7f,
-	.color_b = 0.2f,
-	.pulse_speed = 0.005f,
-	.bloom_radius = 10.0f,
-	.bloom_segments = 8,
-	.bloom_alpha = 0.4f,
-};
 #define RESPAWN_MS 30000
 #define BODY_SIZE 10.0
 #define IDLE_DRIFT_RADIUS 400.0
@@ -189,6 +176,9 @@ static bool can_engage_player(CorruptorState *c, Position myPos)
 		return false;
 	if (c->empCore.cooldownMs > 0)
 		return false;
+	/* Stay near allies while actively buffing them with resist */
+	if (c->resistCore.active)
+		return false;
 
 	Position shipPos = Ship_get_position();
 	double dist = Enemy_distance_between(myPos, shipPos);
@@ -240,7 +230,7 @@ static void try_apply_resist(CorruptorState *c, Position myPos)
 		return;
 	}
 
-	SubResist_try_activate(&c->resistCore, &corruptorResistCfg);
+	SubResist_try_activate(&c->resistCore, SubResist_get_config());
 }
 
 /* ---- Public API ---- */
@@ -396,7 +386,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 
 	/* Tick cores */
 	SubEmp_update(&c->empCore, &corruptorEmpCfg, ticks);
-	SubResist_update(&c->resistCore, &corruptorResistCfg, ticks);
+	SubResist_update(&c->resistCore, SubResist_get_config(), ticks);
 
 	if (c->alive)
 		Enemy_check_stealth_proximity(pl->position, c->facing);
@@ -679,7 +669,7 @@ void Corruptor_render(const void *state, const PlaceableComponent *placeable)
 	Render_point(&placeable->position, 4.0, bodyColor);
 
 	/* Resist aura */
-	SubResist_render_ring(&c->resistCore, &corruptorResistCfg, placeable->position);
+	SubResist_render_ring(&c->resistCore, SubResist_get_config(), placeable->position);
 
 	/* EMP visual — expanding ring */
 	SubEmp_render_ring(&c->empCore, &corruptorEmpCfg);
@@ -730,7 +720,7 @@ void Corruptor_render_bloom_source(void)
 		Render_point(&pl->position, 6.0, bodyColor);
 
 		/* Resist aura bloom */
-		SubResist_render_bloom(&c->resistCore, &corruptorResistCfg, pl->position);
+		SubResist_render_bloom(&c->resistCore, SubResist_get_config(), pl->position);
 
 		/* EMP ring bloom */
 		SubEmp_render_bloom(&c->empCore, &corruptorEmpCfg);

@@ -780,6 +780,8 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 	/* Heal beam */
 	SubHeal_render_beam(&d->healCore, &defHealCfg);
 
+	Enemy_render_resist_indicator(placeable->position);
+
 	/* Sparks (from idx 0 only) */
 	if (idx == 0) {
 		for (int si = 0; si < SPARK_POOL_SIZE; si++) {

@@ -707,6 +707,8 @@ void Stalker_render(const void *state, const PlaceableComponent *placeable)
 	/* Center dot */
 	ColorFloat dotColor = {baseColor->red, baseColor->green, baseColor->blue, alpha};
 	Render_point(&placeable->position, 3.0, &dotColor);
+
+	Enemy_render_resist_indicator(placeable->position);
 }
 
 void Stalker_render_bloom_source(void)

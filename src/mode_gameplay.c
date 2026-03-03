@@ -143,8 +143,8 @@ typedef enum {
 
 static GodPlacementMode godPlacementMode = GOD_MODE_CELLS;
 
-static const char *ENEMY_TYPES[] = {"mine", "hunter", "seeker", "defender", "stalker"};
-#define ENEMY_TYPE_COUNT 5
+static const char *ENEMY_TYPES[] = {"mine", "hunter", "seeker", "defender", "stalker", "corruptor"};
+#define ENEMY_TYPE_COUNT 6
 static int godEnemyType = 0;
 
 static const char *GOD_MODE_NAMES[] = {"Cells", "Enemies", "Savepoints", "Portals", "Chunks", "Obstacles", "Labels", "DataNodes", "Palette"};

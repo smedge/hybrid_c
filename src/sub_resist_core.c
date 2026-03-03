@@ -7,6 +7,25 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+static const SubResistConfig resistCfg = {
+	.duration_ms = 5000,
+	.cooldown_ms = 10000,
+	.ring_radius = 20.0f,
+	.ring_thickness = 1.5f,
+	.color_r = 1.0f,
+	.color_g = 0.7f,
+	.color_b = 0.2f,
+	.pulse_speed = 0.003f,
+	.bloom_radius = 24.0f,
+	.bloom_segments = 12,
+	.bloom_alpha = 0.3f,
+};
+
+const SubResistConfig *SubResist_get_config(void)
+{
+	return &resistCfg;
+}
+
 void SubResist_init(SubResistCore *core)
 {
 	core->active = false;

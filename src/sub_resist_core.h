@@ -28,6 +28,9 @@ bool SubResist_update(SubResistCore *core, const SubResistConfig *cfg, unsigned 
 bool SubResist_is_active(const SubResistCore *core);
 float SubResist_get_cooldown_fraction(const SubResistCore *core, const SubResistConfig *cfg);
 
+/* Single shared config — same skill, same tuning for player and enemies */
+const SubResistConfig *SubResist_get_config(void);
+
 void SubResist_render_ring(const SubResistCore *core, const SubResistConfig *cfg, Position pos);
 void SubResist_render_bloom(const SubResistCore *core, const SubResistConfig *cfg, Position pos);
 

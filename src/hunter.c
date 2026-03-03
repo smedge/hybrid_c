@@ -550,6 +550,8 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 
 	/* Center dot */
 	Render_point(&placeable->position, 4.0, bodyColor);
+
+	Enemy_render_resist_indicator(placeable->position);
 }
 
 void Hunter_render_bloom_source(void)

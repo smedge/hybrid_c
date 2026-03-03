@@ -21,6 +21,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <SDL2/SDL.h>
 
 PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos)
 {
@@ -294,5 +295,27 @@ void Enemy_drop_fragments(Position deathPos, const CarriedSubroutine *subs, int 
 			int pick = rand() % rareCount;
 			Fragment_spawn(deathPos, subs[rare[pick]].frag_type);
 		}
+	}
+}
+
+void Enemy_render_resist_indicator(Position pos)
+{
+	if (!Corruptor_is_resist_buffing(pos))
+		return;
+
+	float t = (float)(SDL_GetTicks() % 2000) / 2000.0f;
+	float pulse = 0.7f + 0.3f * sinf(t * 2.0f * (float)M_PI);
+	float radius = 14.0f;
+	float alpha = 0.45f * pulse;
+
+	for (int i = 0; i < 6; i++) {
+		float a0 = (float)i * 60.0f * (float)M_PI / 180.0f;
+		float a1 = (float)(i + 1) * 60.0f * (float)M_PI / 180.0f;
+		float x0 = (float)pos.x + cosf(a0) * radius;
+		float y0 = (float)pos.y + sinf(a0) * radius;
+		float x1 = (float)pos.x + cosf(a1) * radius;
+		float y1 = (float)pos.y + sinf(a1) * radius;
+		Render_thick_line(x0, y0, x1, y1, 1.5f,
+			1.0f, 0.9f, 0.0f, alpha);
 	}
 }

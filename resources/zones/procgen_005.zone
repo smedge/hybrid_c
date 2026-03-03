@@ -5,9 +5,8 @@ bgcolor 0 0 0 0
 bgcolor 1 0 0 0
 bgcolor 2 19 86 39
 bgcolor 3 187 117 82
-music resources/music/deadmau5_Avarita.mp3
-music resources/music/deadmau5_ReJaded.mp3
-music resources/music/deadmau5_GG.mp3
+music resources/music/deadmau5_SuckFest9001.mp3
+music resources/music/deadmau5_CityInFlorida.mp3
 
 celltype solid 0 6 2 255 255 255 255 255 none
 celltype circuit 10 36 10 120 0 255 1 255 circuit
