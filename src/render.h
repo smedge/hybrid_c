@@ -48,4 +48,10 @@ void Render_clear(void);
 void Render_set_pixel_snap(int draw_w, int draw_h);
 float Render_get_pixel_world_size(void);
 
+void Render_set_blend_invert(void);
+void Render_set_blend_normal(void);
+void Render_scissor_begin(int x, int y, int w, int h);
+void Render_scissor_end(void);
+void Render_set_stencil_ref(int ref);
+
 #endif

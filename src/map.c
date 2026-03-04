@@ -998,8 +998,6 @@ void Map_render_stencil_mask(void)
 
 /* --- Multi-value stencil mask: circuit=1, solid=2 (for lighting + reflection) --- */
 
-#include <OpenGL/gl3.h>
-
 static void render_cell_stencil_circuit(int x, int y)
 {
 	const MapCell *me = get_cell_fast(x, y);
@@ -1067,14 +1065,14 @@ void Map_render_stencil_mask_all(const Mat4 *proj, const Mat4 *view_mat)
 	if (maxY >= MAP_SIZE) maxY = MAP_SIZE - 1;
 
 	/* Pass 1: Circuit cells → stencil ref=1 */
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	Render_set_stencil_ref(1);
 	for (int x = minX; x <= maxX; x++)
 		for (int y = minY; y <= maxY; y++)
 			render_cell_stencil_circuit(x, y);
 	Render_flush(proj, view_mat);
 
 	/* Pass 2: Solid cells + boundary → stencil ref=2 (overwrites any overlap) */
-	glStencilFunc(GL_ALWAYS, 2, 0xFF);
+	Render_set_stencil_ref(2);
 
 	if (!boundaryCell.empty) {
 		float map_left = (float)(-HALF_MAP_SIZE) * MAP_CELL_SIZE;

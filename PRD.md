@@ -384,11 +384,29 @@ Post-final-boss endgame will leverage the procedural generation system to create
 
 This is long-term vision — the building blocks (procgen infrastructure, themed variants, difficulty tuning) need to exist first.
 
-**Bosses**:
-- Each themed zone has 1 major boss encounter
-- The alien zone contains the final boss
-- Boss encounters drive major progression milestones
-- Boss design is not yet specified
+**Bosses — Node-in-Arena Design**:
+
+Every boss is a **node** — a fortified system process embedded in a purpose-built arena. The node is the objective. The arena is the threat. The player doesn't fight a creature — they dismantle a fortified system from the inside while its defense infrastructure (turrets, hazard zones, enemy spawns, environmental transformations) tries to kill them. Each node is the sector controller for its zone — the root-level security process that governs the entire themed area.
+
+- Each themed zone has 1 major boss encounter in a dedicated hand-authored arena chunk
+- The alien zone contains the final boss (designed to subvert the node-in-arena framework after players learn it)
+- Boss encounters drive major progression milestones — defeating a boss is permanent
+- All bosses follow a 3-phase structure (Introduction → Escalation → Desperation)
+- Nodes have personality through **eyes** (always tracking the player) and themed visual pulse
+- Boss signature attacks use the same shared subroutine cores the player earns on victory (**preview before earn**)
+- Each boss arena is gated by a miniboss/scripted encounter confirming player readiness
+- **Detailed framework**: `plans/spec_boss_framework.md`
+- **Pyraxis (fire boss) spec**: `plans/spec_pyraxis_boss.md`
+
+| Zone | Boss | Primary Arena Threats | Node Behavior | Reward |
+|------|------|----------------------|---------------|--------|
+| Fire | Pyraxis | Inferno turrets, burn zones, fire enemy spawns | Stationary | sub_inferno |
+| Ice | TBD | Blizzard sweeps, freeze zones, ice projectile patterns | Socket-hopping | TBD |
+| Poison | TBD | Toxic pools, DOT fields, regen suppression | Phased positioning | TBD |
+| Blood | TBD | Enemy swarm spawns, life drain fields | Shielded/gated | TBD |
+| Electric | TBD | Chain lightning turrets, EMP pulses, charge zones | Track-riding | TBD |
+| Void | TBD | Decoy nodes, spatial distortion, darkness | Split/decoy | TBD |
+| Alien | TBD | All mechanics remixed — subverts the framework | TBD | TBD |
 
 **Cell types per zone**: Each zone defines its own visual theme through custom cell type definitions. Two categories: **wall types** (solid + circuit, blocking movement and LOS) and **effect types** (traversable, with visual properties and optional gameplay effects). The engine provides global defaults but zones override colors, patterns, and define zone-specific types. Wall types use an influence-proximity placement system: circuit walls concentrate as geometric edge patterns near landmarks (architectural feel) and scatter organically in the wilds (raw, natural feel). Effect types: data traces (generic zones), ember cells, frost cells, toxic cells (themed zones).
 
@@ -586,7 +604,7 @@ More types will be added as new cell types, enemy types, and world features are 
 ### Not Yet Implemented
 - Unified skill bar Phase 3 (two-loadout system for gameplay/god mode)
 - God mode placeable catalog (cell types, enemy spawns, portals via catalog drag-and-drop)
-- Boss encounters
+- Boss encounters (node-in-arena framework specced — see `plans/spec_boss_framework.md`, Pyraxis specced — see `plans/spec_pyraxis_boss.md`)
 - ~~Diagonal walls~~ (scrapped — too many rendering edge cases, square cells are the architecture going forward)
 - Procedural level generation (noise + influence field approach — see spec at `plans/spec_procedural_generation.md`)
 - Stalker enemy (stealth assassin — see `plans/new_enemies_spec.md`)

@@ -300,6 +300,19 @@ float Render_get_pixel_world_size(void)
 	return pixelWorldSize;
 }
 
+void Render_set_blend_invert(void)  { glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO); }
+void Render_set_blend_normal(void)  { glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); }
+
+void Render_scissor_begin(int x, int y, int w, int h)
+{
+	glEnable(GL_SCISSOR_TEST);
+	glScissor(x, y, w, h);
+}
+
+void Render_scissor_end(void) { glDisable(GL_SCISSOR_TEST); }
+
+void Render_set_stencil_ref(int ref) { glStencilFunc(GL_ALWAYS, ref, 0xFF); }
+
 static int get_nearest_grid_start_point(int x, const double GRID_SIZE)
 {
 	int a, b;

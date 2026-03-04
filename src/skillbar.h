@@ -5,27 +5,10 @@
 #include "input.h"
 #include "screen.h"
 #include "progression.h"
+#include "sub_types.h"
 
 #define SKILLBAR_SLOTS 10
 #define SUB_NONE -1
-
-typedef enum {
-	SUB_TYPE_PROJECTILE,
-	SUB_TYPE_DEPLOYABLE,
-	SUB_TYPE_MOVEMENT,
-	SUB_TYPE_SHIELD,
-	SUB_TYPE_HEALING,
-	SUB_TYPE_STEALTH,
-	SUB_TYPE_CONTROL,
-	SUB_TYPE_AREA_EFFECT,
-	SUB_TYPE_COUNT
-} SubroutineType;
-
-typedef enum {
-	TIER_NORMAL,
-	TIER_RARE,
-	TIER_ELITE
-} SubroutineTier;
 
 void Skillbar_initialize(void);
 void Skillbar_cleanup(void);

@@ -50,14 +50,9 @@
 #define SPRINT_TRAIL_GHOSTS 12
 #define SPRINT_TRAIL_LENGTH 3.0
 
-static const CarriedSubroutine corruptorCarriedFull[] = {
+static const CarriedSubroutine corruptorCarried[] = {
 	{ SUB_ID_SPRINT, FRAG_TYPE_CORRUPTOR },
 	{ SUB_ID_EMP,    FRAG_TYPE_CORRUPTOR },
-	{ SUB_ID_RESIST, FRAG_TYPE_CORRUPTOR },
-};
-
-static const CarriedSubroutine corruptorCarriedNoEmp[] = {
-	{ SUB_ID_SPRINT, FRAG_TYPE_CORRUPTOR },
 	{ SUB_ID_RESIST, FRAG_TYPE_CORRUPTOR },
 };
 
@@ -496,7 +491,8 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 		double shipDist = Enemy_distance_between(pl->position, shipPos);
 
 		/* De-aggro check */
-		if (Ship_is_destroyed() || Sub_Stealth_is_stealthed() || shipDist > DEAGGRO_RANGE) {
+		if (Ship_is_destroyed() || Sub_Stealth_is_stealthed() || shipDist > DEAGGRO_RANGE ||
+		    !Enemy_has_line_of_sight(pl->position, shipPos)) {
 			c->aiState = CORRUPTOR_IDLE;
 			pick_wander_target(c);
 			break;
@@ -527,6 +523,13 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 		double shipDist = Enemy_distance_between(pl->position, shipPos);
 
 		c->sprintCore.active = true;
+
+		/* LOS broken — abort charge */
+		if (!Enemy_has_line_of_sight(pl->position, shipPos)) {
+			c->sprintCore.active = false;
+			c->aiState = CORRUPTOR_SUPPORTING;
+			break;
+		}
 
 		/* Charge at player */
 		Enemy_move_toward(pl, shipPos, SPRINT_SPEED, dt, WALL_CHECK_DIST);
@@ -600,20 +603,8 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			c->aiState = CORRUPTOR_DEAD;
 			c->respawnTimer = 0;
 
-			/* Drop fragment — special gating for EMP */
-			if (c->killedByPlayer) {
-				bool canDropEmp = Progression_is_unlocked(SUB_ID_SPRINT) &&
-					Progression_is_unlocked(SUB_ID_RESIST);
-				if (canDropEmp) {
-					/* 50% chance to drop EMP fragment (only locked sub remaining) */
-					if (rand() % 2 == 0)
-						Enemy_drop_fragments(pl->position, corruptorCarriedFull, 3);
-					else
-						Enemy_drop_fragments(pl->position, corruptorCarriedNoEmp, 2);
-				} else {
-					Enemy_drop_fragments(pl->position, corruptorCarriedNoEmp, 2);
-				}
-			}
+			if (c->killedByPlayer)
+				Enemy_drop_fragments(pl->position, corruptorCarried, 3);
 		}
 		break;
 

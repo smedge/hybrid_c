@@ -3,6 +3,7 @@
 
 #include "position.h"
 #include "screen.h"
+#include "sub_types.h"
 
 typedef enum {
 	FRAG_TYPE_MINE = 0,
@@ -22,7 +23,7 @@ typedef enum {
 
 void Fragment_initialize(void);
 void Fragment_cleanup(void);
-void Fragment_spawn(Position position, FragmentType type);
+void Fragment_spawn(Position position, FragmentType type, SubroutineTier tier);
 void Fragment_update(unsigned int ticks);
 void Fragment_render(void);
 void Fragment_render_text(const Screen *screen);

@@ -285,15 +285,15 @@ void Enemy_drop_fragments(Position deathPos, const CarriedSubroutine *subs, int 
 	/* Drop normal fragments: always, pick one at random */
 	if (normalCount > 0) {
 		int pick = rand() % normalCount;
-		Fragment_spawn(deathPos, subs[normal[pick]].frag_type);
+		Fragment_spawn(deathPos, subs[normal[pick]].frag_type, Skillbar_get_tier(subs[normal[pick]].sub_id));
 		return;
 	}
 
-	/* All normal subs unlocked — rare subs become eligible at 10% drop rate */
+	/* All normal subs unlocked — rare subs become eligible at 15% drop rate */
 	if (allNormalUnlocked && rareCount > 0) {
-		if ((rand() % 100) < 10) {
+		if ((rand() % 100) < 15) {
 			int pick = rand() % rareCount;
-			Fragment_spawn(deathPos, subs[rare[pick]].frag_type);
+			Fragment_spawn(deathPos, subs[rare[pick]].frag_type, Skillbar_get_tier(subs[rare[pick]].sub_id));
 		}
 	}
 }

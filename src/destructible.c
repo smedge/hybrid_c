@@ -59,7 +59,7 @@ void Destructible_update(unsigned int ticks)
 				if (!Progression_is_unlocked(SUB_ID_BOOST)) {
 					Position center = {wx + MAP_CELL_SIZE * 0.5,
 					                   wy + MAP_CELL_SIZE * 0.5};
-					Fragment_spawn(center, FRAG_TYPE_ELITE);
+					Fragment_spawn(center, FRAG_TYPE_ELITE, TIER_ELITE);
 				}
 
 				ds->destroyed = true;

@@ -623,11 +623,8 @@ static void scatter_obstacles(Zone *zone, Prng *rng,
 		/* Stamp walls */
 		Chunk_stamp(block, zone, x, y, transform);
 
-		/* Roll spawn probabilities and create zone spawn entries */
+		/* Store spawn entries with original probability for re-roll on respawn */
 		for (int si = 0; si < block->spawn_count; si++) {
-			float roll = Prng_float(rng);
-			if (roll > block->spawns[si].probability) continue;
-
 			/* Skip non-enemy spawns (portals/savepoints don't make sense in obstacles) */
 			if (strcmp(block->spawns[si].entity_type, "portal") == 0) continue;
 			if (strcmp(block->spawns[si].entity_type, "savepoint") == 0) continue;
@@ -647,7 +644,7 @@ static void scatter_obstacles(Zone *zone, Prng *rng,
 			sp->enemy_type[sizeof(sp->enemy_type) - 1] = '\0';
 			sp->world_x = (gx - HALF_MAP_SIZE) * MAP_CELL_SIZE;
 			sp->world_y = (gy - HALF_MAP_SIZE) * MAP_CELL_SIZE;
-			sp->probability = 1.0f; /* already passed the roll */
+			sp->probability = block->spawns[si].probability;
 		}
 
 		placed[placed_count].x = x;

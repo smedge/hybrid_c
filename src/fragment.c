@@ -8,6 +8,7 @@
 #include "mat4.h"
 #include "audio.h"
 #include "progression.h"
+#include "skillbar.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -44,24 +45,6 @@ typedef struct {
 	float alpha;
 } Fragment;
 
-typedef struct {
-	ColorFloat color;
-} FragmentTypeInfo;
-
-static const FragmentTypeInfo typeInfo[FRAG_TYPE_COUNT] = {
-	[FRAG_TYPE_MINE]   = {{1.0f, 0.0f, 1.0f, 1.0f}},
-	[FRAG_TYPE_ELITE]  = {{1.0f, 0.84f, 0.0f, 1.0f}},
-	[FRAG_TYPE_HUNTER] = {{1.0f, 0.4f, 0.0f, 1.0f}},
-	[FRAG_TYPE_SEEKER] = {{0.0f, 1.0f, 0.2f, 1.0f}},
-	[FRAG_TYPE_MEND]   = {{0.3f, 0.7f, 1.0f, 1.0f}},
-	[FRAG_TYPE_AEGIS]  = {{0.6f, 0.9f, 1.0f, 1.0f}},
-	[FRAG_TYPE_GRAVWELL] = {{0.0f, 0.0f, 0.0f, 0.0f}},
-	[FRAG_TYPE_STALKER] = {{0.5f, 0.0f, 0.8f, 1.0f}},
-	[FRAG_TYPE_INFERNO] = {{1.0f, 0.3f, 0.0f, 1.0f}},
-	[FRAG_TYPE_DISINTEGRATE] = {{0.6f, 0.0f, 1.0f, 1.0f}},
-	[FRAG_TYPE_TGUN] = {{0.1f, 0.1f, 1.0f, 1.0f}},
-	[FRAG_TYPE_CORRUPTOR] = {{1.0f, 0.9f, 0.0f, 1.0f}},
-};
 
 static Fragment fragments[MAX_FRAGMENTS];
 static int collectionCounts[FRAG_TYPE_COUNT];
@@ -95,7 +78,7 @@ void Fragment_cleanup(void)
 	Audio_unload_sample(&unlockSample);
 }
 
-void Fragment_spawn(Position position, FragmentType type)
+void Fragment_spawn(Position position, FragmentType type, SubroutineTier tier)
 {
 	if (type < 0 || type >= FRAG_TYPE_COUNT) return;
 
@@ -117,7 +100,7 @@ void Fragment_spawn(Position position, FragmentType type)
 	f->vel_y = 20.0 + ((rand() % 20) - 10);  /* 10 to 30 */
 	f->type = type;
 	f->state = FRAG_IDLE;
-	f->color = typeInfo[type].color;
+	f->color = TIER_COLORS[tier];
 	f->ticksAlive = 0;
 	f->ticksAttracting = 0;
 	f->marqueeTimer = 0;

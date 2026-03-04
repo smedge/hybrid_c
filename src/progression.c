@@ -130,13 +130,13 @@ void Progression_render(const Screen *screen)
 
 		float tw = Text_measure_width(tr, notifyText);
 		const char *tier_label = NULL;
-		float tier_r = 0, tier_g = 0, tier_b = 0;
+		ColorFloat tier_c = {0};
 		if (notifyTier == TIER_ELITE) {
 			tier_label = "ELITE ";
-			tier_r = 1.0f; tier_g = 0.84f; tier_b = 0.0f;
+			tier_c = TIER_COLORS[TIER_ELITE];
 		} else if (notifyTier == TIER_RARE) {
 			tier_label = "RARE ";
-			tier_r = 0.1f; tier_g = 0.1f; tier_b = 1.0f;
+			tier_c = TIER_COLORS[TIER_RARE];
 		}
 		if (tier_label)
 			tw += Text_measure_width(tr, tier_label) + Text_measure_width(tr, "UNLOCKED <<");
@@ -145,17 +145,17 @@ void Progression_render(const Screen *screen)
 
 		Text_render(tr, shaders, &proj, &ident,
 			notifyText, nx, ny,
-			1.0f, 0.0f, 1.0f, alpha);
+			1.0f, 1.0f, 1.0f, alpha);
 
 		if (tier_label) {
 			float cx = nx + Text_measure_width(tr, notifyText);
 			Text_render(tr, shaders, &proj, &ident,
 				tier_label, cx, ny,
-				tier_r, tier_g, tier_b, alpha);
+				tier_c.red, tier_c.green, tier_c.blue, alpha);
 			cx += Text_measure_width(tr, tier_label);
 			Text_render(tr, shaders, &proj, &ident,
 				"UNLOCKED <<", cx, ny,
-				1.0f, 0.0f, 1.0f, alpha);
+				1.0f, 1.0f, 1.0f, alpha);
 		}
 	}
 }

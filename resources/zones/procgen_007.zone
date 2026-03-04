@@ -1,0 +1,41 @@
+# Zone: The Pulse
+name The Pulse
+size 1024
+bgcolor 0 57 63 161
+bgcolor 1 0 0 124
+bgcolor 2 183 59 166
+bgcolor 3 170 77 145
+music resources/music/deadmau5_The16thHour.mp3
+music resources/music/deadmau5_Analogical.mp3
+music resources/music/deadmau5_October.mp3
+
+celltype solid 1 0 13 255 42 135 255 255 none
+celltype circuit 37 12 11 128 255 85 233 255 circuit
+celltype solid_cru 10 10 10 255 128 128 128 255 none
+celltype circuit_cru 40 15 15 180 180 0 0 255 circuit
+
+procgen true
+noise_octaves 5
+noise_frequency 0.01
+noise_lacunarity 2
+noise_persistence 0.5
+noise_wall_threshold -0.2
+hotspot_count 20
+hotspot_edge_margin 80
+hotspot_min_separation 150
+landmark_min_separation 120
+
+landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
+landmark_portal exit_point portal_to_006 ./resources/zones/procgen_006.zone portal_to_007
+landmark_savepoint exit_point save_001
+
+obstacle_density 0.06
+obstacle_min_spacing 4
+
+obstacle cross_001 0.3
+obstacle patrol_001 1
+obstacle patrol_002 1
+obstacle patrol_003 1
+obstacle minefield_002 0.3
+
+

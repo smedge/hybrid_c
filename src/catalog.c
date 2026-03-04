@@ -577,15 +577,7 @@ void Catalog_render(const Screen *screen)
 			float icon_cy = iy + ITEM_HEIGHT * 0.5f;
 			float half = ITEM_ICON_SIZE * 0.5f;
 			float ich = 8.0f;
-			float br, bg, bb;
-			SubroutineTier tier = Skillbar_get_tier(i);
-			if (tier == TIER_ELITE) {
-				br = 1.0f; bg = 0.84f; bb = 0.0f;
-			} else if (tier == TIER_RARE) {
-				br = 0.1f; bg = 0.1f; bb = 1.0f;
-			} else {
-				br = 1.0f; bg = 1.0f; bb = 1.0f;
-			}
+			ColorFloat bc = TIER_COLORS[Skillbar_get_tier(i)];
 			float ix0 = icon_cx - half, iy0 = icon_cy - half;
 			float ix1 = icon_cx + half, iy1 = icon_cy + half;
 			float ivx[6] = { ix0,       ix1 - ich, ix1,
@@ -595,7 +587,7 @@ void Catalog_render(const Screen *screen)
 			for (int v = 0; v < 6; v++) {
 				int nv = (v + 1) % 6;
 				Render_thick_line(ivx[v], ivy[v], ivx[nv], ivy[nv],
-					1.0f, br, bg, bb, 0.6f);
+					1.0f, bc.red, bc.green, bc.blue, 0.6f);
 			}
 			Skillbar_render_icon_at(i, icon_cx, icon_cy, 1.0f);
 		}
@@ -625,13 +617,14 @@ void Catalog_render(const Screen *screen)
 			float bar_w = 120.0f;
 			float bar_h = 4.0f;
 			float progress = Progression_get_progress(i);
+			ColorFloat tc = TIER_COLORS[Skillbar_get_tier(i)];
 
 			Render_quad_absolute(bar_x, bar_y,
 				bar_x + bar_w, bar_y + bar_h,
 				0.15f, 0.15f, 0.2f, 0.8f);
 			Render_quad_absolute(bar_x, bar_y,
 				bar_x + bar_w * progress, bar_y + bar_h,
-				1.0f, 0.0f, 1.0f, 0.7f);
+				tc.red, tc.green, tc.blue, 0.7f);
 		}
 
 		iy += ITEM_HEIGHT + ITEM_GAP;
@@ -677,15 +670,12 @@ void Catalog_render(const Screen *screen)
 				gcx, gcy, gvx[v], gvy[v], gvx[nv], gvy[nv],
 				0.1f, 0.1f, 0.1f, 0.4f);
 		}
-		/* Border — gold for elite, blue for rare, white for normal */
-		float gbr = 1.0f, gbg = 1.0f, gbb = 1.0f;
-		SubroutineTier gtier = Skillbar_get_tier(drag.source_id);
-		if (gtier == TIER_ELITE) { gbr = 1.0f; gbg = 0.84f; gbb = 0.0f; }
-		else if (gtier == TIER_RARE) { gbr = 0.1f; gbg = 0.1f; gbb = 1.0f; }
+		/* Border — tier colored */
+		ColorFloat gc = TIER_COLORS[Skillbar_get_tier(drag.source_id)];
 		for (int v = 0; v < 6; v++) {
 			int nv = (v + 1) % 6;
 			Render_thick_line(gvx[v], gvy[v], gvx[nv], gvy[nv],
-				1.0f, gbr, gbg, gbb, 0.4f);
+				1.0f, gc.red, gc.green, gc.blue, 0.4f);
 		}
 
 		Skillbar_render_icon_at(drag.source_id,
@@ -747,14 +737,11 @@ void Catalog_render(const Screen *screen)
 			/* Name — leave room for tier tag and [Slot N] if equipped */
 			SubroutineTier tier = Skillbar_get_tier(i);
 			const char *tier_label = NULL;
-			float tier_r = 0, tier_g = 0, tier_b = 0;
-			if (tier == TIER_ELITE) {
+			ColorFloat tier_c = TIER_COLORS[tier];
+			if (tier == TIER_ELITE)
 				tier_label = " ELITE";
-				tier_r = 1.0f; tier_g = 0.84f; tier_b = 0.0f;
-			} else if (tier == TIER_RARE) {
+			else if (tier == TIER_RARE)
 				tier_label = " RARE";
-				tier_r = 0.1f; tier_g = 0.1f; tier_b = 1.0f;
-			}
 			float tier_w = tier_label ? Text_measure_width(tr, tier_label) : 0.0f;
 			float name_budget = equipped_slot >= 0
 				? max_text_w - 90.0f - tier_w : max_text_w - tier_w;
@@ -768,7 +755,7 @@ void Catalog_render(const Screen *screen)
 				float after_name = name_x + Text_measure_width(tr, tbuf);
 				Text_render(tr, shaders, &proj, &ident,
 					tier_label, after_name, name_y,
-					tier_r, tier_g, tier_b, 0.95f);
+					tier_c.red, tier_c.green, tier_c.blue, 0.95f);
 			}
 
 			marquee_text(tr, Skillbar_get_sub_description(i),
@@ -804,9 +791,10 @@ void Catalog_render(const Screen *screen)
 			snprintf(buf, sizeof(buf), "Fragments: %d/%d",
 				Progression_get_current(i),
 				Progression_get_threshold(i));
+			ColorFloat ftc = TIER_COLORS[Skillbar_get_tier(i)];
 			Text_render(tr, shaders, &proj, &ident,
 				buf, name_x, desc_y,
-				1.0f, 0.0f, 1.0f, 0.6f);
+				ftc.red, ftc.green, ftc.blue, 0.6f);
 		}
 
 		iy += ITEM_HEIGHT + ITEM_GAP;

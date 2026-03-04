@@ -1,8 +1,6 @@
 #include "cursor.h"
 #include "render.h"
 
-#include <OpenGL/gl3.h>
-
 static int x = 0;
 static int y = 0;
 static bool visible = false;
@@ -21,7 +19,7 @@ void cursor_render(const Mat4 *projection, const Mat4 *view)
 
 	/* Invert blend: output = 1 - destination color.
 	   Cursor is always visible regardless of background. */
-	glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
+	Render_set_blend_invert();
 
 	float fx = (float)x;
 	float fy = (float)y;
@@ -43,5 +41,5 @@ void cursor_render(const Mat4 *projection, const Mat4 *view)
 	Render_flush(projection, view);
 
 	/* Restore normal alpha blending */
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	Render_set_blend_normal();
 }

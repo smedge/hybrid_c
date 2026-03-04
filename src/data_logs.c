@@ -7,7 +7,6 @@
 #include "narrative.h"
 #include "data_node.h"
 
-#include <OpenGL/gl3.h>
 #include "batch.h"
 
 #include <string.h>
@@ -725,8 +724,7 @@ void DataLogs_render(const Screen *screen)
 	Graphics_get_drawable_size(&draw_w, &draw_h);
 	float dpi_x = (float)draw_w / screen->width;
 	float dpi_y = (float)draw_h / screen->height;
-	glEnable(GL_SCISSOR_TEST);
-	glScissor((int)(content_x * dpi_x),
+	Render_scissor_begin((int)(content_x * dpi_x),
 		draw_h - (int)((content_top + content_h) * dpi_y),
 		(int)((content_w + SCROLLBAR_WIDTH) * dpi_x),
 		(int)(content_h * dpi_y));
@@ -811,7 +809,7 @@ void DataLogs_render(const Screen *screen)
 		}
 	}
 
-	glDisable(GL_SCISSOR_TEST);
+	Render_scissor_end();
 
 	/* ── Key hints (below panel, matching catalog style) ── */
 	Text_render(tr, shaders, &proj, &ident,
