@@ -425,9 +425,9 @@ void Map_render_minimap(float center_x, float center_y,
 		if (mb_sy > mm_b) mb_sy = mm_b;
 
 		ColorFloat bc = Color_rgb_to_float(&boundaryCell.primaryColor);
-		float br = bc.red * 8.0f;  if (br > 1.0f) br = 1.0f;
-		float bg = bc.green * 8.0f; if (bg > 1.0f) bg = 1.0f;
-		float bb = bc.blue * 8.0f;  if (bb > 1.0f) bb = 1.0f;
+		float maxC = fmaxf(fmaxf(bc.red, bc.green), bc.blue);
+		float s = (maxC > 0.001f) ? fminf(10.0f, 1.0f / maxC) : 1.0f;
+		float br = bc.red * s, bg = bc.green * s, bb = bc.blue * s;
 
 		/* Top strip (above map) */
 		if (mt_sy > mm_t)
@@ -465,10 +465,10 @@ void Map_render_minimap(float center_x, float center_y,
 			float half_px = cell_px * 0.5f;
 
 			ColorFloat c = Color_rgb_to_float(&map[x][y]->primaryColor);
-			/* Brighten for minimap visibility */
-			float br = c.red * 8.0f;  if (br > 1.0f) br = 1.0f;
-			float bg = c.green * 8.0f; if (bg > 1.0f) bg = 1.0f;
-			float bb = c.blue * 8.0f;  if (bb > 1.0f) bb = 1.0f;
+			/* Brighten for minimap visibility — hue-preserving */
+			float maxC = fmaxf(fmaxf(c.red, c.green), c.blue);
+			float s = (maxC > 0.001f) ? fminf(10.0f, 1.0f / maxC) : 1.0f;
+			float br = c.red * s, bg = c.green * s, bb = c.blue * s;
 			Render_quad_absolute(
 				sx - half_px, sy - half_px,
 				sx + half_px, sy + half_px,

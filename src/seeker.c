@@ -51,7 +51,7 @@ static const SubDashConfig seekerDashCfg = {
 #define BODY_WIDTH 8.0
 
 static const CarriedSubroutine seekerCarried[] = {
-	{ SUB_ID_EGRESS, FRAG_TYPE_SEEKER },
+	{ SUB_ID_EGRESS, FRAG_TYPE_EGRESS },
 };
 #define WALL_CHECK_DIST 50.0
 #define NEAR_MISS_RADIUS 200.0

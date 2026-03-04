@@ -68,6 +68,11 @@ void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableC
 	SubProjectile_update(&pool, &cfg, ticks);
 }
 
+void Sub_Pea_tick(unsigned int ticks)
+{
+	SubProjectile_update(&pool, &cfg, ticks);
+}
+
 void Sub_Pea_render()
 {
 	SubProjectile_render(&pool, &cfg);

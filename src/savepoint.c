@@ -31,7 +31,24 @@
 #define SAVEPOINT_CHARGE_CHANNEL 4
 
 /* Must stay in sync with FragmentType enum order */
-static const char *frag_names[] = {"mine", "elite", "hunter", "seeker", "mend", "aegis", "gravwell", "stalker", "inferno", "disintegrate", "tgun", "corruptor"};
+static const char *frag_names[] = {"mine", "boost", "mgun", "egress", "mend", "aegis", "gravwell", "stealth", "inferno", "disintegrate", "tgun", "sprint", "emp", "resist"};
+
+/* Backwards-compat: map old save file names to new FragmentType indices */
+static int find_frag_by_name_compat(const char *name)
+{
+	/* Check current names first */
+	for (int i = 0; i < FRAG_TYPE_COUNT; i++) {
+		if (strcmp(name, frag_names[i]) == 0)
+			return i;
+	}
+	/* Legacy name mapping */
+	if (strcmp(name, "elite") == 0)     return FRAG_TYPE_BOOST;
+	if (strcmp(name, "hunter") == 0)    return FRAG_TYPE_MGUN;
+	if (strcmp(name, "seeker") == 0)    return FRAG_TYPE_EGRESS;
+	if (strcmp(name, "stalker") == 0)   return FRAG_TYPE_STEALTH;
+	if (strcmp(name, "corruptor") == 0) return FRAG_TYPE_SPRINT; /* best-effort: assign to sprint */
+	return -1;
+}
 
 typedef enum {
 	SAVEPOINT_IDLE,
@@ -589,12 +606,9 @@ bool Savepoint_load_from_disk(void)
 				char name[32];
 				int count;
 				if (sscanf(tok, "%31[^:]:%d", name, &count) == 2) {
-					for (int i = 0; i < FRAG_TYPE_COUNT; i++) {
-						if (strcmp(name, frag_names[i]) == 0) {
-							checkpoint.fragment_counts[i] = count;
-							break;
-						}
-					}
+					int idx = find_frag_by_name_compat(name);
+					if (idx >= 0)
+						checkpoint.fragment_counts[idx] = count;
 				}
 				tok = strtok(NULL, " ");
 			}

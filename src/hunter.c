@@ -41,7 +41,7 @@
 #define WALL_CHECK_DIST 50.0
 
 static const CarriedSubroutine hunterCarried[] = {
-	{ SUB_ID_MGUN, FRAG_TYPE_HUNTER },
+	{ SUB_ID_MGUN, FRAG_TYPE_MGUN },
 	{ SUB_ID_TGUN, FRAG_TYPE_TGUN },
 };
 

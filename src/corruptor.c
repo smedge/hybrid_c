@@ -51,9 +51,9 @@
 #define SPRINT_TRAIL_LENGTH 3.0
 
 static const CarriedSubroutine corruptorCarried[] = {
-	{ SUB_ID_SPRINT, FRAG_TYPE_CORRUPTOR },
-	{ SUB_ID_EMP,    FRAG_TYPE_CORRUPTOR },
-	{ SUB_ID_RESIST, FRAG_TYPE_CORRUPTOR },
+	{ SUB_ID_SPRINT, FRAG_TYPE_SPRINT },
+	{ SUB_ID_EMP,    FRAG_TYPE_EMP },
+	{ SUB_ID_RESIST, FRAG_TYPE_RESIST },
 };
 
 typedef enum {

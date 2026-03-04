@@ -354,6 +354,12 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Tgun_update(userInput, ticks, placeable);
 		Sub_Emp_update(userInput, ticks);
 		Sub_Resist_update(userInput, ticks);
+	} else {
+		/* Ship dead — keep ticking projectiles/mines so animations finish */
+		Sub_Pea_tick(ticks);
+		Sub_Mgun_tick(ticks);
+		Sub_Tgun_tick(ticks);
+		Sub_Mine_tick(ticks);
 	}
 }
 

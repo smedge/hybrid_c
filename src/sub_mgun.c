@@ -63,6 +63,11 @@ void Sub_Mgun_update(const Input *userInput, const unsigned int ticks, Placeable
 	SubProjectile_update(&pool, &cfg, ticks);
 }
 
+void Sub_Mgun_tick(unsigned int ticks)
+{
+	SubProjectile_update(&pool, &cfg, ticks);
+}
+
 void Sub_Mgun_render()
 {
 	SubProjectile_render(&pool, &cfg);

@@ -101,6 +101,12 @@ void Sub_Tgun_update(const Input *userInput, const unsigned int ticks, Placeable
 	SubProjectile_update(&poolRight, &cfg, ticks);
 }
 
+void Sub_Tgun_tick(unsigned int ticks)
+{
+	SubProjectile_update(&poolLeft, &cfg, ticks);
+	SubProjectile_update(&poolRight, &cfg, ticks);
+}
+
 void Sub_Tgun_render()
 {
 	SubProjectile_render(&poolLeft, &cfg);

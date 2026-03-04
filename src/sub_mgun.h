@@ -9,6 +9,7 @@ void Sub_Mgun_initialize(Entity *parent);
 void Sub_Mgun_cleanup();
 
 void Sub_Mgun_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);
+void Sub_Mgun_tick(unsigned int ticks);
 void Sub_Mgun_render();
 void Sub_Mgun_render_bloom_source(void);
 void Sub_Mgun_render_light_source(void);

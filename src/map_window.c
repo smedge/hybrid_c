@@ -165,10 +165,15 @@ static void generate_texture(void)
 			const MapCell *cell = Map_get_cell(x, y);
 
 			if (cell && !cell->empty) {
-				/* Brighten for visibility (same 8x as minimap) */
-				int r = cell->primaryColor.red * 8;
-				int g = cell->primaryColor.green * 8;
-				int b = cell->primaryColor.blue * 8;
+				/* Brighten for visibility — hue-preserving */
+				int maxC = cell->primaryColor.red;
+				if (cell->primaryColor.green > maxC) maxC = cell->primaryColor.green;
+				if (cell->primaryColor.blue > maxC) maxC = cell->primaryColor.blue;
+				int s = (maxC > 0) ? 255 / maxC : 1;
+				if (s > 10) s = 10;
+				int r = cell->primaryColor.red * s;
+				int g = cell->primaryColor.green * s;
+				int b = cell->primaryColor.blue * s;
 				if (edge) { r /= 2; g /= 2; b /= 2; }
 				pixels[idx + 0] = (unsigned char)(r > 255 ? 255 : r);
 				pixels[idx + 1] = (unsigned char)(g > 255 ? 255 : g);

@@ -119,6 +119,14 @@ void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 	}
 }
 
+void Sub_Mine_tick(unsigned int ticks)
+{
+	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
+		if (mines[i].phase != MINE_PHASE_DORMANT)
+			SubMine_update(&mines[i], &playerMineCfg, ticks);
+	}
+}
+
 void Sub_Mine_render(void)
 {
 	for (int i = 0; i < MAX_PLAYER_MINES; i++) {

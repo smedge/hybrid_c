@@ -276,9 +276,9 @@ static void initialize_gl(void)
 	Batch_initialize(&batch);
 	Text_initialize(&text_renderer, TITLE_FONT_PATH, 14.0f);
 	Text_initialize(&title_text_renderer, TITLE_FONT_PATH, 80.0f);
-	Bloom_initialize(&bloom, draw_w, draw_h, 2, 2.0f, 5);
+	Bloom_initialize(&bloom, draw_w, draw_h, 2, 3.0f, 4);
 	Bloom_initialize(&bg_bloom, draw_w, draw_h, 8, 2.5f, 20);
-	Bloom_initialize(&disint_bloom, draw_w, draw_h, 2, 3.0f, 7);
+	Bloom_initialize(&disint_bloom, draw_w, draw_h, 2, 3.0f, 4);
 	Bloom_initialize(&light_bloom, draw_w, draw_h, 8, 1.0f, 7);
 	MapReflect_initialize();
 	MapLighting_initialize();

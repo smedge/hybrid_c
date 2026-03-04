@@ -8,6 +8,7 @@
 void Sub_Mine_initialize(void);
 void Sub_Mine_cleanup(void);
 void Sub_Mine_update(const Input *userInput, const unsigned int ticks);
+void Sub_Mine_tick(unsigned int ticks);
 void Sub_Mine_render(void);
 void Sub_Mine_render_bloom_source(void);
 void Sub_Mine_render_light_source(void);

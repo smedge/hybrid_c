@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "screen.h"
 #include "fragment.h"
+#include "color.h"
 
 typedef enum {
 	SUB_ID_PEA = 0,
@@ -37,6 +38,8 @@ int  Progression_get_current(SubroutineId id);
 int  Progression_get_threshold(SubroutineId id);
 float Progression_get_progress(SubroutineId id);
 const char *Progression_get_name(SubroutineId id);
+const char *Progression_get_enemy_name(SubroutineId id);
+ColorFloat Progression_get_enemy_color(SubroutineId id);
 bool Progression_would_complete(FragmentType frag_type, int new_count);
 
 #endif

@@ -24,19 +24,19 @@ typedef struct {
 static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_PEA]    = { "PEA",    "sub_pea",    FRAG_TYPE_MINE, 0, false },
 	[SUB_ID_MINE]   = { "MINES",  "sub_mine",   FRAG_TYPE_MINE, 5, false },
-	[SUB_ID_BOOST]  = { "BOOST",  "sub_boost",  FRAG_TYPE_ELITE, 1, false },
-	[SUB_ID_EGRESS] = { "EGRESS", "sub_egress", FRAG_TYPE_SEEKER, 3, false },
-	[SUB_ID_MGUN]   = { "MGUN",   "sub_mgun",   FRAG_TYPE_HUNTER, 3, false },
+	[SUB_ID_BOOST]  = { "BOOST",  "sub_boost",  FRAG_TYPE_BOOST, 1, false },
+	[SUB_ID_EGRESS] = { "EGRESS", "sub_egress", FRAG_TYPE_EGRESS, 3, false },
+	[SUB_ID_MGUN]   = { "MGUN",   "sub_mgun",   FRAG_TYPE_MGUN, 3, false },
 	[SUB_ID_MEND]   = { "MEND",   "sub_mend",   FRAG_TYPE_MEND,   5, false },
 	[SUB_ID_AEGIS]  = { "AEGIS",  "sub_aegis",  FRAG_TYPE_AEGIS,  5, false },
-	[SUB_ID_STEALTH] = { "STEALTH", "sub_stealth", FRAG_TYPE_STALKER, 10, false },
+	[SUB_ID_STEALTH] = { "STEALTH", "sub_stealth", FRAG_TYPE_STEALTH, 10, false },
 	[SUB_ID_INFERNO] = { "INFERNO", "sub_inferno", FRAG_TYPE_INFERNO, 5, false },
 	[SUB_ID_DISINTEGRATE] = { "DISINTEGRATE", "sub_disintegrate", FRAG_TYPE_DISINTEGRATE, 5, false },
 	[SUB_ID_GRAVWELL] = { "GRAVWELL", "sub_gravwell", FRAG_TYPE_GRAVWELL, 5, false },
 	[SUB_ID_TGUN] = { "TGUN", "sub_tgun", FRAG_TYPE_TGUN, 50, false },
-	[SUB_ID_SPRINT] = { "SPRINT", "sub_sprint", FRAG_TYPE_CORRUPTOR, 10, false },
-	[SUB_ID_EMP] = { "EMP", "sub_emp", FRAG_TYPE_CORRUPTOR, 15, false },
-	[SUB_ID_RESIST] = { "RESIST", "sub_resist", FRAG_TYPE_CORRUPTOR, 10, false },
+	[SUB_ID_SPRINT] = { "SPRINT", "sub_sprint", FRAG_TYPE_SPRINT, 5, false },
+	[SUB_ID_EMP] = { "EMP", "sub_emp", FRAG_TYPE_EMP, 5, false },
+	[SUB_ID_RESIST] = { "RESIST", "sub_resist", FRAG_TYPE_RESIST, 5, false },
 };
 
 /* Notification state */
@@ -221,6 +221,20 @@ const char *Progression_get_name(SubroutineId id)
 	if (id >= 0 && id < SUB_ID_COUNT)
 		return entries[id].name;
 	return "";
+}
+
+const char *Progression_get_enemy_name(SubroutineId id)
+{
+	if (id >= 0 && id < SUB_ID_COUNT)
+		return Fragment_get_source_enemy_name(entries[id].frag_type);
+	return "Unknown";
+}
+
+ColorFloat Progression_get_enemy_color(SubroutineId id)
+{
+	if (id >= 0 && id < SUB_ID_COUNT)
+		return Fragment_get_source_enemy_color(entries[id].frag_type);
+	return (ColorFloat){0.5f, 0.5f, 0.5f, 1.0f};
 }
 
 bool Progression_would_complete(FragmentType frag_type, int new_count)

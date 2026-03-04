@@ -50,8 +50,8 @@
 #define STEALTH_ALPHA_PULSE 0.05f
 
 static const CarriedSubroutine stalkerCarried[] = {
-	{ SUB_ID_STEALTH, FRAG_TYPE_STALKER },
-	{ SUB_ID_EGRESS,  FRAG_TYPE_SEEKER },
+	{ SUB_ID_STEALTH, FRAG_TYPE_STEALTH },
+	{ SUB_ID_EGRESS,  FRAG_TYPE_EGRESS },
 };
 
 typedef enum {

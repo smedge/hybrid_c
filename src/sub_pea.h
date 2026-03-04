@@ -12,6 +12,7 @@ void Sub_Pea_initialize(Entity *parent);
 void Sub_Pea_cleanup();
 
 void Sub_Pea_update(const Input *userInput, const unsigned int ticks, PlaceableComponent *placeable);
+void Sub_Pea_tick(unsigned int ticks);
 void Sub_Pea_render();
 void Sub_Pea_render_bloom_source(void);
 void Sub_Pea_render_light_source(void);

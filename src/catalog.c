@@ -777,8 +777,23 @@ void Catalog_render(const Screen *screen)
 				"drag to equip", name_x, desc_y + 16.0f,
 				0.3f, 0.3f, 0.4f, 0.5f);
 		} else {
+			/* "Unknown <EnemyType> Subroutine" with enemy name colored */
+			const char *prefix = "Unknown ";
+			const char *enemy = Progression_get_enemy_name(i);
+			const char *suffix = " Subroutine";
+			ColorFloat ec = Progression_get_enemy_color(i);
+
+			float cx = name_x;
 			Text_render(tr, shaders, &proj, &ident,
-				"???", name_x, name_y,
+				prefix, cx, name_y,
+				0.5f, 0.5f, 0.5f, 0.7f);
+			cx += Text_measure_width(tr, prefix);
+			Text_render(tr, shaders, &proj, &ident,
+				enemy, cx, name_y,
+				ec.red, ec.green, ec.blue, 0.9f);
+			cx += Text_measure_width(tr, enemy);
+			Text_render(tr, shaders, &proj, &ident,
+				suffix, cx, name_y,
 				0.5f, 0.5f, 0.5f, 0.7f);
 
 			float icon_cx = item_area_x + ITEM_ICON_SIZE * 0.5f + 10.0f;

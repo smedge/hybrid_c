@@ -4,20 +4,23 @@
 #include "position.h"
 #include "screen.h"
 #include "sub_types.h"
+#include "color.h"
 
 typedef enum {
 	FRAG_TYPE_MINE = 0,
-	FRAG_TYPE_ELITE,
-	FRAG_TYPE_HUNTER,
-	FRAG_TYPE_SEEKER,
+	FRAG_TYPE_BOOST,
+	FRAG_TYPE_MGUN,
+	FRAG_TYPE_EGRESS,
 	FRAG_TYPE_MEND,
 	FRAG_TYPE_AEGIS,
 	FRAG_TYPE_GRAVWELL,
-	FRAG_TYPE_STALKER,
+	FRAG_TYPE_STEALTH,
 	FRAG_TYPE_INFERNO,
 	FRAG_TYPE_DISINTEGRATE,
 	FRAG_TYPE_TGUN,
-	FRAG_TYPE_CORRUPTOR,
+	FRAG_TYPE_SPRINT,
+	FRAG_TYPE_EMP,
+	FRAG_TYPE_RESIST,
 	FRAG_TYPE_COUNT
 } FragmentType;
 
@@ -31,5 +34,9 @@ void Fragment_render_bloom_source(void);
 void Fragment_deactivate_all(void);
 int  Fragment_get_count(FragmentType type);
 void Fragment_set_count(FragmentType type, int count);
+
+/* Source enemy info — maps fragment types back to the enemy that drops them */
+const char *Fragment_get_source_enemy_name(FragmentType type);
+ColorFloat Fragment_get_source_enemy_color(FragmentType type);
 
 #endif

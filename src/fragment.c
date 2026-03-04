@@ -100,7 +100,9 @@ void Fragment_spawn(Position position, FragmentType type, SubroutineTier tier)
 	f->vel_y = 20.0 + ((rand() % 20) - 10);  /* 10 to 30 */
 	f->type = type;
 	f->state = FRAG_IDLE;
-	f->color = TIER_COLORS[tier];
+	f->color = (tier == TIER_NORMAL)
+		? Fragment_get_source_enemy_color(type)
+		: TIER_COLORS[tier];
 	f->ticksAlive = 0;
 	f->ticksAttracting = 0;
 	f->marqueeTimer = 0;
@@ -299,4 +301,39 @@ void Fragment_set_count(FragmentType type, int count)
 {
 	if (type >= 0 && type < FRAG_TYPE_COUNT)
 		collectionCounts[type] = count;
+}
+
+/* Enemy source table — maps each fragment type to the enemy that drops it */
+static const struct {
+	const char *enemy_name;
+	ColorFloat enemy_color;
+} frag_source_table[FRAG_TYPE_COUNT] = {
+	[FRAG_TYPE_MINE]          = { "Mine",      {1.0f, 0.0f, 0.0f, 1.0f} },
+	[FRAG_TYPE_BOOST]         = { "Elite",     {1.0f, 0.84f, 0.0f, 1.0f} },
+	[FRAG_TYPE_MGUN]          = { "Hunter",    {1.0f, 0.3f, 0.0f, 1.0f} },
+	[FRAG_TYPE_EGRESS]        = { "Seeker",    {0.0f, 0.8f, 0.15f, 1.0f} },
+	[FRAG_TYPE_MEND]          = { "Defender",  {0.3f, 0.7f, 1.0f, 1.0f} },
+	[FRAG_TYPE_AEGIS]         = { "Defender",  {0.3f, 0.7f, 1.0f, 1.0f} },
+	[FRAG_TYPE_GRAVWELL]      = { "Unknown",   {0.5f, 0.5f, 0.5f, 1.0f} },
+	[FRAG_TYPE_STEALTH]       = { "Stalker",   {0.7f, 0.2f, 0.9f, 1.0f} },
+	[FRAG_TYPE_INFERNO]       = { "Pyraxis",   {1.0f, 0.3f, 0.0f, 1.0f} },
+	[FRAG_TYPE_DISINTEGRATE]  = { "Unknown",   {0.5f, 0.5f, 0.5f, 1.0f} },
+	[FRAG_TYPE_TGUN]          = { "Hunter",    {1.0f, 0.3f, 0.0f, 1.0f} },
+	[FRAG_TYPE_SPRINT]        = { "Corruptor", {1.0f, 0.9f, 0.0f, 1.0f} },
+	[FRAG_TYPE_EMP]           = { "Corruptor", {1.0f, 0.9f, 0.0f, 1.0f} },
+	[FRAG_TYPE_RESIST]        = { "Corruptor", {1.0f, 0.9f, 0.0f, 1.0f} },
+};
+
+const char *Fragment_get_source_enemy_name(FragmentType type)
+{
+	if (type >= 0 && type < FRAG_TYPE_COUNT && frag_source_table[type].enemy_name)
+		return frag_source_table[type].enemy_name;
+	return "Unknown";
+}
+
+ColorFloat Fragment_get_source_enemy_color(FragmentType type)
+{
+	if (type >= 0 && type < FRAG_TYPE_COUNT && frag_source_table[type].enemy_name)
+		return frag_source_table[type].enemy_color;
+	return (ColorFloat){0.5f, 0.5f, 0.5f, 1.0f};
 }
