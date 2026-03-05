@@ -15,6 +15,7 @@
 #include "sub_disintegrate.h"
 #include "sub_gravwell.h"
 #include "sub_tgun.h"
+#include "sub_flak.h"
 #include "sub_sprint.h"
 #include "sub_emp.h"
 #include "sub_resist.h"
@@ -79,6 +80,27 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"EMP blast. Maxes feedback on all nearby enemies.", TIER_RARE },
 	[SUB_ID_RESIST] = { SUB_ID_RESIST, SUB_TYPE_SHIELD, "sub_resist", "RESIST",
 		"Damage resistance. 50% damage reduction for 5 seconds.", TIER_NORMAL },
+	/* Fire zone (The Crucible) */
+	[SUB_ID_EMBER] = { SUB_ID_EMBER, SUB_TYPE_PROJECTILE, "sub_ember", "EMBER",
+		"Ember shot. Projectiles create burn zones on impact.", TIER_NORMAL },
+	[SUB_ID_FLAK] = { SUB_ID_FLAK, SUB_TYPE_PROJECTILE, "sub_flak", "FLAK",
+		"Flak cannon. Narrow cone of fire pellets that burn on hit.", TIER_RARE },
+	[SUB_ID_BLAZE] = { SUB_ID_BLAZE, SUB_TYPE_MOVEMENT, "sub_blaze", "BLAZE",
+		"Blaze dash. Leaves a flame corridor behind you.", TIER_NORMAL },
+	[SUB_ID_SCORCH] = { SUB_ID_SCORCH, SUB_TYPE_MOVEMENT, "sub_scorch", "SCORCH",
+		"Scorch sprint. Speed boost that leaves burning footprints.", TIER_NORMAL },
+	[SUB_ID_PYRE] = { SUB_ID_PYRE, SUB_TYPE_DEPLOYABLE, "sub_pyre", "PYRE",
+		"Pyre trap. Ignites into a sustained fire column.", TIER_NORMAL },
+	[SUB_ID_CAUTERIZE] = { SUB_ID_CAUTERIZE, SUB_TYPE_HEALING, "sub_cauterize", "CAUT",
+		"Cauterize. Heals and burns nearby enemies.", TIER_NORMAL },
+	[SUB_ID_IMMOLATE] = { SUB_ID_IMMOLATE, SUB_TYPE_SHIELD, "sub_immolate", "IMMOL",
+		"Immolation shield. Burns anything near you.", TIER_NORMAL },
+	[SUB_ID_SMOLDER] = { SUB_ID_SMOLDER, SUB_TYPE_STEALTH, "sub_smolder", "SMOLD",
+		"Smolder cloak. Heat shimmer camo, burn on ambush.", TIER_NORMAL },
+	[SUB_ID_HEATWAVE] = { SUB_ID_HEATWAVE, SUB_TYPE_AREA_EFFECT, "sub_heatwave", "HEAT",
+		"Heatwave pulse. Doubles feedback gain in radius.", TIER_RARE },
+	[SUB_ID_TEMPER] = { SUB_ID_TEMPER, SUB_TYPE_SHIELD, "sub_temper", "TEMPR",
+		"Temper aura. Fire resist + allies burn on attack.", TIER_NORMAL },
 };
 
 static int slots[SKILLBAR_SLOTS];
@@ -652,6 +674,115 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Render_filled_circle(cx, cy, 3.0f, 6, 1.0f, 0.7f, 0.2f, alpha * 0.5f);
 		break;
 	}
+	/* --- Fire zone stub icons (orange-themed placeholders) --- */
+	case SUB_ID_EMBER: {
+		/* Three dots in spray — like mgun but orange */
+		Position p1 = {cx - 4, cy - 4};
+		Position p2 = {cx, cy};
+		Position p3 = {cx + 4, cy + 4};
+		ColorFloat ec = {1.0f, 0.5f, 0.1f, alpha};
+		Render_point(&p1, 3.0f, &ec);
+		Render_point(&p2, 3.0f, &ec);
+		Render_point(&p3, 3.0f, &ec);
+		break;
+	}
+	case SUB_ID_FLAK: {
+		/* Spread cone of pellets — shotgun burst */
+		float t = 1.5f;
+		ColorFloat fc = {1.0f, 0.5f, 0.1f, alpha};
+		/* Center pellet */
+		Render_thick_line(cx, cy + 4, cx, cy - 7, t, 1.0f, 0.5f, 0.1f, alpha);
+		/* Left pellet */
+		Render_thick_line(cx - 2, cy + 4, cx - 5, cy - 6, t, 1.0f, 0.4f, 0.0f, alpha);
+		/* Right pellet */
+		Render_thick_line(cx + 2, cy + 4, cx + 5, cy - 6, t, 1.0f, 0.4f, 0.0f, alpha);
+		/* Muzzle dot */
+		Position mp = {cx, cy + 4};
+		Render_point(&mp, 3.0f, &fc);
+		break;
+	}
+	case SUB_ID_BLAZE: {
+		/* Starburst + trail — like egress but orange */
+		float sz = 8.0f;
+		float t = 1.5f;
+		Render_thick_line(cx, cy - sz, cx, cy + sz, t, 1.0f, 0.5f, 0.1f, alpha);
+		Render_thick_line(cx - sz, cy, cx + sz, cy, t, 1.0f, 0.5f, 0.1f, alpha);
+		break;
+	}
+	case SUB_ID_SCORCH: {
+		/* Single chevron — like sprint but orange */
+		float sz = 7.0f;
+		float t = 1.5f;
+		Render_thick_line(cx - 4, cy - sz, cx + 4, cy, t, 1.0f, 0.5f, 0.1f, alpha);
+		Render_thick_line(cx + 4, cy, cx - 4, cy + sz, t, 1.0f, 0.5f, 0.1f, alpha);
+		break;
+	}
+	case SUB_ID_PYRE: {
+		/* Flame column — vertical line + flicker */
+		float t = 2.0f;
+		Render_thick_line(cx, cy + 8, cx, cy - 4, t, 1.0f, 0.4f, 0.0f, alpha);
+		Render_filled_circle(cx, cy - 6, 3.0f, 5, 1.0f, 0.6f, 0.1f, alpha);
+		break;
+	}
+	case SUB_ID_CAUTERIZE: {
+		/* Plus/cross — like mend but orange */
+		float sz = 7.0f;
+		float t = 2.0f;
+		Render_thick_line(cx - sz, cy, cx + sz, cy, t, 1.0f, 0.5f, 0.1f, alpha);
+		Render_thick_line(cx, cy - sz, cx, cy + sz, t, 1.0f, 0.5f, 0.1f, alpha);
+		break;
+	}
+	case SUB_ID_IMMOLATE: {
+		/* Hexagon — like aegis but orange */
+		float r = 8.0f;
+		for (int i = 0; i < 6; i++) {
+			float a0 = i * 60.0f * (float)M_PI / 180.0f;
+			float a1 = (i + 1) * 60.0f * (float)M_PI / 180.0f;
+			Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
+				cx + cosf(a1) * r, cy + sinf(a1) * r,
+				1.5f, 1.0f, 0.5f, 0.1f, alpha);
+		}
+		break;
+	}
+	case SUB_ID_SMOLDER: {
+		/* Eye shape — like stealth but orange */
+		float r = 8.0f;
+		float t = 1.5f;
+		Render_thick_line(cx - r, cy, cx, cy - r * 0.5f, t, 1.0f, 0.5f, 0.1f, alpha);
+		Render_thick_line(cx, cy - r * 0.5f, cx + r, cy, t, 1.0f, 0.5f, 0.1f, alpha);
+		Render_thick_line(cx - r, cy, cx, cy + r * 0.5f, t, 1.0f, 0.5f, 0.1f, alpha);
+		Render_thick_line(cx, cy + r * 0.5f, cx + r, cy, t, 1.0f, 0.5f, 0.1f, alpha);
+		break;
+	}
+	case SUB_ID_HEATWAVE: {
+		/* Expanding rings — like emp but orange */
+		Render_filled_circle(cx, cy, 3.0f, 8, 1.0f, 0.5f, 0.1f, alpha);
+		for (int ring = 0; ring < 2; ring++) {
+			float r = 6.0f + ring * 4.0f;
+			float a = alpha * (1.0f - ring * 0.3f);
+			for (int seg = 0; seg < 8; seg++) {
+				float a0 = seg * 45.0f * (float)M_PI / 180.0f;
+				float a1 = (seg + 1) * 45.0f * (float)M_PI / 180.0f;
+				Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
+					cx + cosf(a1) * r, cy + sinf(a1) * r,
+					1.5f, 1.0f, 0.5f, 0.1f, a);
+			}
+		}
+		break;
+	}
+	case SUB_ID_TEMPER: {
+		/* Shield + inner flame — resist but orange with fire center */
+		float r = 8.0f;
+		for (int i = 0; i < 6; i++) {
+			float a0 = i * 60.0f * (float)M_PI / 180.0f;
+			float a1 = (i + 1) * 60.0f * (float)M_PI / 180.0f;
+			Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
+				cx + cosf(a1) * r, cy + sinf(a1) * r,
+				1.5f, 1.0f, 0.5f, 0.1f, alpha);
+		}
+		Render_filled_circle(cx, cy, 3.0f, 5, 1.0f, 0.3f, 0.0f, alpha);
+		break;
+	}
 	default:
 		break;
 	}
@@ -672,6 +803,7 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_DISINTEGRATE: return Sub_Disintegrate_get_cooldown_fraction();
 	case SUB_ID_GRAVWELL: return Sub_Gravwell_get_cooldown_fraction();
 	case SUB_ID_TGUN: return Sub_Tgun_get_cooldown_fraction();
+	case SUB_ID_FLAK: return Sub_Flak_get_cooldown_fraction();
 	case SUB_ID_SPRINT: return Sub_Sprint_get_cooldown_fraction();
 	case SUB_ID_EMP: return Sub_Emp_get_cooldown_fraction();
 	case SUB_ID_RESIST: return Sub_Resist_get_cooldown_fraction();

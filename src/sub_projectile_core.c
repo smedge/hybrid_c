@@ -171,6 +171,54 @@ float SubProjectile_get_cooldown_fraction(const SubProjectilePool *pool, const S
 	return (float)pool->cooldownTimer / cfg->fire_cooldown_ms;
 }
 
+bool SubProjectile_spawn_pellet(SubProjectilePool *pool, Position origin, double heading_rad)
+{
+	/* Find inactive slot */
+	int slot = -1;
+	for (int i = 0; i < pool->poolSize; i++) {
+		if (!pool->projectiles[i].active) {
+			slot = i;
+			break;
+		}
+	}
+	if (slot < 0) {
+		/* Recycle oldest */
+		int oldest = 0;
+		for (int i = 1; i < pool->poolSize; i++) {
+			if (pool->projectiles[i].ticksLived > pool->projectiles[oldest].ticksLived)
+				oldest = i;
+		}
+		slot = oldest;
+	}
+
+	SubProjectile *p = &pool->projectiles[slot];
+	p->active = true;
+	p->ticksLived = 0;
+	p->position = origin;
+	p->prevPosition = origin;
+	p->headingSin = sin(heading_rad);
+	p->headingCos = cos(heading_rad);
+	return true;
+}
+
+SubProjectileHitResult SubProjectile_check_hit_multi(SubProjectilePool *pool,
+	const SubProjectileConfig *cfg, Rectangle target)
+{
+	SubProjectileHitResult result = {0.0, 0};
+	for (int i = 0; i < pool->poolSize; i++) {
+		SubProjectile *p = &pool->projectiles[i];
+		if (!p->active)
+			continue;
+		if (Collision_line_aabb_test(p->prevPosition.x, p->prevPosition.y,
+				p->position.x, p->position.y, target, NULL)) {
+			p->active = false;
+			result.damage += cfg->damage;
+			result.hits++;
+		}
+	}
+	return result;
+}
+
 void SubProjectile_render(const SubProjectilePool *pool, const SubProjectileConfig *cfg)
 {
 	View view = View_get_view();

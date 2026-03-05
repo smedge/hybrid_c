@@ -4,7 +4,7 @@
 
 This is a **living document** — updated whenever a skill is added, modified, or retuned. It provides a systematic framework for balancing subroutines against each other using a point-budget system inspired by Guild Wars skill design.
 
-**Core principle**: Every subroutine attribute has a power cost. Powerful attributes (high damage, low cooldown, zero feedback) consume budget. Restrictive attributes (long cooldowns, high feedback, short range) free budget. Total budget is capped per tier. No skill should exceed its tier's cap without deliberate design justification.
+**Core principle**: Every subroutine is scored on three axes — **POWER** (what it does), **SUSTAIN** (how long you can keep doing it), and **REACH** (how far and reliably you can deliver it). Total = POWER + SUSTAIN + REACH, capped per tier. Aim difficulty is baked into POWER via the aim discount table, not penalized separately. No skill should exceed its tier's cap without deliberate design justification.
 
 **This framework is a starting point, not a replacement for playtesting.** The budget system gives new skills a principled baseline. Playtesting and player feedback refine the numbers. But without a framework, balancing 50+ skills becomes pure guesswork.
 
@@ -12,34 +12,34 @@ This is a **living document** — updated whenever a skill is added, modified, o
 
 ## Executive Summary
 
-**Budget caps**: Normal = 10, Elite = 15. Over cap = powerful, under cap = room to buff.
+**Budget caps**: Normal = 10, Rare = 15, Elite = 20. Over cap = powerful, under cap = room to buff.
 
-| Skill | Type | Tier | Cat | Score | Cap | DPS | Feedback | Verdict |
-|-------|------|------|-----|-------|-----|-----|----------|---------|
-| sub_pea | Projectile | Normal | Instant | **7** | 10 | 100 | 1/shot | -3 under. Precise aim tax. Room to buff. |
-| sub_mgun | Projectile | Normal | Instant | **7** | 10 | 100 | 1/shot | -3 under. Same DPS as pea, spray is slightly more forgiving. |
-| sub_mine | Deployable | Normal | Instant | **6** | 10 | ~75 | 15/boom | -4 under. Area denial utility, not a DPS weapon. |
-| sub_tgun | Projectile | Normal | Instant | **9** | 10 | 250 | 1/shot | -1 under. Twin barrels, 2.5x pea DPS. Solid normal weapon. |
-| sub_boost | Movement | **Elite** | Toggle | **15** | 15 | — | 0 | At cap. Free unlimited speed. The mobility fantasy. |
-| sub_sprint | Movement | Normal | Instant | **8** | 10 | — | 0 | -2 under. Timed boost — same speed, limited window + cooldown. |
-| sub_inferno | Projectile | **Elite** | Channel | **15** | 15 | ~1250 | 25/sec | At cap. Melts everything. Self-destructs in ~4s from feedback. |
-| sub_disintegrate | Projectile | **Elite** | Channel | **15** | 15 | ~900 | 22/sec | At cap. Finger of god. 2x range, hitscan sweep erases groups. |
-| sub_gravwell | Control | Normal | Instant | **10** | 10 | — | 25 | At cap. First CC skill. Pull + slow, no damage, pure force multiplier. |
-| sub_stealth | Stealth | Normal | Instant | **7** | 10 | — | 0 (gated) | -3 under. Invisibility power exceeds point value. High skill ceiling. |
-| sub_egress | Movement | Normal | Instant | **10** | 10 | — | 25 | At cap. I-frames + 50 contact damage. Dodge-attack. |
-| sub_mend | Healing | Normal | Instant | **7** | 10 | — | 20 | -3 under. Burst heal + 3x regen boost for 5s. Rewards clean play. |
-| sub_aegis | Shield | Normal | Instant | **4** | 10 | — | 30 | **-6 under.** Invuln is binary — point system undervalues it. |
-| sub_emp | Control | Normal | Instant | **8** | 10 | — | 30 | -2 under. AoE debuff — feedback spike + halved decay on targets. |
-| sub_resist | Defense | Normal | Instant | **7** | 10 | — | 25 | -3 under. 50% damage reduction for 5s. Solid defensive option. |
+| Skill | Tier | POWER | SUSTAIN | REACH | Score | Cap | Verdict |
+|-------|------|-------|---------|-------|-------|-----|---------|
+| sub_pea | Normal | 4 | +3 | 0 | **7** | 10 | -3 under. Precise aim tax. Room to buff. |
+| sub_mgun | Normal | 4 | +3 | 0 | **7** | 10 | -3 under. Same eDPS as pea, spray slightly more forgiving. |
+| sub_mine | Normal | 5 | +2 | −1 | **6** | 10 | -4 under. Area denial utility, not a DPS weapon. |
+| sub_tgun | **Rare** | 6 | +3 | +3 | **12** | 15 | -3 under. Constant stream of death. Best DPS/feedback ratio. |
+| sub_flak | **Rare** | 7 | +1 | +1 | **9** | 15 | -6 under. Fire shotgun + burn DOT. Room to grow. |
+| sub_boost | **Elite** | 11 | +3 | +3 | **17** | 20 | -3 under. Free unlimited speed. Room for a damage component. |
+| sub_sprint | Normal | 5 | +2 | +1 | **8** | 10 | -2 under. Timed boost — same speed, limited window. |
+| sub_inferno | **Elite** | 14 | +3 | +2 | **19** | 20 | -1 under. Melts everything close-range + burn DOT. |
+| sub_disintegrate | **Elite** | 14 | +3 | +3 | **20** | 20 | At cap. THE elite benchmark. Finger of god. |
+| sub_gravwell | Normal | 7 | 0 | +3 | **10** | 10 | At cap. First CC skill. Pull + slow, pure force multiplier. |
+| sub_emp | Normal | 6 | −1 | +3 | **8** | 10 | -2 under. AoE feedback debuff, once-per-fight. |
+| sub_stealth | Normal | 7 | +1 | −1 | **7** | 10 | -3 under. High skill ceiling. Invisibility + ambush. |
+| sub_egress | Normal | 7 | +1 | +2 | **10** | 10 | At cap. I-frames + 50 contact damage. Dodge-attack. |
+| sub_mend | Normal | 5 | +1 | +1 | **7** | 10 | -3 under. Burst heal + 3x regen boost. Rewards clean play. |
+| sub_aegis | Normal | 9 | −1 | +2 | **10** | 10 | At cap. 10s god mode. Binary invuln properly valued. |
+| sub_resist | Normal | 5 | +1 | +1 | **7** | 10 | -3 under. 50% DR for 5s. Solid defensive option. |
 
 **Key takeaways**:
-- **Normal weapons are honestly scored now**: pea and mgun at 7, mine at 6. The old system scored them at 10 by treating damage and fire rate as additive — but DPS is multiplicative. 100 DPS requiring precise aim against moving targets is NOT equivalent to 1250 DPS from a forgiving channeled beam. The 3-4 point gap below cap means these weapons have clear room for buffs.
-- **The DPS gap is real and properly captured**: 8 points between pea (7) and inferno (15) reflects the 12.5x DPS reality. The old 5-point gap (10 vs 15) was lying to us.
-- **All three elites at cap (15)**: boost (mobility), inferno (close-range chaos), disintegrate (long-range precision). Three distinct fantasies, all equally devastating. Disintegrate's carve sweep isn't a drawback — it's the mechanic that makes it "finger of god" against groups.
-- **Gravwell enters at cap (10)**: The first control-type skill. Zero damage, pure crowd control — massive AoE pull + slow that makes everything else in your loadout deadlier. A force multiplier, not a weapon.
-- **Three new corruptor-derived skills**: Sprint (8), EMP (8), and resist (7) fill out the non-elite toolkit. Sprint is the budget boost (same speed, limited uptime). EMP is encounter-control (feedback bomb, 30s cooldown). Resist is the non-binary aegis (50% DR, faster recovery). All three land 2-3 under cap — room to grow.
-- **Defense/utility options expand**: egress at cap (10), resist (7) and aegis (4) give three distinct defensive flavors. Resist at 7 vs aegis at 4 highlights the budget system's struggle with binary effects — 50% DR scores higher than invulnerability because the cooldown/feedback math is less punishing.
-- **Normal weapons need love**: pea, mgun, and mine all scoring well under cap is a signal. They either need buffs (more damage, faster fire rate, secondary effects) or the budget system confirms what playtesting shows — channeled elites outclass them by a wide margin.
+- **Score = POWER + SUSTAIN + REACH**: Three axes, no separate modifiers. Everything folds into one of three questions: what does it do (POWER), how long can you keep doing it (SUSTAIN), how far can you deliver it (REACH).
+- **Disintegrate is THE benchmark at 20/20**: POWER 14 (hitscan 900 eDPS, full pierce, carve sweep) + SUSTAIN +3 (toggle, natural burst recovery) + REACH +3 (2600u hitscan). Every other skill is calibrated against this.
+- **Three-tier power curve**: Normal (cap 10) → Rare (cap 15) → Elite (cap 20). Each tier jump is meaningful.
+- **Aim is baked into POWER**: The aim discount table converts theoretical DPS to effective DPS BEFORE scoring. Pea's 100 DPS × 0.55 aim = 55 eDPS (POWER 4). No separate targeting penalty — the discount is in the number.
+- **Normal weapons are honestly scored**: Pea and mgun at 7, mine at 6. The 13-point gap to disintegrate (20) properly captures the massive power difference.
+- **Every tier has room to grow**: Only disintegrate, egress, gravwell, and aegis sit at cap. Everything else has budget room for buffs.
 
 ---
 
@@ -180,138 +180,98 @@ Taking damage generates feedback at half the damage amount (e.g., 20 damage = 10
 
 ## Point Budget System
 
-Each attribute tier contributes points to the skill's total budget. The total is compared against the tier cap.
+Every skill is scored as **POWER + SUSTAIN + REACH**. The total is compared against the tier cap.
 
 ### Budget Caps
 
 | Tier | Budget Cap | Description |
 |------|-----------|-------------|
 | **Normal** | **10** | Standard subroutines. Most skills live here. |
-| **Elite** | **15** | Exceptional subroutines. Clearly more powerful, but balanced against other elites. Progression rewards — feel special without being game-breaking. |
+| **Rare** | **15** | Themed zone subroutines. Stronger than normal, earned through zone progression. |
+| **Elite** | **20** | Exceptional subroutines. Clearly more powerful, but balanced against other elites. Progression rewards — feel special without being game-breaking. |
 
-### Scoring Tables
+### Three-Axis Scoring: POWER + SUSTAIN + REACH
 
-**Feedback Cost** (per activation for instants, per second for toggles):
+**Score = POWER + SUSTAIN + REACH**
 
-| Tier | Range | Points | Reasoning |
-|------|-------|--------|-----------|
-| Free | 0 | +4 | No resource cost is extremely powerful — unlimited spam |
-| Negligible | 1-5 | +3 | Barely noticeable drain |
-| Low | 6-15 | +2 | Manageable, allows sustained use |
-| Medium | 16-25 | +1 | Noticeable cost, limits spam |
-| High | 26-35 | 0 | Significant investment per use |
-| Punishing | 36+ | -1 | Actively painful, risks spillover damage |
+Three axes, no separate modifiers. Everything folds into one of three questions:
+1. **POWER (3–14)**: What does it DO at peak? (total output with aim discount)
+2. **SUSTAIN (−2 to +3)**: How long can you keep doing it? (cost + uptime)
+3. **REACH (−2 to +3)**: How far and reliably can you deliver? (range × practical accuracy)
 
-**Effective DPS** (composite score for damage-primary skills — replaces separate damage + cooldown):
+**Max = 14 + 3 + 3 = 20** (exactly the elite cap)
+**Min = 3 + (−2) + (−2) = −1** (nothing should score here)
 
-DPS is multiplicative (damage × fire rate), but the old system scored damage and cooldown additively. This created a 1-point gap between 100 DPS and 1250 DPS. The composite DPS score fixes this by scoring the actual output directly.
+---
 
-**IMPORTANT**: Damage-primary skills (weapons) score Effective DPS instead of separate "Damage Per Hit" + "Cooldown". Non-damage skills (movement, healing, shield, stealth) still score Cooldown separately as an availability gate.
+#### POWER Axis (3–14)
 
-| Tier | Range | Points | Reasoning |
-|------|-------|--------|-----------|
-| None | 0 | 0 | Non-damage skill |
-| Chip | 1-50 DPS | +1 | Incidental damage, not a weapon |
-| Low | 51-150 DPS | +2 | Standard aimed weapons — each shot matters |
-| Moderate | 151-400 DPS | +3 | High-output weapon, forgiving or rapid |
-| High | 401-800 DPS | +4 | Dominant damage source |
-| Devastating | 801-1500 DPS | +5 | Screen-clearing output |
-| Extreme | 1500+ DPS | +6 | Theoretical — nothing survives |
+"What does this skill DO at peak?" One number capturing total effective output.
 
-**Cooldown / Availability** (non-damage skills only — weapons use Effective DPS):
+**For damage skills**: Start with theoretical DPS, apply aim discount, add DOT, factor in group scaling/pierce.
 
-| Tier | Range | Points | Reasoning |
-|------|-------|--------|-----------|
-| None | 0 / toggle | +4 | Available on demand, always ready |
-| Rapid | < 300ms | +3 | Effectively spammable |
-| Fast | 300ms - 1s | +2 | High uptime |
-| Medium | 1s - 5s | +1 | Tactical timing required |
-| Slow | 5s - 15s | 0 | Strategic resource — choose your moment |
-| Very Slow | 15s - 30s | -1 | Once-per-fight ability |
-| Glacial | 30s+ | -2 | Once-per-encounter, defines the fight |
+**Aim Discount Table** (applied BEFORE tiering — this is the key innovation):
 
-**Burst Damage** (secondary damage on non-weapon skills, e.g. egress contact hit):
+| Delivery Method | Multiplier | Why |
+|----------------|------------|-----|
+| Hitscan/beam | ×0.95 | Near-perfect accuracy once on target |
+| Dense spray (50+ hits/sec) | ×0.90 | Volume compensates for spread |
+| Volume fire (5–10 hits/sec) | ×0.85 | Misses cost little time |
+| Cone/multi-pellet | ×0.80 | Generous hitzone but range falloff |
+| Aimed (2–5 shots/sec) | ×0.70 | Each miss costs real DPS |
+| Precise (1–2 shots/sec, narrow) | ×0.55 | Miss = half your damage gone |
 
-| Tier | Range | Points | Reasoning |
-|------|-------|--------|-----------|
-| None | 0 | 0 | Non-damage skill |
-| Low | 1-25 | +1 | Chip damage |
-| Medium | 26-75 | +2 | Meaningful hit |
-| High | 76-150 | +3 | Fight-changing burst |
-| Devastating | 151+ | +4 | One-shot territory |
+**Power Tier Guide (damage)**:
 
-**Range**:
+| POWER | Effective DPS | Examples |
+|-------|--------------|---------|
+| 3–4 | <100 eDPS | Starter weapons (pea 55, mgun 70) |
+| 5–6 | 100–300 eDPS | Upgraded weapons (tgun 212, flak 152+burn) |
+| 7 | + special properties | Burn persistence, DOT, burst combo |
+| 8–11 | 500–1000 eDPS | Would-be elite single-target |
+| 12–14 | 1000+ eDPS or group-wipe | Elite channeled weapons (inferno, disintegrate) |
 
-| Tier | Range | Points | Reasoning |
-|------|-------|--------|-----------|
-| Self | 0 (self-only) | 0 | No reach advantage |
-| Melee | < 200 units | +1 | Must be close |
-| Medium | 200-500 units | +2 | Comfortable fighting distance |
-| Long | 500+ units | +3 | Engages before enemies can respond |
+**Power Tier Guide (non-damage)**:
 
-**AoE Radius**:
+| POWER | Effect | Examples |
+|-------|--------|---------|
+| 5 | Minor buff/heal (50% DR 5s, 50HP heal, timed speed) | resist, mend, sprint |
+| 6 | Moderate control/debuff (AoE feedback overload + halved decay) | emp |
+| 7 | Strong control/utility (full CC trap, i-frames+contact, full invis+5x ambush) | gravwell, egress, stealth |
+| 9 | Binary defensive power (10s full invulnerability) | aegis |
+| 11 | Best-in-class utility (unlimited 2x speed, zero cost) | boost |
 
-| Tier | Range | Points | Reasoning |
-|------|-------|--------|-----------|
-| Single Target | 0 | 0 | Must aim each hit |
-| Small | < 150 units | +1 | Tight cluster only |
-| Medium | 150-300 units | +2 | Room-relevant AoE |
-| Large | 300+ units | +3 | Encounter-wide effect |
+---
 
-**Duration / Uptime** (for sustained effects):
+#### SUSTAIN Axis (−2 to +3)
 
-| Tier | Range | Points | Reasoning |
-|------|-------|--------|-----------|
-| Instant | 0 / one-shot | 0 | No sustained benefit |
-| Brief | < 500ms | 0 | Barely there |
-| Short | 500ms - 2s | +1 | Meaningful window |
-| Medium | 2s - 10s | +2 | Sustained tactical advantage |
-| Long | 10s+ | +3 | Dominant for the encounter |
-| Unlimited | Toggle/passive | +4 | Always available |
+"How long can you keep doing it?" Combines feedback cost + cooldown + uptime into one number.
 
-**Healing**:
+| SUSTAIN | Description | Examples |
+|---------|-------------|---------|
+| −2 | Extreme tax: huge feedback + glacial cooldown. Once per fight AND painful. | (reserved for future skills) |
+| −1 | Double-taxed: high feedback + long cooldown. Once per fight. | aegis (30fb + 30s cd), emp (30fb + 30s cd) |
+| 0 | Strategic: significant cost OR long cooldown. Deliberate use. | gravwell (25fb + 20s cd) |
+| +1 | Moderate: meaningful cost but manageable frequency. | egress (25fb + 2s), mend (20fb + 10s), stealth (0fb but gated + 15s), flak (16fb/sec), resist (25fb + 15s) |
+| +2 | Efficient: low cost, decent uptime. | mine (15fb/boom, 3 pool), sprint (0fb but 25% uptime) |
+| +3 | Free/unlimited: negligible cost, fire at will. | pea (1fb), mgun (1fb), tgun (10fb/sec but best ratio), boost (0fb toggle), inferno (25/sec toggle), disintegrate (22/sec toggle) |
 
-| Tier | Range | Points | Reasoning |
-|------|-------|--------|-----------|
-| None | 0 | 0 | No healing |
-| Minor | 1-25 HP | +1 | Chip heal |
-| Moderate | 26-50 HP | +2 | Meaningful recovery |
-| Major | 51-75 HP | +3 | Fight-saving heal |
-| Full | 76+ HP | +4 | Near-complete recovery |
+Note: Channeled elites score +3 despite high fb/sec because they're toggles — you control the sustain window, and recovery between bursts is natural gameplay.
 
-**Special Modifiers** (add to total):
+---
 
-| Modifier | Points | Reasoning |
-|----------|--------|-----------|
-| Full invulnerability | +3 | Negates all damage — godlike when active |
-| Invuln during use | +2 | Safety window during activation |
-| Area denial | +1 | Controls enemy movement/positioning |
-| Escape/reposition | +1 | Gets out of danger |
-| Full control during | +1 | No loss of agency while effect is active |
-| Piercing | +1 | Hits multiple enemies per activation |
-| Pool > 1 (concurrent instances) | +1 | Multiple simultaneous effects |
+#### REACH Axis (−2 to +3)
 
-**Targeting Difficulty** (how hard is it to land hits?):
+"How far and reliably can you deliver?" Range × practical accuracy × delivery quality.
 
-| Tier | Description | Points | Reasoning |
-|------|-------------|--------|-----------|
-| Self/Auto | Self-targeted, placed at feet, or homing | 0 | No aiming skill required |
-| Forgiving | Wide spread, dense stream, large AoE — point in general direction | 0 | Generous hit zone compensates for aim |
-| Aimed | Must direct at target, but generous hitbox or rapid fire | -1 | Some shots miss, but fire rate compensates |
-| Precise | Single narrow projectile, must lead moving targets at range | -2 | Miss by a pixel = zero damage. Theoretical DPS ≠ practical DPS |
-| Pinpoint | Slow projectile, tiny hitbox, or extreme range precision | -3 | Requires exceptional tracking to achieve stated DPS |
-
-This axis captures the gap between *theoretical* DPS (assuming 100% hit rate) and *practical* DPS (accounting for human aim against moving targets). A 100 DPS weapon you hit 60% of the time is really 60 DPS. A 1250 DPS beam you hit 95% of the time is really 1187 DPS. The aiming tax matters more than the old system gave it credit for.
-
-**Drawbacks** (subtract from total):
-
-| Drawback | Points | Reasoning |
-|----------|--------|-----------|
-| Activation delay / fuse | -1 | Enemies can dodge or escape |
-| Self-root during cast | -1 | Vulnerable while using |
-| LOS required | -1 | Terrain blocks effectiveness |
-| Interruptible | -1 | Damage cancels the effect |
-| Friendly fire risk | -1 | Can hurt yourself |
+| REACH | Description | Examples |
+|-------|-------------|---------|
+| −2 | Self-only AND restricted (speed penalty, break conditions, positioning constraints) | (reserved) |
+| −1 | Self-place with drawbacks (fuse delay, friendly fire) OR restricted self-buff | mine (self-place + fuse + FF), stealth (self + 0.5x speed + break conditions) |
+| 0 | Long range but poor practical accuracy (precise aim at range = low hit%) | pea (3500u but ×0.55 aim), mgun (3500u but ×0.70 aim) |
+| +1 | Medium range with decent delivery, or self-buff with temporal coverage | flak (2333u + cone), sprint (self + 5s window), mend (self + 5s regen), resist (self + 5s DR) |
+| +2 | Long range with good delivery, or strong self-coverage | inferno (1250u + dense spray), egress (600u dash + i-frames), aegis (self + 10s invuln) |
+| +3 | Extreme range + reliable targeting, or wide AoE, or permanent self-effect | disintegrate (2600u hitscan), tgun (3500u + volume fire), gravwell (cursor + 600u AoE), emp (400u AoE through walls), boost (permanent self) |
 
 ---
 
@@ -319,64 +279,53 @@ This axis captures the gap between *theoretical* DPS (assuming 100% hit rate) an
 
 ### sub_pea — Projectile (Instant, Normal)
 
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 1 per shot | Negligible | +3 |
-| Effective DPS | 100 (50 dmg × 2/sec) | Low | +2 |
-| Range | 3500 vel × 1000ms TTL = long | Long | +3 |
-| AoE | Single target | Single | 0 |
-| Pool size | 8 concurrent | Pool > 1 | +1 |
-| Targeting difficulty | Single narrow projectile, must lead targets | Precise | -2 |
-| **TOTAL** | | | **7** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 4 | 4 | 100 theoretical DPS × 0.55 aim = 55 eDPS. Starter weapon, each shot matters. |
+| SUSTAIN | +3 | +3 | 1 fb/shot, can fire 100 shots before cap. Effectively free. |
+| REACH | 0 | 0 | 3500u range but precise aim — practical hit rate at range is ~55%. Long range offset by poor accuracy. |
+| **TOTAL** | | **7** | |
 
-**Assessment**: 3 under normal cap. The old system scored pea at 10 by adding damage (+2) and cooldown (+2) separately — but DPS is multiplicative, not additive. The composite DPS score (+2 for 100 DPS) is honest about pea's output. The Precise targeting penalty (-2) reflects the harsh reality: against fast-moving seekers and strafing hunters, practical DPS drops to maybe 50-70. Pea's low score confirms what playtesting shows — it struggles to keep up. The 3-point gap below cap means there's room to buff (more damage per shot, faster fire rate, or secondary effects like slow-on-hit).
+**Assessment**: 3 under normal cap. The aim discount (×0.55 for precise single-shot) is the defining constraint — against fast-moving seekers and strafing hunters, practical DPS drops to ~55. Pea's low POWER honestly reflects what playtesting shows: it struggles to keep up. Room to buff via more damage per shot, faster fire rate, or secondary effects.
 
 ---
 
 ### sub_mgun — Projectile Variant (Instant, Normal)
 
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 1 per shot | Negligible | +3 |
-| Effective DPS | 100 (20 dmg × 5/sec) | Low | +2 |
-| Range | Same as pea (long) | Long | +3 |
-| AoE | Single target | Single | 0 |
-| Pool size | 8 concurrent | Pool > 1 | +1 |
-| Targeting difficulty | Single narrow projectile, must lead targets | Precise | -2 |
-| **TOTAL** | | | **7** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 4 | 4 | 100 theoretical DPS × 0.70 aim = 70 eDPS. 5 shots/sec means misses cost less — aimed, not precise. |
+| SUSTAIN | +3 | +3 | 1 fb/shot, same free-fire economy as pea. |
+| REACH | 0 | 0 | 3500u range but aimed fire — better practical accuracy than pea (×0.70 vs ×0.55) but still limited by narrow projectiles at distance. |
+| **TOTAL** | | **7** | |
 
-**Assessment**: 3 under cap, same as pea. Identical theoretical DPS (100), identical score. In practice mgun is slightly more forgiving — 5 shots/sec means missing 1 shot loses 20 DPS vs pea missing 1 of 2 shots losing 50 DPS. Could justify scoring mgun's targeting at Aimed (-1) instead of Precise (-2) for a total of 8, but the individual projectiles are still narrow. The gap below cap signals room for differentiation — mgun could earn its budget through a unique mechanic (spread pattern, armor shred, etc.).
+**Assessment**: 3 under cap, same as pea. Identical theoretical DPS (100), but mgun's 5 shots/sec earns a better aim multiplier (×0.70 aimed vs ×0.55 precise) — 70 eDPS vs 55. Both land at POWER 4 because neither crosses the 100 eDPS threshold. Room for differentiation via unique mechanics (spread pattern, armor shred, etc.).
 
 ---
 
 ### sub_mine — Deployable (Instant, Normal)
 
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 15 on explosion | Low | +2 |
-| Effective DPS | ~75 (100 dmg × 3 mines / ~4s cycle, unreliable) | Low | +2 |
-| Range | Self-place | Self | 0 |
-| AoE | 250 unit radius | Medium | +2 |
-| Area denial | Controls space | Modifier | +1 |
-| Pool size | 3 max deployed | Pool > 1 | +1 |
-| Fuse delay | 2000ms armed time | Drawback | -1 |
-| Friendly fire | Player mines damage player (100 HP) | Drawback | -1 |
-| **TOTAL** | | | **6** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 5 | 5 | ~75 unreliable DPS + 250u AoE + area denial + 3-mine pool. Utility exceeds raw DPS. |
+| SUSTAIN | +2 | +2 | 15 fb/boom, 3-mine pool with 250ms cooldown. Efficient — deploy all 3 cheaply, damage is delayed. |
+| REACH | −1 | −1 | Self-place only + 2s fuse delay (enemies can escape) + friendly fire risk (100 HP self-damage). |
+| **TOTAL** | | **6** | |
 
-**Assessment**: 4 under normal cap. Mine's DPS is unreliable — enemies can walk away from the fuse, and standing too close to your own detonation kills you. The real value is area denial and burst damage on grouped enemies, not sustained DPS. The old system scored mine at 10 by stacking cooldown (+3) and damage (+3) separately — the composite DPS score (+2) is more honest. At 6, mine has the most room to buff of any weapon. Options: larger blast radius, shorter fuse, more mines, or a damage buff.
+**Assessment**: 4 under normal cap. Mine's DPS is unreliable — enemies escape the fuse, standing too close kills you. The real value is area denial and burst on grouped enemies. At 6, mine has the most room to buff of any skill. Options: larger blast radius, shorter fuse, more mines.
 
 ---
 
-### sub_tgun — Projectile (Instant, Normal)
+### sub_tgun — Projectile (Instant, Rare)
 
 #### Design Identity
-Twin-barrel rapid fire. Two alternating barrels fire white projectiles in quick succession — double the volume of pea with alternating left/right shots. The stalker's signature weapon, extracted for the player.
+Twin-barrel rapid fire. Two alternating barrels fire white projectiles in quick succession — a constant stream of death. The stalker's signature weapon, extracted for the player. The rare-tier projectile that bridges the gap between normal weapons and channeled elites.
 
 #### Stat Block
 | Attribute | Value |
 |-----------|-------|
 | Category | Instant |
-| Tier | Normal |
+| Tier | Rare |
 | Feedback cost | 1 per shot |
 | Fire rate | 100ms between shots (alternating barrels, 200ms per barrel) |
 | Damage per hit | 25 |
@@ -389,79 +338,115 @@ Twin-barrel rapid fire. Two alternating barrels fire white projectiles in quick 
 | Activation | Mouse left (hold to fire) |
 
 #### Score Card
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 1 per shot (10/sec sustained) | Negligible | +3 |
-| Effective DPS | 250 (25 dmg × 10/sec) | Moderate | +3 |
-| Range | ~3500 units | Long | +3 |
-| AoE | Single target | Single | 0 |
-| Pool size | 32 concurrent (16 per barrel) | Pool > 1 | +1 |
-| Targeting difficulty | Narrow projectiles, must lead targets, but 2x fire rate forgives misses | Aimed | -1 |
-| **TOTAL** | | | **9** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 6 | 6 | 250 theoretical DPS × 0.85 aim = 212 eDPS. Volume fire (10 shots/sec) — misses cost 100ms, not 500ms. |
+| SUSTAIN | +3 | +3 | 1 fb/shot (10/sec sustained). Can fire 10s before cap. Best DPS/feedback ratio in the game. |
+| REACH | +3 | +3 | 3500u range + volume fire delivery. 10 shots/sec at long range means consistent hits even at distance. |
+| **TOTAL** | | **12** | |
 
 #### Balance Notes
-Sub_tgun is the strongest normal-tier weapon, sitting at 9 — just 1 under cap. Its 250 DPS is 2.5x pea/mgun and puts it solidly in the Moderate DPS tier (+3 vs their +2). The twin-barrel design means missing a single shot only costs 25 DPS instead of pea's 50, making practical DPS much closer to theoretical.
+Sub_tgun scores 12 against a Rare cap of 15 — **3 under cap**. It's the most efficient sustained DPS weapon in the game: 250 DPS for just 10 feedback/sec means you can fire for a full 10 seconds before hitting feedback cap. No other weapon comes close to that damage-per-feedback ratio.
 
-**Comparison to sub_pea (7) and sub_mgun (7)**: All three are projectile instants competing for the same slot. Tgun's DPS advantage is massive (250 vs 100) with the same feedback efficiency (~1 per shot). The tradeoff is subtle — tgun's alternating barrel offset means shots come from slightly different positions, which can cause near-misses at long range that a centered pea wouldn't. But at 10 shots/sec, the volume more than compensates.
+**Why it's clearly above pea/mgun**: 2.5x the DPS with the same feedback cost per shot. The twin-barrel volume means practical DPS is much closer to theoretical — miss one shot and you lose 100ms, not 500ms. Pea and mgun at 7 are starter weapons; tgun at 12 is the first real DPS upgrade.
 
-**Why Aimed (-1) instead of Precise (-2)?**: Tgun fires fast enough that individual misses matter less. Pea at 2 shots/sec means a miss costs 500ms of DPS. Tgun at 10 shots/sec means a miss costs 100ms. The high fire rate is inherently more forgiving, justifying the weaker targeting penalty.
+**Comparison to flak (9/15)**: Both are rare projectile weapons. Tgun wins at range with sustained 250 DPS and nearly free feedback. Flak wins in burst with burn DOT but eats feedback 4x faster and at 2/3 the range. Tgun is the reliable workhorse; flak is the aggressive close-range option.
 
-**Comparison to channeled elites**: At 250 DPS, tgun is still 5x below inferno (1250) and 3.6x below disintegrate (900). The gap is real but narrower than pea's 12.5x deficit. Tgun is the "I don't have an elite yet but I need DPS" weapon — respectable output without the feedback suicide of channeling.
+**The bridge to elites**: At 250 DPS, tgun is still 5x below inferno (1250) and 3.6x below disintegrate (900). But unlike channeled elites, tgun doesn't self-destruct from feedback. The 3-point gap to rare cap means room for buffs — secondary effects (armor shred, slow) or raw damage increases.
 
 **Synergies**:
 - **Tgun + Gravwell**: High fire rate + clustered enemies = more shots landing. Volume fire into a gravity well is devastating.
-- **Tgun + Stealth**: 5x ambush multiplier = 125 damage per shot for 1s. At 10 shots/sec, that's 1250 DPS during the ambush window — elite-tier burst from a normal weapon.
-- **Tgun + Resist/Aegis**: Sustained fire while tanking hits. Tgun's low feedback cost means you can fire for a long time before spillover.
+- **Tgun + Stealth**: 5x ambush multiplier = 125 damage per shot for 1s. At 10 shots/sec, that's 1250 DPS during the ambush window — elite-tier burst from a rare weapon.
+- **Tgun + Aegis**: 10s of invuln + tgun sustained fire = 2500 guaranteed damage with zero risk. The ultimate safe DPS window.
+
+---
+
+### sub_flak — Projectile (Instant, Rare)
+
+#### Design Identity
+Fire-themed shotgun blast. Fires a tight cone of 5 burning pellets — high burst at close range, falls off fast with distance. The fire hunter's signature weapon, extracted for the player. First themed subroutine in the game.
+
+#### Stat Block
+| Attribute | Value |
+|-----------|-------|
+| Category | Instant |
+| Tier | Rare |
+| Feedback cost | 4 per shot |
+| Fire rate | 250ms between shots (4 shots/sec) |
+| Pellets per shot | 5 |
+| Damage per pellet | 8 |
+| Damage per shot | 40 (all pellets hit) |
+| Effective DPS | 160 (point blank, all pellets) |
+| Burn DOT | 10 DPS per stack, 3s duration, 3 max stacks |
+| Burn DPS (sustained) | Up to 30 (3 stacks maintained) |
+| Combined DPS | ~190 (point blank + burn) |
+| Spread half-angle | 7.5° (15° total cone) |
+| Projectile speed | 3500 units/s |
+| Projectile TTL | 667ms |
+| Effective range | ~2333 units (~2/3 of tgun) |
+| Pool size | 32 |
+| Activation | Mouse left (hold to fire) |
+
+#### Score Card
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 7 | 7 | 160 direct DPS × 0.80 cone aim = 128 eDPS + 30 burn DOT = ~158 eDPS. Burn persistence adds value beyond raw DPS — damage continues after disengaging. |
+| SUSTAIN | +1 | +1 | 4 fb/shot (16/sec sustained). Burns through feedback fast — natural burst windows. Manageable but taxing. |
+| REACH | +1 | +1 | 2333u medium range + cone spread forgives aim, but must close distance to be effective — risk exposure. |
+| **TOTAL** | | **9** | |
+
+#### Balance Notes
+Sub_flak scores 9 against a Rare cap of 15 — **6 under cap**, leaving significant room to grow as we tune fire zone difficulty. The 16 fb/sec drain means sustained fire burns through feedback fast, creating natural burst windows.
+
+**Comparison to sub_tgun (9)**: Same score, different tradeoffs. Tgun wins at range with 250 sustained DPS and negligible feedback drain. Flak wins in close quarters with burn DOT that persists after repositioning, but costs 4x the feedback. The 15° cone spread forgives aim, but the short range means eating enemy fire.
+
+**Comparison to sub_pea (7) and sub_mgun (7)**: Flak outclasses starters in DPS (160 vs 100) plus burn DOT, but the feedback cost and range tax are real constraints. With the Rare cap at 15, flak has room for buffs (more pellets, wider cone, longer burn) as fire zone tuning evolves.
+
+**Burn DOT uniqueness**: Flak is the first weapon to apply persistent damage. Even if the player disengages after a burst, burn ticks continue for 3s. At 3 stacks (30 DPS), that's 90 total damage over the DOT duration — nearly a full extra shot's worth of damage that requires no aim. This rewards aggressive play patterns.
+
+**Synergies**:
+- **Flak + Egress**: Dash in, point-blank burst, dash out. I-frames on approach, burn continues after retreat.
+- **Flak + Stealth**: 5x ambush multiplier on 5 pellets = 200 damage in one shot. Plus burn DOT. Devastating opener.
+- **Flak + Gravwell**: Pull enemies close → shotgun blast → burn stacks on clustered targets. The close-range fantasy realized.
 
 ---
 
 ### sub_boost — Movement (Toggle, Elite)
 
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 0 | Free | +4 |
-| Cooldown | None (toggle) | None | +4 |
-| Speed multiplier | 2x (800 → 1600) | — | +2 |
-| Duration | Unlimited (hold) | Unlimited | +4 |
-| Control during | Full steering | Modifier | +1 |
-| **TOTAL** | | | **15** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 11 | 11 | Best-in-class utility: unlimited 2x speed, zero feedback, full steering. Outrun anything, kite indefinitely. No damage output keeps it below 14. |
+| SUSTAIN | +3 | +3 | 0 fb toggle. Literally free. Available whenever you want, for as long as you want. |
+| REACH | +3 | +3 | Permanent self-effect — always available, no downtime, no positioning constraints. |
+| **TOTAL** | | **17** | |
 
-**Assessment**: Right at elite cap (15). This is the flagship elite — it SHOULD feel powerful. Zero cost + unlimited duration + full control is the elite fantasy. **Consider**: If this needs tuning, adding a subtle feedback drain per second (even 0.5/sec) would drop Feedback from +4 to +3, bringing it to 14. But the "unlimited boost with no cost" is the elite identity — touching it should be a last resort.
+**Assessment**: 3 under elite cap (20). Boost is pure mobility — zero cost, unlimited duration, full control. Against disintegrate at 20, boost's lack of ANY damage output is what keeps POWER at 11 instead of 14. The 3-point gap is real design space — boost could gain a damage component (ram damage, afterburner trail) to close the gap.
 
 ---
 
 ### sub_egress — Movement (Instant, Normal)
 
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 25 | Medium | +1 |
-| Cooldown | 2000ms | Medium | +1 |
-| Speed multiplier | 5x (4000 units/s) | — | +3 |
-| Duration | 150ms | Brief | 0 |
-| Escape/reposition | Gets out of danger | Modifier | +1 |
-| Dash distance | 600 units (4000 × 0.15s) | — | 0 |
-| Invuln during dash | Full i-frames for 150ms | Modifier | +2 |
-| Contact damage | 50 HP on body collision (100-unit corridor) | Medium | +2 |
-| **TOTAL** | | | **10** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 7 | 7 | Strong utility: 5x speed burst + full i-frames for 150ms + 50 contact damage. Dodge-attack in one button. |
+| SUSTAIN | +1 | +1 | 25 fb + 2s cooldown. Meaningful cost but manageable frequency. Can't spam, but recovers fast enough for tactical use. |
+| REACH | +2 | +2 | 600u dash distance + i-frames mean strong delivery — you GO to the target through danger. |
+| **TOTAL** | | **10** | |
 
-**Assessment**: At cap. The addition of i-frames and contact damage transforms egress from a punishing panic button into a proper action-game dodge-attack. The i-frames let you dash THROUGH projectiles, mine explosions, and enemy contact — rewarding aggressive positioning and precise timing. The 50 contact damage gives it offensive utility: dash into a seeker mid-charge for a counter-hit, or body-check a defender out of its heal cycle. The 25 feedback cost + 2s cooldown still gate it — you can't spam dashes, and each one eats a quarter of your feedback bar. But when you use it, it FEELS worth the cost.
+**Assessment**: At cap. I-frames + contact damage transforms egress into a proper action-game dodge-attack. Dash THROUGH projectiles, mine explosions, and enemy contact. The 25 feedback + 2s cooldown still gate it — you can't spam, and each one eats a quarter of your feedback bar. But when you use it, it FEELS worth the cost.
 
 ---
 
 ### sub_mend — Healing (Instant, Normal)
 
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 20 | Medium | +1 |
-| Cooldown | 10000ms | Slow | 0 |
-| Healing | 50 HP instant | Moderate | +2 |
-| Regen activation | Bypasses 2s damage delay | Modifier | +1 |
-| Regen boost | 3x regen rate for 5s (~75 bonus HP) | Duration effect | +2 |
-| Range | Self | Self | 0 |
-| Duration | 5s regen window | Short | +1 |
-| **TOTAL** | | | **7** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 5 | 5 | Minor buff/heal: 50 HP instant + bypasses 2s regen delay + 3x regen for 5s (~75 bonus HP). Dual identity — burst + sustained. |
+| SUSTAIN | +1 | +1 | 20 fb + 10s cooldown. Meaningful cost, once per engagement cycle. |
+| REACH | +1 | +1 | Self-targeted but the 5s regen window provides temporal coverage — effectiveness extends beyond the button press. |
+| **TOTAL** | | **7** | |
 
-**Assessment**: Improved from 3 to 7. Mend now has a dual identity: burst heal for emergencies + sustained recovery for skilled play. The 50 HP instant heal saves you NOW. The immediate regen activation + 3x boost rewards disengaging cleanly — if you dodge everything for 5 seconds after mending, you recover up to 75 additional HP (at base regen) or 150 HP (at 0-feedback double rate, capped by max integrity). The catch: taking damage resets the regen delay as usual, interrupting the boost. Mend doesn't make you invincible — it gives you a powerful recovery window that you have to EARN by playing well.
+**Assessment**: 3 under cap. Mend has a dual identity: burst heal for emergencies + sustained recovery for skilled play. The 50 HP heals you NOW. The regen boost rewards disengaging cleanly — up to 75 additional HP if you dodge everything for 5s. Taking damage resets the regen delay, interrupting the boost. Mend gives you a recovery window you have to EARN.
 
 **Synergies**:
 - **Mend + Egress**: Dash to avoid the hit that would interrupt your regen boost. I-frames + regen boost = maximum recovery value.
@@ -472,20 +457,14 @@ Sub_tgun is the strongest normal-tier weapon, sitting at 9 — just 1 under cap.
 
 ### sub_aegis — Shield (Instant, Normal)
 
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 30 | High | 0 |
-| Cooldown | 30000ms | Glacial | -2 |
-| Duration | 10000ms (10s) | Long | +3 |
-| Full invulnerability | Complete immunity | Modifier | +3 |
-| Uptime | 10s / 30s = 33% | — | 0 |
-| **TOTAL** | | | **4** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 9 | 9 | Binary defensive power: 10s complete immunity to ALL damage. Prevents feedback from hits too. Nothing else in the game matches this effect. |
+| SUSTAIN | −1 | −1 | 30 fb + 30s cooldown. Double-taxed — once per fight AND painful. The heaviest sustain cost of any normal skill. |
+| REACH | +2 | +2 | Self-targeted but 10s duration provides strong coverage — a third of each fight cycle spent invulnerable. Full control during. |
+| **TOTAL** | | **10** | |
 
-**Assessment**: Very under cap at 4 despite having the game's most powerful effect (full invulnerability). The glacial 30s cooldown (-2) and high feedback cost (0) do massive budget work. In practice, aegis defines one fight per cycle — incredibly powerful when active, absent for long stretches. **Consider**: The low budget score might be correct — 10 seconds of god mode IS worth a lot, and the 30s cooldown makes it strategic. But the score suggests room to buff. Options:
-- Lower cooldown to 20s → -1 cooldown → total 5
-- Lower feedback to 20 → +1 feedback → total 5
-- Add a secondary effect (damage pulse on activation, brief speed boost when shield ends) → +1-2
-- Or accept that aegis is deliberately underbudget because invulnerability's qualitative power exceeds what the point system captures
+**Assessment**: At cap (10). Aegis is the gold standard for defensive normals. 10 seconds of god mode — walk through mine fields, face-tank inferno beams, channel disintegrate without caring about incoming fire. The SUSTAIN −1 reflects the double tax (30 fb + 30s cd), but POWER 9 properly values binary invulnerability. When it's up, nothing else in the game matches it.
 
 ---
 
@@ -511,20 +490,12 @@ Cloak and ambush. Go invisible, position for a devastating opening strike, then 
 | Player mine self-damage | Player's own deployed mines deal 100 damage to player if in blast radius |
 
 #### Score Card
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 0 (gated by 0-feedback requirement) | Free (conditional) | +3 |
-| Cooldown | 15000ms (starts on unstealth) | Slow | 0 |
-| Duration | Unlimited (until break) | Unlimited | +4 |
-| Damage multiplier | 5x for 1s ambush window | — | +3 |
-| Shield piercing | Ambush ignores all shields | Modifier | +1 |
-| Cooldown reset on kill | Ambush kill → instant reset | Modifier | +2 |
-| Speed reduction | 0.5x while stealthed | Drawback | -1 |
-| Feedback gate | Must have 0 feedback to activate | Drawback | -2 |
-| Breaks on attack | First attack ends stealth | Drawback | -1 |
-| Breaks on contact | Physical collision with enemy/mine body ends stealth | Drawback | -1 |
-| Vision cone detection | Enemies spot player in 90° forward cone within 100 units | Drawback | -1 |
-| **TOTAL** | | | **7** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 7 | 7 | Strong utility: full invisibility + 5x ambush damage + shield pierce + cooldown reset on kill. One-shot tool at close range with any weapon. |
+| SUSTAIN | +1 | +1 | 0 fb but gated by 0-feedback requirement (severe constraint). 15s cooldown starts on unstealth. The gate means "free" only when you've earned clean disengagement. |
+| REACH | −1 | −1 | Self-only + 0.5x speed while stealthed + breaks on attack/contact/vision cone. Multiple restrictions on delivery. |
+| **TOTAL** | | **7** | |
 
 #### Balance Notes
 Sub_stealth is a high-skill-ceiling ability with a unique power curve. The 0-feedback gate is a severe activation constraint — you can't stealth mid-combat while feedback is decaying, forcing disengagement before cloaking. With the **damage-to-feedback system** (0.5x ratio), this gate is even harder to clear: taking hits generates feedback, so you can't just stop shooting and evade sloppily. You must disengage AND dodge all incoming damage to reach 0 feedback. This makes stealth activation a genuine skill expression — only players who can cleanly disengage earn the cloak.
@@ -536,13 +507,13 @@ The speed penalty (0.5x) prevents stealth from doubling as a movement ability an
 The cooldown doesn't start ticking until stealth breaks. This means longer stealth durations don't reduce effective cooldown — you always pay the full 15s after unstealthing regardless of how long you were cloaked.
 
 **Scoring notes**:
-- Feedback cost scored at +3 (not +4) because the 0-feedback gate is a meaningful restriction — it's "free" only when you're out of combat
-- Feedback gate scored at -2 because it's a harder restriction than typical drawbacks — it prevents activation entirely in many situations
-- The 5x ambush multiplier is scored at +3 (devastating tier equivalent) since it turns any weapon into a one-shot tool at close range
-- Cooldown reset is +2 because it enables chain kills but requires execution (must actually get the kill within the ambush window)
-- Vision cone detection scored at -1 because it adds a meaningful spatial awareness requirement — you can't just walk anywhere, you must read enemy facing
+- POWER 7 captures the full package: invisibility + 5x ambush + shield pierce + cooldown reset on kill. Each piece alone is strong; together they define a high-skill-ceiling assassin kit
+- SUSTAIN +1 (not +2 or +3) because the 0-feedback gate is a severe activation constraint — "free" only when you've earned clean disengagement. The gate plus the 15s cooldown makes it meaningfully limited
+- REACH −1 because multiple restrictions stack: 0.5x speed, breaks on attack/contact/vision cone. You can go invisible, but delivering the ambush has real constraints
+- Cooldown reset on kill is folded into POWER (not REACH) — it amplifies the skill's peak output, not its delivery range
+- Vision cone detection is part of the REACH −1 penalty — it adds a spatial awareness requirement to delivery
 
-**Comparison to similar skills**: Stealth occupies a unique niche — no other skill combines invisibility with a damage amplifier. The closest comparison is sub_aegis (also defensive, also long cooldown) but stealth rewards aggression where aegis rewards survival. At budget 7, stealth is 3 under cap, which may be appropriate given the qualitative power of "enemies can't see you" — similar to how aegis's invulnerability may exceed its point value.
+**Comparison to similar skills**: Stealth occupies a unique niche — no other skill combines invisibility with a damage amplifier. The closest comparison is sub_aegis (also defensive, also long cooldown) but stealth rewards aggression where aegis rewards survival. At budget 7, stealth is 3 under cap — the POWER 7 rating captures the qualitative value of "enemies can't see you" + 5x ambush, while the REACH −1 penalty for break conditions and speed reduction keeps the total honest.
 
 **Mine interactions**:
 - Deploying a mine breaks stealth (attack action)
@@ -585,40 +556,25 @@ Channeled devastation beam. Hold to unleash a continuous stream of fire blobs th
 | Sustain window | ~4s before feedback spillover begins (at 0 initial feedback) |
 
 #### Score Card
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 25/sec | Medium | +1 |
-| Effective DPS | ~1250 (10 dmg × 125 blobs/sec) | Devastating | +5 |
-| Range | ~1250 units | Long | +3 |
-| Duration/Uptime | Unlimited (while held) | Unlimited | +4 |
-| Piercing | Blobs pass through | Modifier | +1 |
-| Full control during | Can move + aim freely | Modifier | +1 |
-| Targeting | Wide ±5° spread, 125 blobs/sec | Forgiving | 0 |
-| **TOTAL** | | | **15** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 14 | 14 | 1250 theoretical DPS × 0.90 dense spray = 1125 eDPS + 30 burn DOT = ~1155 eDPS. Piercing + burn persistence + instant max stacks. Elite group-wipe territory. |
+| SUSTAIN | +3 | +3 | 25 fb/sec but toggle — you control the sustain window. ~4s before spillover, then natural recovery. Burst-and-disengage pattern is efficient. |
+| REACH | +2 | +2 | 1250u range + dense spray delivery (±5°, 125 blobs/sec). Good accuracy at medium range, but must close to half disintegrate's range. |
+| **TOTAL** | | **19** | |
 
 #### Balance Notes
-Sub_inferno is the second elite and the game's first channeled weapon. At budget 15 it sits right at elite cap — identical to sub_boost. This is deliberate: inferno is the "jaw drop" subroutine, the one that makes players go "holy shit."
+Sub_inferno scores 19 — **1 under elite cap (20)**. The burn DOT closes the gap with disintegrate significantly. Inferno applies max burn stacks almost instantly (125 hits/sec saturates 3 stacks in the first frame), and burn persists 3s after you stop channeling — 90 bonus damage on every target you touched, for free.
 
-The revised scoring makes the DPS gap crystal clear: inferno's Devastating DPS (+5) vs pea's Low DPS (+2) is a 3-point gap from damage output alone. Add the +4 for unlimited sustain duration (pea has no sustain score — it's instant fire-and-forget) and the 0 targeting penalty (vs pea's -2 for precise aim), and the 8-point total gap (15 vs 7) properly reflects inferno's screen-clearing dominance.
+**Why 19 and not 20**: Disintegrate still wins on range (2600 vs 1250) and group scaling (carve sweep hits everything on a line simultaneously). Inferno's burn DOT partially compensates — the persistent damage means even brief sweeps across multiple targets leave them all burning. But disintegrate's ability to engage from safety and wipe groups in a single sweep keeps it 1 point ahead.
 
-**The 4-second wall**: At 25 feedback/sec, you hit 100 feedback in 4 seconds from zero. Then spillover damage starts eating your integrity at 25 HP/sec. You're literally killing yourself to channel. Sustained use without a supporting loadout (sub_mend, sub_aegis, low-feedback weapons to let feedback decay between bursts) is suicide. This is the core balance lever — inferno's damage is unlimited but your health isn't.
+**Burn synergy with inferno's identity**: The burn DOT is thematically perfect — you're hosing enemies with fire, of course they burn. Mechanically, it rewards the burst-and-disengage pattern: channel 2s → release → burn ticks for 3s → feedback decays → channel again. The burn fills the gap between bursts, smoothing effective DPS across the full combat cycle.
 
-**Feedback gating vs cooldown gating**: Unlike cooldown-gated weapons (pea, mgun, mine) that pace damage over time, inferno front-loads all its damage into a short window then forces you to stop or die. This creates a natural burst-and-recover rhythm that skilled players will optimize: channel 2-3 seconds → release → let feedback decay → channel again. The effective DPS over a full combat encounter is much lower than 1250.
+**The 4-second wall**: At 25 feedback/sec, you hit 100 feedback in 4 seconds from zero. Then spillover eats integrity at 25 HP/sec. But now the burn keeps dealing 30 DPS while you recover, making those recovery windows less costly.
 
-**Stealth synergy**: Breaking stealth with inferno gives the 5x ambush multiplier to the first blob hits — 50 damage per blob for 1 second. That's 6250 theoretical DPS during the ambush window. Absurd, but it costs you your stealth AND starts the feedback clock. Glass cannon opening.
+**Stealth synergy**: 5x ambush multiplier = 50 damage per blob for 1 second = 6250 theoretical DPS, plus instant max burn stacks. The ambush burst + lingering burn is devastating.
 
-**Comparison to sub_boost**: Both elites score 15. Boost gives unlimited free mobility — you're untouchable. Inferno gives unlimited damage — everything else is touchable. They're opposing fantasies: one is about never being caught, the other is about nothing surviving. The elite exclusivity (one per bar) makes this a real choice.
-
-**Scoring notes**:
-- DPS scored as a single composite (+5 for Devastating). The old system scored damage (+1) and cooldown (+4) separately, producing +5 — same number, but the new approach makes the DPS tier explicit rather than hiding it across two additive columns
-- Duration scored at +4 (Unlimited) because the channel has no inherent time limit — only feedback constrains it. Duration is independent of DPS: it captures sustain window, not damage rate
-- The 25/sec feedback drain is the primary balance lever. Raising it shortens the sustain window; lowering it makes inferno oppressive
-
-**Potential concerns**:
-- Ambush + inferno opening may one-shot bosses/elites in future content. Consider boss-tier damage resistance or ambush multiplier caps for high-HP enemies
-- Piercing makes inferno devastating against clustered enemies — groups melt instantly. This may trivialize encounters where enemies spawn together. Consider spawn spacing in encounter design
-- The 4-second sustain window may feel too short to casual players. The "loadout tax" (needing support skills to channel longer) is intentional class design — inferno builds sacrifice utility for damage
-- Feedback spillover as a self-damage mechanic creates interesting skill expression: knowing exactly when to release the beam separates good players from dead ones
+**Comparison to sub_disintegrate (20)**: Disintegrate is the precision group-wipe. Inferno is the close-range chaos weapon with lingering fire. Disintegrate's extra point comes from safe engagement range + carve sweep scaling. Inferno nearly matches it by combining raw DPS volume with persistent burn damage.
 
 ---
 
@@ -646,19 +602,15 @@ Finger of god. A focused hitscan laser that carves through everything in its pat
 | Visual | Blob particle beam (purple glow → light purple → white-hot core) with dedicated bloom FBO, wall splash particles |
 
 #### Score Card
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 22/sec | Medium | +1 |
-| Effective DPS | ~900 (15 dmg × 60fps) | Devastating | +5 |
-| Range | 2600 units | Long | +3 |
-| Duration/Uptime | Unlimited (while held) | Unlimited | +4 |
-| Piercing | Hitscan beam — all enemies on line take full damage simultaneously | Modifier | +1 |
-| Full control during | Can move + aim freely | Modifier | +1 |
-| Targeting | Beam is forgiving once on target | Forgiving | 0 |
-| **TOTAL** | | | **15** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 14 | 14 | 900 theoretical DPS × 0.95 hitscan = 855 eDPS. But hitscan pierce + 120°/sec carve sweep = 3420 eDPS vs 4 targets. The group-wipe scaling pushes this to elite cap. |
+| SUSTAIN | +3 | +3 | 22 fb/sec toggle, ~4.5s before spillover. Slightly better efficiency than inferno (22 vs 25). Natural burst recovery between sweeps. |
+| REACH | +3 | +3 | 2600u hitscan — extreme range + perfect accuracy. Engages enemies before they aggro. Beam hits instantly along the full line. |
+| **TOTAL** | | **20** | |
 
 #### Balance Notes
-Sub_disintegrate is the third elite and the game's second channeled weapon. At budget 15 it sits right at elite cap — equal to boost and inferno. All three elites deliver different power fantasies at the same budget: unlimited mobility, close-range chaos, long-range annihilation.
+Sub_disintegrate is **the elite benchmark** — the skill all other elites are measured against. At budget 20 it defines the elite cap. The finger of god fantasy: hitscan sweep that erases everything in its path, full pierce, 2x inferno range, dedicated bloom FBO for visual drama.
 
 **Why the carve speed is NOT a drawback**: The previous scoring penalized the 120°/sec carve limit at -1, treating it as a restriction vs inferno's instant aim. Playtesting revealed the opposite — the carve sweep IS what makes disintegrate devastating. Sweeping the beam through a group of enemies means every single one on the line takes full 900 DPS simultaneously. The carve isn't a limitation, it's the mechanic that turns "single-target laser" into "finger of god erasing swaths of enemies." Against 4 enemies in a line, that's 3600 effective group DPS. Inferno's blob scatter means far less consistent multi-target damage.
 
@@ -677,9 +629,9 @@ Sub_disintegrate is the third elite and the game's second channeled weapon. At b
 **Stealth synergy**: 5x ambush multiplier on beam = 75 damage per frame for 1s = 4500 DPS. Comparable to inferno's ambush (6250 DPS). But disintegrate's hitscan means every frame of the ambush window hits at full power — no wasted blobs scattering past the target.
 
 **Scoring notes**:
-- Carve speed no longer scored as a drawback. The sweep mechanic is the skill's primary power against groups — penalizing it was like penalizing inferno for having spread. Both are aiming styles, not limitations.
-- Range scored at +3 (Long) for 2600 units. Both disintegrate and inferno score Long, but the 2x range gap is captured qualitatively in the balance notes — it's a massive practical advantage that the point system's bucketing underrepresents.
-- Hitscan pierce is qualitatively superior to projectile pierce. Both score +1, but disintegrate's perfect-line simultaneous damage vs inferno's scattered blob hits is a real gap the modifier doesn't fully capture.
+- Carve sweep is part of POWER — the 120°/sec sweep turns single-target into group-wipe (3420 eDPS vs 4 targets). It's the mechanic that pushes POWER to 14, not a drawback.
+- REACH +3 vs inferno's +2: the 2x range gap (2600 vs 1250) plus hitscan delivery (instant hit at full range) is the defining REACH advantage. Inferno's dense spray compensates but only at medium range.
+- Hitscan pierce is qualitatively superior to projectile pierce — disintegrate hits all targets on the line simultaneously, while inferno blobs scatter between targets. Both are folded into their respective POWER scores.
 
 **Potential concerns**:
 - 2600 range allows engaging enemies before they aggro. This is a feature, not a bug — it's the elite fantasy. If it trivializes patrol encounters, the answer is encounter design (flanking spawns, ambush triggers) not nerfing the beam.
@@ -711,16 +663,12 @@ Gravity well. Deploy a vortex at cursor position that pulls enemies inward and s
 | Stealth interaction | Breaks stealth on activation |
 
 #### Score Card
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 25 | Medium | +1 |
-| Cooldown | 20000ms | Very Slow | -1 |
-| Range | Cursor placement (500-1000+ units) | Long | +3 |
-| AoE radius | 600 units | Large | +3 |
-| Duration | 8000ms | Medium | +2 |
-| Crowd control (pull + slow) | Drags + slows 60-95% | Special | +3 |
-| No damage | Zero direct damage | Drawback | -1 |
-| **TOTAL** | | | **10** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 7 | 7 | Strong control: pull (20–300 u/s quadratic) + slow (0.6x–0.05x quadratic) for 8s. Enemies in the well are functionally trapped. Zero damage, pure force multiplier. |
+| SUSTAIN | 0 | 0 | 25 fb + 20s cooldown. Strategic — significant cost AND long cooldown. One well per engagement. Deliberate use only. |
+| REACH | +3 | +3 | Cursor placement at any range + 600u AoE radius. Wide area, delivered from safety. |
+| **TOTAL** | | **10** | |
 
 #### Balance Notes
 Sub_gravwell is the first control-type subroutine and the first skill with zero damage output. At budget 10 it sits right at normal cap. Its power is entirely indirect — it makes every other skill in your loadout dramatically more effective.
@@ -740,9 +688,9 @@ Sub_gravwell is the first control-type subroutine and the first skill with zero 
 **Comparison to other normal skills at cap**: Egress (10) is the other normal at cap. Egress is a personal combat tool — dodge + damage in one button press. Gravwell is a strategic tool — deploy to control a fight. Both earn their 10 through different paths: egress through concentrated personal power, gravwell through broad positional control.
 
 **Scoring notes**:
-- Feedback scored at +1 (Medium) for 25 per activation. Same tier as egress (25) and inferno (25/sec). One-time cost vs sustained drain — but the 20s cooldown means you're paying 25 feedback once per fight, which is a lighter drain than channeled weapons.
-- Cooldown at -1 (Very Slow) for 20s. This is the heaviest cooldown of any non-aegis skill. The long cooldown is the primary balance lever — gravwell would be oppressive at 10s, game-breaking at 5s.
-- No damage scored at -1 (custom drawback). No existing drawback captures "this skill literally cannot kill anything." The -1 is conservative — it could arguably be -2, but the crowd control value compensates.
+- SUSTAIN 0 captures the strategic cost: 25 fb one-time + 20s cooldown = deliberate use only. Not as punishing as aegis/EMP (−1) because the one-time cost is lighter than a channeled drain, but the long cooldown prevents spam.
+- The 20s cooldown is the primary balance lever — gravwell would be oppressive at 10s, game-breaking at 5s.
+- Zero damage is folded into POWER at 7 (strong control, but pure force multiplier). The well does nothing alone; it earns its POWER through pull + slow utility that amplifies everything else.
 
 **Synergies**:
 - **Gravwell + Inferno**: Pull enemies into a tight cluster, then hose them down. The slow keeps them in the fire stream. Devastating combo.
@@ -779,17 +727,12 @@ AoE feedback bomb. Detonate an electromagnetic pulse that maxes out enemy feedba
 | Activation | V key |
 
 #### Score Card
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 30 | High | 0 |
-| Cooldown | 30000ms | Glacial | -2 |
-| Range | Self-centered AoE | Self | 0 |
-| AoE radius | 400 units | Large | +3 |
-| Duration of debuff | 10000ms | Long | +3 |
-| Debuff severity | Max feedback + halved decay (enemy skills cost HP) | Special | +4 |
-| No direct damage | Zero damage | Drawback | -1 |
-| LOS not required | Hits through walls within radius | Benefit | +1 |
-| **TOTAL** | | | **8** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 6 | 6 | Moderate control/debuff: max feedback + halved decay for 10s on all enemies in radius. Forces feedback spillover — enemy skills cost HP. No direct damage, but encounter-defining debuff. |
+| SUSTAIN | −1 | −1 | 30 fb + 30s cooldown. Double-taxed like aegis — once per fight AND painful. The heaviest sustain cost for a control skill. |
+| REACH | +3 | +3 | 400u AoE + hits through walls. No LOS required — reliable delivery in any geometry. |
+| **TOTAL** | | **8** | |
 
 #### Balance Notes
 Sub_emp is the second control-type subroutine and the player version of the corruptor's EMP attack. At budget 8, it's 2 under normal cap. Its power is entirely indirect — it doesn't deal damage, but it forces enemies into feedback spillover, meaning their own ability usage damages them.
@@ -798,7 +741,7 @@ Sub_emp is the second control-type subroutine and the player version of the corr
 
 **Symmetry with the corruptor**: The corruptor uses EMP offensively against the player — maxing player feedback and halving decay. The player version mirrors this against enemies. Same mechanic, symmetric application. The corruptor version forces the player to stop using skills or eat spillover damage. The player version does the same to enemies.
 
-**The 30s cooldown + 30 feedback squeeze**: Like aegis, EMP pays both a glacial cooldown (-2) and high feedback cost (0 points). This double tax is appropriate because the effect is encounter-defining — 10s of halved feedback decay across all enemies in a 400-unit radius is devastating. You get one EMP per fight.
+**The SUSTAIN −1 double tax**: Like aegis, EMP pays both a high feedback cost (30) and a glacial cooldown (30s). This is why both earn SUSTAIN −1. The double tax is appropriate because the effect is encounter-defining — 10s of halved feedback decay across all enemies in a 400-unit radius is devastating. You get one EMP per fight.
 
 **Comparison to sub_gravwell**: Both are normal control skills. Gravwell (10) physically traps enemies — pull + slow. EMP (8) metabolically cripples them — feedback overload. Gravwell has better uptime (20s cd vs 30s) and is self-sufficient as a force multiplier. EMP's value scales with how aggressively enemies use abilities, making it situational. The 2-point gap seems right.
 
@@ -827,28 +770,25 @@ Timed speed boost. Activate for 5 seconds of 2x movement speed, then wait 15 sec
 | Activation | Shift key (edge-detect) |
 
 #### Score Card
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 0 | Free | +4 |
-| Cooldown | 15000ms | Slow | 0 |
-| Speed multiplier | 2x (800 → 1600) | — | +2 |
-| Duration | 5000ms | Medium | +2 |
-| Control during | Full steering | Modifier | +1 |
-| Limited uptime | 5s / 20s = 25% | Drawback | -1 |
-| **TOTAL** | | | **8** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 5 | 5 | Minor buff: 2x speed for 5s with full steering. Same top speed as boost, but time-limited. |
+| SUSTAIN | +2 | +2 | 0 fb (free activation), but 25% uptime (5s on / 15s off). Efficient when available, just not always available. |
+| REACH | +1 | +1 | Self-buff with 5s temporal coverage. The speed window provides meaningful repositioning, but 15s of normal speed between uses. |
+| **TOTAL** | | **8** | |
 
 #### Balance Notes
 Sub_sprint is the non-elite movement option — the "normal human" speed boost vs boost's "elite unlimited" fantasy. At budget 8, it's 2 under normal cap.
 
-**Comparison to sub_boost (15, Elite)**: Both hit 1600 units/s (2x normal). The gap:
-- **Boost**: unlimited duration, zero cooldown, hold-to-activate. Available whenever you want. 15 budget.
-- **Sprint**: 5s burst, 15s cooldown, 25% uptime. Available one-quarter of the time. 8 budget.
+**Comparison to sub_boost (17, Elite)**: Both hit 1600 units/s (2x normal). The gap:
+- **Boost**: POWER 11 + SUSTAIN +3 + REACH +3 = 17. Unlimited, zero cost, permanent.
+- **Sprint**: POWER 5 + SUSTAIN +2 + REACH +1 = 8. 5s burst, 25% uptime.
 
-The 7-point gap (15 vs 8) is the cost of "always available" vs "sometimes available." Sprint gives non-elite players access to the same top speed but requires timing — you burn your sprint window, then walk for 15 seconds. Boost users never have to think about it.
+The 9-point gap (17 vs 8) is the cost of "always available" vs "sometimes available." Sprint gives non-elite players access to the same top speed but requires timing — you burn your sprint window, then walk for 15 seconds. Boost users never have to think about it.
 
 **Zero feedback cost**: Sprint is free to activate. This is appropriate because the gating is entirely temporal (5s on, 15s off). Adding feedback cost would double-tax an already limited skill. The free cost earns +4 points, which is the main budget contributor.
 
-**The 25% uptime drawback**: Sprint's effective uptime (5s out of every 20s) is a genuine limitation. During the 15s cooldown, you're at normal speed — vulnerable to chasers, unable to reposition quickly. This is scored at -1 but could arguably be worth more. Playtesting will determine if 25% uptime feels too restrictive.
+**The 25% uptime limitation**: Sprint's effective uptime (5s out of every 20s) is a genuine limitation. During the 15s cooldown, you're at normal speed — vulnerable to chasers, unable to reposition quickly. This is captured in SUSTAIN +2 (efficient but not unlimited) and REACH +1 (temporal coverage, not permanent). Playtesting will determine if 25% uptime feels too restrictive.
 
 **Synergies**:
 - **Sprint + Egress**: Sprint for positioning, egress for emergency dodges. Two movement tools, different use cases — sprint for sustained repositioning, egress for instant escape + i-frames.
@@ -876,25 +816,21 @@ Damage resistance aura. Activate for 5 seconds of 50% damage reduction. The corr
 | Activation | F key (type exclusivity with aegis) |
 
 #### Score Card
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| Feedback cost | 25 | Medium | +1 |
-| Cooldown | 15000ms | Slow | 0 |
-| Duration | 5000ms | Medium | +2 |
-| Damage reduction | 50% for 5s | — | +3 |
-| Range | Self | Self | 0 |
-| Uptime | 5s / 20s = 25% | — | 0 |
-| Full control during | No restrictions | Modifier | +1 |
-| **TOTAL** | | | **7** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 5 | 5 | Minor buff: 50% damage reduction for 5s. Proportional defense — you still take hits, but they hurt half as much. Also halves feedback from damage (hidden efficiency). |
+| SUSTAIN | +1 | +1 | 25 fb + 15s cooldown. Meaningful cost but manageable — can use roughly twice per fight vs aegis's once. |
+| REACH | +1 | +1 | Self-buff with 5s temporal coverage. Full control during effect. 25% uptime is serviceable. |
+| **TOTAL** | | **7** | |
 
 #### Balance Notes
 Sub_resist is the non-binary defensive option — 50% damage reduction instead of aegis's 100% immunity. At budget 7, it's 3 under normal cap.
 
-**Comparison to sub_aegis (4, Normal)**: Both are defensive instants activated with F key (type exclusivity means you pick one):
-- **Aegis**: 10s full invulnerability, 30s cooldown, 30 feedback. Binary — either you're god or you're not. Budget 4.
-- **Resist**: 5s half damage, 15s cooldown, 25 feedback. Proportional — you still take hits, but they hurt half as much. Budget 7.
+**Comparison to sub_aegis (10, Normal)**: Both are defensive instants activated with F key (type exclusivity means you pick one):
+- **Aegis**: 10s full invulnerability, 30s cooldown, 30 feedback. Binary — POWER 9 but SUSTAIN −1. Budget 10.
+- **Resist**: 5s half damage, 15s cooldown, 25 feedback. Proportional — POWER 5 but SUSTAIN +1. Budget 7.
 
-Resist scores HIGHER than aegis (7 vs 4) despite being weaker defensively. This is the budget system working correctly — aegis's combination of glacial cooldown (-2) and high feedback (0) craters its score, while resist's moderate cooldown (0) and medium feedback (+1) are less punishing. In practice, aegis's binary invulnerability likely exceeds its 4-point score, while resist's 50% reduction is accurately captured at 7.
+The 3-axis system captures the tradeoff clearly: aegis has massively more POWER (9 vs 5) but pays for it in SUSTAIN (−1 vs +1). Resist is the consistent, always-available defensive option. Aegis is the nuclear button you press once per fight.
 
 **The type exclusivity tradeoff**: Since aegis and resist share F key and shield type, you can't equip both. This is a genuine build choice:
 - **Aegis**: Longer protection (10s vs 5s), total immunity, but longer cooldown (30s vs 15s) and higher cost (30 vs 25 feedback). One-per-fight panic button.
@@ -913,47 +849,46 @@ Resist scores HIGHER than aegis (7 vs 4) despite being weaker defensively. This 
 
 ## Balance Summary
 
-| Skill | Category | Tier | Score | Cap | Status |
-|-------|----------|------|-------|-----|--------|
-| sub_pea | Instant | Normal | 7 | 10 | -3 under (precise aim tax, room to buff) |
-| sub_mgun | Instant | Normal | 7 | 10 | -3 under (same DPS as pea, room to differentiate) |
-| sub_mine | Instant | Normal | 6 | 10 | -4 under (area denial utility, unreliable DPS) |
-| sub_tgun | Instant | Normal | 9 | 10 | -1 under (twin barrels, 250 DPS, strongest normal weapon) |
-| sub_boost | Toggle | Elite | 15 | 15 | At cap (elite flagship) |
-| sub_sprint | Instant | Normal | 8 | 10 | -2 under (timed boost, 25% uptime) |
-| sub_inferno | Channel | Elite | 15 | 15 | At cap (elite flagship) |
-| sub_disintegrate | Channel | Elite | 15 | 15 | At cap (finger of god — hitscan sweep, ~900 DPS) |
-| sub_gravwell | Instant | Normal | 10 | 10 | At cap (first CC skill — pull + slow, zero damage) |
-| sub_emp | Instant | Normal | 8 | 10 | -2 under (AoE feedback debuff, once-per-fight) |
-| sub_stealth | Instant | Normal | 7 | 10 | -3 under (invisibility may exceed point value) |
-| sub_egress | Instant | Normal | 10 | 10 | At cap (i-frames + contact damage) |
-| sub_mend | Instant | Normal | 7 | 10 | -3 under (burst heal + 3x regen boost) |
-| sub_aegis | Instant | Normal | 4 | 10 | **-6 under (invuln may exceed point value)** |
-| sub_resist | Instant | Normal | 7 | 10 | -3 under (50% DR, non-binary aegis alternative) |
+| Skill | Tier | POWER | SUSTAIN | REACH | Score | Cap | Status |
+|-------|------|-------|---------|-------|-------|-----|--------|
+| sub_pea | Normal | 4 | +3 | 0 | 7 | 10 | -3 under (precise aim tax, room to buff) |
+| sub_mgun | Normal | 4 | +3 | 0 | 7 | 10 | -3 under (same eDPS as pea, room to differentiate) |
+| sub_mine | Normal | 5 | +2 | −1 | 6 | 10 | -4 under (area denial utility, unreliable DPS) |
+| sub_tgun | Rare | 6 | +3 | +3 | 12 | 15 | -3 under (best sustained DPS/feedback ratio) |
+| sub_flak | Rare | 7 | +1 | +1 | 9 | 15 | -6 under (fire shotgun + burn DOT, room to grow) |
+| sub_boost | Elite | 11 | +3 | +3 | 17 | 20 | -3 under (pure mobility, no damage) |
+| sub_sprint | Normal | 5 | +2 | +1 | 8 | 10 | -2 under (timed boost, 25% uptime) |
+| sub_inferno | Elite | 14 | +3 | +2 | 19 | 20 | -1 under (highest eDPS + burn DOT) |
+| sub_disintegrate | Elite | 14 | +3 | +3 | 20 | 20 | At cap — THE elite benchmark |
+| sub_gravwell | Normal | 7 | 0 | +3 | 10 | 10 | At cap (pull + slow, zero damage) |
+| sub_emp | Normal | 6 | −1 | +3 | 8 | 10 | -2 under (AoE feedback debuff) |
+| sub_stealth | Normal | 7 | +1 | −1 | 7 | 10 | -3 under (invisibility + ambush) |
+| sub_egress | Normal | 7 | +1 | +2 | 10 | 10 | At cap (i-frames + contact damage) |
+| sub_mend | Normal | 5 | +1 | +1 | 7 | 10 | -3 under (burst heal + 3x regen boost) |
+| sub_aegis | Normal | 9 | −1 | +2 | 10 | 10 | At cap (binary invuln properly valued) |
+| sub_resist | Normal | 5 | +1 | +1 | 7 | 10 | -3 under (50% DR, non-binary aegis alt) |
 
 ### Key Observations
 
-1. **Normal weapons were over-scored — now honest**: The old system rated pea, mgun, and mine all at 10 ("at cap") by scoring damage and fire rate additively. But DPS is multiplicative: 50 damage × 2 shots/sec = 100 DPS, not "2+2=4 points." The composite DPS scoring reveals that normal weapons score 6-7, well below cap. This matches the gameplay reality — channeled elites clear screens while aimed weapons struggle to kill a couple enemies.
+1. **Three-axis system makes scoring reproducible**: POWER + SUSTAIN + REACH. Three questions, three numbers, one total. No more juggling 12 attribute tables with ad-hoc modifiers. Future skills plug into the same formula and get consistent results.
 
-2. **The DPS gap is properly captured**: 8 points between pea (7) and inferno (15) reflects the massive DPS difference (~12.5x for inferno, ~9x for disintegrate). The old 5-point gap (10 vs 15) disguised the magnitude. The new scoring makes it obvious: channeled elites are in a completely different damage tier than aimed instants.
+2. **Aim is baked into POWER, not penalized separately**: The aim discount table converts theoretical DPS to effective DPS BEFORE tiering. Pea's 100 DPS × 0.55 = 55 eDPS. Disintegrate's 900 DPS × 0.95 = 855 eDPS. The gap between "on paper" and "in practice" is now part of the number, not a separate penalty.
 
-3. **Normal weapons have room to grow**: Pea and mgun at 7/10 have 3 points of budget room. Mine at 6/10 has 4 points. This is actionable design information — these weapons can be buffed without exceeding their tier cap. Options include: damage increases, fire rate buffs, secondary effects (slow, armor shred, ricochet), or targeting improvements (slight homing, wider hitbox).
+3. **Disintegrate is THE elite benchmark at 20**: POWER 14 + SUSTAIN +3 + REACH +3. Every elite is measured against it. Inferno (19) trades REACH for burn DOT persistence. Boost (17) trades POWER for pure mobility.
 
-4. **All three elites at cap**: Boost, inferno, and disintegrate all score 15. Three distinct fantasies — unlimited mobility, close-range chaos, long-range annihilation. The one-elite-per-bar exclusivity makes this a defining build choice. Disintegrate's carve sweep is a power mechanic, not a drawback — it's what turns a laser into finger of god against groups.
+4. **Binary effects are properly valued in POWER**: Aegis scores POWER 9 (binary invulnerability) with SUSTAIN −1 (double-taxed). The old system undervalued aegis at 4 total; the new system correctly scores it at 10 by giving full credit to the effect's power while honestly accounting for the sustain penalty.
 
-5. **Two normal skills at cap**: Egress (10/10) with i-frames + contact damage, and gravwell (10/10) with AoE crowd control. Both earn their budget through unique combinations — egress through concentrated personal combat power, gravwell through broad positional control. These are the gold standards for what well-designed normal skills look like at cap. The three new corruptor-derived skills (sprint 8, emp 8, resist 7) land in the 7-8 range — solidly useful without being overbudget.
+5. **SUSTAIN captures the cost/uptime tradeoff in one number**: No more separately scoring feedback cost, cooldown, and duration. Aegis and EMP both get SUSTAIN −1 (double-taxed: high fb + glacial cd). Pea and boost both get SUSTAIN +3 (effectively free). The single axis captures the full cost picture.
 
-6. **Binary effects defy point budgets**: Stealth (7) and aegis (4) both score low but have qualitatively unique power. "Enemies can't see you" and "you can't take damage" are on/off states — there's no half-measure. The point system inherently undervalues binary effects because it scores magnitude, not the strategic value of absolutes.
+6. **SUSTAIN −1 is the "double tax" signal**: Aegis and EMP both pay high feedback + glacial cooldown, earning SUSTAIN −1. This is intentional — binary power (aegis POWER 9) or encounter-defining debuffs (EMP POWER 6) need heavy sustain costs to stay at cap. Skills should generally pay one or the other heavily, not both — paying both means the effect must be extraordinary.
 
-7. **The feedback + cooldown squeeze**: High feedback AND long cooldown is a double penalty. Aegis pays both (30 feedback + 30s cooldown), which craters its budget. Skills should generally pay one or the other heavily, not both.
+7. **Damage-to-feedback (0.5x) creates hidden value in defensive skills**: Aegis and egress i-frames prevent both integrity loss AND feedback generation. This hidden REACH value isn't directly scored but significantly increases the practical worth of defensive abilities.
 
-8. **Damage-to-feedback (0.5x) creates hidden value in defensive skills**: Aegis and egress i-frames prevent both integrity loss AND feedback generation. This hidden value isn't captured in the point budget but significantly increases the practical worth of defensive abilities.
+8. **No passives exist yet**: The first passive added will test whether slot cost alone is a sufficient budget constraint, or whether passives need explicit budget penalties.
 
-9. **No passives exist yet**: The first passive added will test whether slot cost alone is a sufficient budget constraint, or whether passives need explicit budget penalties.
+9. **Control skills are force multipliers**: Gravwell (POWER 7) physically traps enemies. EMP (POWER 6) metabolically cripples them. Both earn POWER through enabling other skills, not standalone damage. The POWER gap (7 vs 6) reflects gravwell's more reliable control vs EMP's situational value.
 
-10. **Control skills are force multipliers**: Gravwell and EMP are both control skills with zero damage. Gravwell (10) physically traps enemies. EMP (8) metabolically cripples them via feedback overload. Both earn budget through enabling other skills, not standalone power. EMP's lower score reflects its once-per-fight cooldown (30s vs 20s) and more situational value (scales with enemy ability usage). Future control skills (slows, roots, enemy debuffs) should follow this pattern.
-
-11. **Corruptor symmetry**: Sprint, EMP, and resist are all dual-use — the corruptor uses them against the player, and the player can extract and use them back. This creates satisfying progression: you learn to fear these abilities as enemy attacks, then earn them as your own tools. The core extraction pattern ensures identical mechanics on both sides.
+10. **Corruptor symmetry**: Sprint, EMP, and resist are all dual-use — the corruptor uses them against the player, and the player can extract and use them back. The core extraction pattern ensures identical mechanics on both sides.
 
 ### Recommended Adjustments (Subject to Playtesting)
 
@@ -961,13 +896,13 @@ Resist scores HIGHER than aegis (7 vs 4) despite being weaker defensively. This 
 
 | Skill | Change | Effect on Score | Reasoning |
 |-------|--------|-----------------|-----------|
-| sub_pea | Increase damage to 75 | 7 → 8 (DPS 150 = Low/Moderate) | Pushes pea toward Moderate DPS tier. Each shot feels impactful. |
-| sub_pea | Add slight homing / wider hitbox | 7 → 8 (Precise → Aimed) | Reduces aiming tax, practical DPS closer to theoretical |
-| sub_mgun | Increase fire rate to 8/sec (125ms) | 7 → 8 (DPS 160 = Moderate) | Pushes into Moderate tier. Feels like a machine gun. |
-| sub_mgun | Add unique mechanic (armor shred, slow) | 7 → 8-9 | Differentiates from pea beyond fire rate |
-| sub_mine | Reduce fuse to 1.5s | 6 → 7 | Less time for enemies to escape |
-| sub_mine | Increase max mines to 5 | 6 → 7 | More area denial, higher potential DPS |
-| sub_aegis | Reduce cooldown to 20s | 4 → 5 | 30s means aegis is absent for most encounters |
+| sub_pea | Increase damage to 75 | POWER 4→5, total 7→8 | 150 DPS × 0.55 = 82 eDPS. Pushes toward POWER 5 threshold. |
+| sub_pea | Add slight homing / wider hitbox | POWER 4→5, total 7→8 | Better aim discount (×0.55→×0.70), raises eDPS to 70. |
+| sub_mgun | Increase fire rate to 8/sec (125ms) | POWER 4→5, total 7→8 | 160 DPS × 0.70 = 112 eDPS. Crosses into POWER 5. |
+| sub_mgun | Add unique mechanic (armor shred, slow) | POWER 4→5, total 7→8-9 | Differentiates from pea beyond fire rate. |
+| sub_mine | Reduce fuse to 1.5s | REACH −1→0, total 6→7 | Less time for enemies to escape — reduces REACH penalty. |
+| sub_mine | Increase max mines to 5 | POWER 5→6, total 6→7 | More area denial, higher potential DPS. |
+| sub_aegis | Reduce cooldown to 20s | SUSTAIN −1→0, total 10→11 | Less double-tax. Caution: pushes above cap. |
 
 **Previously completed adjustments (for the record)**:
 - ~~sub_egress: i-frames + 50 contact damage~~ → brought to 10 (at cap)
@@ -981,15 +916,12 @@ These are suggestions, not mandates. The point system identifies WHERE imbalance
 
 When designing a new subroutine:
 
-1. **Fill out the score card first** — assign values to every relevant attribute, compute the total
-2. **Check against the cap** — normal ≤ 10, elite ≤ 15
-3. **Compare against existing skills of the same type** — a new projectile weapon should be in the same budget neighborhood as sub_pea and sub_mgun
-4. **Identify the skill's identity** — what ONE thing makes this skill special? That attribute gets the budget priority. Everything else is tuned to fit.
-5. **Apply the cooldown/feedback tradeoff** — pick one as the primary gate. High cooldown + high feedback is a double penalty that craters the budget.
-6. **Consider category multipliers**:
-   - Toggles: zero cooldown is +4 points — the effect itself needs to be moderate or the feedback drain substantial
-   - Passives: "always on" is inherently high-value — the effect per-tick needs to be modest
-   - Instants: most flexible — cooldown is the primary tuning lever
+1. **Score POWER first** — what does this skill DO at peak? For damage skills, compute theoretical DPS, apply the aim discount, add DOT/special effects. For utility skills, compare against the non-damage POWER tier guide.
+2. **Score SUSTAIN** — how long can you keep doing it? Factor in feedback cost, cooldown, and uptime. Watch for the "double tax" trap (high fb + long cd = SUSTAIN −1, reserved for extraordinary effects).
+3. **Score REACH** — how far and reliably can you deliver? Range × practical accuracy × delivery quality. Self-only skills start low; AoE and hitscan push high.
+4. **Sum and check against the cap** — normal ≤ 10, rare ≤ 15, elite ≤ 20
+5. **Compare against existing skills of the same type** — a new projectile weapon should be in the same POWER neighborhood as sub_pea (4) and sub_tgun (6)
+6. **Identify the skill's identity** — what ONE thing makes this skill special? That axis gets the budget priority. Everything else is tuned to fit.
 7. **Playtest, then retune** — the score card gets you to a reasonable starting point. Gameplay feel is the final arbiter.
 
 ### New Skill Template
@@ -1004,16 +936,18 @@ When designing a new subroutine:
 | Attribute | Value |
 |-----------|-------|
 | Category | Toggle / Instant / Passive |
-| Tier | Normal / Elite |
+| Tier | Normal / Rare / Elite |
 | Feedback cost | X |
 | Cooldown | Xms |
 | <Type-specific attributes> | ... |
 
 ### Score Card
-| Attribute | Value | Tier | Points |
-|-----------|-------|------|--------|
-| ... | ... | ... | ... |
-| **TOTAL** | | | **X** |
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | X | X | <theoretical DPS × aim discount = eDPS, or non-damage tier guide comparison> |
+| SUSTAIN | +/-X | +/-X | <feedback cost + cooldown + uptime summary> |
+| REACH | +/-X | +/-X | <range × accuracy × delivery quality> |
+| **TOTAL** | | **X** | |
 
 ### Balance Notes
 <How does this compare to similar skills? Any concerns?>
@@ -1023,18 +957,124 @@ When designing a new subroutine:
 
 ## Open Questions
 
-1. **Separate caps by role?** Should weapons, movement, defense, and utility have different budget caps? Weapons at 10, defense at 8? Or one universal cap?
+1. **Passive budget penalty**: Should passives get a POWER floor or a SUSTAIN bonus to account for "always on" value? Or is the slot cost (losing an active ability) sufficient? The 3-axis system handles this naturally — a passive with SUSTAIN +3 (always on, free) needs lower POWER to stay under cap.
 
-2. **Invulnerability scoring**: Is +3 enough for full invulnerability? Aegis scores 4 total despite having the most powerful effect in the game. The point system may fundamentally undervalue "binary" effects (you're either invuln or not — there's no "medium invuln").
+2. **Toggle feedback drain scaling**: For future toggles with per-second feedback drain, how does SUSTAIN score them? Current channeled elites (inferno, disintegrate) get +3 because you control the window. A toggle that drains passively without player control might score lower.
 
-3. **Passive budget penalty**: Should passives get a flat +2 or +3 added to their score to account for "always on" value? Or is the slot cost (losing an active ability) sufficient?
+3. **Synergy scoring**: The 3-axis system scores skills in isolation. But skills combine — gravwell + inferno is more powerful than either alone. Should synergies affect individual skill budgets, or is that a loadout-level concern?
 
-4. **Toggle feedback drain scaling**: For future toggles with per-second feedback drain, how does the scoring table translate? A toggle draining 3 feedback/sec at 15 feedback/sec decay means net -3/sec feedback accumulation — how many seconds until spillover damage?
+4. **Damage-to-feedback ratio tuning**: The 0.5x ratio is a starting point. Too high and combat becomes oppressive (can never activate stealth). Too low and it's meaningless. Should different damage sources have different ratios? (e.g., mine contact = 0x since it's a force_kill, environmental hazards = different ratio)
 
-5. **Synergy scoring**: The budget system scores skills in isolation. But skills combine — sub_mine + sub_egress (dash-mine placement) is more powerful than either alone. Should synergies affect individual skill budgets, or is that a loadout-level concern?
+---
 
-6. **DPS normalization**: Should we score raw damage per hit, or effective DPS? Pea (50dmg × 2/sec = 100 DPS) and mgun (20dmg × 5/sec = 100 DPS) are identical in DPS but feel very different. The current system scores them separately (damage + cooldown) which produces the same total anyway.
+## Scoring Formula Reference
 
-7. **Movement power in bullet hell**: Movement abilities (egress, boost) may be systematically undervalued by the point system. In a bullet hell, repositioning is survival — a 150ms dash that dodges a lethal burst is worth more than any heal. Should movement skills get a genre-specific scoring bonus?
+This section is the permanent reference for scoring future skills consistently. Someone reading just this section should be able to score any new skill.
 
-8. **Damage-to-feedback ratio tuning**: The 0.5x ratio is a starting point. Too high and combat becomes oppressive (can never activate stealth). Too low and it's meaningless. Playtesting will determine the sweet spot. Consider: should different damage sources have different ratios? (e.g., mine contact = 0x since it's a force_kill, environmental hazards = different ratio)
+### The Formula
+
+**Score = POWER + SUSTAIN + REACH**
+
+| Axis | Range | Question |
+|------|-------|----------|
+| POWER | 3–14 | What does this skill DO at peak? |
+| SUSTAIN | −2 to +3 | How long can you keep doing it? |
+| REACH | −2 to +3 | How far and reliably can you deliver? |
+
+**Max = 14 + 3 + 3 = 20** (elite cap). **Min = 3 + (−2) + (−2) = −1** (nothing should score here).
+
+### Budget Caps
+
+| Tier | Cap |
+|------|-----|
+| Normal | 10 |
+| Rare | 15 |
+| Elite | 20 |
+
+### Aim Discount Table
+
+Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into the power number — no separate penalty.
+
+| Delivery Method | Multiplier | Why |
+|----------------|------------|-----|
+| Hitscan/beam | ×0.95 | Near-perfect accuracy once on target |
+| Dense spray (50+ hits/sec) | ×0.90 | Volume compensates for spread |
+| Volume fire (5–10 hits/sec) | ×0.85 | Misses cost little time |
+| Cone/multi-pellet | ×0.80 | Generous hitzone but range falloff |
+| Aimed (2–5 shots/sec) | ×0.70 | Each miss costs real DPS |
+| Precise (1–2 shots/sec, narrow) | ×0.55 | Miss = half your damage gone |
+
+### POWER Tier Guide (damage)
+
+| POWER | Effective DPS | Examples |
+|-------|--------------|---------|
+| 3–4 | <100 eDPS | Starter weapons (pea 55, mgun 70) |
+| 5–6 | 100–300 eDPS | Upgraded weapons (tgun 212, flak 152+burn) |
+| 7 | + special properties | Burn persistence, DOT, burst combo |
+| 8–11 | 500–1000 eDPS | Would-be elite single-target |
+| 12–14 | 1000+ eDPS or group-wipe | Elite channeled weapons (inferno, disintegrate) |
+
+### POWER Tier Guide (non-damage)
+
+| POWER | Effect | Examples |
+|-------|--------|---------|
+| 5 | Minor buff/heal | resist (50% DR 5s), mend (50HP + regen), sprint (timed 2x speed) |
+| 6 | Moderate control/debuff | emp (AoE feedback overload + halved decay) |
+| 7 | Strong control/utility | gravwell (CC trap), egress (i-frames + contact), stealth (invis + 5x ambush) |
+| 9 | Binary defensive power | aegis (10s full invulnerability) |
+| 11 | Best-in-class utility | boost (unlimited 2x speed, zero cost) |
+
+### SUSTAIN Tier Guide
+
+| SUSTAIN | Description | Examples |
+|---------|-------------|---------|
+| −2 | Extreme tax: huge fb + glacial cd | (reserved) |
+| −1 | Double-taxed: high fb + long cd. Once per fight. | aegis (30fb + 30s), emp (30fb + 30s) |
+| 0 | Strategic: significant cost OR long cd. | gravwell (25fb + 20s) |
+| +1 | Moderate: meaningful cost, manageable frequency. | egress (25fb + 2s), mend (20fb + 10s), flak (16fb/sec), resist (25fb + 15s), stealth (0fb gated + 15s) |
+| +2 | Efficient: low cost, decent uptime. | mine (15fb/boom, 3 pool), sprint (0fb, 25% uptime) |
+| +3 | Free/unlimited: negligible cost, fire at will. | pea (1fb), mgun (1fb), tgun (10fb/sec best ratio), boost (0fb), inferno (25/sec toggle), disintegrate (22/sec toggle) |
+
+### REACH Tier Guide
+
+| REACH | Description | Examples |
+|-------|-------------|---------|
+| −2 | Self-only AND restricted | (reserved) |
+| −1 | Self-place + drawbacks, or restricted self-buff | mine (fuse + FF), stealth (0.5x speed + break conditions) |
+| 0 | Long range but poor practical accuracy | pea (3500u × 0.55 aim), mgun (3500u × 0.70 aim) |
+| +1 | Medium range + decent delivery, or self-buff + temporal coverage | flak (2333u + cone), sprint (5s window), mend (5s regen), resist (5s DR) |
+| +2 | Long range + good delivery, or strong self-coverage | inferno (1250u + dense spray), egress (600u + i-frames), aegis (10s invuln) |
+| +3 | Extreme range + reliable targeting, wide AoE, or permanent self-effect | disintegrate (2600u hitscan), tgun (3500u + volume fire), gravwell (cursor + 600u AoE), emp (400u AoE through walls), boost (permanent) |
+
+### Worked Example: sub_disintegrate
+
+**Step 1 — POWER**: Theoretical DPS = 900. Delivery = hitscan beam → ×0.95 aim discount → 855 eDPS. Plus: hitscan pierce (all enemies on line take full damage) + carve sweep at 120°/sec (3420 eDPS vs 4 targets). Group-wipe scaling → POWER **14**.
+
+**Step 2 — SUSTAIN**: 22 fb/sec toggle. Player controls the sustain window — channel, release, recover, repeat. ~4.5s before spillover from zero. Natural burst recovery. Toggle control → SUSTAIN **+3**.
+
+**Step 3 — REACH**: 2600 unit hitscan. Extreme range + instant hit along full line. Engages before enemies aggro. Perfect accuracy at any distance. → REACH **+3**.
+
+**Total**: 14 + 3 + 3 = **20**. At elite cap. The benchmark.
+
+### Master Verification Table
+
+All 16 skills — every score unchanged from the old system, now expressed as 3-axis decomposition.
+
+| Skill | POWER | SUSTAIN | REACH | Total | Cap | ✓ |
+|-------|-------|---------|-------|-------|-----|---|
+| sub_pea | 4 | +3 | 0 | 7 | 10 | ✓ |
+| sub_mgun | 4 | +3 | 0 | 7 | 10 | ✓ |
+| sub_mine | 5 | +2 | −1 | 6 | 10 | ✓ |
+| sub_tgun | 6 | +3 | +3 | 12 | 15 | ✓ |
+| sub_flak | 7 | +1 | +1 | 9 | 15 | ✓ |
+| sub_boost | 11 | +3 | +3 | 17 | 20 | ✓ |
+| sub_sprint | 5 | +2 | +1 | 8 | 10 | ✓ |
+| sub_inferno | 14 | +3 | +2 | 19 | 20 | ✓ |
+| sub_disintegrate | 14 | +3 | +3 | 20 | 20 | ✓ |
+| sub_gravwell | 7 | 0 | +3 | 10 | 10 | ✓ |
+| sub_emp | 6 | −1 | +3 | 8 | 10 | ✓ |
+| sub_stealth | 7 | +1 | −1 | 7 | 10 | ✓ |
+| sub_egress | 7 | +1 | +2 | 10 | 10 | ✓ |
+| sub_mend | 5 | +1 | +1 | 7 | 10 | ✓ |
+| sub_aegis | 9 | −1 | +2 | 10 | 10 | ✓ |
+| sub_resist | 5 | +1 | +1 | 7 | 10 | ✓ |

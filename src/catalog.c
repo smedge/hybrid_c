@@ -546,6 +546,20 @@ void Catalog_render(const Screen *screen)
 	Render_thick_line(sep_x, py + TAB_GAP, sep_x, py + ph - TAB_GAP,
 		1.0f, 0.25f, 0.25f, 0.3f, 0.6f);
 
+	/* Flush panel/tab geometry before enabling scissor */
+	Render_flush(&proj, &ident);
+
+	/* Scissor the item area — GL uses bottom-left origin + physical pixels */
+	int draw_w, draw_h;
+	Graphics_get_drawable_size(&draw_w, &draw_h);
+	float scale_x = (float)draw_w / (float)screen->width;
+	float scale_y = (float)draw_h / (float)screen->height;
+	int scissor_x = (int)(item_area_x * scale_x);
+	int scissor_y = (int)(((float)screen->height - (item_area_y + item_area_h)) * scale_y);
+	int scissor_w = (int)(item_area_w * scale_x);
+	int scissor_h = (int)(item_area_h * scale_y);
+	Render_scissor_begin(scissor_x, scissor_y, scissor_w, scissor_h);
+
 	/* Item backgrounds, highlights, icons, progress bars */
 	float iy = item_area_y - scrollOffset;
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
@@ -630,6 +644,40 @@ void Catalog_render(const Screen *screen)
 		iy += ITEM_HEIGHT + ITEM_GAP;
 	}
 
+	/* Scrollbar — thin track + thumb when content overflows */
+	{
+		int visible_items = count_discovered_for_type(selectedTab);
+		float total_content = visible_items * (ITEM_HEIGHT + ITEM_GAP);
+		if (total_content > item_area_h) {
+			float track_w = 4.0f;
+			float track_x = item_area_x + item_area_w - track_w - 2.0f;
+			float track_y = item_area_y;
+			float track_h = item_area_h;
+
+			/* Track background */
+			Render_quad_absolute(track_x, track_y,
+				track_x + track_w, track_y + track_h,
+				0.15f, 0.15f, 0.2f, 0.4f);
+
+			/* Thumb */
+			float visible_ratio = item_area_h / total_content;
+			float thumb_h = track_h * visible_ratio;
+			if (thumb_h < 20.0f) thumb_h = 20.0f;
+			float max_scroll = total_content - item_area_h;
+			float scroll_ratio = (max_scroll > 0.0f)
+				? scrollOffset / max_scroll : 0.0f;
+			float thumb_y = track_y + scroll_ratio * (track_h - thumb_h);
+
+			Render_quad_absolute(track_x, thumb_y,
+				track_x + track_w, thumb_y + thumb_h,
+				0.4f, 0.4f, 0.6f, 0.7f);
+		}
+	}
+
+	/* Flush item geometry while scissor is active */
+	Render_flush(&proj, &ident);
+	Render_scissor_end();
+
 	/* Slot highlights during drag */
 	if (drag.active && drag.threshold_met) {
 		float ch = 8.0f;
@@ -712,7 +760,8 @@ void Catalog_render(const Screen *screen)
 		tab_y += TAB_HEIGHT + TAB_GAP;
 	}
 
-	/* Item text */
+	/* Item text — scissor to item area */
+	Render_scissor_begin(scissor_x, scissor_y, scissor_w, scissor_h);
 	iy = item_area_y - scrollOffset;
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
 		if (Skillbar_get_sub_type(i) != selectedTab)
@@ -814,6 +863,7 @@ void Catalog_render(const Screen *screen)
 
 		iy += ITEM_HEIGHT + ITEM_GAP;
 	}
+	Render_scissor_end();
 
 	/* Help text */
 	Text_render(tr, shaders, &proj, &ident,

@@ -31,7 +31,13 @@
 #define SAVEPOINT_CHARGE_CHANNEL 4
 
 /* Must stay in sync with FragmentType enum order */
-static const char *frag_names[] = {"mine", "boost", "mgun", "egress", "mend", "aegis", "gravwell", "stealth", "inferno", "disintegrate", "tgun", "sprint", "emp", "resist"};
+static const char *frag_names[] = {
+	"mine", "boost", "mgun", "egress", "mend", "aegis", "gravwell", "stealth",
+	"inferno", "disintegrate", "tgun", "sprint", "emp", "resist",
+	/* Fire zone */
+	"ember", "flak", "blaze", "scorch", "pyre", "cauterize", "immolate",
+	"smolder", "heatwave", "temper"
+};
 
 /* Backwards-compat: map old save file names to new FragmentType indices */
 static int find_frag_by_name_compat(const char *name)

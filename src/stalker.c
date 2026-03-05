@@ -2,7 +2,9 @@
 #include "sub_pea.h"
 #include "sub_egress.h"
 #include "enemy_util.h"
+#include "enemy_variant.h"
 #include "enemy_feedback.h"
+#include "burn.h"
 #include "defender.h"
 #include "fragment.h"
 #include "progression.h"
@@ -54,6 +56,19 @@ static const CarriedSubroutine stalkerCarried[] = {
 	{ SUB_ID_EGRESS,  FRAG_TYPE_EGRESS },
 };
 
+static const EnemyVariant stalkerVariants[THEME_COUNT] = {
+	[THEME_FIRE] = {
+		.tint = {1.0f, 0.35f, 0.0f, 1.0f},
+		.carried = {
+			{ SUB_ID_SMOLDER, FRAG_TYPE_SMOLDER },
+			{ SUB_ID_BLAZE,   FRAG_TYPE_BLAZE },
+		},
+		.carried_count = 2,
+		.speed_mult = 1.0f, .aggro_range_mult = 1.0f,
+		.hp_mult = 1.0f, .attack_cadence_mult = 1.0f,
+	},
+};
+
 typedef enum {
 	STALKER_IDLE,
 	STALKER_STALKING,
@@ -97,6 +112,12 @@ typedef struct {
 
 	/* Feedback */
 	EnemyFeedback fb;
+
+	/* Theme variant */
+	ZoneTheme theme;
+
+	/* Status effects */
+	BurnState burn;
 } StalkerState;
 
 /* Shared singleton components */
@@ -217,7 +238,7 @@ static void render_crescent(Position pos, double facing, const ColorFloat *c, fl
 
 /* ---- Public API ---- */
 
-void Stalker_initialize(Position position)
+void Stalker_initialize(Position position, ZoneTheme theme)
 {
 	if (highestUsedIndex >= STALKER_COUNT) {
 		printf("FATAL ERROR: Too many stalker entities.\n");
@@ -233,6 +254,7 @@ void Stalker_initialize(Position position)
 	s->spawnPoint = position;
 	s->facing = 0.0;
 	s->killedByPlayer = false;
+	s->theme = theme;
 	s->windupTimer = 0;
 	s->pendingDirX = 0.0;
 	s->pendingDirY = 0.0;
@@ -243,6 +265,7 @@ void Stalker_initialize(Position position)
 	s->respawnTimer = 0;
 	s->stealthAlpha = STEALTH_ALPHA_MIN;
 	EnemyFeedback_init(&s->fb);
+	Burn_reset(&s->burn);
 	pick_wander_target(s);
 
 	placeables[idx].position = position;
@@ -364,6 +387,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 				s->aiState = STALKER_IDLE;
 				s->killedByPlayer = false;
 				EnemyFeedback_reset(&s->fb);
+				Burn_reset(&s->burn);
 				Position oldPos = pl->position;
 				pl->position = s->spawnPoint;
 				pick_wander_target(s);
@@ -380,6 +404,15 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 
 	/* Tick feedback decay */
 	EnemyFeedback_update(&s->fb, ticks);
+
+	/* Tick burn DOT */
+	if (s->alive && Burn_tick_enemy(&s->burn, &s->hp, ticks)) {
+		s->alive = false;
+		s->aiState = STALKER_DYING;
+		s->deathTimer = 0;
+		s->killedByPlayer = true;
+		Audio_play_sample(&sampleDeath);
+	}
 
 	if (s->alive)
 		Enemy_check_stealth_proximity(pl->position, s->facing);
@@ -402,8 +435,10 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		PlayerDamageResult dmg = Enemy_check_player_damage(hitBox, pl->position);
 		bool shielded = Defender_is_protecting(pl->position, dmg.ambush);
 		bool hit = dmg.hit;
-		if (hit && !shielded)
+		if (hit && !shielded) {
 			s->hp -= dmg.damage + dmg.mine_damage;
+			Burn_apply_from_hits(&s->burn, dmg.burn_hits);
+		}
 
 		if (hit) {
 			activate_spark(pl->position, shielded);
@@ -608,8 +643,12 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			s->aiState = STALKER_DEAD;
 			s->respawnTimer = 0;
 
-			if (s->killedByPlayer)
-				Enemy_drop_fragments(pl->position, stalkerCarried, 2);
+			if (s->killedByPlayer) {
+				int count;
+				const CarriedSubroutine *carried = Variant_get_carried(
+					stalkerVariants, s->theme, stalkerCarried, 2, &count);
+				Enemy_drop_fragments(pl->position, carried, count);
+			}
 		}
 		break;
 
@@ -621,6 +660,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			s->aiState = STALKER_IDLE;
 			s->killedByPlayer = false;
 			EnemyFeedback_reset(&s->fb);
+			Burn_reset(&s->burn);
 			pl->position = s->spawnPoint;
 			pick_wander_target(s);
 			Audio_play_sample(&sampleRespawn);
@@ -667,12 +707,19 @@ void Stalker_render(const void *state, const PlaceableComponent *placeable)
 
 	float alpha = s->stealthAlpha;
 
-	/* Choose color and rendering based on state */
+	/* Choose color and rendering based on state + theme tint */
 	const ColorFloat *baseColor;
+	ColorFloat themedColor;
 	if (alpha < 0.5f)
 		baseColor = &colorStealth;
 	else
 		baseColor = &colorVisible;
+
+	if (s->theme != THEME_NONE) {
+		float brightness = (alpha < 0.5f) ? 0.6f : 1.0f;
+		themedColor = Variant_get_color(stalkerVariants, s->theme, baseColor, brightness);
+		baseColor = &themedColor;
+	}
 
 	/* Windup flash */
 	if (s->aiState == STALKER_WINDING_UP) {
@@ -709,6 +756,7 @@ void Stalker_render(const void *state, const PlaceableComponent *placeable)
 	Render_point(&placeable->position, 3.0, &dotColor);
 
 	Enemy_render_resist_indicator(placeable->position);
+	Burn_render(&s->burn, placeable->position);
 }
 
 void Stalker_render_bloom_source(void)
@@ -840,6 +888,7 @@ void Stalker_reset_all(void)
 		s->deathTimer = 0;
 		s->respawnTimer = 0;
 		EnemyFeedback_reset(&s->fb);
+		Burn_reset(&s->burn);
 		placeables[i].position = s->spawnPoint;
 		pick_wander_target(s);
 	}

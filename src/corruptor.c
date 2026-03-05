@@ -1,5 +1,7 @@
 #include "corruptor.h"
 #include "enemy_util.h"
+#include "enemy_variant.h"
+#include "burn.h"
 #include "enemy_feedback.h"
 #include "enemy_registry.h"
 #include "fragment.h"
@@ -51,9 +53,23 @@
 #define SPRINT_TRAIL_LENGTH 3.0
 
 static const CarriedSubroutine corruptorCarried[] = {
-	{ SUB_ID_SPRINT, FRAG_TYPE_SPRINT },
-	{ SUB_ID_EMP,    FRAG_TYPE_EMP },
+	{ SUB_ID_SPRINT,  FRAG_TYPE_SPRINT },
+	{ SUB_ID_EMP,     FRAG_TYPE_EMP },
 	{ SUB_ID_RESIST, FRAG_TYPE_RESIST },
+};
+
+static const EnemyVariant corruptorVariants[THEME_COUNT] = {
+	[THEME_FIRE] = {
+		.tint = {1.0f, 0.6f, 0.0f, 1.0f},
+		.carried = {
+			{ SUB_ID_SCORCH,   FRAG_TYPE_SCORCH },
+			{ SUB_ID_HEATWAVE, FRAG_TYPE_HEATWAVE },
+			{ SUB_ID_TEMPER,   FRAG_TYPE_TEMPER },
+		},
+		.carried_count = 3,
+		.speed_mult = 1.0f, .aggro_range_mult = 1.0f,
+		.hp_mult = 1.0f, .attack_cadence_mult = 1.0f,
+	},
 };
 
 typedef enum {
@@ -96,6 +112,12 @@ typedef struct {
 
 	/* Feedback */
 	EnemyFeedback fb;
+
+	/* Theme variant */
+	ZoneTheme theme;
+
+	/* Burn DOT */
+	BurnState burn;
 } CorruptorState;
 
 /* Shared singleton components */
@@ -225,7 +247,7 @@ static void try_apply_resist(CorruptorState *c, Position myPos)
 
 /* ---- Public API ---- */
 
-void Corruptor_initialize(Position position)
+void Corruptor_initialize(Position position, ZoneTheme theme)
 {
 	if (highestUsedIndex >= CORRUPTOR_COUNT) {
 		printf("FATAL ERROR: Too many corruptor entities.\n");
@@ -241,7 +263,9 @@ void Corruptor_initialize(Position position)
 	c->spawnPoint = position;
 	c->facing = 0.0;
 	c->killedByPlayer = false;
+	c->theme = theme;
 	c->prevPosition = position;
+	Burn_reset(&c->burn);
 	SubSprint_init(&c->sprintCore);
 	SubEmp_init(&c->empCore);
 	SubResist_init(&c->resistCore);
@@ -352,6 +376,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 				c->hp = CORRUPTOR_HP;
 				c->aiState = CORRUPTOR_IDLE;
 				c->killedByPlayer = false;
+				Burn_reset(&c->burn);
 				SubSprint_init(&c->sprintCore);
 				SubEmp_init(&c->empCore);
 				SubResist_init(&c->resistCore);
@@ -372,6 +397,15 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 
 	/* Tick feedback decay */
 	EnemyFeedback_update(&c->fb, ticks);
+
+	/* Tick burn DOT */
+	if (c->alive && Burn_tick_enemy(&c->burn, &c->hp, ticks)) {
+		c->alive = false;
+		c->aiState = CORRUPTOR_DYING;
+		c->deathTimer = 0;
+		c->killedByPlayer = true;
+		Audio_play_sample(&sampleDeath);
+	}
 
 	c->prevPosition = pl->position;
 	c->sprintCore.active = false;
@@ -427,6 +461,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			activate_spark(pl->position);
 			double totalDmg = dmg.damage + (dmg.mine_hit ? dmg.mine_damage : 0.0);
 			c->hp -= totalDmg;
+			Burn_apply_from_hits(&c->burn, dmg.burn_hits);
 			Audio_play_sample(&sampleHit);
 
 			/* Getting hit while idle triggers awareness */
@@ -603,8 +638,12 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			c->aiState = CORRUPTOR_DEAD;
 			c->respawnTimer = 0;
 
-			if (c->killedByPlayer)
-				Enemy_drop_fragments(pl->position, corruptorCarried, 3);
+			if (c->killedByPlayer) {
+				int count;
+				const CarriedSubroutine *carried = Variant_get_carried(
+					corruptorVariants, c->theme, corruptorCarried, 3, &count);
+				Enemy_drop_fragments(pl->position, carried, count);
+			}
 		}
 		break;
 
@@ -615,6 +654,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			c->hp = CORRUPTOR_HP;
 			c->aiState = CORRUPTOR_IDLE;
 			c->killedByPlayer = false;
+			Burn_reset(&c->burn);
 			SubSprint_init(&c->sprintCore);
 			SubEmp_init(&c->empCore);
 			SubResist_init(&c->resistCore);
@@ -665,7 +705,9 @@ void Corruptor_render(const void *state, const PlaceableComponent *placeable)
 		return;
 	}
 
-	const ColorFloat *bodyColor = (c->aiState == CORRUPTOR_IDLE) ? &colorBody : &colorAggro;
+	float brightness = (c->aiState == CORRUPTOR_IDLE) ? 0.7f : 1.0f;
+	const ColorFloat *baseColor = (c->aiState == CORRUPTOR_IDLE) ? &colorBody : &colorAggro;
+	ColorFloat bodyColor = Variant_get_color(corruptorVariants, c->theme, baseColor, brightness);
 
 	/* Sprint motion trail */
 	if (c->sprintCore.active) {
@@ -678,16 +720,16 @@ void Corruptor_render(const void *state, const PlaceableComponent *placeable)
 			ghost.y = placeable->position.y - dy * SPRINT_TRAIL_LENGTH * t;
 			float alpha = (1.0f - t) * 0.35f;
 			render_circle(ghost, BODY_SIZE, 1.5f,
-				bodyColor->red, bodyColor->green, bodyColor->blue, alpha);
+				bodyColor.red, bodyColor.green, bodyColor.blue, alpha);
 		}
 	}
 
 	/* Body circle */
 	render_circle(placeable->position, BODY_SIZE, 2.0f,
-		bodyColor->red, bodyColor->green, bodyColor->blue, bodyColor->alpha);
+		bodyColor.red, bodyColor.green, bodyColor.blue, bodyColor.alpha);
 
 	/* Center dot */
-	Render_point(&placeable->position, 4.0, bodyColor);
+	Render_point(&placeable->position, 4.0, &bodyColor);
 
 	/* Resist aura + beam to protected ally */
 	SubResist_render_ring(&c->resistCore, SubResist_get_config(), placeable->position);
@@ -696,6 +738,9 @@ void Corruptor_render(const void *state, const PlaceableComponent *placeable)
 
 	/* EMP visual — expanding ring */
 	SubEmp_render_ring(&c->empCore, SubEmp_get_config());
+
+	/* Burn DOT particles */
+	Burn_render(&c->burn, placeable->position);
 
 	/* Sparks (from idx 0 only) */
 	if (idx == 0) {
@@ -800,6 +845,7 @@ void Corruptor_reset_all(void)
 		c->hp = CORRUPTOR_HP;
 		c->aiState = CORRUPTOR_IDLE;
 		c->killedByPlayer = false;
+		Burn_reset(&c->burn);
 		SubSprint_init(&c->sprintCore);
 		SubEmp_init(&c->empCore);
 		SubResist_init(&c->resistCore);

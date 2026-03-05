@@ -3,8 +3,9 @@
 
 #include "position.h"
 #include "entity.h"
+#include "sub_types.h"
 
-void Seeker_initialize(Position position);
+void Seeker_initialize(Position position, ZoneTheme theme);
 void Seeker_cleanup(void);
 void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned int ticks);
 void Seeker_render(const void *state, const PlaceableComponent *placeable);

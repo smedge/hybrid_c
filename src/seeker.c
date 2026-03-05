@@ -1,6 +1,8 @@
 #include "seeker.h"
 #include "sub_dash_core.h"
 #include "enemy_util.h"
+#include "enemy_variant.h"
+#include "burn.h"
 #include "enemy_feedback.h"
 #include "defender.h"
 #include "fragment.h"
@@ -52,6 +54,16 @@ static const SubDashConfig seekerDashCfg = {
 
 static const CarriedSubroutine seekerCarried[] = {
 	{ SUB_ID_EGRESS, FRAG_TYPE_EGRESS },
+};
+
+static const EnemyVariant seekerVariants[THEME_COUNT] = {
+	[THEME_FIRE] = {
+		.tint = {1.0f, 0.4f, 0.0f, 1.0f},
+		.carried = {{ SUB_ID_BLAZE, FRAG_TYPE_BLAZE }},
+		.carried_count = 1,
+		.speed_mult = 1.0f, .aggro_range_mult = 1.0f,
+		.hp_mult = 1.0f, .attack_cadence_mult = 1.0f,
+	},
 };
 #define WALL_CHECK_DIST 50.0
 #define NEAR_MISS_RADIUS 200.0
@@ -106,6 +118,12 @@ typedef struct {
 
 	/* Feedback */
 	EnemyFeedback fb;
+
+	/* Theme variant */
+	ZoneTheme theme;
+
+	/* Burn DOT */
+	BurnState burn;
 } SeekerState;
 
 /* Shared singleton components */
@@ -166,7 +184,7 @@ static void pick_wander_target(SeekerState *s)
 
 /* ---- Public API ---- */
 
-void Seeker_initialize(Position position)
+void Seeker_initialize(Position position, ZoneTheme theme)
 {
 	if (highestUsedIndex >= SEEKER_COUNT) {
 		printf("FATAL ERROR: Too many seeker entities.\n");
@@ -182,6 +200,7 @@ void Seeker_initialize(Position position)
 	s->spawnPoint = position;
 	s->facing = 0.0;
 	s->killedByPlayer = false;
+	s->theme = theme;
 	s->orbitAngle = 0.0;
 	s->orbitDirection = 1;
 	s->orbitTimer = 0;
@@ -195,6 +214,7 @@ void Seeker_initialize(Position position)
 	s->respawnTimer = 0;
 	s->windupTimer = 0;
 	EnemyFeedback_init(&s->fb);
+	Burn_reset(&s->burn);
 	pick_wander_target(s);
 
 	placeables[idx].position = position;
@@ -296,6 +316,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 				s->aiState = SEEKER_IDLE;
 				s->killedByPlayer = false;
 				EnemyFeedback_reset(&s->fb);
+				Burn_reset(&s->burn);
 				Position oldPos = pl->position;
 				pl->position = s->spawnPoint;
 				pick_wander_target(s);
@@ -313,6 +334,15 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 	/* Tick feedback decay */
 	EnemyFeedback_update(&s->fb, ticks);
 
+	/* Tick burn DOT */
+	if (s->alive && Burn_tick_enemy(&s->burn, &s->hp, ticks)) {
+		s->alive = false;
+		s->aiState = SEEKER_DYING;
+		s->deathTimer = 0;
+		s->killedByPlayer = true;
+		Audio_play_sample(&sampleDeath);
+	}
+
 	if (s->alive)
 		Enemy_check_stealth_proximity(pl->position, s->facing);
 
@@ -324,8 +354,10 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		PlayerDamageResult dmg = Enemy_check_player_damage(hitBox, pl->position);
 		bool shielded = Defender_is_protecting(pl->position, dmg.ambush);
 		bool hit = dmg.hit;
-		if (hit && !shielded)
+		if (hit && !shielded) {
 			s->hp -= dmg.damage + dmg.mine_damage;
+			Burn_apply_from_hits(&s->burn, dmg.burn_hits);
+		}
 
 		if (hit) {
 			activate_spark(pl->position, shielded);
@@ -564,8 +596,12 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			s->respawnTimer = 0;
 
 			/* Drop fragment */
-			if (s->killedByPlayer)
-				Enemy_drop_fragments(pl->position, seekerCarried, 1);
+			if (s->killedByPlayer) {
+				int count;
+				const CarriedSubroutine *carried = Variant_get_carried(
+					seekerVariants, s->theme, seekerCarried, 1, &count);
+				Enemy_drop_fragments(pl->position, carried, count);
+			}
 		}
 		break;
 
@@ -577,6 +613,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			s->aiState = SEEKER_IDLE;
 			s->killedByPlayer = false;
 			EnemyFeedback_reset(&s->fb);
+			Burn_reset(&s->burn);
 			pl->position = s->spawnPoint;
 			pick_wander_target(s);
 			Audio_play_sample(&sampleRespawn);
@@ -639,27 +676,36 @@ void Seeker_render(const void *state, const PlaceableComponent *placeable)
 		return;
 	}
 
-	/* Choose color based on state */
+	/* Choose color based on state + theme tint */
 	const ColorFloat *bodyColor;
+	ColorFloat themedColor;
+	float stateBrightness = 1.0f;
+	bool applyTheme = true;
 	switch (s->aiState) {
-	case SEEKER_IDLE:       bodyColor = &colorIdle; break;
-	case SEEKER_STALKING:   bodyColor = &colorStalk; break;
-	case SEEKER_ORBITING:   bodyColor = &colorOrbit; break;
-	case SEEKER_RECOVERING: bodyColor = &colorRecover; break;
+	case SEEKER_IDLE:       bodyColor = &colorIdle; stateBrightness = 0.6f; break;
+	case SEEKER_STALKING:   bodyColor = &colorStalk; stateBrightness = 0.8f; break;
+	case SEEKER_ORBITING:   bodyColor = &colorOrbit; stateBrightness = 1.0f; break;
+	case SEEKER_RECOVERING: bodyColor = &colorRecover; stateBrightness = 0.5f; break;
 	case SEEKER_WINDING_UP: {
 		/* Rapid white flash telegraph */
 		bool flashOn = (s->windupTimer / 50) % 2 == 0;
 		static const ColorFloat white = {1.0f, 1.0f, 1.0f, 1.0f};
 		bodyColor = flashOn ? &white : &colorOrbit;
+		applyTheme = false; /* keep flash as gameplay tell */
 		break;
 	}
 	case SEEKER_DASHING: {
 		/* Bright white during dash */
 		static const ColorFloat dashColor = {1.0f, 1.0f, 1.0f, 1.0f};
 		bodyColor = &dashColor;
+		applyTheme = false;
 		break;
 	}
 	default: bodyColor = &colorIdle; break;
+	}
+	if (applyTheme && s->theme != THEME_NONE) {
+		themedColor = Variant_get_color(seekerVariants, s->theme, bodyColor, stateBrightness);
+		bodyColor = &themedColor;
 	}
 
 	/* Dash motion trail */
@@ -681,6 +727,7 @@ void Seeker_render(const void *state, const PlaceableComponent *placeable)
 	Render_point(&placeable->position, 3.0, bodyColor);
 
 	Enemy_render_resist_indicator(placeable->position);
+	Burn_render(&s->burn, placeable->position);
 
 	/* Render hit sparks (only from index 0) */
 	int idx = (int)((SeekerState *)state - seekers);
@@ -822,6 +869,7 @@ void Seeker_reset_all(void)
 		s->deathTimer = 0;
 		s->respawnTimer = 0;
 		EnemyFeedback_reset(&s->fb);
+		Burn_reset(&s->burn);
 		placeables[i].position = s->spawnPoint;
 		pick_wander_target(s);
 	}

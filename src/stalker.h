@@ -3,8 +3,9 @@
 
 #include "position.h"
 #include "entity.h"
+#include "sub_types.h"
 
-void Stalker_initialize(Position position);
+void Stalker_initialize(Position position, ZoneTheme theme);
 void Stalker_cleanup(void);
 void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned int ticks);
 void Stalker_render(const void *state, const PlaceableComponent *placeable);

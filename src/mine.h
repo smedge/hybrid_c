@@ -3,8 +3,9 @@
 
 #include "position.h"
 #include "entity.h"
+#include "sub_types.h"
 
-void Mine_initialize(Position position);
+void Mine_initialize(Position position, ZoneTheme theme);
 void Mine_cleanup();
 
 Collision Mine_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);

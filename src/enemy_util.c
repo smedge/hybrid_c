@@ -14,6 +14,8 @@
 #include "sub_stealth.h"
 #include "sub_gravwell.h"
 #include "sub_tgun.h"
+#include "sub_flak.h"
+#include "sub_flak_core.h"
 #include "fragment.h"
 #include "progression.h"
 #include "skillbar.h"
@@ -45,6 +47,13 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 		r.damage += tgun_dmg * mul;
 		r.hit = true;
 	}
+	int flak_hits = Sub_Flak_check_hit_burn(hitBox);
+	if (flak_hits > 0) {
+		const SubFlakConfig *flak_cfg = SubFlak_get_config();
+		r.damage += flak_hits * flak_cfg->proj.damage * mul;
+		r.burn_hits = flak_hits;
+		r.hit = true;
+	}
 	double mine_dmg = Sub_Mine_check_hit(hitBox);
 	if (mine_dmg > 0) {
 		r.mine_damage = mine_dmg * mul;
@@ -53,6 +62,7 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 	}
 	if (Sub_Inferno_check_hit(hitBox)) {
 		r.damage += 10.0 * mul;
+		r.burn_hits++;
 		r.hit = true;
 	}
 	if (Sub_Disintegrate_check_hit(hitBox)) {
@@ -227,6 +237,7 @@ bool Enemy_check_any_nearby(Position pos, double radius)
 	return Sub_Pea_check_nearby(pos, radius)
 		|| Sub_Mgun_check_nearby(pos, radius)
 		|| Sub_Tgun_check_nearby(pos, radius)
+		|| Sub_Flak_check_nearby(pos, radius)
 		|| Sub_Inferno_check_nearby(pos, radius)
 		|| Sub_Disintegrate_check_nearby(pos, radius);
 }
@@ -236,6 +247,7 @@ bool Enemy_check_any_hit(Rectangle hitBox)
 	return Sub_Pea_check_hit(hitBox)
 		|| Sub_Mgun_check_hit(hitBox)
 		|| Sub_Tgun_check_hit(hitBox)
+		|| (Sub_Flak_check_hit(hitBox) > 0)
 		|| Sub_Mine_check_hit(hitBox)
 		|| Sub_Inferno_check_hit(hitBox)
 		|| Sub_Disintegrate_check_hit(hitBox)

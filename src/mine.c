@@ -1,6 +1,7 @@
 #include "mine.h"
 #include "sub_mine_core.h"
 #include "enemy_util.h"
+#include "enemy_variant.h"
 #include "fragment.h"
 #include "progression.h"
 #include "view.h"
@@ -35,6 +36,16 @@ static const CarriedSubroutine mineCarried[] = {
 	{ SUB_ID_MINE, FRAG_TYPE_MINE },
 };
 
+static const EnemyVariant mineVariants[THEME_COUNT] = {
+	[THEME_FIRE] = {
+		.tint = {1.0f, 0.5f, 0.1f, 1.0f},
+		.carried = {{ SUB_ID_PYRE, FRAG_TYPE_PYRE }},
+		.carried_count = 1,
+		.speed_mult = 1.0f, .aggro_range_mult = 1.0f,
+		.hp_mult = 1.0f, .attack_cadence_mult = 1.0f,
+	},
+};
+
 static RenderableComponent renderable = {Mine_render};
 static CollidableComponent collidable = {{-250.0, 250.0, 250.0, -250.0},
 											true,
@@ -46,6 +57,7 @@ static AIUpdatableComponent updatable = {Mine_update};
 typedef struct {
 	SubMineCore core;
 	bool killedByPlayer;
+	ZoneTheme theme;
 } MineState;
 
 static MineState mines[MINE_COUNT];
@@ -56,7 +68,7 @@ static int highestUsedIndex = 0;
 /* Audio — entity sounds only (respawn) */
 static Mix_Chunk *sampleRespawn = 0;
 
-void Mine_initialize(Position position)
+void Mine_initialize(Position position, ZoneTheme theme)
 {
 	if (highestUsedIndex == MINE_COUNT) {
 		printf("WARNING: Mine pool full (%d)\n", MINE_COUNT);
@@ -67,6 +79,7 @@ void Mine_initialize(Position position)
 	mines[highestUsedIndex].core.position = position;
 	mines[highestUsedIndex].core.blinkTimer = rand() % 1000;
 	mines[highestUsedIndex].killedByPlayer = false;
+	mines[highestUsedIndex].theme = theme;
 
 	placeables[highestUsedIndex].position = position;
 	placeables[highestUsedIndex].heading = MINE_ROTATION;
@@ -196,8 +209,12 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 
 	/* Fragment drop on transition from EXPLODING to DEAD */
 	if (phase == MINE_PHASE_DEAD && prevPhase == MINE_PHASE_EXPLODING) {
-		if (ms->killedByPlayer)
-			Enemy_drop_fragments(placeable->position, mineCarried, 1);
+		if (ms->killedByPlayer) {
+			int count;
+			const CarriedSubroutine *carried = Variant_get_carried(
+				mineVariants, ms->theme, mineCarried, 1, &count);
+			Enemy_drop_fragments(placeable->position, carried, count);
+		}
 	}
 }
 

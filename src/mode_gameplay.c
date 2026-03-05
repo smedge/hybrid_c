@@ -22,6 +22,7 @@
 #include "sub_inferno.h"
 #include "sub_gravwell.h"
 #include "sub_tgun.h"
+#include "sub_flak.h"
 #include "sub_emp.h"
 #include "sub_resist.h"
 #include "corruptor.h"
@@ -43,6 +44,7 @@
 #include "data_node.h"
 #include "data_logs.h"
 #include "palette_editor.h"
+#include "burn.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -230,6 +232,7 @@ void Mode_Gameplay_initialize(void)
 	Map_initialize();
 	Ship_initialize();
 	PlayerStats_initialize();
+	Burn_initialize_audio();
 	Fragment_initialize();
 	Progression_initialize();
 	Skillbar_initialize();
@@ -304,6 +307,7 @@ void Mode_Gameplay_initialize_from_save(void)
 	Map_initialize();
 	Ship_initialize();
 	PlayerStats_initialize();
+	Burn_initialize_audio();
 	Fragment_initialize();
 	Progression_initialize();
 	Skillbar_initialize();
@@ -362,6 +366,7 @@ void Mode_Gameplay_cleanup(void)
 	Zone_unload();
 	Ship_cleanup();
 	PlayerStats_cleanup();
+	Burn_cleanup_audio();
 	Entity_destroy_all();
 	Hud_cleanup();
 	Mix_HookMusicFinished(NULL);
@@ -585,6 +590,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 		Entity_user_update_system(&filtered, ticks);
 	}
 	PlayerStats_update(ticks);
+	Burn_update_player(ticks);
 
 	SpatialGrid_set_player_bucket(Ship_get_position().x, Ship_get_position().y);
 	Hunter_update_projectiles(ticks);
@@ -692,6 +698,7 @@ void Mode_Gameplay_render(void)
 		Sub_Disintegrate_render_light_source();
 		Sub_Gravwell_render_light_source();
 		Sub_Tgun_render_light_source();
+		Sub_Flak_render_light_source();
 		Sub_Emp_render_light_source();
 		Sub_Resist_render_light_source();
 		Mine_render_light_source();
@@ -1758,8 +1765,10 @@ static void zone_teardown_and_load(const char *zone_path)
 	Sub_Pea_cleanup();
 	Sub_Mgun_cleanup();
 	Sub_Tgun_cleanup();
+	Sub_Flak_cleanup();
 	Sub_Mine_cleanup();
 	Fragment_deactivate_all();
+	Burn_reset_player();
 	Zone_unload();
 	Entity_destroy_all();
 	Grid_initialize();

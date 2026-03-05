@@ -243,6 +243,16 @@ void Zone_load(const char *path)
 				zone.music_count++;
 			}
 		}
+		else if (strncmp(line, "theme ", 6) == 0) {
+			const char *t = line + 6;
+			if (strcmp(t, "fire") == 0) zone.theme = THEME_FIRE;
+			else if (strcmp(t, "ice") == 0) zone.theme = THEME_ICE;
+			else if (strcmp(t, "poison") == 0) zone.theme = THEME_POISON;
+			else if (strcmp(t, "blood") == 0) zone.theme = THEME_BLOOD;
+			else if (strcmp(t, "radiance") == 0) zone.theme = THEME_RADIANCE;
+			else if (strcmp(t, "void") == 0) zone.theme = THEME_VOID;
+			else zone.theme = THEME_NONE;
+		}
 		else if (strncmp(line, "procgen ", 8) == 0) {
 			if (strncmp(line + 8, "true", 4) == 0)
 				zone.procgen = true;
@@ -419,6 +429,11 @@ const Zone *Zone_get(void)
 	return &zone;
 }
 
+ZoneTheme Zone_get_theme(void)
+{
+	return zone.theme;
+}
+
 /* --- Saving --- */
 
 void Zone_save(void)
@@ -447,6 +462,16 @@ void Zone_save(void)
 	/* Music playlist */
 	for (int i = 0; i < zone.music_count; i++)
 		fprintf(f, "music %s\n", zone.music_paths[i]);
+
+	/* Theme */
+	if (zone.theme != THEME_NONE) {
+		static const char *theme_names[] = {
+			[THEME_FIRE] = "fire", [THEME_ICE] = "ice",
+			[THEME_POISON] = "poison", [THEME_BLOOD] = "blood",
+			[THEME_RADIANCE] = "radiance", [THEME_VOID] = "void"
+		};
+		fprintf(f, "theme %s\n", theme_names[zone.theme]);
+	}
 
 	fprintf(f, "\n");
 
@@ -672,25 +697,19 @@ void Zone_place_spawn(const char *enemy_type, double world_x, double world_y)
 	zone.spawn_count++;
 
 	/* Spawn in world */
-	if (strcmp(enemy_type, "mine") == 0) {
-		Position pos = {world_x, world_y};
-		Mine_initialize(pos);
-	} else if (strcmp(enemy_type, "hunter") == 0) {
-		Position pos = {world_x, world_y};
-		Hunter_initialize(pos);
-	} else if (strcmp(enemy_type, "seeker") == 0) {
-		Position pos = {world_x, world_y};
-		Seeker_initialize(pos);
-	} else if (strcmp(enemy_type, "defender") == 0) {
-		Position pos = {world_x, world_y};
-		Defender_initialize(pos);
-	} else if (strcmp(enemy_type, "stalker") == 0) {
-		Position pos = {world_x, world_y};
-		Stalker_initialize(pos);
-	} else if (strcmp(enemy_type, "corruptor") == 0) {
-		Position pos = {world_x, world_y};
-		Corruptor_initialize(pos);
-	}
+	Position pos = {world_x, world_y};
+	if (strcmp(enemy_type, "mine") == 0)
+		Mine_initialize(pos, zone.theme);
+	else if (strcmp(enemy_type, "hunter") == 0)
+		Hunter_initialize(pos, zone.theme);
+	else if (strcmp(enemy_type, "seeker") == 0)
+		Seeker_initialize(pos, zone.theme);
+	else if (strcmp(enemy_type, "defender") == 0)
+		Defender_initialize(pos, zone.theme);
+	else if (strcmp(enemy_type, "stalker") == 0)
+		Stalker_initialize(pos, zone.theme);
+	else if (strcmp(enemy_type, "corruptor") == 0)
+		Corruptor_initialize(pos, zone.theme);
 
 	zoneDirty = true;
 }
@@ -1193,17 +1212,17 @@ void Zone_spawn_enemies(void)
 
 		Position pos = {sp->world_x, sp->world_y};
 		if (strcmp(sp->enemy_type, "mine") == 0)
-			Mine_initialize(pos);
+			Mine_initialize(pos, zone.theme);
 		else if (strcmp(sp->enemy_type, "hunter") == 0)
-			Hunter_initialize(pos);
+			Hunter_initialize(pos, zone.theme);
 		else if (strcmp(sp->enemy_type, "seeker") == 0)
-			Seeker_initialize(pos);
+			Seeker_initialize(pos, zone.theme);
 		else if (strcmp(sp->enemy_type, "defender") == 0)
-			Defender_initialize(pos);
+			Defender_initialize(pos, zone.theme);
 		else if (strcmp(sp->enemy_type, "stalker") == 0)
-			Stalker_initialize(pos);
+			Stalker_initialize(pos, zone.theme);
 		else if (strcmp(sp->enemy_type, "corruptor") == 0)
-			Corruptor_initialize(pos);
+			Corruptor_initialize(pos, zone.theme);
 	}
 }
 

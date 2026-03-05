@@ -1,7 +1,9 @@
 #include "hunter.h"
 #include "sub_projectile_core.h"
 #include "enemy_util.h"
+#include "enemy_variant.h"
 #include "enemy_feedback.h"
+#include "burn.h"
 #include "defender.h"
 #include "fragment.h"
 #include "progression.h"
@@ -45,6 +47,19 @@ static const CarriedSubroutine hunterCarried[] = {
 	{ SUB_ID_TGUN, FRAG_TYPE_TGUN },
 };
 
+static const EnemyVariant hunterVariants[THEME_COUNT] = {
+	[THEME_FIRE] = {
+		.tint = {1.0f, 0.5f, 0.1f, 1.0f},
+		.carried = {
+			{ SUB_ID_EMBER, FRAG_TYPE_EMBER },
+			{ SUB_ID_FLAK, FRAG_TYPE_FLAK },
+		},
+		.carried_count = 2,
+		.speed_mult = 1.0f, .aggro_range_mult = 1.0f,
+		.hp_mult = 1.0f, .attack_cadence_mult = 0.85f,
+	},
+};
+
 typedef enum {
 	HUNTER_IDLE,
 	HUNTER_CHASING,
@@ -76,6 +91,12 @@ typedef struct {
 
 	/* Feedback */
 	EnemyFeedback fb;
+
+	/* Theme variant */
+	ZoneTheme theme;
+
+	/* Status effects */
+	BurnState burn;
 } HunterState;
 
 /* Shared singleton components */
@@ -163,7 +184,7 @@ static void pick_wander_target(HunterState *h)
 
 /* ---- Public API ---- */
 
-void Hunter_initialize(Position position)
+void Hunter_initialize(Position position, ZoneTheme theme)
 {
 	if (highestUsedIndex >= HUNTER_COUNT) {
 		printf("FATAL ERROR: Too many hunter entities.\n");
@@ -180,10 +201,12 @@ void Hunter_initialize(Position position)
 	h->facing = 0.0;
 	h->killedByPlayer = false;
 	h->burstShotsFired = 0;
+	Burn_reset(&h->burn);
 	h->burstTimer = 0;
 	h->cooldownTimer = 0;
 	h->deathTimer = 0;
 	h->respawnTimer = 0;
+	h->theme = theme;
 	EnemyFeedback_init(&h->fb);
 	pick_wander_target(h);
 
@@ -306,6 +329,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 				h->cooldownTimer = 0;
 				h->burstShotsFired = 0;
 				EnemyFeedback_reset(&h->fb);
+				Burn_reset(&h->burn);
 				Position oldPos = pl->position;
 				pl->position = h->spawnPoint;
 				pick_wander_target(h);
@@ -323,6 +347,15 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 	/* Tick feedback decay */
 	EnemyFeedback_update(&h->fb, ticks);
 
+	/* Tick burn DOT */
+	if (h->alive && Burn_tick_enemy(&h->burn, &h->hp, ticks)) {
+		h->alive = false;
+		h->aiState = HUNTER_DYING;
+		h->deathTimer = 0;
+		h->killedByPlayer = true;
+		Audio_play_sample(&sampleDeath);
+	}
+
 	if (h->alive)
 		Enemy_check_stealth_proximity(pl->position, h->facing);
 
@@ -335,8 +368,10 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 		PlayerDamageResult dmg = Enemy_check_player_damage(hitBox, pl->position);
 		bool shielded = Defender_is_protecting(pl->position, dmg.ambush);
 		bool hit = dmg.hit;
-		if (hit && !shielded)
+		if (hit && !shielded) {
 			h->hp -= dmg.damage + dmg.mine_damage;
+			Burn_apply_from_hits(&h->burn, dmg.burn_hits);
+		}
 
 		if (hit) {
 			activate_spark(pl->position, shielded);
@@ -463,8 +498,12 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			h->respawnTimer = 0;
 
 			/* Drop fragment */
-			if (h->killedByPlayer)
-				Enemy_drop_fragments(pl->position, hunterCarried, 2);
+			if (h->killedByPlayer) {
+				int count;
+				const CarriedSubroutine *carried = Variant_get_carried(
+					hunterVariants, h->theme, hunterCarried, 2, &count);
+				Enemy_drop_fragments(pl->position, carried, count);
+			}
 		}
 		break;
 
@@ -479,6 +518,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			h->cooldownTimer = 0;
 			h->burstShotsFired = 0;
 			EnemyFeedback_reset(&h->fb);
+			Burn_reset(&h->burn);
 			pl->position = h->spawnPoint;
 			pick_wander_target(h);
 			Audio_play_sample(&sampleRespawn);
@@ -522,8 +562,10 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 		return;
 	}
 
-	/* Choose color based on aggro state */
-	const ColorFloat *bodyColor = (h->aiState == HUNTER_IDLE) ? &colorBody : &colorAggro;
+	/* Choose color based on aggro state + theme tint */
+	float brightness = (h->aiState == HUNTER_IDLE) ? 0.7f : 1.0f;
+	const ColorFloat *baseColor = (h->aiState == HUNTER_IDLE) ? &colorBody : &colorAggro;
+	ColorFloat bodyColor = Variant_get_color(hunterVariants, h->theme, baseColor, brightness);
 
 	/* Render as a triangle pointing in facing direction */
 	float rad = (float)get_radians(h->facing);
@@ -542,16 +584,17 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 
 	/* Render as thick lines forming a triangle (triangles flush order) */
 	Render_thick_line(tipX, tipY, b1x, b1y, 2.0f,
-		bodyColor->red, bodyColor->green, bodyColor->blue, bodyColor->alpha);
+		bodyColor.red, bodyColor.green, bodyColor.blue, bodyColor.alpha);
 	Render_thick_line(b1x, b1y, b2x, b2y, 2.0f,
-		bodyColor->red, bodyColor->green, bodyColor->blue, bodyColor->alpha);
+		bodyColor.red, bodyColor.green, bodyColor.blue, bodyColor.alpha);
 	Render_thick_line(b2x, b2y, tipX, tipY, 2.0f,
-		bodyColor->red, bodyColor->green, bodyColor->blue, bodyColor->alpha);
+		bodyColor.red, bodyColor.green, bodyColor.blue, bodyColor.alpha);
 
 	/* Center dot */
-	Render_point(&placeable->position, 4.0, bodyColor);
+	Render_point(&placeable->position, 4.0, &bodyColor);
 
 	Enemy_render_resist_indicator(placeable->position);
+	Burn_render(&h->burn, placeable->position);
 }
 
 void Hunter_render_bloom_source(void)

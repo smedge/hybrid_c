@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "map.h"
 #include "color.h"
+#include "sub_types.h"
 
 #define ZONE_MAX_CELL_TYPES 32
 #define ZONE_MAX_SPAWNS 65536
@@ -114,6 +115,7 @@ typedef struct {
 	char name[64];
 	int size;
 	char filepath[256];
+	ZoneTheme theme;
 
 	ZoneCellType cell_types[ZONE_MAX_CELL_TYPES];
 	int cell_type_count;
@@ -189,6 +191,7 @@ void Zone_unload(void);
 void Zone_save(void);
 void Zone_save_if_dirty(void);
 const Zone *Zone_get(void);
+ZoneTheme Zone_get_theme(void);
 
 /* Editing API (for God Mode) */
 void Zone_place_cell(int grid_x, int grid_y, const char *type_id);

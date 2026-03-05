@@ -3,8 +3,9 @@
 
 #include "position.h"
 #include "entity.h"
+#include "sub_types.h"
 
-void Defender_initialize(Position position);
+void Defender_initialize(Position position, ZoneTheme theme);
 void Defender_cleanup(void);
 void Defender_update(void *state, const PlaceableComponent *placeable, unsigned int ticks);
 void Defender_render(const void *state, const PlaceableComponent *placeable);

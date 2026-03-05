@@ -2,7 +2,9 @@
 #include "sub_shield_core.h"
 #include "sub_heal_core.h"
 #include "enemy_util.h"
+#include "enemy_variant.h"
 #include "enemy_feedback.h"
+#include "burn.h"
 #include "enemy_registry.h"
 #include "fragment.h"
 #include "progression.h"
@@ -68,6 +70,19 @@ static const CarriedSubroutine defenderCarried[] = {
 	{ SUB_ID_AEGIS, FRAG_TYPE_AEGIS },
 };
 
+static const EnemyVariant defenderVariants[THEME_COUNT] = {
+	[THEME_FIRE] = {
+		.tint = {1.0f, 0.55f, 0.1f, 1.0f},
+		.carried = {
+			{ SUB_ID_CAUTERIZE, FRAG_TYPE_CAUTERIZE },
+			{ SUB_ID_IMMOLATE,  FRAG_TYPE_IMMOLATE },
+		},
+		.carried_count = 2,
+		.speed_mult = 1.0f, .aggro_range_mult = 1.0f,
+		.hp_mult = 1.0f, .attack_cadence_mult = 1.0f,
+	},
+};
+
 #define DEATH_FLASH_MS 200
 #define RESPAWN_MS 30000
 
@@ -122,6 +137,12 @@ typedef struct {
 
 	/* Feedback */
 	EnemyFeedback fb;
+
+	/* Theme variant */
+	ZoneTheme theme;
+
+	/* Status effects */
+	BurnState burn;
 } DefenderState;
 
 /* Shared singleton components */
@@ -297,7 +318,7 @@ static void activate_aegis(DefenderState *d)
 
 /* ---- Public API ---- */
 
-void Defender_initialize(Position position)
+void Defender_initialize(Position position, ZoneTheme theme)
 {
 	if (highestUsedIndex >= DEFENDER_COUNT) {
 		printf("FATAL ERROR: Too many defender entities.\n");
@@ -313,6 +334,8 @@ void Defender_initialize(Position position)
 	d->spawnPoint = position;
 	d->facing = 0.0;
 	d->killedByPlayer = false;
+	d->theme = theme;
+	Burn_reset(&d->burn);
 	SubHeal_init(&d->healCore);
 	SubShield_init(&d->shieldCore);
 	d->boosting = false;
@@ -422,6 +445,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				SubHeal_init(&d->healCore);
 				SubShield_init(&d->shieldCore);
 				EnemyFeedback_reset(&d->fb);
+				Burn_reset(&d->burn);
 				Position oldPos = pl->position;
 				pl->position = d->spawnPoint;
 				pick_wander_target(d);
@@ -438,6 +462,15 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 
 	/* Tick feedback decay */
 	EnemyFeedback_update(&d->fb, ticks);
+
+	/* Tick burn DOT */
+	if (d->alive && Burn_tick_enemy(&d->burn, &d->hp, ticks)) {
+		d->alive = false;
+		d->aiState = DEFENDER_DYING;
+		d->deathTimer = 0;
+		d->killedByPlayer = true;
+		Audio_play_sample(&sampleDeath);
+	}
 
 	d->prevPosition = pl->position;
 	d->boosting = false;
@@ -474,6 +507,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				SubShield_on_hit(&d->shieldCore);
 			} else {
 				d->hp -= dmg.damage + (dmg.mine_hit ? dmg.mine_damage : 0.0);
+				Burn_apply_from_hits(&d->burn, dmg.burn_hits);
 				Audio_play_sample(&sampleHit);
 
 				/* Self-shield reaction — pop aegis after taking damage */
@@ -691,8 +725,12 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			d->respawnTimer = 0;
 
 			/* Drop fragment */
-			if (d->killedByPlayer)
-				Enemy_drop_fragments(pl->position, defenderCarried, 2);
+			if (d->killedByPlayer) {
+				int count;
+				const CarriedSubroutine *carried = Variant_get_carried(
+					defenderVariants, d->theme, defenderCarried, 2, &count);
+				Enemy_drop_fragments(pl->position, carried, count);
+			}
 		}
 		break;
 
@@ -706,6 +744,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			SubHeal_init(&d->healCore);
 			SubShield_init(&d->shieldCore);
 			EnemyFeedback_reset(&d->fb);
+			Burn_reset(&d->burn);
 			pl->position = d->spawnPoint;
 			pick_wander_target(d);
 			Audio_play_sample(&sampleRespawn);
@@ -750,8 +789,10 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 		return;
 	}
 
-	/* Body hexagon */
-	const ColorFloat *bodyColor = (d->aiState == DEFENDER_IDLE) ? &colorBody : &colorAggro;
+	/* Body hexagon — theme-tinted */
+	float brightness = (d->aiState == DEFENDER_IDLE) ? 0.7f : 1.0f;
+	const ColorFloat *baseColor = (d->aiState == DEFENDER_IDLE) ? &colorBody : &colorAggro;
+	ColorFloat bodyColor = Variant_get_color(defenderVariants, d->theme, baseColor, brightness);
 
 	/* Boost motion trail */
 	if (d->boosting) {
@@ -764,15 +805,15 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 			ghost.y = placeable->position.y - dy * BOOST_TRAIL_LENGTH * t;
 			float alpha = (1.0f - t) * 0.35f;
 			render_hexagon(ghost, BODY_SIZE, 1.5f,
-				bodyColor->red, bodyColor->green, bodyColor->blue, alpha);
+				bodyColor.red, bodyColor.green, bodyColor.blue, alpha);
 		}
 	}
 
 	render_hexagon(placeable->position, BODY_SIZE, 2.0f,
-		bodyColor->red, bodyColor->green, bodyColor->blue, bodyColor->alpha);
+		bodyColor.red, bodyColor.green, bodyColor.blue, bodyColor.alpha);
 
 	/* Center dot */
-	Render_point(&placeable->position, 4.0, bodyColor);
+	Render_point(&placeable->position, 4.0, &bodyColor);
 
 	/* Aegis shield ring */
 	SubShield_render_ring(&d->shieldCore, &defShieldCfg, placeable->position);
@@ -781,6 +822,7 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 	SubHeal_render_beam(&d->healCore, &defHealCfg);
 
 	Enemy_render_resist_indicator(placeable->position);
+	Burn_render(&d->burn, placeable->position);
 
 	/* Sparks (from idx 0 only) */
 	if (idx == 0) {
@@ -865,6 +907,7 @@ void Defender_reset_all(void)
 		SubHeal_init(&d->healCore);
 		SubShield_init(&d->shieldCore);
 		EnemyFeedback_reset(&d->fb);
+		Burn_reset(&d->burn);
 		d->boosting = false;
 		d->deathTimer = 0;
 		d->respawnTimer = 0;

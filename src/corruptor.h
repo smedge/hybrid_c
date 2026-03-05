@@ -3,8 +3,9 @@
 
 #include "position.h"
 #include "entity.h"
+#include "sub_types.h"
 
-void Corruptor_initialize(Position position);
+void Corruptor_initialize(Position position, ZoneTheme theme);
 void Corruptor_cleanup(void);
 void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned int ticks);
 void Corruptor_render(const void *state, const PlaceableComponent *placeable);

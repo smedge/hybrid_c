@@ -59,6 +59,17 @@ bool SubProjectile_check_nearby(const SubProjectilePool *pool, Position pos, dou
 void SubProjectile_deactivate_all(SubProjectilePool *pool);
 float SubProjectile_get_cooldown_fraction(const SubProjectilePool *pool, const SubProjectileConfig *cfg);
 
+/* Spawn a single pellet at explicit heading (radians). No cooldown/sound. */
+bool SubProjectile_spawn_pellet(SubProjectilePool *pool, Position origin, double heading_rad);
+
+/* Check hits against ALL projectiles, returns total damage + hit count. */
+typedef struct {
+	double damage;
+	int hits;
+} SubProjectileHitResult;
+SubProjectileHitResult SubProjectile_check_hit_multi(SubProjectilePool *pool,
+	const SubProjectileConfig *cfg, Rectangle target);
+
 void SubProjectile_render(const SubProjectilePool *pool, const SubProjectileConfig *cfg);
 void SubProjectile_render_bloom(const SubProjectilePool *pool, const SubProjectileConfig *cfg);
 void SubProjectile_render_light(const SubProjectilePool *pool, const SubProjectileConfig *cfg);

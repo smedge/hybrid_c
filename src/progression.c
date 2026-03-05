@@ -37,6 +37,17 @@ static ProgressionEntry entries[SUB_ID_COUNT] = {
 	[SUB_ID_SPRINT] = { "SPRINT", "sub_sprint", FRAG_TYPE_SPRINT, 5, false },
 	[SUB_ID_EMP] = { "EMP", "sub_emp", FRAG_TYPE_EMP, 5, false },
 	[SUB_ID_RESIST] = { "RESIST", "sub_resist", FRAG_TYPE_RESIST, 5, false },
+	/* Fire zone (The Crucible) */
+	[SUB_ID_EMBER]     = { "EMBER",     "sub_ember",     FRAG_TYPE_EMBER,     3, false },
+	[SUB_ID_FLAK]      = { "FLAK",      "sub_flak",      FRAG_TYPE_FLAK,      50, false },
+	[SUB_ID_BLAZE]     = { "BLAZE",     "sub_blaze",     FRAG_TYPE_BLAZE,     3, false },
+	[SUB_ID_SCORCH]    = { "SCORCH",    "sub_scorch",    FRAG_TYPE_SCORCH,    5, false },
+	[SUB_ID_PYRE]      = { "PYRE",      "sub_pyre",      FRAG_TYPE_PYRE,      5, false },
+	[SUB_ID_CAUTERIZE] = { "CAUTERIZE", "sub_cauterize", FRAG_TYPE_CAUTERIZE, 5, false },
+	[SUB_ID_IMMOLATE]  = { "IMMOLATE",  "sub_immolate",  FRAG_TYPE_IMMOLATE,  5, false },
+	[SUB_ID_SMOLDER]   = { "SMOLDER",   "sub_smolder",   FRAG_TYPE_SMOLDER,   10, false },
+	[SUB_ID_HEATWAVE]  = { "HEATWAVE",  "sub_heatwave",  FRAG_TYPE_HEATWAVE,  5, false },
+	[SUB_ID_TEMPER]    = { "TEMPER",     "sub_temper",    FRAG_TYPE_TEMPER,    5, false },
 };
 
 /* Notification state */

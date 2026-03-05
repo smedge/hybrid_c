@@ -13,6 +13,7 @@ typedef struct {
 	bool ambush;
 	double damage;
 	double mine_damage;
+	int burn_hits; /* number of fire pellet impacts (for burn DOT application) */
 } PlayerDamageResult;
 
 /* Check all player weapons against hitBox, apply ambush multiplier based on

@@ -120,7 +120,7 @@ Audio is loaded/played by `*_core.c` files per the Audio Ownership Rule. Theme a
 
 Themed enemies drop fragments for their themed subs, NOT for the base subs. The `CarriedSubroutine` array in the variant config specifies the themed sub IDs and fragment types.
 
-Example: Fire Hunter carries `SUB_ID_EMBER` and `SUB_ID_FLARE` instead of `SUB_ID_MGUN` and `SUB_ID_TGUN`. Killing a Fire Hunter can drop `FRAG_TYPE_EMBER` or `FRAG_TYPE_FLARE`.
+Example: Fire Hunter carries `SUB_ID_EMBER` and `SUB_ID_FLAK` instead of `SUB_ID_MGUN` and `SUB_ID_TGUN`. Killing a Fire Hunter can drop `FRAG_TYPE_EMBER` or `FRAG_TYPE_FLAK`.
 
 Fragment colors match the themed enemy's color. The `Fragment_get_source_enemy_name()` table expands to include themed sources (e.g. "Fire Hunter").
 
@@ -167,7 +167,7 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 | Base Sub | Fire Sub | Name | Description |
 |----------|----------|------|-------------|
 | sub_mgun | **sub_ember** | Ember Shot | Projectiles detonate on impact into **burn zones** — persistent ground hazards lasting ~3s that deal DOT to anything standing in them. Slower fire rate than mgun but each shot creates denied ground. Stacks up to 3 burns on a single target. *(Narrative: "Projectiles detonate on impact into 3-second burn zones. Standard evasion insufficient — must account for persistent ground hazards.")* |
-| sub_tgun | **sub_flare** | Flare Burst | Lobbed fire projectile that explodes into AoE on impact + leaves a burning ground patch. The mortar to ember's rifle — bigger area denial per shot, slower cadence, arc trajectory. |
+| sub_tgun | **sub_flak** | Flak Cannon | Narrow cone of fast fire pellets (5 per shot, ~2x pea fire rate). 2/3 tgun range, each pellet applies burn DOT. Shotgun-style — devastating up close, spread reduces effectiveness at range. Area denial through saturation. |
 | sub_pea | *(sub_pea stays as default starter in all zones)* | | |
 
 #### Movement Subs
@@ -209,7 +209,7 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 | Enemy | Fire Variant | Loadout | Narrative Behavior | AI Tweaks |
 |-------|-------------|---------|-------------------|-----------|
 | Mine | Fire Mine | sub_pyre | "Blast creates expanding fire ring" | Pyre ignites into persistent fire column |
-| Hunter | Fire Hunter | sub_ember, sub_flare | "Projectiles detonate into 3-second burn zones" | Faster attack cadence, shorter burst delay |
+| Hunter | Fire Hunter | sub_ember, sub_flak | "Projectiles detonate into 3-second burn zones" | Faster attack cadence, shorter burst delay |
 | Seeker | Fire Seeker | sub_blaze | "Dash trails ignite into flame corridors lasting 4 seconds" | Slightly shorter orbit phase |
 | Defender | Fire Defender | sub_cauterize, sub_immolate | "Cauterizes — healed allies gain brief fire immunity" | Same flee AI, cauterize + immolate on allies |
 | Stalker | Fire Stalker | sub_smolder, sub_blaze | *(not in narrative — extends thesis)* | Heat shimmer cloak, ambush creates burn zone |
@@ -218,7 +218,7 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 ### Fire Fragment Types (10 new)
 
 ```
-FRAG_TYPE_EMBER, FRAG_TYPE_FLARE, FRAG_TYPE_BLAZE, FRAG_TYPE_SCORCH,
+FRAG_TYPE_EMBER, FRAG_TYPE_FLAK, FRAG_TYPE_BLAZE, FRAG_TYPE_SCORCH,
 FRAG_TYPE_PYRE, FRAG_TYPE_CAUTERIZE, FRAG_TYPE_IMMOLATE,
 FRAG_TYPE_SMOLDER, FRAG_TYPE_HEATWAVE, FRAG_TYPE_TEMPER
 ```

@@ -27,4 +27,15 @@ static const ColorFloat TIER_COLORS[] = {
 	[TIER_ELITE]  = {1.0f, 0.84f, 0.0f, 1.0f},
 };
 
+typedef enum {
+	THEME_NONE = 0,
+	THEME_FIRE,
+	THEME_ICE,
+	THEME_POISON,
+	THEME_BLOOD,
+	THEME_RADIANCE,
+	THEME_VOID,
+	THEME_COUNT
+} ZoneTheme;
+
 #endif

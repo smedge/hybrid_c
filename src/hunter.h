@@ -3,8 +3,9 @@
 
 #include "position.h"
 #include "entity.h"
+#include "sub_types.h"
 
-void Hunter_initialize(Position position);
+void Hunter_initialize(Position position, ZoneTheme theme);
 void Hunter_cleanup(void);
 void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned int ticks);
 void Hunter_render(const void *state, const PlaceableComponent *placeable);
