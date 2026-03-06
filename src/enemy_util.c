@@ -19,6 +19,8 @@
 #include "sub_ember.h"
 #include "sub_ember_core.h"
 #include "sub_blaze.h"
+#include "sub_cauterize.h"
+#include "sub_immolate.h"
 #include "fragment.h"
 #include "progression.h"
 #include "skillbar.h"
@@ -94,6 +96,16 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 	int blaze_corridor = Sub_Blaze_check_corridor_burn(hitBox);
 	if (blaze_corridor > 0) {
 		r.burn_hits += blaze_corridor;
+		r.hit = true;
+	}
+	int cauterize_hits = Sub_Cauterize_check_aura_burn(hitBox);
+	if (cauterize_hits > 0) {
+		r.burn_hits += cauterize_hits;
+		r.hit = true;
+	}
+	int immolate_hits = Sub_Immolate_check_burn(hitBox);
+	if (immolate_hits > 0) {
+		r.burn_hits += immolate_hits;
 		r.hit = true;
 	}
 
@@ -324,9 +336,9 @@ void Enemy_drop_fragments(Position deathPos, const CarriedSubroutine *subs, int 
 		return;
 	}
 
-	/* All normal subs unlocked — rare subs become eligible at 15% drop rate */
+	/* All normal subs unlocked — rare subs become eligible at 20% drop rate */
 	if (allNormalUnlocked && rareCount > 0) {
-		if ((rand() % 100) < 15) {
+		if ((rand() % 100) < 20) {
 			int pick = rand() % rareCount;
 			Fragment_spawn(deathPos, subs[rare[pick]].frag_type, Skillbar_get_tier(subs[rare[pick]].sub_id));
 		}

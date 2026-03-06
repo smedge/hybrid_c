@@ -34,6 +34,8 @@ This is a **living document** — updated whenever a skill is added, modified, o
 | sub_aegis | Normal | 9 | −1 | +2 | **10** | 10 | At cap. 10s god mode. Binary invuln properly valued. |
 | sub_resist | Normal | 5 | +1 | +1 | **7** | 10 | -3 under. 50% DR for 5s. Solid defensive option. |
 | sub_blaze | Normal | 7 | +1 | +1 | **9** | 10 | -1 under. Fire dash + flame corridor. Area denial dodge. |
+| sub_cauterize | Normal | 6 | +1 | +1 | **8** | 10 | -2 under. Fire heal + burn aura. Offensive healing. |
+| sub_immolate | Normal | 8 | −1 | +1 | **8** | 10 | -2 under. Shorter shield + melee burn aura. Aggro invuln. |
 
 **Key takeaways**:
 - **Score = POWER + SUSTAIN + REACH**: Three axes, no separate modifiers. Everything folds into one of three questions: what does it do (POWER), how long can you keep doing it (SUSTAIN), how far can you deliver it (REACH).
@@ -69,7 +71,7 @@ Every subroutine falls into one of three activation categories. This is a fundam
 - **Cooldown is the primary gating mechanism** — short cooldown = spammable, long cooldown = strategic
 - **Budget consideration**: Power is delivered in bursts. The cooldown determines how often those bursts happen. DPS/HPS over time is what matters, not per-hit numbers in isolation.
 
-**Current examples**: sub_pea, sub_mgun, sub_mine, sub_egress, sub_mend, sub_aegis, sub_stealth, sub_gravwell, sub_emp, sub_sprint, sub_resist, sub_blaze
+**Current examples**: sub_pea, sub_mgun, sub_mine, sub_egress, sub_mend, sub_aegis, sub_stealth, sub_gravwell, sub_emp, sub_sprint, sub_resist, sub_blaze, sub_cauterize, sub_immolate
 
 **Future examples**: AoE blasts, teleports, summon commands, cleanse/purify
 
@@ -238,8 +240,9 @@ Three axes, no separate modifiers. Everything folds into one of three questions:
 | POWER | Effect | Examples |
 |-------|--------|---------|
 | 5 | Minor buff/heal (50% DR 5s, 50HP heal, timed speed) | resist, mend, sprint |
-| 6 | Moderate control/debuff (AoE feedback overload + halved decay) | emp |
-| 7 | Strong control/utility (full CC trap, i-frames+contact, full invis+5x ambush) | gravwell, egress, stealth |
+| 6 | Moderate control/debuff, or heal + utility | emp, cauterize |
+| 7 | Strong control/utility (full CC trap, i-frames+contact, full invis+5x ambush) | gravwell, egress, stealth, blaze |
+| 8 | Reduced binary defense + offensive component | immolate |
 | 9 | Binary defensive power (10s full invulnerability) | aegis |
 | 11 | Best-in-class utility (unlimited 2x speed, zero cost) | boost |
 
@@ -433,8 +436,8 @@ Fire-themed projectile with AOE ignite. Every impact (enemy or wall) splashes bu
 | Burn DOT | 10 DPS per stack, 3s duration, 3 max stacks |
 | Burn DPS (sustained) | Up to 30 per target (3 stacks maintained) |
 | Projectile speed | 3500 units/s |
-| Projectile TTL | 600ms |
-| Effective range | ~2100 units |
+| Projectile TTL | 720ms |
+| Effective range | ~2520 units |
 | Pool size | 16 |
 | Activation | Mouse left (hold to fire) |
 
@@ -443,13 +446,13 @@ Fire-themed projectile with AOE ignite. Every impact (enemy or wall) splashes bu
 |------|--------|--------|-----------|
 | POWER | 6 | 6 | 50 theoretical DPS × 0.70 aimed = 35 eDPS. Weak single-target, but 100u AOE ignite on every impact spreads burn to groups. Against 3 targets, each shot applies 10 DPS burn × 3 = 30 DPS group DOT on top of direct damage. Group scaling + burn persistence push above raw eDPS. |
 | SUSTAIN | +3 | +3 | 3 fb/shot (~10 fb/sec). Very cheap — fire at will. Nearly as free as pea/mgun. |
-| REACH | +1 | +1 | 2100u range with aimed fire. 100u AOE ignite splash forgives positioning — don't need to hit the exact target to burn nearby enemies. Medium range + splash delivery. |
+| REACH | +1 | +1 | 2520u range with aimed fire. 100u AOE ignite splash forgives positioning — don't need to hit the exact target to burn nearby enemies. Medium range + splash delivery. |
 | **TOTAL** | | **10** | |
 
 #### Balance Notes
 Sub_ember scores 10 against a Normal cap of 10 — **at cap**. The identity is group burn application, not single-target DPS. Direct damage (35 eDPS) is lower than pea (55 eDPS), but the 100u AOE ignite on every impact makes it scale with target density.
 
-**Comparison to sub_pea (7) and sub_mgun (7)**: Ember has lower direct DPS (35 vs 55/70), but every shot splashes burn to nearby enemies. Against solo targets, pea/mgun are better. Against groups, ember pulls ahead through burn stacking.
+**Comparison to sub_pea (7) and sub_mgun (7)**: Ember has lower direct DPS (35 vs 55/70), but every shot splashes burn to nearby enemies. Against solo targets, pea/mgun are better. Against groups, ember pulls ahead through burn stacking. Ember's 2520u range sits between pea's 3500u and flak's 2333u — longer than flak, shorter than pea, with the AOE splash compensating for the range gap.
 
 **Comparison to sub_flak (14)**: Flak delivers massive burst DPS (900 point blank) with burn. Ember fires slower individual shots at lower damage but spreads burn further via the 100u AOE splash. Flak is the close-range burst weapon; ember is the mid-range burn spreader. Flak is Rare (cap 15), ember is Normal (cap 10) — the power gap is intentional.
 
@@ -531,6 +534,106 @@ The 1-point gap (9 vs 10) reflects the reliability difference: egress guarantees
 - **Blaze + Stealth**: Stealth → position → unstealth with blaze dash through enemies → corridor blocks their escape route while ambush damage shreds them.
 
 **Why 1 under cap?** The corridor's value is situational — in open areas enemies path around it, in corridors it's devastating. Room to buff: increase corridor lifetime, add a slow effect to corridor, or add minor contact damage (10-20) during the dash itself.
+
+---
+
+### sub_cauterize — Healing (Instant, Normal)
+
+#### Design Identity
+Fire heal with offensive burn aura. Heals less than mend (30 vs 50 HP) but cleanses burn, grants 3s burn immunity, and drops a damaging burn aura at the player's feet. The fire zone version of mend — trades raw healing for fire defense + offensive area denial.
+
+#### Stat Block
+| Attribute | Value |
+|-----------|-------|
+| Category | Instant |
+| Tier | Normal |
+| Feedback cost | 20 |
+| Cooldown | 8000ms (8s) |
+| Heal amount | 30 HP |
+| Regen boost | 3x for 5000ms (same as mend) |
+| Burn cleanse | Removes all burn stacks on activation |
+| Burn immunity | 3000ms (3s) — blocks all burn application |
+| Aura radius | 80 units |
+| Aura duration | 3000ms (3s) |
+| Aura burn interval | 500ms per overlap |
+| Activation | G key |
+
+#### Score Card
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 6 | 6 | 30 HP heal (weaker than mend's 50) + regen boost (same 3x for 5s) + burn cleanse + 3s burn immunity + 80u burn aura for 3s. Less raw healing, but adds offensive burn aura AND fire-zone-specific defense (burn immunity). Dual identity (heal + area damage) is unique among healing skills. |
+| SUSTAIN | +1 | +1 | 20 fb + 8s cooldown. Slightly faster recovery than mend (8s vs 10s). Meaningful cost, manageable frequency — same sustain tier as mend. |
+| REACH | +1 | +1 | Self-targeted heal + 80u burn aura at feet. The aura extends value beyond self (damages nearby enemies), but 80u is close range. 5s regen window provides temporal coverage. |
+| **TOTAL** | | **8** | |
+
+#### Balance Notes
+Sub_cauterize scores 8 against a Normal cap of 10 — **2 under cap**. The identity is fire-zone healing: less raw HP but a richer package that includes burn defense and offensive area denial.
+
+**Comparison to sub_mend (7, Normal)**: Both are healing instants with G key (type exclusivity means you pick one):
+- **Mend**: 50 HP burst + 3x regen boost for 5s. Pure healing, no offensive component. Budget 7.
+- **Cauterize**: 30 HP burst + 3x regen boost for 5s + burn cleanse + 3s burn immunity + 80u burn aura for 3s. Less healing, more utility + offense. Budget 8.
+
+The 1-point gap reflects the added dimensions: cauterize trades 20 HP of raw healing for burn cleanse (fire zone defense), burn immunity (3s of burn prevention), and a burn aura (offensive component unique among heals). Against non-fire enemies, mend's +20 HP advantage matters more. In fire zones, cauterize's burn immunity + cleanse are essential.
+
+**The burn aura identity**: Cauterize is the only healing skill that deals damage. The 80u burn aura at the player's feet creates an offensive zone for 3s — enemies within melee range catch fire. This rewards aggressive positioning: heal yourself, then stand your ground as enemies burn around you. The aura is too small for ranged value — you have to be in the fight to benefit.
+
+**Fire defender version**: When fire defenders use cauterize on allies, the heal also cleanses burn + grants immunity to all allies within 100 units. The group cleanse is AI-only — player cauterize is self-only. This asymmetry is intentional: defender cauterize is a team support heal, player cauterize is a self-sustain + melee offense hybrid.
+
+**Synergies**:
+- **Cauterize + Blaze**: Blaze dash into enemies, cauterize to heal + drop burn aura on landing. Two fire zones overlapping — corridor behind you, aura at your feet.
+- **Cauterize + Immolate**: Pop immolate (6s shield), then cauterize while invuln — burn aura + immolate burn aura stack for devastating close-range damage with zero risk.
+- **Cauterize + Flak**: Close-range shotgun burst, cauterize to heal the hits you took while closing distance, burn aura adds persistent damage on top of flak's burst.
+
+---
+
+### sub_immolate — Shield (Instant, Normal)
+
+#### Design Identity
+Fire shield with melee burn aura. Shorter invulnerability than aegis (6s vs 10s) but while active, everything within 60 units takes burn DOT. The fire zone version of aegis — trades shield duration for offensive melee-range area denial. Aggression-while-invulnerable.
+
+#### Stat Block
+| Attribute | Value |
+|-----------|-------|
+| Category | Instant |
+| Tier | Normal |
+| Feedback cost | 30 |
+| Cooldown | 30000ms (30s) |
+| Shield duration | 6000ms (6s) |
+| Invulnerability | Full (same as aegis) |
+| Aura radius | 60 units |
+| Aura burn interval | 500ms per overlap |
+| Visual | Orange hexagon ring (fire-themed aegis) |
+| Activation | F key |
+
+#### Score Card
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 8 | 8 | 6s full invulnerability (40% less than aegis's 10s) + 60u burn aura while active. Binary defense is still powerful at 6s, and the burn aura adds offensive melee-range damage that aegis completely lacks. Trades duration for aggression. |
+| SUSTAIN | −1 | −1 | 30 fb + 30s cooldown. Same double-tax as aegis — once per fight AND painful. |
+| REACH | +1 | +1 | Self-targeted shield + 6s coverage (less than aegis's 10s = less temporal reach). The 60u burn aura adds spatial coverage but is so small it's melee-only. Net: weaker temporal reach than aegis, partially offset by spatial offense. |
+| **TOTAL** | | **8** | |
+
+#### Balance Notes
+Sub_immolate scores 8 against a Normal cap of 10 — **2 under cap**. The identity is aggressive invulnerability: shorter god mode, but you burn everything near you while it's up.
+
+**Comparison to sub_aegis (10, Normal)**: Both are shield instants with F key (type exclusivity means you pick one):
+- **Aegis**: 10s full invulnerability, no offensive component. POWER 9, SUSTAIN −1, REACH +2. Budget 10.
+- **Immolate**: 6s full invulnerability + 60u burn aura. POWER 8, SUSTAIN −1, REACH +1. Budget 8.
+
+The 2-point gap honestly reflects the tradeoff. Aegis's 4 extra seconds of invulnerability are worth more than immolate's burn aura in most situations — 10s of god mode lets you do anything safely. Immolate's 6s is still powerful, but 40% less safety is a real cost. The burn aura partially compensates by adding offensive value, but 60u is melee range — you have to be in danger to benefit.
+
+**The aggro-invuln fantasy**: Immolate rewards a fundamentally different playstyle than aegis. Aegis players pop shield and channel disintegrate from safety. Immolate players pop shield and wade into melee range, letting the burn aura damage everything around them while they're invincible. It's the brawler's shield — less safe, more violent.
+
+**60u radius — deliberately small**: The burn aura radius (60u) is less than ember's AOE splash (100u) and much less than cauterize's aura (80u). This is intentional — immolate's burn is a melee-range effect. You are nose-to-nose with enemies. The invulnerability makes this safe, but you still need to position aggressively to get value.
+
+**Fire defender version**: Fire defenders use immolate as their self-shield. While active, the defender's 60u burn aura damages the player if they're in melee range. This creates a "don't touch me" defensive zone — fire defenders with immolate active are dangerous to approach. Combined with their flee behavior, fire defenders use immolate as a melee deterrent while retreating to heal allies with cauterize.
+
+**Synergies**:
+- **Immolate + Cauterize**: Shield up → wade in → cauterize for heal + burn aura. Two burn zones stacking (60u + 80u) while invulnerable. Maximum close-range fire damage.
+- **Immolate + Inferno**: Shield up → channel inferno while invulnerable. Burn aura handles melee enemies while inferno melts everything at medium range. Both fire-themed, both reward aggression.
+- **Immolate + Gravwell**: Pull enemies in → immolate → burn everything in the gravity well while invulnerable. The pull keeps enemies in the 60u burn radius.
+
+**Why 2 under cap?** The 6s duration is a meaningful sacrifice from aegis's 10s. The burn aura adds unique offensive value but the small radius limits its practical impact. Room to buff: larger aura radius (80u), longer shield (7s), stronger burn application (faster tick rate), or a secondary effect (movement slow on enemies in the aura).
 
 ---
 
@@ -966,6 +1069,8 @@ The 3-axis system captures the tradeoff clearly: aegis has massively more POWER 
 | sub_aegis | Normal | 9 | −1 | +2 | 10 | 10 | At cap (binary invuln properly valued) |
 | sub_resist | Normal | 5 | +1 | +1 | 7 | 10 | -3 under (50% DR, non-binary aegis alt) |
 | sub_blaze | Normal | 7 | +1 | +1 | 9 | 10 | -1 under (fire dash + flame corridor, area denial dodge) |
+| sub_cauterize | Normal | 6 | +1 | +1 | 8 | 10 | -2 under (fire heal + burn aura, offensive healing) |
+| sub_immolate | Normal | 8 | −1 | +1 | 8 | 10 | -2 under (shorter shield + melee burn aura, aggro invuln) |
 
 ### Key Observations
 
@@ -988,6 +1093,8 @@ The 3-axis system captures the tradeoff clearly: aegis has massively more POWER 
 9. **Control skills are force multipliers**: Gravwell (POWER 7) physically traps enemies. EMP (POWER 6) metabolically cripples them. Both earn POWER through enabling other skills, not standalone damage. The POWER gap (7 vs 6) reflects gravwell's more reliable control vs EMP's situational value.
 
 10. **Corruptor symmetry**: Sprint, EMP, and resist are all dual-use — the corruptor uses them against the player, and the player can extract and use them back. The core extraction pattern ensures identical mechanics on both sides.
+
+11. **Fire variants trade specialization for breadth**: Cauterize vs mend (+1 point, less healing but adds burn immunity + offensive aura) and immolate vs aegis (−2 points, less duration but adds melee burn). Fire variants reward aggressive close-range play in fire zones. Both sit under cap with room to buff.
 
 ### Recommended Adjustments (Subject to Playtesting)
 
@@ -1118,8 +1225,9 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 | POWER | Effect | Examples |
 |-------|--------|---------|
 | 5 | Minor buff/heal | resist (50% DR 5s), mend (50HP + regen), sprint (timed 2x speed) |
-| 6 | Moderate control/debuff | emp (AoE feedback overload + halved decay) |
+| 6 | Moderate control/debuff, or heal + utility | emp (AoE feedback overload + halved decay), cauterize (30HP + burn immunity + burn aura) |
 | 7 | Strong control/utility | gravwell (CC trap), egress (i-frames + contact), stealth (invis + 5x ambush), blaze (i-frames + flame corridor) |
+| 8 | Reduced binary defense + offensive component | immolate (6s invuln + 60u burn aura) |
 | 9 | Binary defensive power | aegis (10s full invulnerability) |
 | 11 | Best-in-class utility | boost (unlimited 2x speed, zero cost) |
 
@@ -1128,9 +1236,9 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 | SUSTAIN | Description | Examples |
 |---------|-------------|---------|
 | −2 | Extreme tax: huge fb + glacial cd | (reserved) |
-| −1 | Double-taxed: high fb + long cd. Once per fight. | aegis (30fb + 30s), emp (30fb + 30s) |
+| −1 | Double-taxed: high fb + long cd. Once per fight. | aegis (30fb + 30s), emp (30fb + 30s), immolate (30fb + 30s) |
 | 0 | Strategic: significant cost OR long cd. | gravwell (25fb + 20s) |
-| +1 | Moderate: meaningful cost, manageable frequency. | egress (25fb + 2s), blaze (20fb + 3s), mend (20fb + 10s), flak (16fb/sec), resist (25fb + 15s), stealth (0fb gated + 15s) |
+| +1 | Moderate: meaningful cost, manageable frequency. | egress (25fb + 2s), blaze (20fb + 3s), mend (20fb + 10s), cauterize (20fb + 8s), flak (16fb/sec), resist (25fb + 15s), stealth (0fb gated + 15s) |
 | +2 | Efficient: low cost, decent uptime. | mine (15fb/boom, 3 pool), sprint (0fb, 25% uptime) |
 | +3 | Free/unlimited: negligible cost, fire at will. | pea (1fb), mgun (1fb), tgun (10fb/sec best ratio), boost (0fb), inferno (25/sec toggle), disintegrate (22/sec toggle) |
 
@@ -1141,7 +1249,7 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 | −2 | Self-only AND restricted | (reserved) |
 | −1 | Self-place + drawbacks, or restricted self-buff | mine (fuse + FF), stealth (0.5x speed + break conditions) |
 | 0 | Long range but poor practical accuracy | pea (3500u × 0.55 aim), mgun (3500u × 0.70 aim) |
-| +1 | Medium range + decent delivery, or self-buff + temporal coverage | flak (2333u + cone), sprint (5s window), mend (5s regen), resist (5s DR), blaze (900u dash + corridor requires enemy pathing) |
+| +1 | Medium range + decent delivery, or self-buff + temporal coverage | flak (2333u + cone), ember (2520u + AOE splash), sprint (5s window), mend (5s regen), cauterize (self + 80u burn aura), resist (5s DR), immolate (self + 6s + 60u burn aura), blaze (900u dash + corridor requires enemy pathing) |
 | +2 | Long range + good delivery, or strong self-coverage | inferno (1250u + dense spray), egress (600u + i-frames), aegis (10s invuln) |
 | +3 | Extreme range + reliable targeting, wide AoE, or permanent self-effect | disintegrate (2600u hitscan), tgun (3500u + volume fire), gravwell (cursor + 600u AoE), emp (400u AoE through walls), boost (permanent) |
 
@@ -1157,7 +1265,7 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 
 ### Master Verification Table
 
-All 18 skills — every score expressed as 3-axis decomposition.
+All 20 skills — every score expressed as 3-axis decomposition.
 
 | Skill | POWER | SUSTAIN | REACH | Total | Cap | ✓ |
 |-------|-------|---------|-------|-------|-----|---|
@@ -1179,3 +1287,5 @@ All 18 skills — every score expressed as 3-axis decomposition.
 | sub_aegis | 9 | −1 | +2 | 10 | 10 | ✓ |
 | sub_resist | 5 | +1 | +1 | 7 | 10 | ✓ |
 | sub_blaze | 7 | +1 | +1 | 9 | 10 | ✓ |
+| sub_cauterize | 6 | +1 | +1 | 8 | 10 | ✓ |
+| sub_immolate | 8 | −1 | +1 | 8 | 10 | ✓ |

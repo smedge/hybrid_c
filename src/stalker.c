@@ -291,7 +291,7 @@ void Stalker_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Stalker_find_wounded, Stalker_find_aggro, Stalker_heal, Stalker_alert_nearby, Stalker_apply_emp};
+		EnemyTypeCallbacks cb = {Stalker_find_wounded, Stalker_find_aggro, Stalker_heal, Stalker_alert_nearby, Stalker_apply_emp, Stalker_cleanse_burn};
 		EnemyRegistry_register(cb);
 	}
 }
@@ -992,6 +992,18 @@ void Stalker_apply_emp(Position center, double half_size, unsigned int duration_
 		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
 			continue;
 		EnemyFeedback_apply_emp(&s->fb, duration_ms);
+	}
+}
+
+void Stalker_cleanse_burn(Position center, double radius, int immunity_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		StalkerState *s = &stalkers[i];
+		if (!s->alive || s->aiState == STALKER_DYING || s->aiState == STALKER_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_grant_immunity(&s->burn, immunity_ms);
 	}
 }
 

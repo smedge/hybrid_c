@@ -253,7 +253,7 @@ void Hunter_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal, Hunter_alert_nearby, Hunter_apply_emp};
+		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal, Hunter_alert_nearby, Hunter_apply_emp, Hunter_cleanse_burn};
 		EnemyRegistry_register(cb);
 	}
 
@@ -869,6 +869,18 @@ void Hunter_apply_emp(Position center, double half_size, unsigned int duration_m
 		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
 			continue;
 		EnemyFeedback_apply_emp(&h->fb, duration_ms);
+	}
+}
+
+void Hunter_cleanse_burn(Position center, double radius, int immunity_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		HunterState *h = &hunters[i];
+		if (!h->alive || h->aiState == HUNTER_DYING || h->aiState == HUNTER_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_grant_immunity(&h->burn, immunity_ms);
 	}
 }
 

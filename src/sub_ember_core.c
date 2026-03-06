@@ -6,7 +6,7 @@ static const SubEmberConfig emberConfig = {
 	.proj = {
 		.fire_cooldown_ms = 300,
 		.velocity = 3500.0,
-		.ttl_ms = 600,
+		.ttl_ms = 720,
 		.pool_size = 16,
 		.damage = 15.0,
 		/* Orange-red fire visuals */

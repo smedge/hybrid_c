@@ -52,6 +52,10 @@ static ParticleInstanceData burnInstances[BURN_MAX_INSTANCES];
 
 void Burn_apply(BurnState *state, int duration_ms)
 {
+	/* Immune — no new burns */
+	if (state->immune_ms > 0)
+		return;
+
 	/* Find an empty slot */
 	for (int i = 0; i < BURN_MAX_STACKS; i++) {
 		if (state->duration_ms[i] <= 0) {
@@ -72,6 +76,13 @@ void Burn_apply(BurnState *state, int duration_ms)
 
 double Burn_update(BurnState *state, unsigned int ticks)
 {
+	/* Tick immunity timer */
+	if (state->immune_ms > 0) {
+		state->immune_ms -= (int)ticks;
+		if (state->immune_ms < 0)
+			state->immune_ms = 0;
+	}
+
 	if (state->stacks <= 0)
 		return 0.0;
 
@@ -101,6 +112,20 @@ void Burn_reset(BurnState *state)
 bool Burn_is_active(const BurnState *state)
 {
 	return state->stacks > 0;
+}
+
+void Burn_grant_immunity(BurnState *state, int duration_ms)
+{
+	/* Clear existing stacks */
+	for (int i = 0; i < BURN_MAX_STACKS; i++)
+		state->duration_ms[i] = 0;
+	state->stacks = 0;
+	state->immune_ms = duration_ms;
+}
+
+bool Burn_is_immune(const BurnState *state)
+{
+	return state->immune_ms > 0;
 }
 
 int Burn_get_stacks(const BurnState *state)
@@ -454,6 +479,16 @@ void Burn_reset_player(void)
 bool Burn_player_is_burning(void)
 {
 	return Burn_is_active(&playerBurn);
+}
+
+void Burn_grant_immunity_player(int duration_ms)
+{
+	Burn_grant_immunity(&playerBurn, duration_ms);
+}
+
+bool Burn_player_is_immune(void)
+{
+	return Burn_is_immune(&playerBurn);
 }
 
 /* --- Audio lifecycle --- */

@@ -21,6 +21,13 @@ bool Defender_find_aggro(Position from, double range, Position *out_pos);
 void Defender_heal(int index, double amount);
 void Defender_alert_nearby(Position origin, double radius, Position threat);
 void Defender_apply_emp(Position center, double half_size, unsigned int duration_ms);
+void Defender_cleanse_burn(Position center, double radius, int immunity_ms);
 int Defender_get_count(void);
+
+/* Fire defender aura lifecycle (called from mode_gameplay) */
+void Defender_update_fire_auras(unsigned int ticks);
+void Defender_render_fire_auras(void);
+void Defender_render_fire_aura_bloom(void);
+void Defender_render_fire_aura_light(void);
 
 #endif

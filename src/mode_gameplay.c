@@ -28,6 +28,8 @@
 #include "sub_emp.h"
 #include "sub_resist.h"
 #include "sub_blaze.h"
+#include "sub_cauterize.h"
+#include "sub_immolate.h"
 #include "corruptor.h"
 #include "map_reflect.h"
 #include "map_lighting.h"
@@ -602,6 +604,8 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
 	Sub_Blaze_update_corridor(ticks);
+	Sub_Cauterize_update_auras(ticks);
+	Defender_update_fire_auras(ticks);
 	Seeker_update_corridors(ticks);
 	Seeker_check_corridor_burn_player();
 	SubEmber_clear_bursts();
@@ -712,6 +716,9 @@ void Mode_Gameplay_render(void)
 		Sub_Emp_render_light_source();
 		Sub_Resist_render_light_source();
 		Sub_Blaze_render_corridor_light_source();
+		Sub_Cauterize_render_aura_light_source();
+		Sub_Immolate_render_light_source();
+		Defender_render_fire_aura_light();
 		Seeker_render_corridor_light_source();
 		Mine_render_light_source();
 		Hunter_render_light_source();
@@ -741,6 +748,8 @@ void Mode_Gameplay_render(void)
 		god_mode_render_cursor();
 	}
 	Sub_Blaze_render_corridor();
+	Sub_Cauterize_render_aura();
+	Defender_render_fire_auras();
 	Seeker_render_corridors();
 	Render_flush(&world_proj, &view);
 	Burn_render_all();
@@ -781,6 +790,7 @@ void Mode_Gameplay_render(void)
 		Stalker_render_bloom_source();
 		Corruptor_render_bloom_source();
 		Sub_Aegis_render_bloom_source();
+		Sub_Immolate_render_bloom_source();
 		Sub_Emp_render_bloom_source();
 		Sub_Resist_render_bloom_source();
 		Portal_render_bloom_source();
@@ -789,6 +799,8 @@ void Mode_Gameplay_render(void)
 		Fragment_render_bloom_source();
 		Burn_render_bloom_source();
 		Sub_Blaze_render_corridor_bloom_source();
+		Sub_Cauterize_render_aura_bloom_source();
+		Defender_render_fire_aura_bloom();
 		Seeker_render_corridor_bloom_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bloom, draw_w, draw_h);
@@ -1788,6 +1800,7 @@ static void zone_teardown_and_load(const char *zone_path)
 	Sub_Ember_cleanup();
 	Sub_Mine_cleanup();
 	Sub_Blaze_deactivate_all();
+	Sub_Cauterize_deactivate_all();
 	Fragment_deactivate_all();
 	Burn_reset_player();
 	Zone_unload();

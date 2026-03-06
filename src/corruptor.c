@@ -299,7 +299,7 @@ void Corruptor_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 		SubEmp_initialize_audio();
 		EnemyTypeCallbacks cb = {Corruptor_find_wounded, Corruptor_find_aggro,
-			Corruptor_heal, Corruptor_alert_nearby, Corruptor_apply_emp};
+			Corruptor_heal, Corruptor_alert_nearby, Corruptor_apply_emp, Corruptor_cleanse_burn};
 		corruptorTypeId = EnemyRegistry_register(cb);
 	}
 }
@@ -971,6 +971,18 @@ void Corruptor_apply_emp(Position center, double half_size, unsigned int duratio
 		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
 			continue;
 		EnemyFeedback_apply_emp(&c->fb, duration_ms);
+	}
+}
+
+void Corruptor_cleanse_burn(Position center, double radius, int immunity_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		CorruptorState *c = &corruptors[i];
+		if (!c->alive || c->aiState == CORRUPTOR_DYING || c->aiState == CORRUPTOR_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_grant_immunity(&c->burn, immunity_ms);
 	}
 }
 

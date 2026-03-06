@@ -1,6 +1,8 @@
 #include "defender.h"
 #include "sub_shield_core.h"
 #include "sub_heal_core.h"
+#include "sub_cauterize_core.h"
+#include "sub_immolate_core.h"
 #include "enemy_util.h"
 #include "enemy_variant.h"
 #include "enemy_feedback.h"
@@ -120,6 +122,10 @@ typedef struct {
 	/* Aegis (enemy self-shield) */
 	SubShieldCore shieldCore;
 
+	/* Fire theme: cauterize + immolate (used when theme == THEME_FIRE) */
+	SubCauterizeCore cauterizeCore;
+	SubImmolateCore immolateCore;
+
 	/* Boost */
 	bool boosting;
 	Position prevPosition;
@@ -196,11 +202,28 @@ static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
 
+/* Fire theme audio (initialized once) */
+static bool fireDefInitialized = false;
+
 /* Helpers */
 static void pick_wander_target(DefenderState *d)
 {
 	Enemy_pick_wander_target(d->spawnPoint, IDLE_DRIFT_RADIUS, IDLE_WANDER_INTERVAL,
 		&d->wanderTarget, &d->wanderTimer);
+}
+
+static bool is_shield_active(DefenderState *d)
+{
+	if (d->theme == THEME_FIRE)
+		return SubImmolate_is_active(&d->immolateCore);
+	return SubShield_is_active(&d->shieldCore);
+}
+
+static bool is_shield_in_grace(DefenderState *d)
+{
+	if (d->theme == THEME_FIRE)
+		return SubImmolate_in_grace(&d->immolateCore);
+	return SubShield_in_grace(&d->shieldCore);
 }
 
 static bool another_defender_shielding(int selfIdx, Position targetPos)
@@ -209,7 +232,7 @@ static bool another_defender_shielding(int selfIdx, Position targetPos)
 		if (i == selfIdx)
 			continue;
 		DefenderState *other = &defenders[i];
-		if (!other->alive || !SubShield_is_active(&other->shieldCore))
+		if (!other->alive || !is_shield_active(other))
 			continue;
 		double dist = Enemy_distance_between(placeables[i].position, targetPos);
 		if (dist < PROTECT_RADIUS)
@@ -235,18 +258,14 @@ static bool another_defender_assigned(int selfIdx, Position targetPos)
 	return false;
 }
 
-static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
+static bool find_best_wounded(Position from, int *outType, Position *outPos, int *outIdx)
 {
-	if (!SubHeal_is_ready(&d->healCore))
-		return false;
-
 	int typeCount = EnemyRegistry_type_count();
 	int bestType = -1;
 	Position bestPos = {0, 0};
 	int bestIdx = -1;
 	double bestDist = 99999.0;
 
-	/* Two-pass: prefer damage-dealing types, fallback to fellow defenders */
 	for (int priority = 0; priority < 2; priority++) {
 		for (int t = 0; t < typeCount; t++) {
 			bool isDefType = (defenderTypeId >= 0 && t == defenderTypeId);
@@ -257,8 +276,8 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 				continue;
 			Position pos;
 			int eidx;
-			if (et->find_wounded(pl->position, HEAL_RANGE, 50.0, &pos, &eidx)) {
-				double dist = Enemy_distance_between(pl->position, pos);
+			if (et->find_wounded(from, HEAL_RANGE, 50.0, &pos, &eidx)) {
+				double dist = Enemy_distance_between(from, pos);
 				if (dist < bestDist) {
 					bestDist = dist;
 					bestPos = pos;
@@ -273,6 +292,24 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 
 	if (bestType < 0)
 		return false;
+	*outType = bestType;
+	*outPos = bestPos;
+	*outIdx = bestIdx;
+	return true;
+}
+
+static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
+{
+	bool isFire = (d->theme == THEME_FIRE);
+	bool ready = isFire ? SubCauterize_is_ready(&d->cauterizeCore) : SubHeal_is_ready(&d->healCore);
+	if (!ready)
+		return false;
+
+	int bestType;
+	Position bestPos;
+	int bestIdx;
+	if (!find_best_wounded(pl->position, &bestType, &bestPos, &bestIdx))
+		return false;
 
 	/* Heal costs 20 feedback — spend only after confirming a target */
 	double hpBefore = d->hp;
@@ -284,17 +321,31 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 		Audio_play_sample(&sampleHit);
 	}
 
-	EnemyRegistry_heal(bestType, bestIdx, defHealCfg.heal_amount);
-
-	SubHeal_try_activate(&d->healCore, &defHealCfg, pl->position, bestPos);
+	if (isFire) {
+		const SubCauterizeConfig *cfg = SubCauterize_get_defender_config();
+		EnemyRegistry_heal(bestType, bestIdx, cfg->heal_amount);
+		SubCauterize_try_activate(&d->cauterizeCore, cfg, pl->position, bestPos);
+		/* Cleanse burn + grant immunity to all allies within radius of target */
+		EnemyRegistry_cleanse_burn(bestPos, cfg->cleanse_radius, cfg->immunity_duration_ms);
+	} else {
+		EnemyRegistry_heal(bestType, bestIdx, defHealCfg.heal_amount);
+		SubHeal_try_activate(&d->healCore, &defHealCfg, pl->position, bestPos);
+	}
 	return true;
 }
 
 static void activate_aegis(DefenderState *d)
 {
+	bool isFire = (d->theme == THEME_FIRE);
+
 	/* Already active or on cooldown — don't spend feedback */
-	if (SubShield_is_active(&d->shieldCore) || d->shieldCore.cooldownMs > 0)
-		return;
+	if (isFire) {
+		if (SubImmolate_is_active(&d->immolateCore) || d->immolateCore.shield.cooldownMs > 0)
+			return;
+	} else {
+		if (SubShield_is_active(&d->shieldCore) || d->shieldCore.cooldownMs > 0)
+			return;
+	}
 
 	/* Aegis costs 30 feedback */
 	double hpBefore = d->hp;
@@ -313,7 +364,11 @@ static void activate_aegis(DefenderState *d)
 		d->killedByPlayer = false;
 		return;
 	}
-	SubShield_try_activate(&d->shieldCore, &defShieldCfg);
+
+	if (isFire)
+		SubImmolate_try_activate(&d->immolateCore);
+	else
+		SubShield_try_activate(&d->shieldCore, &defShieldCfg);
 }
 
 /* ---- Public API ---- */
@@ -338,6 +393,8 @@ void Defender_initialize(Position position, ZoneTheme theme)
 	Burn_reset(&d->burn);
 	SubHeal_init(&d->healCore);
 	SubShield_init(&d->shieldCore);
+	SubCauterize_init(&d->cauterizeCore);
+	SubImmolate_init(&d->immolateCore);
 	d->boosting = false;
 	d->prevPosition = position;
 	d->deathTimer = 0;
@@ -366,8 +423,15 @@ void Defender_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal, Defender_alert_nearby, Defender_apply_emp};
+		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal, Defender_alert_nearby, Defender_apply_emp, Defender_cleanse_burn};
 		defenderTypeId = EnemyRegistry_register(cb);
+	}
+
+	/* Fire theme: initialize skill audio once */
+	if (theme == THEME_FIRE && !fireDefInitialized) {
+		SubCauterize_initialize_audio();
+		SubImmolate_initialize_audio();
+		fireDefInitialized = true;
 	}
 }
 
@@ -387,6 +451,12 @@ void Defender_cleanup(void)
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
+
+	if (fireDefInitialized) {
+		SubCauterize_cleanup_audio();
+		SubImmolate_cleanup_audio();
+		fireDefInitialized = false;
+	}
 }
 
 Collision Defender_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -444,6 +514,8 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				d->killedByPlayer = false;
 				SubHeal_init(&d->healCore);
 				SubShield_init(&d->shieldCore);
+				SubCauterize_init(&d->cauterizeCore);
+				SubImmolate_init(&d->immolateCore);
 				EnemyFeedback_reset(&d->fb);
 				Burn_reset(&d->burn);
 				Position oldPos = pl->position;
@@ -477,20 +549,23 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	d->prevPosition = pl->position;
 	d->boosting = false;
 	d->hasAssignment = false;
-	d->aegisWasActive = SubShield_is_active(&d->shieldCore);
+	d->aegisWasActive = is_shield_active(d);
 	currentUpdaterIdx = idx;
 
 	/* --- Tick timers --- */
-	SubHeal_update(&d->healCore, &defHealCfg, ticks);
-
-	/* Aegis timer + grace (all handled by core) */
-	SubShield_update(&d->shieldCore, &defShieldCfg, ticks);
+	if (d->theme == THEME_FIRE) {
+		SubCauterize_update(&d->cauterizeCore, SubCauterize_get_defender_config(), ticks);
+		SubImmolate_update(&d->immolateCore, ticks);
+	} else {
+		SubHeal_update(&d->healCore, &defHealCfg, ticks);
+		SubShield_update(&d->shieldCore, &defShieldCfg, ticks);
+	}
 
 	if (d->alive)
 		Enemy_check_stealth_proximity(pl->position, d->facing);
 
 	/* --- Check for incoming player projectiles --- */
-	if (d->alive && d->aiState != DEFENDER_DYING && !SubShield_in_grace(&d->shieldCore)) {
+	if (d->alive && d->aiState != DEFENDER_DYING && !is_shield_in_grace(d)) {
 		Rectangle body = {-BODY_SIZE, BODY_SIZE, BODY_SIZE, -BODY_SIZE};
 		Rectangle hitBox = Collision_transform_bounding_box(pl->position, body);
 
@@ -498,15 +573,21 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		bool hit = dmg.hit;
 
 		if (hit) {
-			bool shielded = SubShield_is_active(&d->shieldCore) && !dmg.ambush;
+			bool shielded = is_shield_active(d) && !dmg.ambush;
 			activate_spark(pl->position, shielded);
 
 			if (shielded) {
 				if (dmg.mine_hit) {
-					/* Mine breaks aegis shield — no damage, grace outlasts explosion */
-					SubShield_break(&d->shieldCore, &defShieldCfg);
+					/* Mine breaks shield — no damage, grace outlasts explosion */
+					if (d->theme == THEME_FIRE)
+						SubImmolate_break(&d->immolateCore);
+					else
+						SubShield_break(&d->shieldCore, &defShieldCfg);
 				}
-				SubShield_on_hit(&d->shieldCore);
+				if (d->theme == THEME_FIRE)
+					SubImmolate_on_hit(&d->immolateCore);
+				else
+					SubShield_on_hit(&d->shieldCore);
 			} else {
 				d->hp -= dmg.damage + (dmg.mine_hit ? dmg.mine_damage : 0.0);
 				Burn_apply_from_hits(&d->burn, dmg.burn_hits);
@@ -524,7 +605,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			}
 		}
 
-		if ((!SubShield_is_active(&d->shieldCore) || dmg.ambush) && hit && d->hp <= 0.0) {
+		if ((!is_shield_active(d) || dmg.ambush) && hit && d->hp <= 0.0) {
 			d->alive = false;
 			d->aiState = DEFENDER_DYING;
 			d->deathTimer = 0;
@@ -598,7 +679,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		try_heal_ally(d, pl);
 
 		/* Flee if player gets close — but hold ground while actively shielding */
-		if (shipDist < FLEE_TRIGGER_RANGE && !SubShield_is_active(&d->shieldCore)) {
+		if (shipDist < FLEE_TRIGGER_RANGE && !is_shield_active(d)) {
 			d->aiState = DEFENDER_FLEEING;
 			break;
 		}
@@ -665,13 +746,15 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		}
 
 		if (hasTarget) {
-			bool aegisReady = SubShield_is_active(&d->shieldCore) ||
-				(d->shieldCore.cooldownMs <= 0 && !another_defender_shielding(idx, allyPos));
+			bool shieldActive = is_shield_active(d);
+			int shieldCooldown = (d->theme == THEME_FIRE) ? d->immolateCore.shield.cooldownMs : d->shieldCore.cooldownMs;
+			bool aegisReady = shieldActive ||
+				(shieldCooldown <= 0 && !another_defender_shielding(idx, allyPos));
 			double allyDist = Enemy_distance_between(pl->position, allyPos);
 
 			if (aegisReady) {
 				/* Aegis available — rush in to shield ally */
-				double chaseSpeed = SubShield_is_active(&d->shieldCore) ? SHIELD_CHASE_SPEED : NORMAL_SPEED * BOOST_MULTIPLIER;
+				double chaseSpeed = shieldActive ? SHIELD_CHASE_SPEED : NORMAL_SPEED * BOOST_MULTIPLIER;
 				d->boosting = true;
 				Enemy_move_toward(pl, allyPos, chaseSpeed, dt, WALL_CHECK_DIST);
 
@@ -745,6 +828,8 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			d->killedByPlayer = false;
 			SubHeal_init(&d->healCore);
 			SubShield_init(&d->shieldCore);
+			SubCauterize_init(&d->cauterizeCore);
+			SubImmolate_init(&d->immolateCore);
 			EnemyFeedback_reset(&d->fb);
 			Burn_reset(&d->burn);
 			pl->position = d->spawnPoint;
@@ -817,11 +902,14 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 	/* Center dot */
 	Render_point(&placeable->position, 4.0, &bodyColor);
 
-	/* Aegis shield ring */
-	SubShield_render_ring(&d->shieldCore, &defShieldCfg, placeable->position);
-
-	/* Heal beam */
-	SubHeal_render_beam(&d->healCore, &defHealCfg);
+	/* Shield ring + heal beam */
+	if (d->theme == THEME_FIRE) {
+		SubImmolate_render_ring_small(&d->immolateCore, placeable->position);
+		SubCauterize_render_beam(&d->cauterizeCore, SubCauterize_get_defender_config());
+	} else {
+		SubShield_render_ring(&d->shieldCore, &defShieldCfg, placeable->position);
+		SubHeal_render_beam(&d->healCore, &defHealCfg);
+	}
 
 	Enemy_render_resist_indicator(placeable->position);
 
@@ -869,11 +957,14 @@ void Defender_render_bloom_source(void)
 		/* Body glow */
 		Render_point(&pl->position, 6.0, bodyColor);
 
-		/* Aegis ring bloom */
-		SubShield_render_bloom(&d->shieldCore, &defShieldCfg, pl->position);
-
-		/* Heal beam bloom */
-		SubHeal_render_beam_bloom(&d->healCore, &defHealCfg);
+		/* Shield ring bloom + heal beam bloom */
+		if (d->theme == THEME_FIRE) {
+			SubImmolate_render_bloom_small(&d->immolateCore, pl->position);
+			SubCauterize_render_beam_bloom(&d->cauterizeCore, SubCauterize_get_defender_config());
+		} else {
+			SubShield_render_bloom(&d->shieldCore, &defShieldCfg, pl->position);
+			SubHeal_render_beam_bloom(&d->healCore, &defHealCfg);
+		}
 	}
 
 	/* Spark bloom */
@@ -907,6 +998,8 @@ void Defender_reset_all(void)
 		d->killedByPlayer = false;
 		SubHeal_init(&d->healCore);
 		SubShield_init(&d->shieldCore);
+		SubCauterize_init(&d->cauterizeCore);
+		SubImmolate_init(&d->immolateCore);
 		EnemyFeedback_reset(&d->fb);
 		Burn_reset(&d->burn);
 		d->boosting = false;
@@ -931,7 +1024,7 @@ bool Defender_is_protecting(Position pos, bool ambush)
 		if (!d->alive)
 			continue;
 		/* Protected if aegis was active this frame OR in post-break grace */
-		if (!d->aegisWasActive && !SubShield_in_grace(&d->shieldCore))
+		if (!d->aegisWasActive && !is_shield_in_grace(d))
 			continue;
 		double dist = Enemy_distance_between(placeables[i].position, pos);
 		if (dist < PROTECT_RADIUS)
@@ -946,11 +1039,14 @@ void Defender_notify_shield_hit(Position pos)
 		DefenderState *d = &defenders[i];
 		if (!d->alive)
 			continue;
-		if (!SubShield_is_active(&d->shieldCore) && !SubShield_in_grace(&d->shieldCore))
+		if (!is_shield_active(d) && !is_shield_in_grace(d))
 			continue;
 		double dist = Enemy_distance_between(placeables[i].position, pos);
 		if (dist < PROTECT_RADIUS) {
-			SubShield_on_hit(&d->shieldCore);
+			if (d->theme == THEME_FIRE)
+				SubImmolate_on_hit(&d->immolateCore);
+			else
+				SubShield_on_hit(&d->shieldCore);
 			return;
 		}
 	}
@@ -1056,7 +1152,75 @@ void Defender_apply_emp(Position center, double half_size, unsigned int duration
 	}
 }
 
+void Defender_cleanse_burn(Position center, double radius, int immunity_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (!d->alive || d->aiState == DEFENDER_DYING || d->aiState == DEFENDER_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_grant_immunity(&d->burn, immunity_ms);
+	}
+}
+
 int Defender_get_count(void)
 {
 	return highestUsedIndex;
+}
+
+/* --- Fire aura lifecycle (called from mode_gameplay) --- */
+
+void Defender_update_fire_auras(unsigned int ticks)
+{
+	const SubCauterizeConfig *cfg = SubCauterize_get_defender_config();
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (d->theme != THEME_FIRE || !d->alive)
+			continue;
+		/* Tick cauterize auras */
+		SubCauterize_update(&d->cauterizeCore, cfg, ticks);
+
+		/* Fire immolate aura burn vs player */
+		if (SubImmolate_is_active(&d->immolateCore) && !Ship_is_destroyed()) {
+			Position shipPos = Ship_get_position();
+			Rectangle shipBody = {-12.0, 12.0, 12.0, -12.0};
+			Rectangle shipBox = Collision_transform_bounding_box(shipPos, shipBody);
+			int hits = SubImmolate_check_burn(&d->immolateCore, placeables[i].position, shipBox);
+			if (hits > 0)
+				Burn_apply_to_player(BURN_DURATION_MS);
+		}
+	}
+}
+
+void Defender_render_fire_auras(void)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (d->theme != THEME_FIRE || !d->alive)
+			continue;
+		SubCauterize_render_aura(&d->cauterizeCore);
+		SubImmolate_render_aura(&d->immolateCore, placeables[i].position);
+	}
+}
+
+void Defender_render_fire_aura_bloom(void)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (d->theme != THEME_FIRE || !d->alive)
+			continue;
+		SubCauterize_render_aura_bloom(&d->cauterizeCore);
+	}
+}
+
+void Defender_render_fire_aura_light(void)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (d->theme != THEME_FIRE || !d->alive)
+			continue;
+		SubCauterize_render_aura_light(&d->cauterizeCore);
+		SubImmolate_render_light(&d->immolateCore, placeables[i].position);
+	}
 }

@@ -55,3 +55,11 @@ void EnemyRegistry_apply_emp(Position center, double half_size, unsigned int dur
 			types[i].apply_emp(center, half_size, duration_ms);
 	}
 }
+
+void EnemyRegistry_cleanse_burn(Position center, double radius, int immunity_ms)
+{
+	for (int i = 0; i < typeCount; i++) {
+		if (types[i].cleanse_burn)
+			types[i].cleanse_burn(center, radius, immunity_ms);
+	}
+}

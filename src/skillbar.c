@@ -21,6 +21,8 @@
 #include "sub_emp.h"
 #include "sub_resist.h"
 #include "sub_blaze.h"
+#include "sub_cauterize.h"
+#include "sub_immolate.h"
 
 #include <math.h>
 #ifndef M_PI
@@ -811,6 +813,8 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_EMP: return Sub_Emp_get_cooldown_fraction();
 	case SUB_ID_RESIST: return Sub_Resist_get_cooldown_fraction();
 	case SUB_ID_BLAZE: return Sub_Blaze_get_cooldown_fraction();
+	case SUB_ID_CAUTERIZE: return Sub_Cauterize_get_cooldown_fraction();
+	case SUB_ID_IMMOLATE: return Sub_Immolate_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

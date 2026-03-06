@@ -246,7 +246,7 @@ void Seeker_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal, Seeker_alert_nearby, Seeker_apply_emp};
+		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal, Seeker_alert_nearby, Seeker_apply_emp, Seeker_cleanse_burn};
 		EnemyRegistry_register(cb);
 	}
 
@@ -1006,6 +1006,18 @@ void Seeker_apply_emp(Position center, double half_size, unsigned int duration_m
 		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
 			continue;
 		EnemyFeedback_apply_emp(&s->fb, duration_ms);
+	}
+}
+
+void Seeker_cleanse_burn(Position center, double radius, int immunity_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		SeekerState *s = &seekers[i];
+		if (!s->alive || s->aiState == SEEKER_DYING || s->aiState == SEEKER_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_grant_immunity(&s->burn, immunity_ms);
 	}
 }
 

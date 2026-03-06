@@ -19,6 +19,8 @@
 #include "sub_flak.h"
 #include "sub_ember.h"
 #include "sub_blaze.h"
+#include "sub_cauterize.h"
+#include "sub_immolate.h"
 #include "corruptor.h"
 #include "color.h"
 #include "shipstate.h"
@@ -128,6 +130,8 @@ void Ship_initialize()
 	Sub_Emp_initialize();
 	Sub_Resist_initialize();
 	Sub_Blaze_initialize();
+	Sub_Cauterize_initialize();
+	Sub_Immolate_initialize();
 }
 
 void Ship_cleanup()
@@ -150,6 +154,8 @@ void Ship_cleanup()
 	Sub_Emp_cleanup();
 	Sub_Resist_cleanup();
 	Sub_Blaze_cleanup();
+	Sub_Cauterize_cleanup();
+	Sub_Immolate_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -236,6 +242,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Emp_initialize();
 			Sub_Resist_initialize();
 			Sub_Blaze_initialize();
+			Sub_Cauterize_initialize();
+			Sub_Immolate_initialize();
 			Sub_Pea_deactivate_all();
 			Sub_Mgun_deactivate_all();
 			Sub_Mine_deactivate_all();
@@ -377,6 +385,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Ember_update(userInput, ticks, placeable);
 		Sub_Emp_update(userInput, ticks);
 		Sub_Resist_update(userInput, ticks);
+		Sub_Cauterize_update(userInput, ticks);
+		Sub_Immolate_update(userInput, ticks);
 	} else {
 		/* Ship dead — keep ticking projectiles/mines so animations finish */
 		Sub_Pea_tick(ticks);
@@ -432,6 +442,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Mgun_render();
 	Sub_Mine_render();
 	Sub_Aegis_render();
+	Sub_Immolate_render();
 	Sub_Inferno_render();
 	Sub_Disintegrate_render();
 	Sub_Gravwell_render();
