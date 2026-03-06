@@ -33,6 +33,7 @@ This is a **living document** — updated whenever a skill is added, modified, o
 | sub_mend | Normal | 5 | +1 | +1 | **7** | 10 | -3 under. Burst heal + 3x regen boost. Rewards clean play. |
 | sub_aegis | Normal | 9 | −1 | +2 | **10** | 10 | At cap. 10s god mode. Binary invuln properly valued. |
 | sub_resist | Normal | 5 | +1 | +1 | **7** | 10 | -3 under. 50% DR for 5s. Solid defensive option. |
+| sub_blaze | Normal | 7 | +1 | +1 | **9** | 10 | -1 under. Fire dash + flame corridor. Area denial dodge. |
 
 **Key takeaways**:
 - **Score = POWER + SUSTAIN + REACH**: Three axes, no separate modifiers. Everything folds into one of three questions: what does it do (POWER), how long can you keep doing it (SUSTAIN), how far can you deliver it (REACH).
@@ -68,7 +69,7 @@ Every subroutine falls into one of three activation categories. This is a fundam
 - **Cooldown is the primary gating mechanism** — short cooldown = spammable, long cooldown = strategic
 - **Budget consideration**: Power is delivered in bursts. The cooldown determines how often those bursts happen. DPS/HPS over time is what matters, not per-hit numbers in isolation.
 
-**Current examples**: sub_pea, sub_mgun, sub_mine, sub_egress, sub_mend, sub_aegis, sub_stealth, sub_gravwell, sub_emp, sub_sprint, sub_resist
+**Current examples**: sub_pea, sub_mgun, sub_mine, sub_egress, sub_mend, sub_aegis, sub_stealth, sub_gravwell, sub_emp, sub_sprint, sub_resist, sub_blaze
 
 **Future examples**: AoE blasts, teleports, summon commands, cleanse/purify
 
@@ -482,6 +483,54 @@ Sub_ember scores 10 against a Normal cap of 10 — **at cap**. The identity is g
 | **TOTAL** | | **10** | |
 
 **Assessment**: At cap. I-frames + contact damage transforms egress into a proper action-game dodge-attack. Dash THROUGH projectiles, mine explosions, and enemy contact. The 25 feedback + 2s cooldown still gate it — you can't spam, and each one eats a quarter of your feedback bar. But when you use it, it FEELS worth the cost.
+
+---
+
+### sub_blaze — Movement (Instant, Normal)
+
+#### Design Identity
+Fire dash with flame corridor. Dash through space leaving a burning trail that persists ~4s, applying burn DOT to enemies who walk through it. No contact damage — the corridor IS the damage. Area denial on a movement ability.
+
+#### Stat Block
+| Attribute | Value |
+|-----------|-------|
+| Category | Instant |
+| Tier | Normal |
+| Feedback cost | 20 |
+| Cooldown | 3000ms (3s) |
+| Dash duration | 200ms |
+| Dash speed | 4500 units/sec |
+| Dash distance | ~900 units |
+| I-frames | Full duration (200ms) |
+| Contact damage | 0 (none) |
+| Corridor segments | ~48 deposited along dash path |
+| Corridor lifetime | 4000ms (4s) |
+| Corridor radius | 30 units per segment |
+| Corridor burn | Applies burn stack every 500ms per segment on overlap |
+
+#### Score Card
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 7 | 7 | Strong utility: i-frame dash (200ms, slightly longer than egress) + persistent flame corridor (~4s area denial with burn DOT). No contact damage, but corridor applies burn stacks to anything that walks through. The area denial identity is unique — you're not just dodging, you're reshaping the battlefield. |
+| SUSTAIN | +1 | +1 | 20 fb + 3s cooldown. Slightly cheaper than egress (20 vs 25 fb) but longer cooldown (3s vs 2s). Net sustain is comparable — roughly one use per combat cycle. |
+| REACH | +1 | +1 | 900u dash distance + i-frames provide decent self-delivery (longer than egress). But the corridor's value is POSITIONAL — it only damages enemies who walk through it. Unlike egress's contact damage (delivered on arrival), blaze's damage requires enemies to cooperate by pathing through the trail. REACH is lower than egress because the damage isn't guaranteed on use. |
+| **TOTAL** | | **9** | |
+
+#### Balance Notes
+Sub_blaze trades egress's direct contact damage for persistent area denial. At budget 9, it's 1 under normal cap.
+
+**Comparison to sub_egress (10, Normal)**: Both are movement instants with i-frame dashes, sharing type exclusivity:
+- **Egress**: 150ms dash, 4000 speed, 25 fb, 2s cd, 50 contact damage. Dodge-attack — guaranteed damage on arrival.
+- **Blaze**: 200ms dash, 4500 speed, 20 fb, 3s cd, 0 contact damage, 4s flame corridor with burn DOT. Dodge-deny — no guaranteed hit, but area denial persists long after the dash.
+
+The 1-point gap (9 vs 10) reflects the reliability difference: egress guarantees 50 damage per use. Blaze's corridor may burn nothing (enemies avoid it) or burn many (enemies forced to path through). Ceiling is higher, floor is lower.
+
+**Synergies**:
+- **Blaze + Gravwell**: Pull enemies into the flame corridor. Gravwell holds them in the burn zone — devastating combo. The corridor's weakness (enemies can walk around it) becomes a non-issue when they're pinned.
+- **Blaze + Inferno**: Dash through enemies to reposition, corridor burns behind you while you channel inferno forward. Two fire zones, one blocking retreat, one melting the front line.
+- **Blaze + Stealth**: Stealth → position → unstealth with blaze dash through enemies → corridor blocks their escape route while ambush damage shreds them.
+
+**Why 1 under cap?** The corridor's value is situational — in open areas enemies path around it, in corridors it's devastating. Room to buff: increase corridor lifetime, add a slow effect to corridor, or add minor contact damage (10-20) during the dash itself.
 
 ---
 
@@ -916,6 +965,7 @@ The 3-axis system captures the tradeoff clearly: aegis has massively more POWER 
 | sub_mend | Normal | 5 | +1 | +1 | 7 | 10 | -3 under (burst heal + 3x regen boost) |
 | sub_aegis | Normal | 9 | −1 | +2 | 10 | 10 | At cap (binary invuln properly valued) |
 | sub_resist | Normal | 5 | +1 | +1 | 7 | 10 | -3 under (50% DR, non-binary aegis alt) |
+| sub_blaze | Normal | 7 | +1 | +1 | 9 | 10 | -1 under (fire dash + flame corridor, area denial dodge) |
 
 ### Key Observations
 
@@ -1069,7 +1119,7 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 |-------|--------|---------|
 | 5 | Minor buff/heal | resist (50% DR 5s), mend (50HP + regen), sprint (timed 2x speed) |
 | 6 | Moderate control/debuff | emp (AoE feedback overload + halved decay) |
-| 7 | Strong control/utility | gravwell (CC trap), egress (i-frames + contact), stealth (invis + 5x ambush) |
+| 7 | Strong control/utility | gravwell (CC trap), egress (i-frames + contact), stealth (invis + 5x ambush), blaze (i-frames + flame corridor) |
 | 9 | Binary defensive power | aegis (10s full invulnerability) |
 | 11 | Best-in-class utility | boost (unlimited 2x speed, zero cost) |
 
@@ -1080,7 +1130,7 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 | −2 | Extreme tax: huge fb + glacial cd | (reserved) |
 | −1 | Double-taxed: high fb + long cd. Once per fight. | aegis (30fb + 30s), emp (30fb + 30s) |
 | 0 | Strategic: significant cost OR long cd. | gravwell (25fb + 20s) |
-| +1 | Moderate: meaningful cost, manageable frequency. | egress (25fb + 2s), mend (20fb + 10s), flak (16fb/sec), resist (25fb + 15s), stealth (0fb gated + 15s) |
+| +1 | Moderate: meaningful cost, manageable frequency. | egress (25fb + 2s), blaze (20fb + 3s), mend (20fb + 10s), flak (16fb/sec), resist (25fb + 15s), stealth (0fb gated + 15s) |
 | +2 | Efficient: low cost, decent uptime. | mine (15fb/boom, 3 pool), sprint (0fb, 25% uptime) |
 | +3 | Free/unlimited: negligible cost, fire at will. | pea (1fb), mgun (1fb), tgun (10fb/sec best ratio), boost (0fb), inferno (25/sec toggle), disintegrate (22/sec toggle) |
 
@@ -1091,7 +1141,7 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 | −2 | Self-only AND restricted | (reserved) |
 | −1 | Self-place + drawbacks, or restricted self-buff | mine (fuse + FF), stealth (0.5x speed + break conditions) |
 | 0 | Long range but poor practical accuracy | pea (3500u × 0.55 aim), mgun (3500u × 0.70 aim) |
-| +1 | Medium range + decent delivery, or self-buff + temporal coverage | flak (2333u + cone), sprint (5s window), mend (5s regen), resist (5s DR) |
+| +1 | Medium range + decent delivery, or self-buff + temporal coverage | flak (2333u + cone), sprint (5s window), mend (5s regen), resist (5s DR), blaze (900u dash + corridor requires enemy pathing) |
 | +2 | Long range + good delivery, or strong self-coverage | inferno (1250u + dense spray), egress (600u + i-frames), aegis (10s invuln) |
 | +3 | Extreme range + reliable targeting, wide AoE, or permanent self-effect | disintegrate (2600u hitscan), tgun (3500u + volume fire), gravwell (cursor + 600u AoE), emp (400u AoE through walls), boost (permanent) |
 
@@ -1107,7 +1157,7 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 
 ### Master Verification Table
 
-All 17 skills — every score expressed as 3-axis decomposition.
+All 18 skills — every score expressed as 3-axis decomposition.
 
 | Skill | POWER | SUSTAIN | REACH | Total | Cap | ✓ |
 |-------|-------|---------|-------|-------|-----|---|
@@ -1128,3 +1178,4 @@ All 17 skills — every score expressed as 3-axis decomposition.
 | sub_mend | 5 | +1 | +1 | 7 | 10 | ✓ |
 | sub_aegis | 9 | −1 | +2 | 10 | 10 | ✓ |
 | sub_resist | 5 | +1 | +1 | 7 | 10 | ✓ |
+| sub_blaze | 7 | +1 | +1 | 9 | 10 | ✓ |

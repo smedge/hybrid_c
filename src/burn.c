@@ -21,9 +21,9 @@ static int burnTickTimer = 0;
 
 /* --- Registration system --- */
 
-#define BURN_MAX_REGISTERED   64
+#define BURN_MAX_REGISTERED   128
 #define BURN_EMBERS_PER_ENTITY 6
-#define BURN_MAX_INSTANCES    512
+#define BURN_MAX_INSTANCES    1024
 
 typedef struct {
 	bool active;

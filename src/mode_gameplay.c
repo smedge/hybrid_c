@@ -27,6 +27,7 @@
 #include "sub_ember_core.h"
 #include "sub_emp.h"
 #include "sub_resist.h"
+#include "sub_blaze.h"
 #include "corruptor.h"
 #include "map_reflect.h"
 #include "map_lighting.h"
@@ -600,6 +601,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	Stalker_update_projectiles(ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
+	Sub_Blaze_update_corridor(ticks);
 	SubEmber_clear_bursts();
 	Burn_update_embers(ticks);
 
@@ -707,6 +709,7 @@ void Mode_Gameplay_render(void)
 		Sub_Ember_render_light_source();
 		Sub_Emp_render_light_source();
 		Sub_Resist_render_light_source();
+		Sub_Blaze_render_corridor_light_source();
 		Mine_render_light_source();
 		Hunter_render_light_source();
 		Seeker_render_light_source();
@@ -734,6 +737,7 @@ void Mode_Gameplay_render(void)
 		god_mode_render_chunk_selection();
 		god_mode_render_cursor();
 	}
+	Sub_Blaze_render_corridor();
 	Render_flush(&world_proj, &view);
 	Burn_render_all();
 
@@ -780,6 +784,7 @@ void Mode_Gameplay_render(void)
 		DataNode_render_bloom_source();
 		Fragment_render_bloom_source();
 		Burn_render_bloom_source();
+		Sub_Blaze_render_corridor_bloom_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bloom, draw_w, draw_h);
 
@@ -1777,6 +1782,7 @@ static void zone_teardown_and_load(const char *zone_path)
 	Sub_Flak_cleanup();
 	Sub_Ember_cleanup();
 	Sub_Mine_cleanup();
+	Sub_Blaze_deactivate_all();
 	Fragment_deactivate_all();
 	Burn_reset_player();
 	Zone_unload();

@@ -18,6 +18,7 @@
 #include "sub_flak_core.h"
 #include "sub_ember.h"
 #include "sub_ember_core.h"
+#include "sub_blaze.h"
 #include "fragment.h"
 #include "progression.h"
 #include "skillbar.h"
@@ -88,6 +89,11 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 	double egress_dmg = Sub_Egress_check_hit(hitBox);
 	if (egress_dmg > 0) {
 		r.damage += egress_dmg * mul;
+		r.hit = true;
+	}
+	int blaze_corridor = Sub_Blaze_check_corridor_burn(hitBox);
+	if (blaze_corridor > 0) {
+		r.burn_hits += blaze_corridor;
 		r.hit = true;
 	}
 

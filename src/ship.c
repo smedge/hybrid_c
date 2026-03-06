@@ -18,6 +18,7 @@
 #include "sub_resist.h"
 #include "sub_flak.h"
 #include "sub_ember.h"
+#include "sub_blaze.h"
 #include "corruptor.h"
 #include "color.h"
 #include "shipstate.h"
@@ -126,6 +127,7 @@ void Ship_initialize()
 	Sub_Sprint_initialize();
 	Sub_Emp_initialize();
 	Sub_Resist_initialize();
+	Sub_Blaze_initialize();
 }
 
 void Ship_cleanup()
@@ -147,6 +149,7 @@ void Ship_cleanup()
 	Sub_Sprint_cleanup();
 	Sub_Emp_cleanup();
 	Sub_Resist_cleanup();
+	Sub_Blaze_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -232,6 +235,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Sprint_initialize();
 			Sub_Emp_initialize();
 			Sub_Resist_initialize();
+			Sub_Blaze_initialize();
 			Sub_Pea_deactivate_all();
 			Sub_Mgun_deactivate_all();
 			Sub_Mine_deactivate_all();
@@ -277,11 +281,12 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Boost_update(userInput, ticks);
 		Sub_Egress_update(userInput, ticks);
 		Sub_Sprint_update(userInput, ticks);
+		Sub_Blaze_update(userInput, ticks);
 
-		isBoosting = Sub_Boost_is_boosting() || Sub_Egress_is_dashing() || Sub_Sprint_is_sprinting();
+		isBoosting = Sub_Boost_is_boosting() || Sub_Egress_is_dashing() || Sub_Sprint_is_sprinting() || Sub_Blaze_is_dashing();
 
-		/* Egress dash phases through enemies/mines (but not walls) */
-		if (Sub_Egress_is_dashing())
+		/* Dash phases through enemies/mines (but not walls) */
+		if (Sub_Egress_is_dashing() || Sub_Blaze_is_dashing())
 			collidable.mask = COLLISION_LAYER_TERRAIN;
 		else
 			collidable.mask = COLLISION_LAYER_TERRAIN | COLLISION_LAYER_ENEMY;
@@ -290,6 +295,12 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			/* Dash overrides normal movement — fixed velocity in dash direction */
 			vel_x = Sub_Egress_get_dash_vx();
 			vel_y = Sub_Egress_get_dash_vy();
+
+			placeable->position.x += vel_x * ticksNormalized;
+			placeable->position.y += vel_y * ticksNormalized;
+		} else if (Sub_Blaze_is_dashing()) {
+			vel_x = Sub_Blaze_get_dash_vx();
+			vel_y = Sub_Blaze_get_dash_vy();
 
 			placeable->position.x += vel_x * ticksNormalized;
 			placeable->position.y += vel_y * ticksNormalized;
