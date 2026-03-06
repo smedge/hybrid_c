@@ -23,6 +23,8 @@
 #include "sub_gravwell.h"
 #include "sub_tgun.h"
 #include "sub_flak.h"
+#include "sub_ember.h"
+#include "sub_ember_core.h"
 #include "sub_emp.h"
 #include "sub_resist.h"
 #include "corruptor.h"
@@ -589,6 +591,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 		}
 		Entity_user_update_system(&filtered, ticks);
 	}
+	Burn_clear_registrations();
 	PlayerStats_update(ticks);
 	Burn_update_player(ticks);
 
@@ -597,6 +600,8 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	Stalker_update_projectiles(ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
+	SubEmber_clear_bursts();
+	Burn_update_embers(ticks);
 
 	/* Spatial grid watchdog — validate every 15 seconds */
 	spatialWatchdogAccum += ticks;
@@ -699,6 +704,7 @@ void Mode_Gameplay_render(void)
 		Sub_Gravwell_render_light_source();
 		Sub_Tgun_render_light_source();
 		Sub_Flak_render_light_source();
+		Sub_Ember_render_light_source();
 		Sub_Emp_render_light_source();
 		Sub_Resist_render_light_source();
 		Mine_render_light_source();
@@ -706,6 +712,7 @@ void Mode_Gameplay_render(void)
 		Seeker_render_light_source();
 		Stalker_render_light_source();
 		Corruptor_render_light_source();
+		Burn_render_light_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(lb, draw_w, draw_h);
 
@@ -728,6 +735,7 @@ void Mode_Gameplay_render(void)
 		god_mode_render_cursor();
 	}
 	Render_flush(&world_proj, &view);
+	Burn_render_all();
 
 	/* God mode labels (world-space text) */
 	if (godModeActive) {
@@ -771,6 +779,7 @@ void Mode_Gameplay_render(void)
 		Savepoint_render_bloom_source();
 		DataNode_render_bloom_source();
 		Fragment_render_bloom_source();
+		Burn_render_bloom_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bloom, draw_w, draw_h);
 
@@ -1766,6 +1775,7 @@ static void zone_teardown_and_load(const char *zone_path)
 	Sub_Mgun_cleanup();
 	Sub_Tgun_cleanup();
 	Sub_Flak_cleanup();
+	Sub_Ember_cleanup();
 	Sub_Mine_cleanup();
 	Fragment_deactivate_all();
 	Burn_reset_player();

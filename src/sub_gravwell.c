@@ -339,7 +339,7 @@ void Sub_Gravwell_render(void)
 	int count = build_instance_data(instanceData, 1.0f, 0.0f);
 
 	/* Draw instanced */
-	ParticleInstance_draw(instanceData, count, &world_proj, &view, true);
+	ParticleInstance_draw(instanceData, count, &world_proj, &view, PI_SHAPE_SOFT);
 }
 
 void Sub_Gravwell_render_bloom_source(void)
@@ -356,7 +356,7 @@ void Sub_Gravwell_render_bloom_source(void)
 	/* Only outer blobs (radius_frac > 0.5) at 1.5x brightness for bloom */
 	int count = build_instance_data(instanceData, 1.5f, 0.5f);
 
-	ParticleInstance_draw(instanceData, count, &world_proj, &view, true);
+	ParticleInstance_draw(instanceData, count, &world_proj, &view, PI_SHAPE_SOFT);
 }
 
 void Sub_Gravwell_render_light_source(void)

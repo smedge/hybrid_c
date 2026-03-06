@@ -13,6 +13,7 @@ typedef struct {
 	Position prevPosition;
 	double headingSin;
 	double headingCos;
+	double speedMult;   /* per-pellet speed multiplier (default 1.0) */
 	int ticksLived;
 } SubProjectile;
 

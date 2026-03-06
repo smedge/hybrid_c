@@ -442,7 +442,7 @@ void Sub_Disintegrate_render(void)
 	Mat4 view = View_get_transform(&screen);
 	Render_flush(&world_proj, &view);
 
-	ParticleInstance_draw(instances, count, &world_proj, &view, false);
+	ParticleInstance_draw(instances, count, &world_proj, &view, PI_SHAPE_SHARP);
 }
 
 void Sub_Disintegrate_render_bloom_source(void)
@@ -459,7 +459,7 @@ void Sub_Disintegrate_render_bloom_source(void)
 	Mat4 view = View_get_transform(&screen);
 	Render_flush(&world_proj, &view);
 
-	ParticleInstance_draw(instances, count, &world_proj, &view, false);
+	ParticleInstance_draw(instances, count, &world_proj, &view, PI_SHAPE_SHARP);
 }
 
 void Sub_Disintegrate_render_light_source(void)

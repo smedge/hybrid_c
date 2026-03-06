@@ -413,6 +413,8 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		s->killedByPlayer = true;
 		Audio_play_sample(&sampleDeath);
 	}
+	if (s->alive && Burn_is_active(&s->burn))
+		Burn_register(&s->burn, pl->position);
 
 	if (s->alive)
 		Enemy_check_stealth_proximity(pl->position, s->facing);
@@ -756,7 +758,6 @@ void Stalker_render(const void *state, const PlaceableComponent *placeable)
 	Render_point(&placeable->position, 3.0, &dotColor);
 
 	Enemy_render_resist_indicator(placeable->position);
-	Burn_render(&s->burn, placeable->position);
 }
 
 void Stalker_render_bloom_source(void)

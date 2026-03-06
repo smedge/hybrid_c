@@ -471,6 +471,8 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		d->killedByPlayer = true;
 		Audio_play_sample(&sampleDeath);
 	}
+	if (d->alive && Burn_is_active(&d->burn))
+		Burn_register(&d->burn, pl->position);
 
 	d->prevPosition = pl->position;
 	d->boosting = false;
@@ -822,7 +824,6 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 	SubHeal_render_beam(&d->healCore, &defHealCfg);
 
 	Enemy_render_resist_indicator(placeable->position);
-	Burn_render(&d->burn, placeable->position);
 
 	/* Sparks (from idx 0 only) */
 	if (idx == 0) {

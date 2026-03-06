@@ -17,6 +17,7 @@
 #include "sub_emp.h"
 #include "sub_resist.h"
 #include "sub_flak.h"
+#include "sub_ember.h"
 #include "corruptor.h"
 #include "color.h"
 #include "shipstate.h"
@@ -121,6 +122,7 @@ void Ship_initialize()
 	Sub_Gravwell_initialize();
 	Sub_Tgun_initialize(liveEntity);
 	Sub_Flak_initialize(liveEntity);
+	Sub_Ember_initialize(liveEntity);
 	Sub_Sprint_initialize();
 	Sub_Emp_initialize();
 	Sub_Resist_initialize();
@@ -141,6 +143,7 @@ void Ship_cleanup()
 	Sub_Gravwell_cleanup();
 	Sub_Tgun_cleanup();
 	Sub_Flak_cleanup();
+	Sub_Ember_cleanup();
 	Sub_Sprint_cleanup();
 	Sub_Emp_cleanup();
 	Sub_Resist_cleanup();
@@ -237,6 +240,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Gravwell_deactivate_all();
 			Sub_Tgun_deactivate_all();
 			Sub_Flak_deactivate_all();
+			Sub_Ember_deactivate_all();
 			PlayerStats_reset();
 			Burn_reset_player();
 			SpatialGrid_clear();
@@ -359,6 +363,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Gravwell_update(userInput, ticks);
 		Sub_Tgun_update(userInput, ticks, placeable);
 		Sub_Flak_update(userInput, ticks, placeable);
+		Sub_Ember_update(userInput, ticks, placeable);
 		Sub_Emp_update(userInput, ticks);
 		Sub_Resist_update(userInput, ticks);
 	} else {
@@ -367,6 +372,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Mgun_tick(ticks);
 		Sub_Tgun_tick(ticks);
 		Sub_Flak_tick(ticks);
+		Sub_Ember_tick(ticks);
 		Sub_Mine_tick(ticks);
 	}
 }
@@ -420,6 +426,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Gravwell_render();
 	Sub_Tgun_render();
 	Sub_Flak_render();
+	Sub_Ember_render();
 	Sub_Emp_render();
 	Sub_Resist_render();
 }
@@ -458,6 +465,7 @@ void Ship_render_bloom_source(void)
 	Sub_Gravwell_render_bloom_source();
 	Sub_Tgun_render_bloom_source();
 	Sub_Flak_render_bloom_source();
+	Sub_Ember_render_bloom_source();
 	Sub_Emp_render_bloom_source();
 	Sub_Resist_render_bloom_source();
 	/* Sub_Disintegrate has its own dedicated FBO bloom pass in mode_gameplay */

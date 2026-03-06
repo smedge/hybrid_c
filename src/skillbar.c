@@ -16,6 +16,7 @@
 #include "sub_gravwell.h"
 #include "sub_tgun.h"
 #include "sub_flak.h"
+#include "sub_ember.h"
 #include "sub_sprint.h"
 #include "sub_emp.h"
 #include "sub_resist.h"
@@ -804,6 +805,7 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_GRAVWELL: return Sub_Gravwell_get_cooldown_fraction();
 	case SUB_ID_TGUN: return Sub_Tgun_get_cooldown_fraction();
 	case SUB_ID_FLAK: return Sub_Flak_get_cooldown_fraction();
+	case SUB_ID_EMBER: return Sub_Ember_get_cooldown_fraction();
 	case SUB_ID_SPRINT: return Sub_Sprint_get_cooldown_fraction();
 	case SUB_ID_EMP: return Sub_Emp_get_cooldown_fraction();
 	case SUB_ID_RESIST: return Sub_Resist_get_cooldown_fraction();

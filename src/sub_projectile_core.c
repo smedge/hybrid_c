@@ -78,6 +78,7 @@ bool SubProjectile_try_fire(SubProjectilePool *pool, const SubProjectileConfig *
 	double rad = get_radians(heading);
 	p->headingSin = sin(rad);
 	p->headingCos = cos(rad);
+	p->speedMult = 1.0;
 
 	Audio_play_sample(&sampleFire);
 
@@ -103,8 +104,9 @@ void SubProjectile_update(SubProjectilePool *pool, const SubProjectileConfig *cf
 		p->prevPosition = p->position;
 
 		double dt = ticks / 1000.0;
-		double dx = p->headingSin * cfg->velocity * dt;
-		double dy = p->headingCos * cfg->velocity * dt;
+		double spd = cfg->velocity * p->speedMult;
+		double dx = p->headingSin * spd * dt;
+		double dy = p->headingCos * spd * dt;
 		p->position.x += dx;
 		p->position.y += dy;
 
@@ -198,6 +200,7 @@ bool SubProjectile_spawn_pellet(SubProjectilePool *pool, Position origin, double
 	p->prevPosition = origin;
 	p->headingSin = sin(heading_rad);
 	p->headingCos = cos(heading_rad);
+	p->speedMult = 1.0;
 	return true;
 }
 

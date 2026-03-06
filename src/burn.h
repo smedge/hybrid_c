@@ -43,6 +43,14 @@ void Burn_render_player(Position pos);       /* call from ship render */
 void Burn_reset_player(void);
 bool Burn_player_is_burning(void);
 
+/* Registration system — centralized batch rendering */
+void Burn_register(const BurnState *state, Position pos);
+void Burn_render_all(void);
+void Burn_render_bloom_source(void);
+void Burn_render_light_source(void);
+void Burn_update_embers(unsigned int ticks);
+void Burn_clear_registrations(void);
+
 /* Audio lifecycle */
 void Burn_initialize_audio(void);
 void Burn_cleanup_audio(void);

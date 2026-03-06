@@ -182,7 +182,7 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 
 | Base Sub | Fire Sub | Name | Description |
 |----------|----------|------|-------------|
-| sub_mine | **sub_pyre** | Pyre Trap | Deployable that ignites into a **burning pillar** — tall fire column, ~5s sustained AOE DOT in radius. Less burst than mine, more area denial. The ground it stood on keeps burning. *(Narrative: "Detonation radius increased 50%. Blast creates expanding fire ring.")* |
+| sub_mine | **sub_cinder** | Cinder Mine | Deployable that detonates into a **persistent burning ground patch** — circular fire zone, ~5s sustained AOE burn DOT to anything standing in it. Less burst than mine, more area denial. *(Narrative: "Detonation radius increased 50%. Blast creates expanding fire ring.")* |
 
 #### Support Subs
 
@@ -208,7 +208,7 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 
 | Enemy | Fire Variant | Loadout | Narrative Behavior | AI Tweaks |
 |-------|-------------|---------|-------------------|-----------|
-| Mine | Fire Mine | sub_pyre | "Blast creates expanding fire ring" | Pyre ignites into persistent fire column |
+| Mine | Fire Mine | sub_cinder | "Blast creates expanding fire ring" | Cinder detonates into persistent burning ground patch |
 | Hunter | Fire Hunter | sub_ember, sub_flak | "Projectiles detonate into 3-second burn zones" | Faster attack cadence, shorter burst delay |
 | Seeker | Fire Seeker | sub_blaze | "Dash trails ignite into flame corridors lasting 4 seconds" | Slightly shorter orbit phase |
 | Defender | Fire Defender | sub_cauterize, sub_immolate | "Cauterizes — healed allies gain brief fire immunity" | Same flee AI, cauterize + immolate on allies |

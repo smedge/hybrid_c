@@ -406,6 +406,8 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 		c->killedByPlayer = true;
 		Audio_play_sample(&sampleDeath);
 	}
+	if (c->alive && Burn_is_active(&c->burn))
+		Burn_register(&c->burn, pl->position);
 
 	c->prevPosition = pl->position;
 	c->sprintCore.active = false;
@@ -738,9 +740,6 @@ void Corruptor_render(const void *state, const PlaceableComponent *placeable)
 
 	/* EMP visual — expanding ring */
 	SubEmp_render_ring(&c->empCore, SubEmp_get_config());
-
-	/* Burn DOT particles */
-	Burn_render(&c->burn, placeable->position);
 
 	/* Sparks (from idx 0 only) */
 	if (idx == 0) {

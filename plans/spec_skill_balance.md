@@ -20,7 +20,8 @@ This is a **living document** — updated whenever a skill is added, modified, o
 | sub_mgun | Normal | 4 | +3 | 0 | **7** | 10 | -3 under. Same eDPS as pea, spray slightly more forgiving. |
 | sub_mine | Normal | 5 | +2 | −1 | **6** | 10 | -4 under. Area denial utility, not a DPS weapon. |
 | sub_tgun | **Rare** | 6 | +3 | +3 | **12** | 15 | -3 under. Constant stream of death. Best DPS/feedback ratio. |
-| sub_flak | **Rare** | 7 | +1 | +1 | **9** | 15 | -6 under. Fire shotgun + burn DOT. Room to grow. |
+| sub_flak | **Rare** | 12 | +1 | +1 | **14** | 15 | -1 under. Fire shotgun + burn DOT. Nearly at cap. |
+| sub_ember | Normal | 6 | +3 | +1 | **10** | 10 | At cap. AOE ignite on impact — group burn applicator. |
 | sub_boost | **Elite** | 11 | +3 | +3 | **17** | 20 | -3 under. Free unlimited speed. Room for a damage component. |
 | sub_sprint | Normal | 5 | +2 | +1 | **8** | 10 | -2 under. Timed boost — same speed, limited window. |
 | sub_inferno | **Elite** | 14 | +3 | +2 | **19** | 20 | -1 under. Melts everything close-range + burn DOT. |
@@ -226,7 +227,7 @@ Three axes, no separate modifiers. Everything folds into one of three questions:
 | POWER | Effective DPS | Examples |
 |-------|--------------|---------|
 | 3–4 | <100 eDPS | Starter weapons (pea 55, mgun 70) |
-| 5–6 | 100–300 eDPS | Upgraded weapons (tgun 212, flak 152+burn) |
+| 5–6 | 100–300 eDPS | Upgraded weapons (tgun 212, flak 750+burn) |
 | 7 | + special properties | Burn persistence, DOT, burst combo |
 | 8–11 | 500–1000 eDPS | Would-be elite single-target |
 | 12–14 | 1000+ eDPS or group-wipe | Elite channeled weapons (inferno, disintegrate) |
@@ -350,7 +351,7 @@ Sub_tgun scores 12 against a Rare cap of 15 — **3 under cap**. It's the most e
 
 **Why it's clearly above pea/mgun**: 2.5x the DPS with the same feedback cost per shot. The twin-barrel volume means practical DPS is much closer to theoretical — miss one shot and you lose 100ms, not 500ms. Pea and mgun at 7 are starter weapons; tgun at 12 is the first real DPS upgrade.
 
-**Comparison to flak (9/15)**: Both are rare projectile weapons. Tgun wins at range with sustained 250 DPS and nearly free feedback. Flak wins in burst with burn DOT but eats feedback 4x faster and at 2/3 the range. Tgun is the reliable workhorse; flak is the aggressive close-range option.
+**Comparison to flak (14/15)**: Both are rare projectile weapons. Tgun wins at range with sustained 250 DPS and nearly free feedback. Flak dominates burst with 900 DPS + burn DOT but eats feedback 4x faster and at 2/3 the range. Tgun is the reliable workhorse; flak is the aggressive close-range option.
 
 **The bridge to elites**: At 250 DPS, tgun is still 5x below inferno (1250) and 3.6x below disintegrate (900). But unlike channeled elites, tgun doesn't self-destruct from feedback. The 3-point gap to rare cap means room for buffs — secondary effects (armor shred, slow) or raw damage increases.
 
@@ -373,13 +374,14 @@ Fire-themed shotgun blast. Fires a tight cone of 5 burning pellets — high burs
 | Tier | Rare |
 | Feedback cost | 4 per shot |
 | Fire rate | 250ms between shots (4 shots/sec) |
-| Pellets per shot | 5 |
-| Damage per pellet | 8 |
-| Damage per shot | 40 (all pellets hit) |
-| Effective DPS | 160 (point blank, all pellets) |
+| Pellets per shot | 9 |
+| Damage per pellet | 25 |
+| Damage per shot | 225 (all pellets hit) |
+| Effective DPS | 900 (point blank, all pellets) |
+| Speed variation | +/-10% per pellet (cloud-of-shot spread) |
 | Burn DOT | 10 DPS per stack, 3s duration, 3 max stacks |
 | Burn DPS (sustained) | Up to 30 (3 stacks maintained) |
-| Combined DPS | ~190 (point blank + burn) |
+| Combined DPS | ~930 (point blank + burn) |
 | Spread half-angle | 7.5° (15° total cone) |
 | Projectile speed | 3500 units/s |
 | Projectile TTL | 667ms |
@@ -390,24 +392,70 @@ Fire-themed shotgun blast. Fires a tight cone of 5 burning pellets — high burs
 #### Score Card
 | Axis | Rating | Points | Reasoning |
 |------|--------|--------|-----------|
-| POWER | 7 | 7 | 160 direct DPS × 0.80 cone aim = 128 eDPS + 30 burn DOT = ~158 eDPS. Burn persistence adds value beyond raw DPS — damage continues after disengaging. |
+| POWER | 12 | 12 | 900 direct DPS × 0.80 cone aim = 720 eDPS + 30 burn DOT = ~750 eDPS. Burn persistence adds value beyond raw DPS — damage continues after disengaging. |
 | SUSTAIN | +1 | +1 | 4 fb/shot (16/sec sustained). Burns through feedback fast — natural burst windows. Manageable but taxing. |
 | REACH | +1 | +1 | 2333u medium range + cone spread forgives aim, but must close distance to be effective — risk exposure. |
-| **TOTAL** | | **9** | |
+| **TOTAL** | | **14** | |
 
 #### Balance Notes
-Sub_flak scores 9 against a Rare cap of 15 — **6 under cap**, leaving significant room to grow as we tune fire zone difficulty. The 16 fb/sec drain means sustained fire burns through feedback fast, creating natural burst windows.
+Sub_flak scores 14 against a Rare cap of 15 — **1 under cap**, nearly at ceiling as fire zone difficulty is tuned. The 16 fb/sec drain means sustained fire burns through feedback fast, creating natural burst windows.
 
-**Comparison to sub_tgun (9)**: Same score, different tradeoffs. Tgun wins at range with 250 sustained DPS and negligible feedback drain. Flak wins in close quarters with burn DOT that persists after repositioning, but costs 4x the feedback. The 15° cone spread forgives aim, but the short range means eating enemy fire.
+**Comparison to sub_tgun (9)**: Flak now significantly outbursts tgun. Tgun wins at range with 250 sustained DPS and negligible feedback drain. Flak dominates close quarters with 900 direct DPS + burn DOT, but costs 4x the feedback and has 2/3 the range. The 15° cone spread forgives aim, but the short range means eating enemy fire.
 
-**Comparison to sub_pea (7) and sub_mgun (7)**: Flak outclasses starters in DPS (160 vs 100) plus burn DOT, but the feedback cost and range tax are real constraints. With the Rare cap at 15, flak has room for buffs (more pellets, wider cone, longer burn) as fire zone tuning evolves.
+**Comparison to sub_pea (7) and sub_mgun (7)**: Flak heavily outclasses starters in DPS (900 vs 100) plus burn DOT. The feedback cost and range tax are the balancing constraints.
 
 **Burn DOT uniqueness**: Flak is the first weapon to apply persistent damage. Even if the player disengages after a burst, burn ticks continue for 3s. At 3 stacks (30 DPS), that's 90 total damage over the DOT duration — nearly a full extra shot's worth of damage that requires no aim. This rewards aggressive play patterns.
 
 **Synergies**:
 - **Flak + Egress**: Dash in, point-blank burst, dash out. I-frames on approach, burn continues after retreat.
-- **Flak + Stealth**: 5x ambush multiplier on 5 pellets = 200 damage in one shot. Plus burn DOT. Devastating opener.
+- **Flak + Stealth**: 5x ambush multiplier on 9 pellets = 1125 damage in one shot. Plus burn DOT. Devastating opener.
 - **Flak + Gravwell**: Pull enemies close → shotgun blast → burn stacks on clustered targets. The close-range fantasy realized.
+
+---
+
+### sub_ember — Projectile (Instant, Normal)
+
+#### Design Identity
+Fire-themed projectile with AOE ignite. Every impact (enemy or wall) splashes burn to nearby enemies in a 100-unit radius. Low single-target DPS, but excels at spreading burn DOT across groups. The fire hunter's area ignition tool.
+
+#### Stat Block
+| Attribute | Value |
+|-----------|-------|
+| Category | Instant |
+| Tier | Normal |
+| Feedback cost | 3 per shot |
+| Fire rate | 300ms between shots (3.33 shots/sec) |
+| Damage per hit | 15 |
+| Theoretical DPS | 50 |
+| Effective DPS | 35 (×0.70 aimed) |
+| AOE ignite radius | 100 units on every impact |
+| Burn DOT | 10 DPS per stack, 3s duration, 3 max stacks |
+| Burn DPS (sustained) | Up to 30 per target (3 stacks maintained) |
+| Projectile speed | 3500 units/s |
+| Projectile TTL | 600ms |
+| Effective range | ~2100 units |
+| Pool size | 16 |
+| Activation | Mouse left (hold to fire) |
+
+#### Score Card
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 6 | 6 | 50 theoretical DPS × 0.70 aimed = 35 eDPS. Weak single-target, but 100u AOE ignite on every impact spreads burn to groups. Against 3 targets, each shot applies 10 DPS burn × 3 = 30 DPS group DOT on top of direct damage. Group scaling + burn persistence push above raw eDPS. |
+| SUSTAIN | +3 | +3 | 3 fb/shot (~10 fb/sec). Very cheap — fire at will. Nearly as free as pea/mgun. |
+| REACH | +1 | +1 | 2100u range with aimed fire. 100u AOE ignite splash forgives positioning — don't need to hit the exact target to burn nearby enemies. Medium range + splash delivery. |
+| **TOTAL** | | **10** | |
+
+#### Balance Notes
+Sub_ember scores 10 against a Normal cap of 10 — **at cap**. The identity is group burn application, not single-target DPS. Direct damage (35 eDPS) is lower than pea (55 eDPS), but the 100u AOE ignite on every impact makes it scale with target density.
+
+**Comparison to sub_pea (7) and sub_mgun (7)**: Ember has lower direct DPS (35 vs 55/70), but every shot splashes burn to nearby enemies. Against solo targets, pea/mgun are better. Against groups, ember pulls ahead through burn stacking.
+
+**Comparison to sub_flak (14)**: Flak delivers massive burst DPS (900 point blank) with burn. Ember fires slower individual shots at lower damage but spreads burn further via the 100u AOE splash. Flak is the close-range burst weapon; ember is the mid-range burn spreader. Flak is Rare (cap 15), ember is Normal (cap 10) — the power gap is intentional.
+
+**Synergies**:
+- **Ember + Gravwell**: Pull enemies together → ember shots splash burn to the whole cluster. The 100u ignite radius covers a gravwell's pull zone.
+- **Ember + Stealth**: 5x ambush multiplier on 15 damage = 75 damage opener + AOE ignite on the group. Good initiation tool.
+- **Ember + Flak**: Different fire weapons for different situations. Ember spreads burn at range; flak melts at close range. Toggle between them based on engagement distance.
 
 ---
 
@@ -855,7 +903,8 @@ The 3-axis system captures the tradeoff clearly: aegis has massively more POWER 
 | sub_mgun | Normal | 4 | +3 | 0 | 7 | 10 | -3 under (same eDPS as pea, room to differentiate) |
 | sub_mine | Normal | 5 | +2 | −1 | 6 | 10 | -4 under (area denial utility, unreliable DPS) |
 | sub_tgun | Rare | 6 | +3 | +3 | 12 | 15 | -3 under (best sustained DPS/feedback ratio) |
-| sub_flak | Rare | 7 | +1 | +1 | 9 | 15 | -6 under (fire shotgun + burn DOT, room to grow) |
+| sub_flak | Rare | 12 | +1 | +1 | 14 | 15 | -1 under (fire shotgun + burn DOT, nearly at cap) |
+| sub_ember | Normal | 6 | +3 | +1 | 10 | 10 | At cap (AOE ignite on impact, group burn applicator) |
 | sub_boost | Elite | 11 | +3 | +3 | 17 | 20 | -3 under (pure mobility, no damage) |
 | sub_sprint | Normal | 5 | +2 | +1 | 8 | 10 | -2 under (timed boost, 25% uptime) |
 | sub_inferno | Elite | 14 | +3 | +2 | 19 | 20 | -1 under (highest eDPS + burn DOT) |
@@ -1009,7 +1058,7 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 | POWER | Effective DPS | Examples |
 |-------|--------------|---------|
 | 3–4 | <100 eDPS | Starter weapons (pea 55, mgun 70) |
-| 5–6 | 100–300 eDPS | Upgraded weapons (tgun 212, flak 152+burn) |
+| 5–6 | 100–300 eDPS | Upgraded weapons (tgun 212, flak 750+burn) |
 | 7 | + special properties | Burn persistence, DOT, burst combo |
 | 8–11 | 500–1000 eDPS | Would-be elite single-target |
 | 12–14 | 1000+ eDPS or group-wipe | Elite channeled weapons (inferno, disintegrate) |
@@ -1058,7 +1107,7 @@ Applied to theoretical DPS BEFORE tiering POWER. This bakes aim difficulty into 
 
 ### Master Verification Table
 
-All 16 skills — every score unchanged from the old system, now expressed as 3-axis decomposition.
+All 17 skills — every score expressed as 3-axis decomposition.
 
 | Skill | POWER | SUSTAIN | REACH | Total | Cap | ✓ |
 |-------|-------|---------|-------|-------|-----|---|
@@ -1066,7 +1115,8 @@ All 16 skills — every score unchanged from the old system, now expressed as 3-
 | sub_mgun | 4 | +3 | 0 | 7 | 10 | ✓ |
 | sub_mine | 5 | +2 | −1 | 6 | 10 | ✓ |
 | sub_tgun | 6 | +3 | +3 | 12 | 15 | ✓ |
-| sub_flak | 7 | +1 | +1 | 9 | 15 | ✓ |
+| sub_flak | 12 | +1 | +1 | 14 | 15 | ✓ |
+| sub_ember | 6 | +3 | +1 | 10 | 10 | ✓ |
 | sub_boost | 11 | +3 | +3 | 17 | 20 | ✓ |
 | sub_sprint | 5 | +2 | +1 | 8 | 10 | ✓ |
 | sub_inferno | 14 | +3 | +2 | 19 | 20 | ✓ |

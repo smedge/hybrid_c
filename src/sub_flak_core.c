@@ -9,9 +9,9 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-/* Tuning: 5 pellets, 15° cone, 250ms cooldown, 667ms range (2/3 of tgun) */
+/* Tuning: 9 pellets, 15° cone, 250ms cooldown, 667ms range (2/3 of tgun) */
 static const SubFlakConfig flakConfig = {
-	.pellets_per_shot = 5,
+	.pellets_per_shot = 9,
 	.spread_half_angle_deg = 7.5,
 	.fire_cooldown_ms = 250,
 	.feedback_cost = 4.0f,
@@ -19,8 +19,8 @@ static const SubFlakConfig flakConfig = {
 		.fire_cooldown_ms = 250, /* unused by flak — cooldown managed externally */
 		.velocity = 3500.0,
 		.ttl_ms = 667,
-		.pool_size = 32,
-		.damage = 8.0,
+		.pool_size = 48,
+		.damage = 25.0,
 		/* Orange fire visuals */
 		.color_r = 1.0f, .color_g = 0.5f, .color_b = 0.1f,
 		.trail_thickness = 2.5f,
@@ -68,12 +68,19 @@ bool SubFlak_try_fire(SubProjectilePool *pool, const SubFlakConfig *cfg,
 	double base_rad = heading_deg * M_PI / 180.0;
 	double spread_rad = cfg->spread_half_angle_deg * M_PI / 180.0;
 
-	/* Spawn pellets with random offsets within the cone */
+	/* Spawn pellets with random offsets within the cone + slight speed variation */
 	for (int i = 0; i < cfg->pellets_per_shot; i++) {
-		/* Random offset: -spread_rad to +spread_rad */
 		double offset = ((double)(rand() % 10000) / 10000.0 - 0.5) * 2.0 * spread_rad;
 		double pellet_rad = base_rad + offset;
 		SubProjectile_spawn_pellet(pool, origin, pellet_rad);
+	}
+	/* Apply per-pellet speed variation to freshly spawned pellets (ticksLived == 0) */
+	for (int i = 0; i < pool->poolSize; i++) {
+		SubProjectile *p = &pool->projectiles[i];
+		if (p->active && p->ticksLived == 0) {
+			/* +/-10% speed variation for a cloud-of-shot feel */
+			p->speedMult = 0.9 + (double)(rand() % 200) / 1000.0;
+		}
 	}
 
 	Audio_play_sample(&sampleFire);

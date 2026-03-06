@@ -355,6 +355,8 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 		h->killedByPlayer = true;
 		Audio_play_sample(&sampleDeath);
 	}
+	if (h->alive && Burn_is_active(&h->burn))
+		Burn_register(&h->burn, pl->position);
 
 	if (h->alive)
 		Enemy_check_stealth_proximity(pl->position, h->facing);
@@ -594,7 +596,6 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 	Render_point(&placeable->position, 4.0, &bodyColor);
 
 	Enemy_render_resist_indicator(placeable->position);
-	Burn_render(&h->burn, placeable->position);
 }
 
 void Hunter_render_bloom_source(void)

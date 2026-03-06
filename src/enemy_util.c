@@ -16,6 +16,8 @@
 #include "sub_tgun.h"
 #include "sub_flak.h"
 #include "sub_flak_core.h"
+#include "sub_ember.h"
+#include "sub_ember_core.h"
 #include "fragment.h"
 #include "progression.h"
 #include "skillbar.h"
@@ -52,6 +54,20 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 		const SubFlakConfig *flak_cfg = SubFlak_get_config();
 		r.damage += flak_hits * flak_cfg->proj.damage * mul;
 		r.burn_hits = flak_hits;
+		r.hit = true;
+	}
+	/* Ember projectile direct hits */
+	int ember_hits = Sub_Ember_check_hit_burn(hitBox);
+	if (ember_hits > 0) {
+		const SubEmberConfig *ember_cfg = SubEmber_get_config();
+		r.damage += ember_hits * ember_cfg->proj.damage * mul;
+		r.burn_hits += ember_hits;
+		r.hit = true;
+	}
+	/* Ember AOE ignite — nearby enemies catch fire on impact */
+	int ember_splash = SubEmber_check_burst(hitBox);
+	if (ember_splash > 0) {
+		r.burn_hits += ember_splash;
 		r.hit = true;
 	}
 	double mine_dmg = Sub_Mine_check_hit(hitBox);
@@ -238,6 +254,7 @@ bool Enemy_check_any_nearby(Position pos, double radius)
 		|| Sub_Mgun_check_nearby(pos, radius)
 		|| Sub_Tgun_check_nearby(pos, radius)
 		|| Sub_Flak_check_nearby(pos, radius)
+		|| Sub_Ember_check_nearby(pos, radius)
 		|| Sub_Inferno_check_nearby(pos, radius)
 		|| Sub_Disintegrate_check_nearby(pos, radius);
 }

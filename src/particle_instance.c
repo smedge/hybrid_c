@@ -8,11 +8,11 @@
 static GLuint piShaderProgram;
 static GLint piLocProjection;
 static GLint piLocView;
-static GLint piLocSoftCircle;
+static GLint piLocShape;
 static GLuint piVAO;
 static GLuint piTemplateVBO;
 static GLuint piInstanceVBO;
-static bool piInitialized;
+static int piInitialized;
 
 /* Embedded shaders */
 static const char *pi_vert_src =
@@ -44,12 +44,25 @@ static const char *pi_frag_src =
 	"#version 330 core\n"
 	"in vec2 v_uv;\n"
 	"in vec4 v_color;\n"
-	"uniform bool u_soft_circle;\n"
+	"uniform int u_shape;\n"
 	"out vec4 fragColor;\n"
 	"void main() {\n"
-	"    if (u_soft_circle) {\n"
+	"    if (u_shape == 1) {\n"
 	"        float d = length(v_uv);\n"
 	"        float alpha = smoothstep(1.0, 0.2, d);\n"
+	"        fragColor = vec4(v_color.rgb, v_color.a * alpha);\n"
+	"    } else if (u_shape == 2) {\n"
+	/* Flame teardrop: +X is the tip direction (caller rotates 90° for upward).
+	   UV goes from -1 to +1. We remap X so -1=base, +1=tip. */
+	"        float nx = (v_uv.x + 1.0) * 0.5;\n"                       /* 0=base, 1=tip */
+	"        float inv = max(1.0 - nx, 0.0);\n"
+	"        float envelope = inv * sqrt(inv);\n"                     /* (1-nx)^1.5 — sharp pinch */
+	"        float dy = abs(v_uv.y) / max(envelope, 0.001);\n"
+	"        float edge = smoothstep(1.0, 0.4, dy);\n"               /* crisper horizontal edge */
+	"        float tip = inv * inv;\n"                                /* (1-nx)^2 aggressive tip fade */
+	"        float core = smoothstep(0.6, 0.0, nx) * 0.25;\n"        /* subtle bright base */
+	"        float alpha = (edge * tip) + core;\n"
+	"        alpha = clamp(alpha, 0.0, 1.0);\n"
 	"        fragColor = vec4(v_color.rgb, v_color.a * alpha);\n"
 	"    } else {\n"
 	"        fragColor = v_color;\n"
@@ -76,7 +89,7 @@ static GLuint pi_compile_shader(GLenum type, const char *source)
 void ParticleInstance_initialize(void)
 {
 	if (piInitialized) return;
-	piInitialized = true;
+	piInitialized = 1;
 
 	/* Compile & link shader program */
 	GLuint vert = pi_compile_shader(GL_VERTEX_SHADER, pi_vert_src);
@@ -100,7 +113,7 @@ void ParticleInstance_initialize(void)
 
 	piLocProjection = glGetUniformLocation(piShaderProgram, "u_projection");
 	piLocView = glGetUniformLocation(piShaderProgram, "u_view");
-	piLocSoftCircle = glGetUniformLocation(piShaderProgram, "u_soft_circle");
+	piLocShape = glGetUniformLocation(piShaderProgram, "u_shape");
 
 	/* Template quad: unit quad from (-1,-1) to (1,1), 6 vertices */
 	float quad[] = {
@@ -169,11 +182,11 @@ void ParticleInstance_cleanup(void)
 	glDeleteVertexArrays(1, &piVAO);
 	glDeleteBuffers(1, &piTemplateVBO);
 	glDeleteBuffers(1, &piInstanceVBO);
-	piInitialized = false;
+	piInitialized = 0;
 }
 
 void ParticleInstance_draw(const ParticleInstanceData *data, int count,
-	const Mat4 *projection, const Mat4 *view, bool soft_circle)
+	const Mat4 *projection, const Mat4 *view, int shape)
 {
 	if (count <= 0) return;
 
@@ -182,7 +195,7 @@ void ParticleInstance_draw(const ParticleInstanceData *data, int count,
 	glUseProgram(piShaderProgram);
 	glUniformMatrix4fv(piLocProjection, 1, GL_FALSE, projection->m);
 	glUniformMatrix4fv(piLocView, 1, GL_FALSE, view->m);
-	glUniform1i(piLocSoftCircle, soft_circle ? 1 : 0);
+	glUniform1i(piLocShape, shape);
 
 	glBindVertexArray(piVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, piInstanceVBO);
