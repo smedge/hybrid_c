@@ -1,6 +1,7 @@
 # Zone: The Crucible
 name The Crucible
 size 1024
+theme fire
 bgcolor 0 20 20 20
 bgcolor 1 50 50 50
 bgcolor 2 128 20 20

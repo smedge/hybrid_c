@@ -1,5 +1,6 @@
 #include "seeker.h"
 #include "sub_dash_core.h"
+#include "sub_blaze_core.h"
 #include "enemy_util.h"
 #include "enemy_variant.h"
 #include "burn.h"
@@ -170,6 +171,12 @@ static void activate_spark(Position pos, bool shielded) {
 	sparks[slot].ticksLeft = SPARK_DURATION;
 }
 
+/* Fire seeker corridor (shared across all fire seekers) */
+#define SEEKER_CORRIDOR_MAX 192
+static BlazeCorridorSegment seekerCorridorBuf[SEEKER_CORRIDOR_MAX];
+static SubBlazeCore seekerCorridorCore;
+static bool seekerCorridorInitialized;
+
 /* Audio — entity sounds only (damage/death/respawn) */
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
@@ -242,6 +249,12 @@ void Seeker_initialize(Position position, ZoneTheme theme)
 		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal, Seeker_alert_nearby, Seeker_apply_emp};
 		EnemyRegistry_register(cb);
 	}
+
+	/* Init fire corridor once when first fire seeker spawns */
+	if (theme == THEME_FIRE && !seekerCorridorInitialized) {
+		SubBlaze_init(&seekerCorridorCore, seekerCorridorBuf, SEEKER_CORRIDOR_MAX);
+		seekerCorridorInitialized = true;
+	}
 }
 
 void Seeker_cleanup(void)
@@ -255,6 +268,11 @@ void Seeker_cleanup(void)
 	highestUsedIndex = 0;
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
+
+	if (seekerCorridorInitialized) {
+		SubBlaze_deactivate_all(&seekerCorridorCore);
+		seekerCorridorInitialized = false;
+	}
 
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
@@ -511,6 +529,11 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			s->aiState = SEEKER_DASHING;
 			s->dashStartPos = pl->position;
 			SubDash_try_activate(&s->dashCore, &seekerDashCfg, s->pendingDirX, s->pendingDirY);
+			/* Fire seeker: spawn initial corridor segment at dash origin */
+			if (s->theme == THEME_FIRE && seekerCorridorInitialized) {
+				seekerCorridorCore.spawn_timer = 0;
+				SubBlaze_spawn_segment(&seekerCorridorCore, pl->position);
+			}
 		}
 		break;
 	}
@@ -536,6 +559,16 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		pl->position.x = newX;
 		pl->position.y = newY;
 		s->facing = atan2(s->dashCore.dirX, s->dashCore.dirY) * 180.0 / PI;
+
+		/* Fire seeker: deposit corridor segments during dash */
+		if (s->theme == THEME_FIRE && seekerCorridorInitialized) {
+			const SubBlazeConfig *blazeCfg = SubBlaze_get_config();
+			seekerCorridorCore.spawn_timer += (int)ticks;
+			while (seekerCorridorCore.spawn_timer >= blazeCfg->segment_spawn_ms) {
+				seekerCorridorCore.spawn_timer -= blazeCfg->segment_spawn_ms;
+				SubBlaze_spawn_segment(&seekerCorridorCore, pl->position);
+			}
+		}
 
 		/* Check hit on player during dash */
 		if (!Ship_is_destroyed() && !s->dashCore.hitThisDash) {
@@ -876,6 +909,8 @@ void Seeker_reset_all(void)
 	}
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
+	if (seekerCorridorInitialized)
+		SubBlaze_deactivate_all(&seekerCorridorCore);
 }
 
 bool Seeker_find_wounded(Position from, double range, double hp_threshold, Position *out_pos, int *out_index)
@@ -977,4 +1012,44 @@ void Seeker_apply_emp(Position center, double half_size, unsigned int duration_m
 int Seeker_get_count(void)
 {
 	return highestUsedIndex;
+}
+
+/* --- Fire seeker corridor public API --- */
+
+void Seeker_update_corridors(unsigned int ticks)
+{
+	if (seekerCorridorInitialized)
+		SubBlaze_update_corridor(&seekerCorridorCore, SubBlaze_get_config(), ticks);
+}
+
+void Seeker_check_corridor_burn_player(void)
+{
+	if (!seekerCorridorInitialized || Ship_is_destroyed())
+		return;
+
+	Position shipPos = Ship_get_position();
+	Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
+	Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
+
+	int hits = SubBlaze_check_corridor_burn(&seekerCorridorCore, SubBlaze_get_config(), shipWorld);
+	for (int i = 0; i < hits; i++)
+		Burn_apply_to_player(BURN_DURATION_MS);
+}
+
+void Seeker_render_corridors(void)
+{
+	if (seekerCorridorInitialized)
+		SubBlaze_render_corridor(&seekerCorridorCore, SubBlaze_get_config());
+}
+
+void Seeker_render_corridor_bloom_source(void)
+{
+	if (seekerCorridorInitialized)
+		SubBlaze_render_corridor_bloom_source(&seekerCorridorCore, SubBlaze_get_config());
+}
+
+void Seeker_render_corridor_light_source(void)
+{
+	if (seekerCorridorInitialized)
+		SubBlaze_render_corridor_light_source(&seekerCorridorCore, SubBlaze_get_config());
 }

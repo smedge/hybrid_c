@@ -602,6 +602,8 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
 	Sub_Blaze_update_corridor(ticks);
+	Seeker_update_corridors(ticks);
+	Seeker_check_corridor_burn_player();
 	SubEmber_clear_bursts();
 	Burn_update_embers(ticks);
 
@@ -710,6 +712,7 @@ void Mode_Gameplay_render(void)
 		Sub_Emp_render_light_source();
 		Sub_Resist_render_light_source();
 		Sub_Blaze_render_corridor_light_source();
+		Seeker_render_corridor_light_source();
 		Mine_render_light_source();
 		Hunter_render_light_source();
 		Seeker_render_light_source();
@@ -738,6 +741,7 @@ void Mode_Gameplay_render(void)
 		god_mode_render_cursor();
 	}
 	Sub_Blaze_render_corridor();
+	Seeker_render_corridors();
 	Render_flush(&world_proj, &view);
 	Burn_render_all();
 
@@ -785,6 +789,7 @@ void Mode_Gameplay_render(void)
 		Fragment_render_bloom_source();
 		Burn_render_bloom_source();
 		Sub_Blaze_render_corridor_bloom_source();
+		Seeker_render_corridor_bloom_source();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bloom, draw_w, draw_h);
 

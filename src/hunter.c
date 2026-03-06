@@ -1,5 +1,7 @@
 #include "hunter.h"
 #include "sub_projectile_core.h"
+#include "sub_ember_core.h"
+#include "sub_flak_core.h"
 #include "enemy_util.h"
 #include "enemy_variant.h"
 #include "enemy_feedback.h"
@@ -68,6 +70,12 @@ typedef enum {
 	HUNTER_DEAD
 } HunterAIState;
 
+typedef enum {
+	HUNTER_WPN_BASE,
+	HUNTER_WPN_EMBER,
+	HUNTER_WPN_FLAK
+} HunterWeaponType;
+
 typedef struct {
 	bool alive;
 	double hp;
@@ -95,6 +103,9 @@ typedef struct {
 	/* Theme variant */
 	ZoneTheme theme;
 
+	/* Weapon type (fire variants use ember/flak) */
+	HunterWeaponType weaponType;
+
 	/* Status effects */
 	BurnState burn;
 } HunterState;
@@ -121,6 +132,11 @@ static int highestUsedIndex = 0;
 
 /* Projectile pool (shared across all hunters) */
 static SubProjectilePool hunterProjPool;
+
+/* Fire weapon pools (shared across all fire-themed hunters) */
+static SubProjectilePool fireEmberPool;
+static SubProjectilePool fireFlakPool;
+static bool firePoolsInitialized;
 
 static const SubProjectileConfig hunterProjCfg = {
 	.fire_cooldown_ms = 0,
@@ -207,6 +223,10 @@ void Hunter_initialize(Position position, ZoneTheme theme)
 	h->deathTimer = 0;
 	h->respawnTimer = 0;
 	h->theme = theme;
+	h->weaponType = HUNTER_WPN_BASE;
+	if (theme == THEME_FIRE) {
+		h->weaponType = (rand() % 10 == 0) ? HUNTER_WPN_FLAK : HUNTER_WPN_EMBER;
+	}
 	EnemyFeedback_init(&h->fb);
 	pick_wander_target(h);
 
@@ -236,6 +256,15 @@ void Hunter_initialize(Position position, ZoneTheme theme)
 		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal, Hunter_alert_nearby, Hunter_apply_emp};
 		EnemyRegistry_register(cb);
 	}
+
+	/* Init fire pools once when first fire hunter spawns */
+	if (theme == THEME_FIRE && !firePoolsInitialized) {
+		SubProjectile_pool_init(&fireEmberPool, 64);
+		SubProjectile_pool_init(&fireFlakPool, 48);
+		SubEmber_initialize_audio();
+		SubFlak_initialize_audio();
+		firePoolsInitialized = true;
+	}
 }
 
 void Hunter_cleanup(void)
@@ -249,6 +278,13 @@ void Hunter_cleanup(void)
 	highestUsedIndex = 0;
 
 	SubProjectile_deactivate_all(&hunterProjPool);
+	if (firePoolsInitialized) {
+		SubProjectile_deactivate_all(&fireEmberPool);
+		SubProjectile_deactivate_all(&fireFlakPool);
+		SubEmber_cleanup_audio();
+		SubFlak_cleanup_audio();
+		firePoolsInitialized = false;
+	}
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 
@@ -289,6 +325,12 @@ void Hunter_update_projectiles(unsigned int ticks)
 {
 	SubProjectile_update(&hunterProjPool, &hunterProjCfg, ticks);
 
+	/* Update fire pools */
+	if (firePoolsInitialized) {
+		SubProjectile_update(&fireEmberPool, &SubEmber_get_config()->proj, ticks);
+		SubProjectile_update(&fireFlakPool, &SubFlak_get_config()->proj, ticks);
+	}
+
 	/* Check player hit */
 	if (!Ship_is_destroyed()) {
 		Position shipPos = Ship_get_position();
@@ -297,6 +339,23 @@ void Hunter_update_projectiles(unsigned int ticks)
 		double dmg = SubProjectile_check_hit(&hunterProjPool, &hunterProjCfg, shipWorld);
 		if (dmg > 0)
 			PlayerStats_damage(dmg);
+
+		/* Ember → player (damage + burn) */
+		if (firePoolsInitialized) {
+			double ember_dmg = SubProjectile_check_hit(&fireEmberPool, &SubEmber_get_config()->proj, shipWorld);
+			if (ember_dmg > 0) {
+				PlayerStats_damage(ember_dmg);
+				Burn_apply_to_player(BURN_DURATION_MS);
+			}
+
+			/* Flak → player (multi-hit, each pellet burns) */
+			SubProjectileHitResult flak_r = SubProjectile_check_hit_multi(&fireFlakPool, &SubFlak_get_config()->proj, shipWorld);
+			if (flak_r.hits > 0) {
+				PlayerStats_damage(flak_r.damage);
+				for (int i = 0; i < flak_r.hits; i++)
+					Burn_apply_to_player(BURN_DURATION_MS);
+			}
+		}
 	}
 
 	/* Body-hit spark decay */
@@ -474,15 +533,27 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 
 		h->burstTimer -= ticks;
 		if (h->burstTimer <= 0 && h->burstShotsFired < BURST_COUNT) {
-			SubProjectile_try_fire(&hunterProjPool, &hunterProjCfg, pl->position, shipPos);
+			switch (h->weaponType) {
+			case HUNTER_WPN_EMBER:
+				SubProjectile_try_fire(&fireEmberPool, &SubEmber_get_config()->proj, pl->position, shipPos);
+				break;
+			case HUNTER_WPN_FLAK:
+				SubFlak_try_fire(&fireFlakPool, SubFlak_get_config(), pl->position, shipPos);
+				break;
+			default:
+				SubProjectile_try_fire(&hunterProjPool, &hunterProjCfg, pl->position, shipPos);
+				break;
+			}
 			h->burstShotsFired++;
 			h->burstTimer = BURST_INTERVAL;
 		}
 
-		/* Burst complete */
+		/* Burst complete — apply attack cadence multiplier */
 		if (h->burstShotsFired >= BURST_COUNT) {
 			h->aiState = HUNTER_CHASING;
-			h->cooldownTimer = BURST_COOLDOWN;
+			float cadence = hunterVariants[h->theme].attack_cadence_mult;
+			if (cadence <= 0.0f) cadence = 1.0f;
+			h->cooldownTimer = (int)(BURST_COOLDOWN * cadence);
 		}
 
 		/* De-aggro: out of range, lost line of sight, ship dead, or stealthed */
@@ -545,6 +616,10 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 	int idx = (int)((HunterState *)state - hunters);
 	if (idx == 0) {
 		SubProjectile_render(&hunterProjPool, &hunterProjCfg);
+		if (firePoolsInitialized) {
+			SubProjectile_render(&fireEmberPool, &SubEmber_get_config()->proj);
+			SubProjectile_render(&fireFlakPool, &SubFlak_get_config()->proj);
+		}
 
 		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 			if (sparks[si].active) {
@@ -619,6 +694,10 @@ void Hunter_render_bloom_source(void)
 
 	/* Projectile bloom */
 	SubProjectile_render_bloom(&hunterProjPool, &hunterProjCfg);
+	if (firePoolsInitialized) {
+		SubProjectile_render_bloom(&fireEmberPool, &SubEmber_get_config()->proj);
+		SubProjectile_render_bloom(&fireFlakPool, &SubFlak_get_config()->proj);
+	}
 
 	/* Body-hit spark bloom */
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
@@ -633,6 +712,10 @@ void Hunter_render_bloom_source(void)
 void Hunter_render_light_source(void)
 {
 	SubProjectile_render_light(&hunterProjPool, &hunterProjCfg);
+	if (firePoolsInitialized) {
+		SubProjectile_render_light(&fireEmberPool, &SubEmber_get_config()->proj);
+		SubProjectile_render_light(&fireFlakPool, &SubFlak_get_config()->proj);
+	}
 
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 		if (sparks[si].active) {
@@ -658,6 +741,10 @@ void Hunter_deaggro_all(void)
 
 	/* Kill all in-flight hunter projectiles */
 	SubProjectile_deactivate_all(&hunterProjPool);
+	if (firePoolsInitialized) {
+		SubProjectile_deactivate_all(&fireEmberPool);
+		SubProjectile_deactivate_all(&fireFlakPool);
+	}
 }
 
 void Hunter_reset_all(void)
@@ -679,6 +766,10 @@ void Hunter_reset_all(void)
 	}
 
 	SubProjectile_deactivate_all(&hunterProjPool);
+	if (firePoolsInitialized) {
+		SubProjectile_deactivate_all(&fireEmberPool);
+		SubProjectile_deactivate_all(&fireFlakPool);
+	}
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 }

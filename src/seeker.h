@@ -22,4 +22,11 @@ void Seeker_alert_nearby(Position origin, double radius, Position threat);
 void Seeker_apply_emp(Position center, double half_size, unsigned int duration_ms);
 int Seeker_get_count(void);
 
+/* Fire seeker corridor */
+void Seeker_update_corridors(unsigned int ticks);
+void Seeker_check_corridor_burn_player(void);
+void Seeker_render_corridors(void);
+void Seeker_render_corridor_bloom_source(void);
+void Seeker_render_corridor_light_source(void);
+
 #endif

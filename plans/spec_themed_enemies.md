@@ -188,7 +188,7 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 
 | Base Sub | Fire Sub | Name | Description |
 |----------|----------|------|-------------|
-| sub_mend | **sub_cauterize** | Cauterize | Heals the target (smaller than mend) + **cauterizes** — grants brief fire immunity AND creates a burn aura that damages nearby enemies for ~3s. Healing through fire. When enemies use it: defender cauterizes a wounded ally, ally gets fire immunity, player nearby gets burned. When player uses it: self-heal + burn aura hurts nearby enemies + brief fire immunity. *(Narrative: "Healing beam cauterizes — healed allies gain brief fire immunity.")* |
+| sub_mend | **sub_cauterize** | Cauterize | Heals one target (smaller than mend) + **cauterizes** — the healed target AND all allies within 100 units of it get burn cleansed + brief burn immunity (~3s). Also creates a burn aura around the target that damages nearby enemies for ~3s. When enemies use it: defender cauterizes a wounded ally, that ally + nearby allies get burn cleansed and fire immunity, player nearby gets burned by the aura. When player uses it: self-heal + burn cleanse (100-unit radius catches nearby friendlies if co-op ever exists) + brief burn immunity + burn aura hurts nearby enemies. *(Narrative: "Cauterization seals the wound — fire can't take hold.")* |
 | sub_aegis | **sub_immolate** | Immolation Shield | Shorter duration than aegis but the shield **denies area around the shielded target** — anything in melee range takes burn DOT. Attackers at range take reflected fire. The shield IS area denial — you can't stand near an immolated target. |
 
 #### Stealth/Utility Subs
