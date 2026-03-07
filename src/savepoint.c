@@ -35,7 +35,7 @@ static const char *frag_names[] = {
 	"mine", "boost", "mgun", "egress", "mend", "aegis", "gravwell", "stealth",
 	"inferno", "disintegrate", "tgun", "sprint", "emp", "resist",
 	/* Fire zone */
-	"ember", "flak", "blaze", "scorch", "pyre", "cauterize", "immolate",
+	"ember", "flak", "blaze", "scorch", "cinder", "cauterize", "immolate",
 	"smolder", "heatwave", "temper"
 };
 
@@ -53,6 +53,7 @@ static int find_frag_by_name_compat(const char *name)
 	if (strcmp(name, "seeker") == 0)    return FRAG_TYPE_EGRESS;
 	if (strcmp(name, "stalker") == 0)   return FRAG_TYPE_STEALTH;
 	if (strcmp(name, "corruptor") == 0) return FRAG_TYPE_SPRINT; /* best-effort: assign to sprint */
+	if (strcmp(name, "pyre") == 0)      return FRAG_TYPE_CINDER;
 	return -1;
 }
 

@@ -4,6 +4,7 @@
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
+#include "sub_cinder.h"
 #include "sub_boost.h"
 #include "sub_egress.h"
 #include "sub_mend.h"
@@ -115,6 +116,7 @@ void Ship_initialize()
 	Sub_Pea_initialize(liveEntity);
 	Sub_Mgun_initialize(liveEntity);
 	Sub_Mine_initialize();
+	Sub_Cinder_initialize();
 	Sub_Boost_initialize();
 	Sub_Egress_initialize();
 	Sub_Mend_initialize();
@@ -139,6 +141,7 @@ void Ship_cleanup()
 	Sub_Pea_cleanup();
 	Sub_Mgun_cleanup();
 	Sub_Mine_cleanup();
+	Sub_Cinder_cleanup();
 	Sub_Boost_cleanup();
 	Sub_Egress_cleanup();
 	Sub_Mend_cleanup();
@@ -247,6 +250,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Sub_Pea_deactivate_all();
 			Sub_Mgun_deactivate_all();
 			Sub_Mine_deactivate_all();
+			Sub_Cinder_deactivate_all();
 			Sub_Inferno_deactivate_all();
 			Sub_Disintegrate_deactivate_all();
 			Sub_Gravwell_deactivate_all();
@@ -374,6 +378,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Pea_update(userInput, ticks, placeable);
 		Sub_Mgun_update(userInput, ticks, placeable);
 		Sub_Mine_update(userInput, ticks);
+		Sub_Cinder_update(userInput, ticks);
 		Sub_Mend_update(userInput, ticks);
 		Sub_Aegis_update(userInput, ticks);
 		Sub_Stealth_update(ticks);
@@ -395,6 +400,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Flak_tick(ticks);
 		Sub_Ember_tick(ticks);
 		Sub_Mine_tick(ticks);
+		Sub_Cinder_tick(ticks);
 	}
 }
 
@@ -441,6 +447,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Pea_render();
 	Sub_Mgun_render();
 	Sub_Mine_render();
+	Sub_Cinder_render();
 	Sub_Aegis_render();
 	Sub_Immolate_render();
 	Sub_Inferno_render();
@@ -483,6 +490,7 @@ void Ship_render_bloom_source(void)
 	Sub_Pea_render_bloom_source();
 	Sub_Mgun_render_bloom_source();
 	Sub_Mine_render_bloom_source();
+	Sub_Cinder_render_bloom_source();
 	Sub_Inferno_render_bloom_source();
 	Sub_Gravwell_render_bloom_source();
 	Sub_Tgun_render_bloom_source();

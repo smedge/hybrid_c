@@ -14,7 +14,7 @@ When any ability/mechanic is shared between player subroutines and enemy entitie
 
 **When writing a new player subroutine**: If an enemy already uses this ability with hand-rolled logic, extract the core immediately as part of the implementation. Do not ship duplicated logic.
 
-**Existing cores**: sub_projectile_core, sub_mine_core, sub_dash_core, sub_heal_core, sub_shield_core, sub_emp_core, sub_sprint_core, sub_resist_core
+**Existing cores**: sub_projectile_core, sub_mine_core, sub_cinder_core, sub_dash_core, sub_heal_core, sub_shield_core, sub_emp_core, sub_sprint_core, sub_resist_core
 
 ## Audio Ownership Rule
 

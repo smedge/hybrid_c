@@ -19,6 +19,7 @@ This is a **living document** — updated whenever a skill is added, modified, o
 | sub_pea | Normal | 4 | +3 | 0 | **7** | 10 | -3 under. Precise aim tax. Room to buff. |
 | sub_mgun | Normal | 4 | +3 | 0 | **7** | 10 | -3 under. Same eDPS as pea, spray slightly more forgiving. |
 | sub_mine | Normal | 5 | +2 | −1 | **6** | 10 | -4 under. Area denial utility, not a DPS weapon. |
+| sub_cinder | Normal | 6 | +2 | 0 | **8** | 10 | -2 under. Fire mine + lingering burn pool. |
 | sub_tgun | **Rare** | 6 | +3 | +3 | **12** | 15 | -3 under. Constant stream of death. Best DPS/feedback ratio. |
 | sub_flak | **Rare** | 12 | +1 | +1 | **14** | 15 | -1 under. Fire shotgun + burn DOT. Nearly at cap. |
 | sub_ember | Normal | 6 | +3 | +1 | **10** | 10 | At cap. AOE ignite on impact — group burn applicator. |
@@ -71,7 +72,7 @@ Every subroutine falls into one of three activation categories. This is a fundam
 - **Cooldown is the primary gating mechanism** — short cooldown = spammable, long cooldown = strategic
 - **Budget consideration**: Power is delivered in bursts. The cooldown determines how often those bursts happen. DPS/HPS over time is what matters, not per-hit numbers in isolation.
 
-**Current examples**: sub_pea, sub_mgun, sub_mine, sub_egress, sub_mend, sub_aegis, sub_stealth, sub_gravwell, sub_emp, sub_sprint, sub_resist, sub_blaze, sub_cauterize, sub_immolate
+**Current examples**: sub_pea, sub_mgun, sub_mine, sub_cinder, sub_egress, sub_mend, sub_aegis, sub_stealth, sub_gravwell, sub_emp, sub_sprint, sub_resist, sub_blaze, sub_cauterize, sub_immolate
 
 **Future examples**: AoE blasts, teleports, summon commands, cleanse/purify
 
@@ -637,6 +638,55 @@ The 2-point gap honestly reflects the tradeoff. Aegis's 4 extra seconds of invul
 
 ---
 
+### sub_cinder — Deployable (Instant, Normal)
+
+#### Design Identity
+Fire mine. Detonates on fuse or contact like a regular mine, but the explosion spawns a lingering fire pool (~3.5s, 100u radius) that burns enemies standing in it. The fire zone version of sub_mine — same deployment risk, but trades instant area denial for persistent burn zone control.
+
+#### Stat Block
+| Attribute | Value |
+|-----------|-------|
+| Category | Instant |
+| Tier | Normal |
+| Feedback cost | 15 (on detonation) |
+| Cooldown | 250ms (placement cooldown) |
+| Max mines | 3 |
+| Fuse time | 2000ms (player) / 500ms (enemy) |
+| Explosion damage | 100 |
+| Explosion half-size | 250 units |
+| Self-damage | 100 (if in own blast) |
+| Detonation burn stacks | 2 (applied to enemies in blast) |
+| Fire pool radius | 100 units |
+| Fire pool duration | 3500ms |
+| Fire pool burn interval | 500ms per overlap |
+| Egress detonation | Yes (dash through triggers) |
+| Activation | Space key |
+
+#### Score Card
+| Axis | Rating | Points | Reasoning |
+|------|--------|--------|-----------|
+| POWER | 6 | 6 | 100 mine damage + 2 burn stacks on detonation + lingering fire pool (3.5s burn zone, 100u radius). More total damage than base mine through burn DOT + area denial persistence. Pool applies burn every 500ms to anything standing in it. |
+| SUSTAIN | +2 | +2 | 15 fb/boom, 3-mine pool with 250ms cooldown. Same economy as sub_mine — deploy all 3 cheaply, damage is delayed. |
+| REACH | 0 | 0 | Self-place + fuse delay + self-damage risk (same as mine). Fire pool extends effective time (3.5s zone control after blast) which partially offsets the placement risk, bringing REACH from mine's −1 to 0. |
+| **TOTAL** | | **8** | |
+
+#### Balance Notes
+Sub_cinder scores 8 against a Normal cap of 10 — **2 under cap**. It's the fire zone upgrade to sub_mine: same deployment mechanics, same risks, but the detonation leaves behind a burning zone that extends the mine's utility window.
+
+**Comparison to sub_mine (6, Normal)**: Both are space-key deployables with identical deployment mechanics:
+- **Mine**: 100 blast damage, instant area denial, gone after explosion. Budget 6.
+- **Cinder**: 100 blast damage + 2 burn stacks + 3.5s fire pool. Budget 8.
+
+The 2-point gap comes entirely from POWER (+1, burn stacks + pool) and REACH (+1, fire pool extends effective duration from instant to 3.5s). The fire pool transforms the mine from a one-shot trap into an area denial tool — enemies must avoid the zone or eat burn DOT.
+
+**Fire pool as area denial**: The 100u radius pool lasting 3.5s creates a zone that enemies must respect. Unlike blaze corridors (30u segments), cinder pools are large, stationary, and positioned by the player — tactical placement at chokepoints or escape routes. Multiple cinder mines can blanket an area with overlapping fire pools.
+
+**Enemy fire mine version**: Fire mines in fire zones use cinder mechanics. Their pools burn the player on contact, creating "don't stand here" zones that force movement. Fire pools expire (3.5s) well before the mine's respawn timer (10s), so there's no overflow.
+
+**Why 2 under cap?** The fire pool adds meaningful value over base mine but the self-placement limitation and fuse delay still constrain delivery. Room to buff: larger pool radius, longer pool duration, more burn stacks on detonation, or a secondary effect (enemies in pool take increased damage from other sources).
+
+---
+
 ### sub_mend — Healing (Instant, Normal)
 
 | Axis | Rating | Points | Reasoning |
@@ -1054,6 +1104,7 @@ The 3-axis system captures the tradeoff clearly: aegis has massively more POWER 
 | sub_pea | Normal | 4 | +3 | 0 | 7 | 10 | -3 under (precise aim tax, room to buff) |
 | sub_mgun | Normal | 4 | +3 | 0 | 7 | 10 | -3 under (same eDPS as pea, room to differentiate) |
 | sub_mine | Normal | 5 | +2 | −1 | 6 | 10 | -4 under (area denial utility, unreliable DPS) |
+| sub_cinder | Normal | 6 | +2 | 0 | 8 | 10 | -2 under (fire mine + lingering burn pool area denial) |
 | sub_tgun | Rare | 6 | +3 | +3 | 12 | 15 | -3 under (best sustained DPS/feedback ratio) |
 | sub_flak | Rare | 12 | +1 | +1 | 14 | 15 | -1 under (fire shotgun + burn DOT, nearly at cap) |
 | sub_ember | Normal | 6 | +3 | +1 | 10 | 10 | At cap (AOE ignite on impact, group burn applicator) |
@@ -1272,6 +1323,7 @@ All 20 skills — every score expressed as 3-axis decomposition.
 | sub_pea | 4 | +3 | 0 | 7 | 10 | ✓ |
 | sub_mgun | 4 | +3 | 0 | 7 | 10 | ✓ |
 | sub_mine | 5 | +2 | −1 | 6 | 10 | ✓ |
+| sub_cinder | 6 | +2 | 0 | 8 | 10 | ✓ |
 | sub_tgun | 6 | +3 | +3 | 12 | 15 | ✓ |
 | sub_flak | 12 | +1 | +1 | 14 | 15 | ✓ |
 | sub_ember | 6 | +3 | +1 | 10 | 10 | ✓ |

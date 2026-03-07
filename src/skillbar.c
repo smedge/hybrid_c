@@ -23,6 +23,7 @@
 #include "sub_blaze.h"
 #include "sub_cauterize.h"
 #include "sub_immolate.h"
+#include "sub_cinder.h"
 
 #include <math.h>
 #ifndef M_PI
@@ -93,8 +94,8 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Blaze dash. Leaves a flame corridor behind you.", TIER_NORMAL },
 	[SUB_ID_SCORCH] = { SUB_ID_SCORCH, SUB_TYPE_MOVEMENT, "sub_scorch", "SCORCH",
 		"Scorch sprint. Speed boost that leaves burning footprints.", TIER_NORMAL },
-	[SUB_ID_PYRE] = { SUB_ID_PYRE, SUB_TYPE_DEPLOYABLE, "sub_pyre", "PYRE",
-		"Pyre trap. Ignites into a sustained fire column.", TIER_NORMAL },
+	[SUB_ID_CINDER] = { SUB_ID_CINDER, SUB_TYPE_DEPLOYABLE, "sub_cinder", "CINDR",
+		"Cinder mine. Detonates into a lingering fire pool.", TIER_NORMAL },
 	[SUB_ID_CAUTERIZE] = { SUB_ID_CAUTERIZE, SUB_TYPE_HEALING, "sub_cauterize", "CAUT",
 		"Cauterize. Heals and burns nearby enemies.", TIER_NORMAL },
 	[SUB_ID_IMMOLATE] = { SUB_ID_IMMOLATE, SUB_TYPE_SHIELD, "sub_immolate", "IMMOL",
@@ -721,7 +722,7 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Render_thick_line(cx + 4, cy, cx - 4, cy + sz, t, 1.0f, 0.5f, 0.1f, alpha);
 		break;
 	}
-	case SUB_ID_PYRE: {
+	case SUB_ID_CINDER: {
 		/* Flame column — vertical line + flicker */
 		float t = 2.0f;
 		Render_thick_line(cx, cy + 8, cx, cy - 4, t, 1.0f, 0.4f, 0.0f, alpha);
@@ -815,6 +816,7 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_BLAZE: return Sub_Blaze_get_cooldown_fraction();
 	case SUB_ID_CAUTERIZE: return Sub_Cauterize_get_cooldown_fraction();
 	case SUB_ID_IMMOLATE: return Sub_Immolate_get_cooldown_fraction();
+	case SUB_ID_CINDER: return Sub_Cinder_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

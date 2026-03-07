@@ -13,6 +13,7 @@
 #include "sub_pea.h"
 #include "sub_mgun.h"
 #include "sub_mine.h"
+#include "sub_cinder.h"
 #include "hunter.h"
 #include "seeker.h"
 #include "defender.h"
@@ -605,6 +606,8 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	Entity_collision_system();
 	Sub_Blaze_update_corridor(ticks);
 	Sub_Cauterize_update_auras(ticks);
+	Sub_Cinder_update_pools(ticks);
+	Mine_update_fire_pools(ticks);
 	Defender_update_fire_auras(ticks);
 	Seeker_update_corridors(ticks);
 	Seeker_check_corridor_burn_player();
@@ -706,6 +709,9 @@ void Mode_Gameplay_render(void)
 		Sub_Pea_render_light_source();
 		Sub_Mgun_render_light_source();
 		Sub_Mine_render_light_source();
+		Sub_Cinder_render_light_source();
+		Sub_Cinder_render_pools_light();
+		Mine_render_fire_pool_light();
 		Sub_Aegis_render_light_source();
 		Sub_Inferno_render_light_source();
 		Sub_Disintegrate_render_light_source();
@@ -749,6 +755,8 @@ void Mode_Gameplay_render(void)
 	}
 	Sub_Blaze_render_corridor();
 	Sub_Cauterize_render_aura();
+	Sub_Cinder_render_pools();
+	Mine_render_fire_pools();
 	Defender_render_fire_auras();
 	Seeker_render_corridors();
 	Render_flush(&world_proj, &view);
@@ -800,6 +808,8 @@ void Mode_Gameplay_render(void)
 		Burn_render_bloom_source();
 		Sub_Blaze_render_corridor_bloom_source();
 		Sub_Cauterize_render_aura_bloom_source();
+		Sub_Cinder_render_pools_bloom();
+		Mine_render_fire_pool_bloom();
 		Defender_render_fire_aura_bloom();
 		Seeker_render_corridor_bloom_source();
 		Render_flush(&world_proj, &view);
@@ -1799,6 +1809,7 @@ static void zone_teardown_and_load(const char *zone_path)
 	Sub_Flak_cleanup();
 	Sub_Ember_cleanup();
 	Sub_Mine_cleanup();
+	Sub_Cinder_deactivate_all();
 	Sub_Blaze_deactivate_all();
 	Sub_Cauterize_deactivate_all();
 	Fragment_deactivate_all();

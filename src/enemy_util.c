@@ -21,6 +21,8 @@
 #include "sub_blaze.h"
 #include "sub_cauterize.h"
 #include "sub_immolate.h"
+#include "sub_cinder.h"
+#include "sub_cinder_core.h"
 #include "fragment.h"
 #include "progression.h"
 #include "skillbar.h"
@@ -77,6 +79,21 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 	if (mine_dmg > 0) {
 		r.mine_damage = mine_dmg * mul;
 		r.mine_hit = true;
+		r.hit = true;
+	}
+	double cinder_dmg = Sub_Cinder_check_hit(hitBox);
+	if (cinder_dmg > 0) {
+		r.mine_damage += cinder_dmg * mul;
+		r.mine_hit = true;
+		r.hit = true;
+		/* Cinder detonation applies burn stacks */
+		const SubCinderConfig *cinder_cfg = SubCinder_get_config();
+		r.burn_hits += cinder_cfg->detonation_burn_stacks;
+	}
+	/* Cinder fire pool burn */
+	int cinder_pool_hits = Sub_Cinder_check_pool_burn(hitBox);
+	if (cinder_pool_hits > 0) {
+		r.burn_hits += cinder_pool_hits;
 		r.hit = true;
 	}
 	if (Sub_Inferno_check_hit(hitBox)) {
@@ -284,6 +301,7 @@ bool Enemy_check_any_hit(Rectangle hitBox)
 		|| Sub_Tgun_check_hit(hitBox)
 		|| (Sub_Flak_check_hit(hitBox) > 0)
 		|| Sub_Mine_check_hit(hitBox)
+		|| Sub_Cinder_check_hit(hitBox)
 		|| Sub_Inferno_check_hit(hitBox)
 		|| Sub_Disintegrate_check_hit(hitBox)
 		|| Sub_Egress_check_hit(hitBox);

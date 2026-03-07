@@ -17,4 +17,10 @@ void Mine_render_light_source(void);
 void Mine_reset_all(void);
 int Mine_get_count(void);
 
+/* Fire mine pools */
+void Mine_update_fire_pools(unsigned int ticks);
+void Mine_render_fire_pools(void);
+void Mine_render_fire_pool_bloom(void);
+void Mine_render_fire_pool_light(void);
+
 #endif

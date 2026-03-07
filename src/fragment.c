@@ -327,7 +327,7 @@ static const struct {
 	[FRAG_TYPE_FLAK]          = { "Fire Hunter",    {1.0f, 0.5f, 0.1f, 1.0f} },
 	[FRAG_TYPE_BLAZE]         = { "Fire Seeker",    {1.0f, 0.4f, 0.0f, 1.0f} },
 	[FRAG_TYPE_SCORCH]        = { "Fire Corruptor", {1.0f, 0.6f, 0.0f, 1.0f} },
-	[FRAG_TYPE_PYRE]          = { "Fire Mine",      {1.0f, 0.45f, 0.05f, 1.0f} },
+	[FRAG_TYPE_CINDER]        = { "Fire Mine",      {1.0f, 0.45f, 0.05f, 1.0f} },
 	[FRAG_TYPE_CAUTERIZE]     = { "Fire Defender",  {1.0f, 0.55f, 0.1f, 1.0f} },
 	[FRAG_TYPE_IMMOLATE]      = { "Fire Defender",  {1.0f, 0.55f, 0.1f, 1.0f} },
 	[FRAG_TYPE_SMOLDER]       = { "Fire Stalker",   {1.0f, 0.35f, 0.0f, 1.0f} },

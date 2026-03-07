@@ -1,5 +1,6 @@
 #include "mine.h"
 #include "sub_mine_core.h"
+#include "sub_cinder_core.h"
 #include "enemy_util.h"
 #include "enemy_variant.h"
 #include "fragment.h"
@@ -10,6 +11,9 @@
 #include "audio.h"
 #include "sub_stealth.h"
 #include "spatial_grid.h"
+#include "burn.h"
+#include "ship.h"
+#include "player_stats.h"
 
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
@@ -32,6 +36,19 @@ static const SubMineConfig enemyMineCfg = {
 	.light_explode_r = 1.0f, .light_explode_g = 0.9f, .light_explode_b = 0.7f, .light_explode_a = 1.0f,
 };
 
+/* Fire mine config — based on cinder core's visual config with enemy timing overrides */
+static SubMineConfig fireMineCfg;
+static bool fireMineCfgInitialized = false;
+
+static void init_fire_mine_cfg(void)
+{
+	if (fireMineCfgInitialized) return;
+	fireMineCfg = *SubCinder_get_fire_mine_config();
+	fireMineCfg.armed_duration_ms = 500;
+	fireMineCfg.dead_duration_ms = 10000;
+	fireMineCfgInitialized = true;
+}
+
 static const CarriedSubroutine mineCarried[] = {
 	{ SUB_ID_MINE, FRAG_TYPE_MINE },
 };
@@ -39,7 +56,7 @@ static const CarriedSubroutine mineCarried[] = {
 static const EnemyVariant mineVariants[THEME_COUNT] = {
 	[THEME_FIRE] = {
 		.tint = {1.0f, 0.5f, 0.1f, 1.0f},
-		.carried = {{ SUB_ID_PYRE, FRAG_TYPE_PYRE }},
+		.carried = {{ SUB_ID_CINDER, FRAG_TYPE_CINDER }},
 		.carried_count = 1,
 		.speed_mult = 1.0f, .aggro_range_mult = 1.0f,
 		.hp_mult = 1.0f, .attack_cadence_mult = 1.0f,
@@ -58,6 +75,7 @@ typedef struct {
 	SubMineCore core;
 	bool killedByPlayer;
 	ZoneTheme theme;
+	CinderFirePool firePool;
 } MineState;
 
 static MineState mines[MINE_COUNT];
@@ -80,6 +98,10 @@ void Mine_initialize(Position position, ZoneTheme theme)
 	mines[highestUsedIndex].core.blinkTimer = rand() % 1000;
 	mines[highestUsedIndex].killedByPlayer = false;
 	mines[highestUsedIndex].theme = theme;
+	SubCinder_init_pool(&mines[highestUsedIndex].firePool);
+
+	if (theme == THEME_FIRE)
+		init_fire_mine_cfg();
 
 	placeables[highestUsedIndex].position = position;
 	placeables[highestUsedIndex].heading = MINE_ROTATION;
@@ -127,8 +149,11 @@ Collision Mine_collide(void *state, const PlaceableComponent *placeable, const R
 
 	Position position = placeable->position;
 
+	/* Select config based on theme */
+	const SubMineConfig *cfg = (ms->theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
+
 	/* Check direct body hit (the grey diamond + red dot) */
-	float bs = enemyMineCfg.body_half_size;
+	float bs = cfg->body_half_size;
 	Rectangle body = {-bs, bs, bs, -bs};
 	Rectangle bodyTransformed = Collision_transform_bounding_box(position, body);
 	if (core->phase != MINE_PHASE_EXPLODING && Collision_aabb_test(bodyTransformed, boundingBox)) {
@@ -166,7 +191,8 @@ void Mine_resolve(void *state, const Collision collision)
 	if (Sub_Stealth_is_stealthed())
 		return;
 
-	SubMine_arm(core, &enemyMineCfg, core->position);
+	const SubMineConfig *cfg = (ms->theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
+	SubMine_arm(core, cfg, core->position);
 }
 
 void Mine_update(void *state, const PlaceableComponent *placeable, const unsigned int ticks)
@@ -174,11 +200,13 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 	MineState *ms = (MineState *)state;
 	SubMineCore *core = &ms->core;
 
+	const SubMineConfig *cfg = (ms->theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
+
 	/* Dormancy check — only tick DEAD→DORMANT timer */
 	if (!SpatialGrid_is_active(placeable->position.x, placeable->position.y)) {
 		if (core->phase == MINE_PHASE_DEAD) {
 			core->phaseTicks += ticks;
-			if (core->phaseTicks >= enemyMineCfg.dead_duration_ms) {
+			if (core->phaseTicks >= cfg->dead_duration_ms) {
 				core->phase = MINE_PHASE_DORMANT;
 				core->phaseTicks = 0;
 				ms->killedByPlayer = false;
@@ -189,7 +217,7 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 
 	/* Check for player projectile hits on the mine body */
 	if (core->phase != MINE_PHASE_DEAD && core->phase != MINE_PHASE_EXPLODING) {
-		float bs = enemyMineCfg.body_half_size;
+		float bs = cfg->body_half_size;
 		Rectangle body = {-bs, bs, bs, -bs};
 		Rectangle mineBody = Collision_transform_bounding_box(placeable->position, body);
 		if (Enemy_check_any_hit(mineBody)) {
@@ -199,7 +227,12 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 	}
 
 	MinePhase prevPhase = core->phase;
-	MinePhase phase = SubMine_update(core, &enemyMineCfg, ticks);
+	MinePhase phase = SubMine_update(core, cfg, ticks);
+
+	/* Fire mine: spawn fire pool on detonation */
+	if (ms->theme == THEME_FIRE && phase == MINE_PHASE_EXPLODING && prevPhase == MINE_PHASE_ARMED) {
+		SubCinder_spawn_pool(&ms->firePool, 1, core->position);
+	}
 
 	/* Just transitioned out of DEAD back to DORMANT — respawn */
 	if (phase == MINE_PHASE_DORMANT && prevPhase == MINE_PHASE_DEAD) {
@@ -220,16 +253,16 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 
 void Mine_render(const void *state, const PlaceableComponent *placeable)
 {
-	MineState *ms = (MineState *)state;
-	SubMineCore *core = &ms->core;
+	const MineState *ms = (const MineState *)state;
+	const SubMineCore *core = &ms->core;
 
 	if (core->phase == MINE_PHASE_DEAD)
 		return;
 
-	/* Use placeable position (matches entity system) but core stores the same pos */
+	const SubMineConfig *cfg = (ms->theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
 	SubMineCore renderCore = *core;
 	renderCore.position = placeable->position;
-	SubMine_render(&renderCore, &enemyMineCfg);
+	SubMine_render(&renderCore, cfg);
 }
 
 void Mine_render_bloom_source(void)
@@ -238,9 +271,10 @@ void Mine_render_bloom_source(void)
 		SubMineCore *core = &mines[i].core;
 		if (core->phase == MINE_PHASE_DEAD)
 			continue;
+		const SubMineConfig *cfg = (mines[i].theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
 		SubMineCore renderCore = *core;
 		renderCore.position = placeables[i].position;
-		SubMine_render_bloom(&renderCore, &enemyMineCfg);
+		SubMine_render_bloom(&renderCore, cfg);
 	}
 }
 
@@ -250,9 +284,10 @@ void Mine_render_light_source(void)
 		SubMineCore *core = &mines[i].core;
 		if (core->phase == MINE_PHASE_DEAD)
 			continue;
+		const SubMineConfig *cfg = (mines[i].theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
 		SubMineCore renderCore = *core;
 		renderCore.position = placeables[i].position;
-		SubMine_render_light(&renderCore, &enemyMineCfg);
+		SubMine_render_light(&renderCore, cfg);
 	}
 }
 
@@ -263,10 +298,68 @@ void Mine_reset_all(void)
 		mines[i].core.position = placeables[i].position;
 		mines[i].core.blinkTimer = rand() % 1000;
 		mines[i].killedByPlayer = false;
+		SubCinder_init_pool(&mines[i].firePool);
 	}
 }
 
 int Mine_get_count(void)
 {
 	return highestUsedIndex;
+}
+
+/* --- Fire mine pool functions --- */
+
+void Mine_update_fire_pools(unsigned int ticks)
+{
+	const SubCinderConfig *cfg = SubCinder_get_config();
+
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (mines[i].theme != THEME_FIRE)
+			continue;
+
+		SubCinder_update_pools(&mines[i].firePool, 1, cfg, ticks);
+
+		/* Check if player is standing in the fire pool */
+		if (mines[i].firePool.active) {
+			Position shipPos = Ship_get_position();
+			float hs = 15.0f;
+			Rectangle playerBox = {
+				shipPos.x - hs, shipPos.y + hs,
+				shipPos.x + hs, shipPos.y - hs
+			};
+			int hits = SubCinder_check_pool_burn(&mines[i].firePool, 1, cfg, playerBox);
+			if (hits > 0)
+				Burn_apply_to_player(BURN_DURATION_MS);
+		}
+	}
+}
+
+void Mine_render_fire_pools(void)
+{
+	const SubCinderConfig *cfg = SubCinder_get_config();
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (mines[i].theme != THEME_FIRE)
+			continue;
+		SubCinder_render_pools(&mines[i].firePool, 1, cfg);
+	}
+}
+
+void Mine_render_fire_pool_bloom(void)
+{
+	const SubCinderConfig *cfg = SubCinder_get_config();
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (mines[i].theme != THEME_FIRE)
+			continue;
+		SubCinder_render_pools_bloom(&mines[i].firePool, 1, cfg);
+	}
+}
+
+void Mine_render_fire_pool_light(void)
+{
+	const SubCinderConfig *cfg = SubCinder_get_config();
+	for (int i = 0; i < highestUsedIndex; i++) {
+		if (mines[i].theme != THEME_FIRE)
+			continue;
+		SubCinder_render_pools_light(&mines[i].firePool, 1, cfg);
+	}
 }
