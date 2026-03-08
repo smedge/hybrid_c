@@ -52,6 +52,9 @@ bool Graphics_get_multisampling(void);
 bool Graphics_get_antialiasing(void);
 bool Graphics_get_fullscreen(void);
 bool Graphics_get_bloom_enabled(void);
+float Graphics_get_ui_scale(void);
+void  Graphics_set_ui_scale(float scale);
+void  Graphics_rebuild_fonts(void);
 void Graphics_recreate(void);
 
 #endif

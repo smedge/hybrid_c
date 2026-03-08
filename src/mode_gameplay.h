@@ -32,5 +32,6 @@ void Mode_Gameplay_cleanup(void);
 void Mode_Gameplay_update(Input *input, const unsigned int ticks);
 void Mode_Gameplay_render(void);
 bool Mode_Gameplay_consumed_esc(void);
+bool Mode_Gameplay_wants_exit(void);
 
 #endif

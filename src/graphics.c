@@ -1,5 +1,6 @@
 #include "graphics.h"
 #include "map_reflect.h"
+#include <math.h>
 #include "map_lighting.h"
 #include "particle_instance.h"
 #include "circuit_atlas.h"
@@ -21,6 +22,11 @@ static Bloom light_bloom;
 static bool multisamplingEnabled = true;
 static bool antialiasingEnabled = true;
 static bool bloomEnabled = true;
+static float uiScale = 1.0f;
+#define UI_SCALE_MIN 0.50f
+#define UI_SCALE_MAX 2.50f
+#define BASE_FONT_SIZE 14.0f
+#define BASE_TITLE_FONT_SIZE 80.0f
 
 static void create_window(void);
 static void create_fullscreen_window(void);
@@ -210,6 +216,31 @@ bool Graphics_get_bloom_enabled(void)
 	return bloomEnabled;
 }
 
+float Graphics_get_ui_scale(void)
+{
+	return uiScale;
+}
+
+void Graphics_set_ui_scale(float scale)
+{
+	/* Quantize to nearest 0.25 */
+	scale = floorf(scale * 4.0f + 0.5f) / 4.0f;
+	if (scale < UI_SCALE_MIN) scale = UI_SCALE_MIN;
+	if (scale > UI_SCALE_MAX) scale = UI_SCALE_MAX;
+	if (scale == uiScale) return;
+	uiScale = scale;
+}
+
+void Graphics_rebuild_fonts(void)
+{
+	Text_cleanup(&text_renderer);
+	Text_cleanup(&title_text_renderer);
+	Text_initialize(&text_renderer, TITLE_FONT_PATH,
+		BASE_FONT_SIZE * uiScale);
+	Text_initialize(&title_text_renderer, TITLE_FONT_PATH,
+		BASE_TITLE_FONT_SIZE * uiScale);
+}
+
 static void create_window(void)
 {
 	if (graphics.fullScreen)
@@ -274,8 +305,10 @@ static void initialize_gl(void)
 
 	Shaders_initialize(&shaders);
 	Batch_initialize(&batch);
-	Text_initialize(&text_renderer, TITLE_FONT_PATH, 14.0f);
-	Text_initialize(&title_text_renderer, TITLE_FONT_PATH, 80.0f);
+	Text_initialize(&text_renderer, TITLE_FONT_PATH,
+		BASE_FONT_SIZE * uiScale);
+	Text_initialize(&title_text_renderer, TITLE_FONT_PATH,
+		BASE_TITLE_FONT_SIZE * uiScale);
 	Bloom_initialize(&bloom, draw_w, draw_h, 2, 3.0f, 4);
 	Bloom_initialize(&bg_bloom, draw_w, draw_h, 8, 2.5f, 20);
 	Bloom_initialize(&disint_bloom, draw_w, draw_h, 2, 3.0f, 4);

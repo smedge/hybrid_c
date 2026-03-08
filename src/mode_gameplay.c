@@ -52,6 +52,7 @@
 #include "palette_editor.h"
 #include "burn.h"
 #include "keybinds.h"
+#include "confirm_dialog.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -174,6 +175,9 @@ static char godZoneNames[16][64];
 static int godZoneFileCount = 0;
 
 static bool escConsumed = false;
+
+/* Exit confirmation dialog */
+static ConfirmDialog exitDialog;
 
 /* Label text entry */
 static bool godLabelTextEntry = false;
@@ -557,6 +561,16 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 		DataLogs_update((Input *)input, ticks);
 	}
 
+	/* Exit confirmation dialog */
+	bool exitDialogWasOpen = exitDialog.open;
+	if (exitDialog.open) {
+		ConfirmDialog_update(&exitDialog, input);
+		escConsumed = true;
+	} else if (input->keyEsc && !escConsumed && gameplayState == GAMEPLAY_ACTIVE) {
+		ConfirmDialog_open(&exitDialog, "Any unsaved data will be lost.");
+		escConsumed = true;
+	}
+
 	/* If a UI panel just closed this frame, consume mouse until released */
 	if (catalogWasOpen && !Catalog_is_open())
 		mouseConsumedUntilRelease = true;
@@ -566,12 +580,17 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 		mouseConsumedUntilRelease = true;
 	if (logsWasOpen && !DataLogs_is_open())
 		mouseConsumedUntilRelease = true;
+	if (exitDialogWasOpen && !exitDialog.open)
+		mouseConsumedUntilRelease = true;
+	if (dataNodeReading && !DataNode_is_reading())
+		mouseConsumedUntilRelease = true;
 	if (mouseConsumedUntilRelease && !input->mouseLeft)
 		mouseConsumedUntilRelease = false;
 
 	/* UI gets raw input; gameplay gets mouse stripped when UI consumes it */
 	bool ui_wants_mouse = catalogWasOpen || settingsWasOpen || mapWasOpen ||
-		logsWasOpen || mouseConsumedUntilRelease;
+		logsWasOpen || exitDialog.open || dataNodeReading ||
+		mouseConsumedUntilRelease;
 
 	cursor_update(input);
 
@@ -846,15 +865,19 @@ void Mode_Gameplay_render(void)
 	if (godModeActive)
 		god_mode_render_hud(&screen);
 
+	/* Exit confirmation dialog */
+	ConfirmDialog_render(&exitDialog);
+
 	/* FPS counter */
 	if (fpsVisible) {
+		float s = Graphics_get_ui_scale();
 		char fpsBuf[32];
 		snprintf(fpsBuf, sizeof(fpsBuf), "FPS: %.1f", fpsValue);
 		TextRenderer *tr = Graphics_get_text_renderer();
 		Shaders *shaders = Graphics_get_shaders();
 		Render_flush(&ui_proj, &identity);
 		Text_render(tr, shaders, &ui_proj, &identity,
-			fpsBuf, screen.width - 100.0f, 15.0f,
+			fpsBuf, screen.width - 100.0f * s, 15.0f * s,
 			0.0f, 1.0f, 1.0f, 0.8f);
 	}
 
@@ -1451,6 +1474,7 @@ static void god_mode_render_cursor(void)
 static void god_mode_render_hud(const Screen *screen)
 {
 	if (godPlacementMode == GOD_MODE_PALETTE) {
+		float s = Graphics_get_ui_scale();
 		TextRenderer *tr = Graphics_get_text_renderer();
 		Shaders *shaders = Graphics_get_shaders();
 		Mat4 proj = Graphics_get_ui_projection();
@@ -1458,28 +1482,29 @@ static void god_mode_render_hud(const Screen *screen)
 		Render_flush(&proj, &ident);
 
 		/* Still show "GOD MODE" + mode name top-center */
-		float cx = (float)screen->width * 0.5f - 60.0f;
+		float cx = (float)screen->width * 0.5f - 60.0f * s;
 		Text_render(tr, shaders, &proj, &ident,
-			"GOD MODE", cx, 20.0f,
+			"GOD MODE", cx, 20.0f * s,
 			1.0f, 0.3f, 0.3f, 1.0f);
 		char buf[128];
 		snprintf(buf, sizeof(buf), "Mode: %s (Q/E)", GOD_MODE_NAMES[godPlacementMode]);
 		Text_render(tr, shaders, &proj, &ident,
-			buf, cx, 38.0f,
+			buf, cx, 38.0f * s,
 			1.0f, 1.0f, 1.0f, 0.8f);
 
 		PaletteEditor_render(screen);
 		return;
 	}
 
+	float s = Graphics_get_ui_scale();
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
 	Mat4 proj = Graphics_get_ui_projection();
 	Mat4 ident = Mat4_identity();
 
-	float cx = (float)screen->width * 0.5f - 60.0f;
-	float ty = 20.0f;
-	float line_h = 18.0f;
+	float cx = (float)screen->width * 0.5f - 60.0f * s;
+	float ty = 20.0f * s;
+	float line_h = 18.0f * s;
 	char buf[128];
 
 	Render_flush(&proj, &ident);
@@ -1597,9 +1622,9 @@ static void god_mode_render_hud(const Screen *screen)
 
 	/* Label text entry prompt */
 	if (godLabelTextEntry) {
-		float lx = (float)screen->width * 0.5f - 100.0f;
+		float lx = (float)screen->width * 0.5f - 100.0f * s;
 		float ly = (float)screen->height * 0.5f;
-		Render_quad_absolute(lx - 10, ly - 5, lx + 300, ly + 20,
+		Render_quad_absolute(lx - 10 * s, ly - 5 * s, lx + 300 * s, ly + 20 * s,
 			0.0f, 0.0f, 0.0f, 0.85f);
 		Render_flush(&proj, &ident);
 		snprintf(buf, sizeof(buf), "Label: %s_", godLabelTextBuf);
@@ -1610,12 +1635,12 @@ static void god_mode_render_hud(const Screen *screen)
 
 	/* Zone jump menu */
 	if (godZoneMenuOpen) {
-		float mx = (float)screen->width * 0.5f - 100.0f;
+		float mx = (float)screen->width * 0.5f - 100.0f * s;
 		float my = (float)screen->height * 0.3f;
 
 		/* Dark background */
-		Render_quad_absolute(mx - 10, my - 10,
-			mx + 250, my + 20 + godZoneFileCount * line_h,
+		Render_quad_absolute(mx - 10 * s, my - 10 * s,
+			mx + 250 * s, my + 20 * s + godZoneFileCount * line_h,
 			0.0f, 0.0f, 0.0f, 0.8f);
 		Render_flush(&proj, &ident);
 
@@ -1639,7 +1664,7 @@ static void god_mode_render_hud(const Screen *screen)
 		float nw = Text_measure_width(tr, godNotifyText);
 		float nx = (float)screen->width * 0.5f - nw * 0.5f;
 		float ny = (float)screen->height * 0.7f;
-		Render_quad_absolute(nx - 8, ny - 4, nx + nw + 8, ny + 18,
+		Render_quad_absolute(nx - 8 * s, ny - 4 * s, nx + nw + 8 * s, ny + 18 * s,
 			0.0f, 0.0f, 0.0f, 0.7f * alpha);
 		Render_flush(&proj, &ident);
 		Text_render(tr, shaders, &proj, &ident,
@@ -1725,6 +1750,7 @@ static void god_mode_render_noise_heatmap(void)
 
 static void god_mode_render_spawn_labels(void)
 {
+	float s = Graphics_get_ui_scale();
 	const Zone *z = Zone_get();
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
@@ -1744,7 +1770,7 @@ static void god_mode_render_spawn_labels(void)
 		sy = (float)screen.height - sy;
 
 		Text_render(tr, shaders, &ui_proj, &ident,
-			z->spawns[i].enemy_type, sx - 20.0f, sy - 30.0f,
+			z->spawns[i].enemy_type, sx - 20.0f * s, sy - 30.0f * s,
 			1.0f, 0.5f, 0.3f, 0.7f);
 	}
 }
@@ -1754,6 +1780,7 @@ static void god_mode_render_zone_labels(void)
 	const Zone *z = Zone_get();
 	if (z->label_count == 0) return;
 
+	float s = Graphics_get_ui_scale();
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
 	Screen screen = Graphics_get_screen();
@@ -1772,7 +1799,7 @@ static void god_mode_render_zone_labels(void)
 		sy = (float)screen.height - sy;
 
 		Text_render(tr, shaders, &ui_proj, &ident,
-			z->labels[i].text, sx - 10.0f, sy - 20.0f,
+			z->labels[i].text, sx - 10.0f * s, sy - 20.0f * s,
 			0.0f, 1.0f, 1.0f, 0.9f);
 	}
 }
@@ -2283,6 +2310,7 @@ static void warp_do_zone_swap(void)
 
 static void warp_render_effects(const Screen *screen)
 {
+	float s = Graphics_get_ui_scale();
 	float sw = (float)screen->width;
 	float sh = (float)screen->height;
 
@@ -2319,15 +2347,15 @@ static void warp_render_effects(const Screen *screen)
 		if (streamAlpha > 0.0f) {
 			for (int i = 0; i < WARP_STREAM_COUNT; i++) {
 				float angle = warpStreams[i].angle * M_PI / 180.0f;
-				float outerR = 400.0f * (1.0f - t);
-				float innerR = outerR - warpStreams[i].length * (1.0f - t);
+				float outerR = 400.0f * s * (1.0f - t);
+				float innerR = outerR - warpStreams[i].length * s * (1.0f - t);
 				if (innerR < 0.0f) innerR = 0.0f;
 				float x0 = cx + cosf(angle) * innerR;
 				float y0 = cy + sinf(angle) * innerR;
 				float x1 = cx + cosf(angle) * outerR;
 				float y1 = cy + sinf(angle) * outerR;
 				Render_thick_line(x0, y0, x1, y1,
-					1.5f, 0.7f, 0.9f, 1.0f, streamAlpha);
+					1.5f * s, 0.7f, 0.9f, 1.0f, streamAlpha);
 			}
 		}
 		break;
@@ -2343,6 +2371,15 @@ static void warp_render_effects(const Screen *screen)
 bool Mode_Gameplay_consumed_esc(void)
 {
 	return escConsumed;
+}
+
+bool Mode_Gameplay_wants_exit(void)
+{
+	if (exitDialog.confirmed) {
+		exitDialog.confirmed = false;
+		return true;
+	}
+	return false;
 }
 
 static double ease_in_out_cubic(double t)

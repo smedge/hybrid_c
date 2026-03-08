@@ -115,7 +115,7 @@ static bool mouseWasDown;
 static bool clickConsumed;
 static int pressedSlot;  /* slot pressed on mouse-down, -1 if none */
 
-static void render_icon(SubroutineId id, float cx, float cy, float alpha);
+static void render_icon(SubroutineId id, float cx, float cy, float alpha, float s);
 static float get_cooldown_fraction(SubroutineId id);
 static void activate_slot(int slot);
 
@@ -250,8 +250,15 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 
 void Skillbar_render(const Screen *screen)
 {
-	float base_x = SLOT_MARGIN;
-	float base_y = (float)screen->height - SLOT_SIZE - SLOT_MARGIN;
+	float s = Graphics_get_ui_scale();
+	float slot_size = SLOT_SIZE * s;
+	float slot_spacing = SLOT_SPACING * s;
+	float slot_margin = SLOT_MARGIN * s;
+	float slot_chamf = SLOT_CHAMF * s;
+	float pie_radius = PIE_RADIUS * s;
+
+	float base_x = slot_margin;
+	float base_y = (float)screen->height - slot_size - slot_margin;
 
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
@@ -261,20 +268,20 @@ void Skillbar_render(const Screen *screen)
 	const char *labels[] = {"1","2","3","4","5","6","7","8","9","0"};
 
 	for (int i = 0; i < SKILLBAR_SLOTS; i++) {
-		float bx = base_x + i * SLOT_SPACING;
+		float bx = base_x + i * slot_spacing;
 		float by = base_y;
 		int id = slots[i];
-		float ch = SLOT_CHAMF;
+		float ch = slot_chamf;
 
 		/* Chamfered vertices: sharp NW + SE, chamfered NE + SW */
-		float vx[6] = { bx,              bx + SLOT_SIZE - ch, bx + SLOT_SIZE,
-		                 bx + SLOT_SIZE,  bx + ch,             bx };
+		float vx[6] = { bx,              bx + slot_size - ch, bx + slot_size,
+		                 bx + slot_size,  bx + ch,             bx };
 		float vy[6] = { by,              by,                   by + ch,
-		                 by + SLOT_SIZE,  by + SLOT_SIZE,       by + SLOT_SIZE - ch };
+		                 by + slot_size,  by + slot_size,       by + slot_size - ch };
 
 		/* Slot background — chamfered polygon fill */
-		float fcx = bx + SLOT_SIZE * 0.5f;
-		float fcy = by + SLOT_SIZE * 0.5f;
+		float fcx = bx + slot_size * 0.5f;
+		float fcy = by + slot_size * 0.5f;
 		BatchRenderer *batch = Graphics_get_batch();
 		for (int v = 0; v < 6; v++) {
 			int nv = (v + 1) % 6;
@@ -289,7 +296,7 @@ void Skillbar_render(const Screen *screen)
 			for (int v = 0; v < 6; v++) {
 				int nv = (v + 1) % 6;
 				Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
-					1.0f, brc, brc, brc, 0.8f);
+					1.0f * s, brc, brc, brc, 0.8f);
 			}
 		}
 
@@ -332,18 +339,18 @@ void Skillbar_render(const Screen *screen)
 			for (int v = 0; v < 6; v++) {
 				int nv = (v + 1) % 6;
 				Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
-					thickness, br, bg, bb, ba);
+					thickness * s, br, bg, bb, ba);
 			}
 
 			/* Icon */
-			float icon_cx = bx + SLOT_SIZE * 0.5f;
-			float icon_cy = by + SLOT_SIZE * 0.5f;
+			float icon_cx = bx + slot_size * 0.5f;
+			float icon_cy = by + slot_size * 0.5f;
 			float icon_alpha = (cooldown > 0.0f) ? 0.3f : 1.0f;
-			render_icon(id, icon_cx, icon_cy, icon_alpha);
+			render_icon(id, icon_cx, icon_cy, icon_alpha, s);
 
 			/* Cooldown pie overlay */
 			if (cooldown > 0.0f) {
-				Render_cooldown_pie(icon_cx, icon_cy, PIE_RADIUS,
+				Render_cooldown_pie(icon_cx, icon_cy, pie_radius,
 					cooldown, PIE_SEGMENTS,
 					0.0f, 0.0f, 0.0f, 0.6f);
 			}
@@ -351,8 +358,8 @@ void Skillbar_render(const Screen *screen)
 
 		/* Number label — SE corner with padding */
 		float lw = Text_measure_width(tr, labels[i]);
-		float lx = bx + SLOT_SIZE - lw - 4.0f;
-		float ly = by + SLOT_SIZE - 4.0f;
+		float lx = bx + slot_size - lw - 4.0f * s;
+		float ly = by + slot_size - 4.0f * s;
 		Text_render(tr, shaders, &proj, &ident,
 			labels[i], lx, ly,
 			1.0f, 1.0f, 1.0f, 0.5f);
@@ -503,21 +510,19 @@ void Skillbar_clear_slot(int slot)
 	}
 }
 
-static void render_icon(SubroutineId id, float cx, float cy, float alpha)
+static void render_icon(SubroutineId id, float cx, float cy, float alpha, float s)
 {
 	switch (id) {
 	case SUB_ID_PEA: {
-		/* White dot — matches the projectile visual */
 		Position p = {cx, cy};
 		ColorFloat c = {1.0f, 1.0f, 1.0f, alpha};
-		Render_point(&p, 8.0, &c);
+		Render_point(&p, 8.0 * s, &c);
 		break;
 	}
 	case SUB_ID_MINE: {
-		/* Gray diamond + red center diamond — matches mine visual */
 		Position p = {cx, cy};
-		Rectangle body = {-8.0, 8.0, 8.0, -8.0};
-		Rectangle dot = {-3.0, 3.0, 3.0, -3.0};
+		Rectangle body = {-8.0 * s, 8.0 * s, 8.0 * s, -8.0 * s};
+		Rectangle dot = {-3.0 * s, 3.0 * s, 3.0 * s, -3.0 * s};
 		ColorFloat gray = {0.2f, 0.2f, 0.2f, alpha};
 		ColorFloat red = {1.0f, 0.0f, 0.0f, alpha};
 		Render_quad(&p, 45.0, body, &gray);
@@ -525,21 +530,17 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		break;
 	}
 	case SUB_ID_BOOST: {
-		/* Double chevron (>>) — speed lines, centered on cx,cy */
-		float sz = 6.0f;
-		float t = 1.5f;
-		/* Left chevron: tip at cx+1, extends left to cx-5 */
-		Render_thick_line(cx - 5, cy - sz, cx + 1, cy, t, 1.0f, 0.8f, 0.0f, alpha);
-		Render_thick_line(cx + 1, cy, cx - 5, cy + sz, t, 1.0f, 0.8f, 0.0f, alpha);
-		/* Right chevron: tip at cx+5, extends left to cx-1 */
-		Render_thick_line(cx - 1, cy - sz, cx + 5, cy, t, 1.0f, 0.8f, 0.0f, alpha);
-		Render_thick_line(cx + 5, cy, cx - 1, cy + sz, t, 1.0f, 0.8f, 0.0f, alpha);
+		float sz = 6.0f * s;
+		float t = 1.5f * s;
+		Render_thick_line(cx - 5*s, cy - sz, cx + 1*s, cy, t, 1.0f, 0.8f, 0.0f, alpha);
+		Render_thick_line(cx + 1*s, cy, cx - 5*s, cy + sz, t, 1.0f, 0.8f, 0.0f, alpha);
+		Render_thick_line(cx - 1*s, cy - sz, cx + 5*s, cy, t, 1.0f, 0.8f, 0.0f, alpha);
+		Render_thick_line(cx + 5*s, cy, cx - 1*s, cy + sz, t, 1.0f, 0.8f, 0.0f, alpha);
 		break;
 	}
 	case SUB_ID_EGRESS: {
-		/* Starburst — 4 lines radiating from center (thick_line = triangles) */
-		float sz = 8.0f;
-		float t = 1.5f;
+		float sz = 8.0f * s;
+		float t = 1.5f * s;
 		Render_thick_line(cx, cy - sz, cx, cy + sz, t, 0.4f, 1.0f, 1.0f, alpha);
 		Render_thick_line(cx - sz, cy, cx + sz, cy, t, 0.4f, 1.0f, 1.0f, alpha);
 		float d = sz * 0.7f;
@@ -548,28 +549,25 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		break;
 	}
 	case SUB_ID_MGUN: {
-		/* Three dots in a spray pattern — suggests rapid fire */
-		Position p1 = {cx - 4, cy - 4};
+		Position p1 = {cx - 4*s, cy - 4*s};
 		Position p2 = {cx, cy};
-		Position p3 = {cx + 4, cy + 4};
+		Position p3 = {cx + 4*s, cy + 4*s};
 		ColorFloat c = {1.0f, 1.0f, 1.0f, alpha};
-		Render_point(&p1, 5.0, &c);
-		Render_point(&p2, 5.0, &c);
-		Render_point(&p3, 5.0, &c);
+		Render_point(&p1, 5.0 * s, &c);
+		Render_point(&p2, 5.0 * s, &c);
+		Render_point(&p3, 5.0 * s, &c);
 		break;
 	}
 	case SUB_ID_MEND: {
-		/* Plus/cross — healing symbol */
-		float sz = 7.0f;
-		float t = 2.0f;
+		float sz = 7.0f * s;
+		float t = 2.0f * s;
 		Render_thick_line(cx, cy - sz, cx, cy + sz, t, 0.3f, 0.7f, 1.0f, alpha);
 		Render_thick_line(cx - sz, cy, cx + sz, cy, t, 0.3f, 0.7f, 1.0f, alpha);
 		break;
 	}
 	case SUB_ID_AEGIS: {
-		/* Hexagon outline — shield/defense */
-		float r = 8.0f;
-		float t = 1.5f;
+		float r = 8.0f * s;
+		float t = 1.5f * s;
 		for (int i = 0; i < 6; i++) {
 			float a0 = i * 60.0f * (float)M_PI / 180.0f;
 			float a1 = (i + 1) * 60.0f * (float)M_PI / 180.0f;
@@ -580,109 +578,89 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		break;
 	}
 	case SUB_ID_STEALTH: {
-		/* Eye shape — two arcs forming an eye, with a dot pupil */
-		float r = 8.0f;
-		float t = 1.5f;
-		/* Upper lid arc */
+		float r = 8.0f * s;
+		float t = 1.5f * s;
 		Render_thick_line(cx - r, cy, cx - r * 0.4f, cy + r * 0.6f, t,
 			0.6f, 0.3f, 0.8f, alpha);
 		Render_thick_line(cx - r * 0.4f, cy + r * 0.6f, cx + r * 0.4f, cy + r * 0.6f, t,
 			0.6f, 0.3f, 0.8f, alpha);
 		Render_thick_line(cx + r * 0.4f, cy + r * 0.6f, cx + r, cy, t,
 			0.6f, 0.3f, 0.8f, alpha);
-		/* Lower lid arc */
 		Render_thick_line(cx - r, cy, cx - r * 0.4f, cy - r * 0.6f, t,
 			0.6f, 0.3f, 0.8f, alpha);
 		Render_thick_line(cx - r * 0.4f, cy - r * 0.6f, cx + r * 0.4f, cy - r * 0.6f, t,
 			0.6f, 0.3f, 0.8f, alpha);
 		Render_thick_line(cx + r * 0.4f, cy - r * 0.6f, cx + r, cy, t,
 			0.6f, 0.3f, 0.8f, alpha);
-		/* Pupil */
-		Render_filled_circle(cx, cy, 2.5f, 6, 0.6f, 0.3f, 0.8f, alpha);
+		Render_filled_circle(cx, cy, 2.5f * s, 6, 0.6f, 0.3f, 0.8f, alpha);
 		break;
 	}
 	case SUB_ID_INFERNO: {
-		/* Flame icon — two overlapping fire shapes */
-		float t = 1.5f;
-		/* Outer flame — orange */
-		Render_thick_line(cx, cy + 9, cx - 5, cy - 3, t, 1.0f, 0.5f, 0.0f, alpha);
-		Render_thick_line(cx - 5, cy - 3, cx - 2, cy - 1, t, 1.0f, 0.5f, 0.0f, alpha);
-		Render_thick_line(cx - 2, cy - 1, cx - 3, cy - 7, t, 1.0f, 0.5f, 0.0f, alpha);
-		Render_thick_line(cx - 3, cy - 7, cx, cy - 3, t, 1.0f, 0.6f, 0.1f, alpha);
-		Render_thick_line(cx, cy - 3, cx + 3, cy - 7, t, 1.0f, 0.5f, 0.0f, alpha);
-		Render_thick_line(cx + 3, cy - 7, cx + 2, cy - 1, t, 1.0f, 0.5f, 0.0f, alpha);
-		Render_thick_line(cx + 2, cy - 1, cx + 5, cy - 3, t, 1.0f, 0.5f, 0.0f, alpha);
-		Render_thick_line(cx + 5, cy - 3, cx, cy + 9, t, 1.0f, 0.5f, 0.0f, alpha);
-		/* Inner bright core */
-		Render_filled_circle(cx, cy, 3.0f, 6, 1.0f, 1.0f, 0.7f, alpha);
+		float t = 1.5f * s;
+		Render_thick_line(cx, cy + 9*s, cx - 5*s, cy - 3*s, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx - 5*s, cy - 3*s, cx - 2*s, cy - 1*s, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx - 2*s, cy - 1*s, cx - 3*s, cy - 7*s, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx - 3*s, cy - 7*s, cx, cy - 3*s, t, 1.0f, 0.6f, 0.1f, alpha);
+		Render_thick_line(cx, cy - 3*s, cx + 3*s, cy - 7*s, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx + 3*s, cy - 7*s, cx + 2*s, cy - 1*s, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx + 2*s, cy - 1*s, cx + 5*s, cy - 3*s, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_thick_line(cx + 5*s, cy - 3*s, cx, cy + 9*s, t, 1.0f, 0.5f, 0.0f, alpha);
+		Render_filled_circle(cx, cy, 3.0f * s, 6, 1.0f, 1.0f, 0.7f, alpha);
 		break;
 	}
 	case SUB_ID_DISINTEGRATE: {
-		/* Converging lines → focus point → beam extending right */
-		float t = 1.5f;
-		/* Converging purple lines from left */
-		Render_thick_line(cx - 10, cy - 6, cx - 2, cy, t, 0.6f, 0.2f, 0.9f, alpha);
-		Render_thick_line(cx - 10, cy + 6, cx - 2, cy, t, 0.6f, 0.2f, 0.9f, alpha);
-		/* White focus point */
-		Render_filled_circle(cx - 2, cy, 2.5f, 6, 1.0f, 0.95f, 1.0f, alpha);
-		/* Beam extending right — purple to white */
-		Render_thick_line(cx - 2, cy, cx + 10, cy, 3.0f, 0.8f, 0.5f, 1.0f, alpha * 0.7f);
-		Render_thick_line(cx - 2, cy, cx + 10, cy, 1.5f, 1.0f, 0.95f, 1.0f, alpha);
+		float t = 1.5f * s;
+		Render_thick_line(cx - 10*s, cy - 6*s, cx - 2*s, cy, t, 0.6f, 0.2f, 0.9f, alpha);
+		Render_thick_line(cx - 10*s, cy + 6*s, cx - 2*s, cy, t, 0.6f, 0.2f, 0.9f, alpha);
+		Render_filled_circle(cx - 2*s, cy, 2.5f * s, 6, 1.0f, 0.95f, 1.0f, alpha);
+		Render_thick_line(cx - 2*s, cy, cx + 10*s, cy, 3.0f * s, 0.8f, 0.5f, 1.0f, alpha * 0.7f);
+		Render_thick_line(cx - 2*s, cy, cx + 10*s, cy, 1.5f * s, 1.0f, 0.95f, 1.0f, alpha);
 		break;
 	}
 	case SUB_ID_GRAVWELL: {
-		/* Spiral vortex — concentric arcs spiraling inward */
-		float t = 1.5f;
-		float r1 = 9.0f, r2 = 6.0f, r3 = 3.0f;
-		/* Outer arc */
+		float t = 1.5f * s;
+		float r1 = 9.0f * s, r2 = 6.0f * s, r3 = 3.0f * s;
 		Render_thick_line(cx + r1, cy, cx, cy + r1, t,
 			EDGE_R_ICON, EDGE_G_ICON, EDGE_B_ICON, alpha);
 		Render_thick_line(cx, cy + r1, cx - r1, cy, t,
 			EDGE_R_ICON, EDGE_G_ICON, EDGE_B_ICON, alpha);
-		/* Middle arc */
 		Render_thick_line(cx - r2, cy, cx, cy - r2, t,
 			MID_R_ICON, MID_G_ICON, MID_B_ICON, alpha);
 		Render_thick_line(cx, cy - r2, cx + r2, cy, t,
 			MID_R_ICON, MID_G_ICON, MID_B_ICON, alpha);
-		/* Inner dot */
 		Render_filled_circle(cx, cy, r3, 6,
 			0.1f, 0.1f, 0.2f, alpha);
 		break;
 	}
 	case SUB_ID_TGUN: {
-		/* Two side-by-side dot streams — twin mgun */
-		float gap = 5.0f;
+		float gap = 5.0f * s;
 		ColorFloat c = {1.0f, 1.0f, 1.0f, alpha};
-		/* Left stream */
-		Position l1 = {cx - gap, cy - 5};
+		Position l1 = {cx - gap, cy - 5*s};
 		Position l2 = {cx - gap, cy};
-		Position l3 = {cx - gap, cy + 5};
-		Render_point(&l1, 4.0, &c);
-		Render_point(&l2, 4.0, &c);
-		Render_point(&l3, 4.0, &c);
-		/* Right stream */
-		Position r1 = {cx + gap, cy - 5};
+		Position l3 = {cx - gap, cy + 5*s};
+		Render_point(&l1, 4.0 * s, &c);
+		Render_point(&l2, 4.0 * s, &c);
+		Render_point(&l3, 4.0 * s, &c);
+		Position r1 = {cx + gap, cy - 5*s};
 		Position r2 = {cx + gap, cy};
-		Position r3 = {cx + gap, cy + 5};
-		Render_point(&r1, 4.0, &c);
-		Render_point(&r2, 4.0, &c);
-		Render_point(&r3, 4.0, &c);
+		Position r3 = {cx + gap, cy + 5*s};
+		Render_point(&r1, 4.0 * s, &c);
+		Render_point(&r2, 4.0 * s, &c);
+		Render_point(&r3, 4.0 * s, &c);
 		break;
 	}
 	case SUB_ID_SPRINT: {
-		/* Single chevron (>) — lighter version of boost */
-		float sz = 7.0f;
-		float t = 1.5f;
-		Render_thick_line(cx - 4, cy - sz, cx + 4, cy, t, 1.0f, 1.0f, 1.0f, alpha);
-		Render_thick_line(cx + 4, cy, cx - 4, cy + sz, t, 1.0f, 1.0f, 1.0f, alpha);
+		float sz = 7.0f * s;
+		float t = 1.5f * s;
+		Render_thick_line(cx - 4*s, cy - sz, cx + 4*s, cy, t, 1.0f, 1.0f, 1.0f, alpha);
+		Render_thick_line(cx + 4*s, cy, cx - 4*s, cy + sz, t, 1.0f, 1.0f, 1.0f, alpha);
 		break;
 	}
 	case SUB_ID_EMP: {
-		/* Expanding ring — concentric circles */
-		float t = 1.5f;
-		Render_filled_circle(cx, cy, 3.0f, 8, 0.3f, 0.7f, 1.0f, alpha);
+		float t = 1.5f * s;
+		Render_filled_circle(cx, cy, 3.0f * s, 8, 0.3f, 0.7f, 1.0f, alpha);
 		for (int ring = 0; ring < 2; ring++) {
-			float r = 6.0f + ring * 4.0f;
+			float r = (6.0f + ring * 4.0f) * s;
 			float a = alpha * (1.0f - ring * 0.3f);
 			for (int seg = 0; seg < 8; seg++) {
 				float a0 = seg * 45.0f * (float)M_PI / 180.0f;
@@ -695,9 +673,8 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		break;
 	}
 	case SUB_ID_RESIST: {
-		/* Shield outline with inner glow — warm yellow/orange */
-		float r = 8.0f;
-		float t = 1.5f;
+		float r = 8.0f * s;
+		float t = 1.5f * s;
 		for (int i = 0; i < 6; i++) {
 			float a0 = i * 60.0f * (float)M_PI / 180.0f;
 			float a1 = (i + 1) * 60.0f * (float)M_PI / 180.0f;
@@ -705,83 +682,75 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 				cx + cosf(a1) * r, cy + sinf(a1) * r,
 				t, 1.0f, 0.7f, 0.2f, alpha);
 		}
-		Render_filled_circle(cx, cy, 3.0f, 6, 1.0f, 0.7f, 0.2f, alpha * 0.5f);
+		Render_filled_circle(cx, cy, 3.0f * s, 6, 1.0f, 0.7f, 0.2f, alpha * 0.5f);
 		break;
 	}
-	/* --- Fire zone stub icons (orange-themed placeholders) --- */
 	case SUB_ID_EMBER: {
-		/* Three dots in spray — like mgun but orange */
-		Position p1 = {cx - 4, cy - 4};
+		Position p1 = {cx - 4*s, cy - 4*s};
 		Position p2 = {cx, cy};
-		Position p3 = {cx + 4, cy + 4};
+		Position p3 = {cx + 4*s, cy + 4*s};
 		ColorFloat ec = {1.0f, 0.5f, 0.1f, alpha};
-		Render_point(&p1, 5.0f, &ec);
-		Render_point(&p2, 5.0f, &ec);
-		Render_point(&p3, 5.0f, &ec);
+		Render_point(&p1, 5.0f * s, &ec);
+		Render_point(&p2, 5.0f * s, &ec);
+		Render_point(&p3, 5.0f * s, &ec);
 		break;
 	}
 	case SUB_ID_FLAK: {
-		/* Spread cone of pellets — shotgun burst */
-		float t = 1.5f;
+		float t = 1.5f * s;
 		ColorFloat fc = {1.0f, 0.5f, 0.1f, alpha};
-		/* Center pellet */
-		Render_thick_line(cx, cy + 4, cx, cy - 7, t, 1.0f, 0.5f, 0.1f, alpha);
-		/* Left pellet */
-		Render_thick_line(cx - 2, cy + 4, cx - 5, cy - 6, t, 1.0f, 0.4f, 0.0f, alpha);
-		/* Right pellet */
-		Render_thick_line(cx + 2, cy + 4, cx + 5, cy - 6, t, 1.0f, 0.4f, 0.0f, alpha);
-		/* Muzzle dot */
-		Position mp = {cx, cy + 4};
-		Render_point(&mp, 3.0f, &fc);
+		Render_thick_line(cx, cy + 4*s, cx, cy - 7*s, t, 1.0f, 0.5f, 0.1f, alpha);
+		Render_thick_line(cx - 2*s, cy + 4*s, cx - 5*s, cy - 6*s, t, 1.0f, 0.4f, 0.0f, alpha);
+		Render_thick_line(cx + 2*s, cy + 4*s, cx + 5*s, cy - 6*s, t, 1.0f, 0.4f, 0.0f, alpha);
+		Position mp = {cx, cy + 4*s};
+		Render_point(&mp, 3.0f * s, &fc);
 		break;
 	}
 	case SUB_ID_BLAZE: {
-		/* Starburst + trail — like egress but orange */
-		float sz = 8.0f;
-		float t = 1.5f;
+		float sz = 8.0f * s;
+		float t = 1.5f * s;
 		Render_thick_line(cx, cy - sz, cx, cy + sz, t, 1.0f, 0.5f, 0.1f, alpha);
 		Render_thick_line(cx - sz, cy, cx + sz, cy, t, 1.0f, 0.5f, 0.1f, alpha);
 		break;
 	}
 	case SUB_ID_SCORCH: {
-		/* Single chevron — like sprint but orange */
-		float sz = 7.0f;
-		float t = 1.5f;
-		Render_thick_line(cx - 4, cy - sz, cx + 4, cy, t, 1.0f, 0.5f, 0.1f, alpha);
-		Render_thick_line(cx + 4, cy, cx - 4, cy + sz, t, 1.0f, 0.5f, 0.1f, alpha);
+		float sz = 7.0f * s;
+		float t = 1.5f * s;
+		Render_thick_line(cx - 4*s, cy - sz, cx + 4*s, cy, t, 1.0f, 0.5f, 0.1f, alpha);
+		Render_thick_line(cx + 4*s, cy, cx - 4*s, cy + sz, t, 1.0f, 0.5f, 0.1f, alpha);
 		break;
 	}
 	case SUB_ID_CINDER: {
-		/* Flame column — vertical line + flicker */
-		float t = 2.0f;
-		Render_thick_line(cx, cy + 8, cx, cy - 4, t, 1.0f, 0.4f, 0.0f, alpha);
-		Render_filled_circle(cx, cy - 6, 3.0f, 5, 1.0f, 0.6f, 0.1f, alpha);
+		Position p = {cx, cy};
+		Rectangle body = {-8.0 * s, 8.0 * s, 8.0 * s, -8.0 * s};
+		Rectangle dot = {-3.0 * s, 3.0 * s, 3.0 * s, -3.0 * s};
+		ColorFloat dark_orange = {0.6f, 0.3f, 0.05f, alpha};
+		ColorFloat bright_orange = {1.0f, 0.5f, 0.1f, alpha};
+		Render_quad(&p, 45.0, body, &dark_orange);
+		Render_quad(&p, 45.0, dot, &bright_orange);
 		break;
 	}
 	case SUB_ID_CAUTERIZE: {
-		/* Plus/cross — like mend but orange */
-		float sz = 7.0f;
-		float t = 2.0f;
+		float sz = 7.0f * s;
+		float t = 2.0f * s;
 		Render_thick_line(cx - sz, cy, cx + sz, cy, t, 1.0f, 0.5f, 0.1f, alpha);
 		Render_thick_line(cx, cy - sz, cx, cy + sz, t, 1.0f, 0.5f, 0.1f, alpha);
 		break;
 	}
 	case SUB_ID_IMMOLATE: {
-		/* Hexagon — like aegis but orange */
-		float r = 8.0f;
+		float r = 8.0f * s;
+		float t = 1.5f * s;
 		for (int i = 0; i < 6; i++) {
 			float a0 = i * 60.0f * (float)M_PI / 180.0f;
 			float a1 = (i + 1) * 60.0f * (float)M_PI / 180.0f;
 			Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
 				cx + cosf(a1) * r, cy + sinf(a1) * r,
-				1.5f, 1.0f, 0.5f, 0.1f, alpha);
+				t, 1.0f, 0.5f, 0.1f, alpha);
 		}
 		break;
 	}
 	case SUB_ID_SMOLDER: {
-		/* Eye shape — like stealth but orange */
-		float r = 8.0f;
-		float t = 1.5f;
+		float r = 8.0f * s;
+		float t = 1.5f * s;
 		Render_thick_line(cx - r, cy, cx, cy - r * 0.5f, t, 1.0f, 0.5f, 0.1f, alpha);
 		Render_thick_line(cx, cy - r * 0.5f, cx + r, cy, t, 1.0f, 0.5f, 0.1f, alpha);
 		Render_thick_line(cx - r, cy, cx, cy + r * 0.5f, t, 1.0f, 0.5f, 0.1f, alpha);
@@ -789,32 +758,32 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		break;
 	}
 	case SUB_ID_HEATWAVE: {
-		/* Expanding rings — like emp but orange */
-		Render_filled_circle(cx, cy, 3.0f, 8, 1.0f, 0.5f, 0.1f, alpha);
+		float t = 1.5f * s;
+		Render_filled_circle(cx, cy, 3.0f * s, 8, 1.0f, 0.5f, 0.1f, alpha);
 		for (int ring = 0; ring < 2; ring++) {
-			float r = 6.0f + ring * 4.0f;
+			float r = (6.0f + ring * 4.0f) * s;
 			float a = alpha * (1.0f - ring * 0.3f);
 			for (int seg = 0; seg < 8; seg++) {
 				float a0 = seg * 45.0f * (float)M_PI / 180.0f;
 				float a1 = (seg + 1) * 45.0f * (float)M_PI / 180.0f;
 				Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
 					cx + cosf(a1) * r, cy + sinf(a1) * r,
-					1.5f, 1.0f, 0.5f, 0.1f, a);
+					t, 1.0f, 0.5f, 0.1f, a);
 			}
 		}
 		break;
 	}
 	case SUB_ID_TEMPER: {
-		/* Shield + inner flame — resist but orange with fire center */
-		float r = 8.0f;
+		float r = 8.0f * s;
+		float t = 1.5f * s;
 		for (int i = 0; i < 6; i++) {
 			float a0 = i * 60.0f * (float)M_PI / 180.0f;
 			float a1 = (i + 1) * 60.0f * (float)M_PI / 180.0f;
 			Render_thick_line(cx + cosf(a0) * r, cy + sinf(a0) * r,
 				cx + cosf(a1) * r, cy + sinf(a1) * r,
-				1.5f, 1.0f, 0.5f, 0.1f, alpha);
+				t, 1.0f, 0.5f, 0.1f, alpha);
 		}
-		Render_filled_circle(cx, cy, 3.0f, 5, 1.0f, 0.3f, 0.0f, alpha);
+		Render_filled_circle(cx, cy, 3.0f * s, 5, 1.0f, 0.3f, 0.0f, alpha);
 		break;
 	}
 	default:
@@ -898,13 +867,17 @@ void Skillbar_swap_slots(int a, int b)
 
 int Skillbar_slot_at_position(float x, float y, const Screen *screen)
 {
-	float base_x = SLOT_MARGIN;
-	float base_y = (float)screen->height - SLOT_SIZE - SLOT_MARGIN;
+	float s = Graphics_get_ui_scale();
+	float slot_size = SLOT_SIZE * s;
+	float slot_spacing = SLOT_SPACING * s;
+	float slot_margin = SLOT_MARGIN * s;
+	float base_x = slot_margin;
+	float base_y = (float)screen->height - slot_size - slot_margin;
 
 	for (int i = 0; i < SKILLBAR_SLOTS; i++) {
-		float bx = base_x + i * SLOT_SPACING;
+		float bx = base_x + i * slot_spacing;
 		float by = base_y;
-		if (x >= bx && x <= bx + SLOT_SIZE && y >= by && y <= by + SLOT_SIZE)
+		if (x >= bx && x <= bx + slot_size && y >= by && y <= by + slot_size)
 			return i;
 	}
 	return -1;
@@ -912,7 +885,7 @@ int Skillbar_slot_at_position(float x, float y, const Screen *screen)
 
 void Skillbar_render_icon_at(SubroutineId id, float cx, float cy, float alpha)
 {
-	render_icon(id, cx, cy, alpha);
+	render_icon(id, cx, cy, alpha, Graphics_get_ui_scale());
 }
 
 SubroutineTier Skillbar_get_tier(SubroutineId id)

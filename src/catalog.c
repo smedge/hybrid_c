@@ -71,10 +71,11 @@ static int seenState[SUB_ID_COUNT];
 static void get_panel_rect(const Screen *screen,
 	float *px, float *py, float *pw, float *ph)
 {
-	*pw = CATALOG_WIDTH;
-	*ph = CATALOG_HEIGHT;
+	float s = Graphics_get_ui_scale();
+	*pw = CATALOG_WIDTH * s;
+	*ph = CATALOG_HEIGHT * s;
 	*px = ((float)screen->width - *pw) * 0.5f;
-	*py = ((float)screen->height - *ph) * 0.5f - 30.0f;
+	*py = ((float)screen->height - *ph) * 0.5f - 30.0f * s;
 }
 
 /* Helper: count discovered subs of a given type */
@@ -307,6 +308,13 @@ void Catalog_update(Input *input, const unsigned int ticks)
 		return;
 	}
 
+	float s = Graphics_get_ui_scale();
+	float tab_width = TAB_WIDTH * s;
+	float tab_height = TAB_HEIGHT * s;
+	float tab_gap = TAB_GAP * s;
+	float item_height = ITEM_HEIGHT * s;
+	float item_gap = ITEM_GAP * s;
+
 	Screen screen = Graphics_get_screen();
 	float mx = (float)input->mouseX;
 	float my = (float)input->mouseY;
@@ -315,44 +323,44 @@ void Catalog_update(Input *input, const unsigned int ticks)
 	get_panel_rect(&screen, &px, &py, &pw, &ph);
 
 	/* Tab bar: rendered at left side of panel */
-	float tab_x = px + TAB_GAP;
-	float tab_y = py + TAB_GAP;
+	float tab_x = px + tab_gap;
+	float tab_y = py + tab_gap;
 	if (input->mouseLeft && !mouseWasDown && !drag.active) {
 		for (int t = 0; t < SUB_TYPE_COUNT; t++) {
 			if (!tab_has_content(t))
 				continue;
 			float tx = tab_x;
 			float ty = tab_y;
-			if (mx >= tx && mx <= tx + TAB_WIDTH &&
-				my >= ty && my <= ty + TAB_HEIGHT) {
+			if (mx >= tx && mx <= tx + tab_width &&
+				my >= ty && my <= ty + tab_height) {
 				selectedTab = t;
 				scrollOffset = 0.0f;
 				marqueeTimer = 0;
 				mark_tab_seen(t);
 				break;
 			}
-			tab_y += TAB_HEIGHT + TAB_GAP;
+			tab_y += tab_height + tab_gap;
 		}
 	}
 
 	/* Mouse wheel scrolling */
-	float item_area_x = px + TAB_WIDTH + TAB_GAP * 2.0f;
-	float item_area_y = py + TAB_GAP;
-	float item_area_w = pw - TAB_WIDTH - TAB_GAP * 3.0f;
-	float item_area_h = ph - TAB_GAP * 2.0f;
+	float item_area_x = px + tab_width + tab_gap * 2.0f;
+	float item_area_y = py + tab_gap;
+	float item_area_w = pw - tab_width - tab_gap * 3.0f;
+	float item_area_h = ph - tab_gap * 2.0f;
 	(void)item_area_w;
 
 	int visible_items = count_discovered_for_type(selectedTab);
-	float total_content = visible_items * (ITEM_HEIGHT + ITEM_GAP);
+	float total_content = visible_items * (item_height + item_gap);
 	float max_scroll = total_content - item_area_h;
 	if (max_scroll < 0.0f) max_scroll = 0.0f;
 
 	if (input->mouseWheelUp) {
-		scrollOffset -= ITEM_HEIGHT;
+		scrollOffset -= item_height;
 		input->mouseWheelUp = false;
 	}
 	if (input->mouseWheelDown) {
-		scrollOffset += ITEM_HEIGHT;
+		scrollOffset += item_height;
 		input->mouseWheelDown = false;
 	}
 	if (scrollOffset < 0.0f) scrollOffset = 0.0f;
@@ -385,7 +393,7 @@ void Catalog_update(Input *input, const unsigned int ticks)
 						continue;
 
 					float item_top = iy;
-					float item_bot = iy + ITEM_HEIGHT;
+					float item_bot = iy + item_height;
 
 					if (Progression_is_unlocked(i) &&
 						mx >= item_area_x && mx <= item_area_x + item_area_w &&
@@ -403,7 +411,7 @@ void Catalog_update(Input *input, const unsigned int ticks)
 						drag.threshold_met = false;
 						break;
 					}
-					iy += ITEM_HEIGHT + ITEM_GAP;
+					iy += item_height + item_gap;
 				}
 			}
 		} else if (drag.active) {
@@ -455,6 +463,15 @@ void Catalog_render(const Screen *screen)
 	if (!catalogOpen)
 		return;
 
+	float s = Graphics_get_ui_scale();
+	float tab_width = TAB_WIDTH * s;
+	float tab_height = TAB_HEIGHT * s;
+	float tab_gap = TAB_GAP * s;
+	float tab_chamf = TAB_CHAMF * s;
+	float item_height = ITEM_HEIGHT * s;
+	float item_icon_size = ITEM_ICON_SIZE * s;
+	float item_gap = ITEM_GAP * s;
+
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
 	Mat4 proj = Graphics_get_ui_projection();
@@ -464,10 +481,10 @@ void Catalog_render(const Screen *screen)
 	float px, py, pw, ph;
 	get_panel_rect(screen, &px, &py, &pw, &ph);
 
-	float item_area_x = px + TAB_WIDTH + TAB_GAP * 2.0f;
-	float item_area_y = py + TAB_GAP;
-	float item_area_w = pw - TAB_WIDTH - TAB_GAP * 3.0f;
-	float item_area_h = ph - TAB_GAP * 2.0f;
+	float item_area_x = px + tab_width + tab_gap * 2.0f;
+	float item_area_y = py + tab_gap;
+	float item_area_w = pw - tab_width - tab_gap * 3.0f;
+	float item_area_h = ph - tab_gap * 2.0f;
 
 	/*
 	 * Pass 1: All geometry (quads, lines, points).
@@ -480,14 +497,14 @@ void Catalog_render(const Screen *screen)
 
 	/* Panel border */
 	float brc = 0.3f;
-	Render_thick_line(px, py, px + pw, py, 1.0f, brc, brc, brc, 0.8f);
-	Render_thick_line(px, py + ph, px + pw, py + ph, 1.0f, brc, brc, brc, 0.8f);
-	Render_thick_line(px, py, px, py + ph, 1.0f, brc, brc, brc, 0.8f);
-	Render_thick_line(px + pw, py, px + pw, py + ph, 1.0f, brc, brc, brc, 0.8f);
+	Render_thick_line(px, py, px + pw, py, 1.0f * s, brc, brc, brc, 0.8f);
+	Render_thick_line(px, py + ph, px + pw, py + ph, 1.0f * s, brc, brc, brc, 0.8f);
+	Render_thick_line(px, py, px, py + ph, 1.0f * s, brc, brc, brc, 0.8f);
+	Render_thick_line(px + pw, py, px + pw, py + ph, 1.0f * s, brc, brc, brc, 0.8f);
 
 	/* Tab backgrounds */
-	float tab_x = px + TAB_GAP;
-	float tab_y = py + TAB_GAP;
+	float tab_x = px + tab_gap;
+	float tab_y = py + tab_gap;
 	for (int t = 0; t < SUB_TYPE_COUNT; t++) {
 		if (!tab_has_content(t))
 			continue;
@@ -499,9 +516,9 @@ void Catalog_render(const Screen *screen)
 
 		if (selected) {
 			/* Chamfered fill: sharp NW + SE, chamfered NE + SW */
-			float c = TAB_CHAMF;
+			float c = tab_chamf;
 			float tx0 = tab_x, ty0 = tab_y;
-			float tx1 = tab_x + TAB_WIDTH, ty1 = tab_y + TAB_HEIGHT;
+			float tx1 = tab_x + tab_width, ty1 = tab_y + tab_height;
 			float vx[6] = { tx0,      tx1 - c, tx1,
 			                tx1,      tx0 + c, tx0 };
 			float vy[6] = { ty0,      ty0,     ty0 + c,
@@ -520,31 +537,31 @@ void Catalog_render(const Screen *screen)
 			for (int v = 0; v < 6; v++) {
 				int nv = (v + 1) % 6;
 				Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
-					1.0f, tc, tc, 1.0f, 0.8f);
+					1.0f * s, tc, tc, 1.0f, 0.8f);
 			}
 		} else {
 			Render_quad_absolute(tab_x, tab_y,
-				tab_x + TAB_WIDTH, tab_y + TAB_HEIGHT,
+				tab_x + tab_width, tab_y + tab_height,
 				tr_col, tg_col, tb_col, 0.9f);
 		}
 
 		/* New item notification dot */
 		if (tab_has_new(t)) {
 			Position dot_pos = {
-				tab_x + TAB_WIDTH - 8.0f,
-				tab_y + TAB_HEIGHT * 0.5f
+				tab_x + tab_width - 8.0f * s,
+				tab_y + tab_height * 0.5f
 			};
 			ColorFloat magenta = {1.0f, 0.0f, 1.0f, 0.9f};
-			Render_point(&dot_pos, 6.0f, &magenta);
+			Render_point(&dot_pos, 6.0f * s, &magenta);
 		}
 
-		tab_y += TAB_HEIGHT + TAB_GAP;
+		tab_y += tab_height + tab_gap;
 	}
 
 	/* Separator line */
-	float sep_x = px + TAB_WIDTH + TAB_GAP * 1.5f;
-	Render_thick_line(sep_x, py + TAB_GAP, sep_x, py + ph - TAB_GAP,
-		1.0f, 0.25f, 0.25f, 0.3f, 0.6f);
+	float sep_x = px + tab_width + tab_gap * 1.5f;
+	Render_thick_line(sep_x, py + tab_gap, sep_x, py + ph - tab_gap,
+		1.0f * s, 0.25f, 0.25f, 0.3f, 0.6f);
 
 	/* Flush panel/tab geometry before enabling scissor */
 	Render_flush(&proj, &ident);
@@ -567,8 +584,8 @@ void Catalog_render(const Screen *screen)
 			continue;
 		if (!Progression_is_discovered(i))
 			continue;
-		if (iy + ITEM_HEIGHT < item_area_y || iy > item_area_y + item_area_h) {
-			iy += ITEM_HEIGHT + ITEM_GAP;
+		if (iy + item_height < item_area_y || iy > item_area_y + item_area_h) {
+			iy += item_height + item_gap;
 			continue;
 		}
 
@@ -576,21 +593,21 @@ void Catalog_render(const Screen *screen)
 
 		float ibg = 0.12f;
 		Render_quad_absolute(item_area_x, iy,
-			item_area_x + item_area_w, iy + ITEM_HEIGHT,
+			item_area_x + item_area_w, iy + item_height,
 			ibg, ibg, ibg + 0.02f, 0.9f);
 
 		int equipped_slot = Skillbar_find_equipped_slot(i);
 		if (equipped_slot >= 0) {
 			Render_thick_line(item_area_x, iy,
-				item_area_x, iy + ITEM_HEIGHT,
-				2.0f, 0.3f, 1.0f, 0.3f, 0.8f);
+				item_area_x, iy + item_height,
+				2.0f * s, 0.3f, 1.0f, 0.3f, 0.8f);
 		}
 
 		if (unlocked) {
-			float icon_cx = item_area_x + ITEM_ICON_SIZE * 0.5f + 10.0f;
-			float icon_cy = iy + ITEM_HEIGHT * 0.5f;
-			float half = ITEM_ICON_SIZE * 0.5f;
-			float ich = 8.0f;
+			float icon_cx = item_area_x + item_icon_size * 0.5f + 10.0f * s;
+			float icon_cy = iy + item_height * 0.5f;
+			float half = item_icon_size * 0.5f;
+			float ich = 8.0f * s;
 			ColorFloat bc = TIER_COLORS[Skillbar_get_tier(i)];
 			float ix0 = icon_cx - half, iy0 = icon_cy - half;
 			float ix1 = icon_cx + half, iy1 = icon_cy + half;
@@ -601,17 +618,17 @@ void Catalog_render(const Screen *screen)
 			for (int v = 0; v < 6; v++) {
 				int nv = (v + 1) % 6;
 				Render_thick_line(ivx[v], ivy[v], ivx[nv], ivy[nv],
-					1.0f, bc.red, bc.green, bc.blue, 0.6f);
+					1.0f * s, bc.red, bc.green, bc.blue, 0.6f);
 			}
 			Skillbar_render_icon_at(i, icon_cx, icon_cy, 1.0f);
 		}
 
 		if (!unlocked) {
 			/* Grey icon border for unknown sub */
-			float icon_cx = item_area_x + ITEM_ICON_SIZE * 0.5f + 10.0f;
-			float icon_cy = iy + ITEM_HEIGHT * 0.5f;
-			float half = ITEM_ICON_SIZE * 0.5f;
-			float ich = 8.0f;
+			float icon_cx = item_area_x + item_icon_size * 0.5f + 10.0f * s;
+			float icon_cy = iy + item_height * 0.5f;
+			float half = item_icon_size * 0.5f;
+			float ich = 8.0f * s;
 			float ix0 = icon_cx - half, iy0 = icon_cy - half;
 			float ix1 = icon_cx + half, iy1 = icon_cy + half;
 			float ivx[6] = { ix0,       ix1 - ich, ix1,
@@ -621,15 +638,15 @@ void Catalog_render(const Screen *screen)
 			for (int v = 0; v < 6; v++) {
 				int nv = (v + 1) % 6;
 				Render_thick_line(ivx[v], ivy[v], ivx[nv], ivy[nv],
-					1.0f, 0.3f, 0.3f, 0.3f, 0.6f);
+					1.0f * s, 0.3f, 0.3f, 0.3f, 0.6f);
 			}
 
-			float name_x = item_area_x + ITEM_ICON_SIZE + 25.0f;
-			float desc_y = iy + 22.0f + 18.0f;
+			float name_x = item_area_x + item_icon_size + 25.0f * s;
+			float desc_y = iy + 22.0f * s + 18.0f * s;
 			float bar_x = name_x;
-			float bar_y = desc_y + 6.0f;
-			float bar_w = 120.0f;
-			float bar_h = 4.0f;
+			float bar_y = desc_y + 6.0f * s;
+			float bar_w = 120.0f * s;
+			float bar_h = 4.0f * s;
 			float progress = Progression_get_progress(i);
 			ColorFloat tc = TIER_COLORS[Skillbar_get_tier(i)];
 
@@ -641,16 +658,16 @@ void Catalog_render(const Screen *screen)
 				tc.red, tc.green, tc.blue, 0.7f);
 		}
 
-		iy += ITEM_HEIGHT + ITEM_GAP;
+		iy += item_height + item_gap;
 	}
 
 	/* Scrollbar — thin track + thumb when content overflows */
 	{
 		int visible_items = count_discovered_for_type(selectedTab);
-		float total_content = visible_items * (ITEM_HEIGHT + ITEM_GAP);
+		float total_content = visible_items * (item_height + item_gap);
 		if (total_content > item_area_h) {
-			float track_w = 4.0f;
-			float track_x = item_area_x + item_area_w - track_w - 2.0f;
+			float track_w = 4.0f * s;
+			float track_x = item_area_x + item_area_w - track_w - 2.0f * s;
 			float track_y = item_area_y;
 			float track_h = item_area_h;
 
@@ -662,7 +679,7 @@ void Catalog_render(const Screen *screen)
 			/* Thumb */
 			float visible_ratio = item_area_h / total_content;
 			float thumb_h = track_h * visible_ratio;
-			if (thumb_h < 20.0f) thumb_h = 20.0f;
+			if (thumb_h < 20.0f * s) thumb_h = 20.0f * s;
 			float max_scroll = total_content - item_area_h;
 			float scroll_ratio = (max_scroll > 0.0f)
 				? scrollOffset / max_scroll : 0.0f;
@@ -680,11 +697,11 @@ void Catalog_render(const Screen *screen)
 
 	/* Slot highlights during drag */
 	if (drag.active && drag.threshold_met) {
-		float ch = 8.0f;
-		for (int s = 0; s < SKILLBAR_SLOTS; s++) {
-			float bx = 10.0f + s * 60.0f;
-			float by = (float)screen->height - 50.0f - 10.0f;
-			float sz = 50.0f;
+		float ch = 8.0f * s;
+		for (int sl = 0; sl < SKILLBAR_SLOTS; sl++) {
+			float bx = 10.0f * s + sl * 60.0f * s;
+			float by = (float)screen->height - 50.0f * s - 10.0f * s;
+			float sz = 50.0f * s;
 			float hvx[6] = { bx,       bx + sz - ch, bx + sz,
 			                  bx + sz,  bx + ch,      bx };
 			float hvy[6] = { by,       by,            by + ch,
@@ -692,17 +709,17 @@ void Catalog_render(const Screen *screen)
 			for (int v = 0; v < 6; v++) {
 				int nv = (v + 1) % 6;
 				Render_thick_line(hvx[v], hvy[v], hvx[nv], hvy[nv],
-					2.0f, 0.0f, 1.0f, 0.0f, 0.6f);
+					2.0f * s, 0.0f, 1.0f, 0.0f, 0.6f);
 			}
 		}
 	}
 
 	/* Drag ghost — chamfered slot border + icon */
 	if (drag.active && drag.threshold_met) {
-		float gx = drag.current_x - 25.0f;
-		float gy = drag.current_y - 25.0f;
-		float gsz = 50.0f;
-		float ch = 8.0f;
+		float gx = drag.current_x - 25.0f * s;
+		float gy = drag.current_y - 25.0f * s;
+		float gsz = 50.0f * s;
+		float ch = 8.0f * s;
 		float gvx[6] = { gx,        gx + gsz - ch, gx + gsz,
 		                  gx + gsz,  gx + ch,        gx };
 		float gvy[6] = { gy,        gy,              gy + ch,
@@ -723,7 +740,7 @@ void Catalog_render(const Screen *screen)
 		for (int v = 0; v < 6; v++) {
 			int nv = (v + 1) % 6;
 			Render_thick_line(gvx[v], gvy[v], gvx[nv], gvy[nv],
-				1.0f, gc.red, gc.green, gc.blue, 0.4f);
+				1.0f * s, gc.red, gc.green, gc.blue, 0.4f);
 		}
 
 		Skillbar_render_icon_at(drag.source_id,
@@ -739,25 +756,25 @@ void Catalog_render(const Screen *screen)
 
 	/* Title */
 	Text_render(tr, shaders, &proj, &ident,
-		"SUBROUTINE REGISTRY", px + pw * 0.5f - 80.0f, py - 5.0f,
+		"SUBROUTINE REGISTRY", px + pw * 0.5f - 80.0f * s, py - 5.0f * s,
 		0.7f, 0.7f, 1.0f, 0.9f);
 
 	/* Tab labels */
-	tab_y = py + TAB_GAP;
+	tab_y = py + tab_gap;
 	for (int t = 0; t < SUB_TYPE_COUNT; t++) {
 		if (!tab_has_content(t))
 			continue;
 
 		bool selected = (t == selectedTab);
-		float text_y = tab_y + TAB_HEIGHT * 0.5f + 5.0f;
+		float text_y = tab_y + tab_height * 0.5f + 5.0f * s;
 		Text_render(tr, shaders, &proj, &ident,
-			tab_names[t], tab_x + 8.0f, text_y,
+			tab_names[t], tab_x + 8.0f * s, text_y,
 			selected ? 1.0f : 0.5f,
 			selected ? 1.0f : 0.5f,
 			selected ? 1.0f : 0.5f,
 			0.9f);
 
-		tab_y += TAB_HEIGHT + TAB_GAP;
+		tab_y += tab_height + tab_gap;
 	}
 
 	/* Item text — scissor to item area */
@@ -768,17 +785,17 @@ void Catalog_render(const Screen *screen)
 			continue;
 		if (!Progression_is_discovered(i))
 			continue;
-		if (iy + ITEM_HEIGHT < item_area_y || iy > item_area_y + item_area_h) {
-			iy += ITEM_HEIGHT + ITEM_GAP;
+		if (iy + item_height < item_area_y || iy > item_area_y + item_area_h) {
+			iy += item_height + item_gap;
 			continue;
 		}
 
 		bool unlocked = Progression_is_unlocked(i);
 		int equipped_slot = Skillbar_find_equipped_slot(i);
-		float name_x = item_area_x + ITEM_ICON_SIZE + 25.0f;
-		float name_y = iy + 22.0f;
-		float desc_y = name_y + 18.0f;
-		float right_edge = px + pw - 10.0f;
+		float name_x = item_area_x + item_icon_size + 25.0f * s;
+		float name_y = iy + 22.0f * s;
+		float desc_y = name_y + 18.0f * s;
+		float right_edge = px + pw - 10.0f * s;
 		float max_text_w = right_edge - name_x;
 		char tbuf[128];
 
@@ -793,7 +810,7 @@ void Catalog_render(const Screen *screen)
 				tier_label = " RARE";
 			float tier_w = tier_label ? Text_measure_width(tr, tier_label) : 0.0f;
 			float name_budget = equipped_slot >= 0
-				? max_text_w - 90.0f - tier_w : max_text_w - tier_w;
+				? max_text_w - 90.0f * s - tier_w : max_text_w - tier_w;
 			truncate_text(tr, Skillbar_get_sub_name(i),
 				name_budget, tbuf, sizeof(tbuf));
 			Text_render(tr, shaders, &proj, &ident,
@@ -823,7 +840,7 @@ void Catalog_render(const Screen *screen)
 			}
 
 			Text_render(tr, shaders, &proj, &ident,
-				"drag to equip", name_x, desc_y + 16.0f,
+				"drag to equip", name_x, desc_y + 16.0f * s,
 				0.3f, 0.3f, 0.4f, 0.5f);
 		} else {
 			/* "unknown_sub <EnemyType>" with enemy name colored */
@@ -845,10 +862,10 @@ void Catalog_render(const Screen *screen)
 				suffix, cx, name_y,
 				0.5f, 0.5f, 0.5f, 0.7f);
 
-			float icon_cx = item_area_x + ITEM_ICON_SIZE * 0.5f + 10.0f;
-			float icon_cy = iy + ITEM_HEIGHT * 0.5f;
+			float icon_cx = item_area_x + item_icon_size * 0.5f + 10.0f * s;
+			float icon_cy = iy + item_height * 0.5f;
 			Text_render(tr, shaders, &proj, &ident,
-				"?", icon_cx - 4.0f, icon_cy + 5.0f,
+				"?", icon_cx - 4.0f * s, icon_cy + 5.0f * s,
 				0.5f, 0.5f, 0.5f, 0.7f);
 
 			char buf[64];
@@ -858,16 +875,16 @@ void Catalog_render(const Screen *screen)
 			ColorFloat ftc = TIER_COLORS[Skillbar_get_tier(i)];
 			Text_render(tr, shaders, &proj, &ident,
 				buf, name_x, desc_y,
-				ftc.red, ftc.green, ftc.blue, 0.6f);
+				ftc.red, ftc.green, ftc.blue, 0.95f);
 		}
 
-		iy += ITEM_HEIGHT + ITEM_GAP;
+		iy += item_height + item_gap;
 	}
 	Render_scissor_end();
 
 	/* Help text */
 	Text_render(tr, shaders, &proj, &ident,
 		"[P] Close    [Right-click slot] Unequip    [Drag] Equip/Swap",
-		px + 10.0f, py + ph + 15.0f,
+		px + 10.0f * s, py + ph + 15.0f * s,
 		0.6f, 0.6f, 0.65f, 0.9f);
 }

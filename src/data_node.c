@@ -587,18 +587,19 @@ void DataNode_render_voice_indicator(const Screen *screen)
 	Mat4 proj = Graphics_get_ui_projection();
 	Mat4 ident = Mat4_identity();
 
-	float margin = 15.0f;
-	float gap = 10.0f;
-	float r = VOICE_INDICATOR_DISK_R;
+	float s = Graphics_get_ui_scale();
+	float margin = 15.0f * s;
+	float gap = 10.0f * s;
+	float r = VOICE_INDICATOR_DISK_R * s;
 
 	/* Align text baseline with Integrity label (player_stats: MARGIN_Y=10, BAR_HEIGHT=16) */
-	float text_y = 10.0f + 16.0f * 0.5f + tr->font_size * 0.15f + 1.0f;
+	float text_y = 10.0f * s + 16.0f * s * 0.5f + tr->font_size * 0.15f + 1.0f * s;
 	float tw = Text_measure_width(tr, voiceIndicatorTitle);
 	float text_x = screen->width - margin - tw;
 
 	/* Disk vertically centered on text (visual center = bar center line) */
 	float disk_cx = text_x - gap - r;
-	float disk_cy = 10.0f + 16.0f * 0.5f;
+	float disk_cy = 10.0f * s + 16.0f * s * 0.5f;
 
 	/* Spinning disk (same animation as world data nodes) */
 	float t = voiceIndicatorAnimTimer / 1000.0f;
@@ -644,10 +645,18 @@ void DataNode_render_overlay(const Screen *screen)
 	Mat4 proj = Graphics_get_ui_projection();
 	Mat4 ident = Mat4_identity();
 
+	float s = Graphics_get_ui_scale();
+	float overlay_max_w = OVERLAY_MAX_WIDTH * s;
+	float overlay_pad = OVERLAY_PADDING * s;
+	float scrollbar_w = SCROLLBAR_WIDTH * s;
+	float ov_title_h = OV_TITLE_H * s;
+	float ov_sep_gap = OV_SEP_GAP * s;
+	float ov_body_gap = OV_BODY_GAP * s;
+
 	float max_h = screen->height * OVERLAY_MAX_HEIGHT_RATIO;
-	float content_w = OVERLAY_MAX_WIDTH - OVERLAY_PADDING * 2.0f;
-	float line_h = 18.0f;
-	float header_h = OV_TITLE_H + OV_SEP_GAP + OV_BODY_GAP;
+	float content_w = overlay_max_w - overlay_pad * 2.0f;
+	float line_h = 18.0f * s;
+	float header_h = ov_title_h + ov_sep_gap + ov_body_gap;
 
 	/* Measure body text height */
 	float body_h = 0.0f;
@@ -683,13 +692,13 @@ void DataNode_render_overlay(const Screen *screen)
 		if (linelen > 0) body_h += line_h;
 	}
 
-	float total_content_h = header_h + body_h + OVERLAY_PADDING;
-	float overlay_h = total_content_h + OVERLAY_PADDING * 2.0f;
+	float total_content_h = header_h + body_h + overlay_pad;
+	float overlay_h = total_content_h + overlay_pad * 2.0f;
 	if (overlay_h > max_h) overlay_h = max_h;
 
-	float overlay_w = OVERLAY_MAX_WIDTH;
+	float overlay_w = overlay_max_w;
 	float ox = (screen->width - overlay_w) * 0.5f;
-	float oy = (screen->height - overlay_h) * 0.5f - 20.0f;
+	float oy = (screen->height - overlay_h) * 0.5f - 20.0f * s;
 
 	/* Background (matched to catalog/data logs) */
 	Render_quad_absolute(ox, oy, ox + overlay_w, oy + overlay_h,
@@ -697,19 +706,19 @@ void DataNode_render_overlay(const Screen *screen)
 
 	/* Border (matched to catalog) */
 	Render_thick_line(ox, oy, ox + overlay_w, oy,
-		1.0f, 0.3f, 0.3f, 0.3f, 0.8f);
+		1.0f * s, 0.3f, 0.3f, 0.3f, 0.8f);
 	Render_thick_line(ox + overlay_w, oy, ox + overlay_w, oy + overlay_h,
-		1.0f, 0.3f, 0.3f, 0.3f, 0.8f);
+		1.0f * s, 0.3f, 0.3f, 0.3f, 0.8f);
 	Render_thick_line(ox + overlay_w, oy + overlay_h, ox, oy + overlay_h,
-		1.0f, 0.3f, 0.3f, 0.3f, 0.8f);
+		1.0f * s, 0.3f, 0.3f, 0.3f, 0.8f);
 	Render_thick_line(ox, oy + overlay_h, ox, oy,
-		1.0f, 0.3f, 0.3f, 0.3f, 0.8f);
+		1.0f * s, 0.3f, 0.3f, 0.3f, 0.8f);
 
 	/* Separator line (tight below title) */
-	float tx = ox + OVERLAY_PADDING;
-	float sep_y = oy + OVERLAY_PADDING + OV_TITLE_H;
+	float tx = ox + overlay_pad;
+	float sep_y = oy + overlay_pad + ov_title_h;
 	Render_thick_line(tx, sep_y, tx + content_w, sep_y,
-		1.0f, 0.25f, 0.25f, 0.3f, 0.6f);
+		1.0f * s, 0.25f, 0.25f, 0.3f, 0.6f);
 
 	Render_flush(&proj, &ident);
 
@@ -717,13 +726,13 @@ void DataNode_render_overlay(const Screen *screen)
 	{
 		float tw = Text_measure_width(tr, readingEntry->title);
 		Text_render(tr, shaders, &proj, &ident, readingEntry->title,
-			ox + overlay_w * 0.5f - tw * 0.5f, oy - 5.0f,
+			ox + overlay_w * 0.5f - tw * 0.5f, oy - 5.0f * s,
 			0.7f, 0.7f, 1.0f, 0.9f);
 	}
 
 	/* Body text with breathing room after separator */
-	float body_start_y = oy + OVERLAY_PADDING + header_h;
-	float visible_h = overlay_h - OVERLAY_PADDING * 2.0f - header_h;
+	float body_start_y = oy + overlay_pad + header_h;
+	float visible_h = overlay_h - overlay_pad * 2.0f - header_h;
 	{
 		const char *p = readingEntry->body;
 		char linebuf[512];
@@ -782,19 +791,19 @@ void DataNode_render_overlay(const Screen *screen)
 
 		/* Scrollbar */
 		if (total_content_h > overlay_h) {
-			float max_scroll = total_content_h - overlay_h + OVERLAY_PADDING * 2.0f;
+			float max_scroll = total_content_h - overlay_h + overlay_pad * 2.0f;
 			float scroll_ratio = readingScroll / max_scroll;
-			float track_h = overlay_h - OVERLAY_PADDING * 2.0f;
+			float track_h = overlay_h - overlay_pad * 2.0f;
 			float thumb_h = (visible_h / total_content_h) * track_h;
-			if (thumb_h < 20.0f) thumb_h = 20.0f;
-			float thumb_y = oy + OVERLAY_PADDING + scroll_ratio * (track_h - thumb_h);
-			float sbx = ox + overlay_w - SCROLLBAR_WIDTH - 4.0f;
+			if (thumb_h < 20.0f * s) thumb_h = 20.0f * s;
+			float thumb_y = oy + overlay_pad + scroll_ratio * (track_h - thumb_h);
+			float sbx = ox + overlay_w - scrollbar_w - 4.0f * s;
 
-			Render_quad_absolute(sbx, oy + OVERLAY_PADDING,
-				sbx + SCROLLBAR_WIDTH, oy + overlay_h - OVERLAY_PADDING,
+			Render_quad_absolute(sbx, oy + overlay_pad,
+				sbx + scrollbar_w, oy + overlay_h - overlay_pad,
 				0.2f, 0.2f, 0.2f, 0.3f);
 			Render_quad_absolute(sbx, thumb_y,
-				sbx + SCROLLBAR_WIDTH, thumb_y + thumb_h,
+				sbx + scrollbar_w, thumb_y + thumb_h,
 				0.7f, 0.7f, 0.7f, 0.4f);
 			Render_flush(&proj, &ident);
 		}
@@ -817,8 +826,8 @@ void DataNode_render_overlay(const Screen *screen)
 		const char *hint = "[Any key to continue]";
 		float hw = Text_measure_width(tr, hint);
 		Text_render(tr, shaders, &proj, &ident, hint,
-			ox + overlay_w - hw - 10.0f,
-			oy + overlay_h + 15.0f,
+			ox + overlay_w - hw - 10.0f * s,
+			oy + overlay_h + 15.0f * s,
 			0.6f, 0.6f, 0.65f, dismiss_alpha);
 	}
 }
@@ -915,6 +924,8 @@ void DataNode_render_god_labels(void)
 	Screen screen = Graphics_get_screen();
 	Mat4 view = View_get_transform(&screen);
 
+	float s = Graphics_get_ui_scale();
+
 	for (int i = 0; i < nodeCount; i++) {
 		DataNodeState *n = &nodes[i];
 		if (!n->active) continue;
@@ -928,7 +939,7 @@ void DataNode_render_god_labels(void)
 		char buf[64];
 		snprintf(buf, sizeof(buf), "[DN:%s]", n->node_id);
 		Text_render(tr, shaders, &ui_proj, &ident,
-			buf, sx - 40.0f, sy - 55.0f,
+			buf, sx - 40.0f * s, sy - 55.0f * s,
 			1.0f, 0.9f, 0.2f, 0.9f);
 	}
 }

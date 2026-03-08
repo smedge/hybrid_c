@@ -205,6 +205,8 @@ void Portal_render_god_labels(void)
 	Screen screen = Graphics_get_screen();
 	Mat4 view = View_get_transform(&screen);
 
+	float s = Graphics_get_ui_scale();
+
 	for (int i = 0; i < portalCount; i++) {
 		PortalState *p = &portals[i];
 		if (!p->active) continue;
@@ -220,12 +222,12 @@ void Portal_render_god_labels(void)
 		char buf[128];
 		snprintf(buf, sizeof(buf), "[%s]", p->id);
 		Text_render(tr, shaders, &ui_proj, &ident,
-			buf, sx - 30.0f, sy - 55.0f,
+			buf, sx - 30.0f * s, sy - 55.0f * s,
 			0.0f, 1.0f, 1.0f, 0.9f);
 
 		snprintf(buf, sizeof(buf), "-> %s", p->dest_portal_id);
 		Text_render(tr, shaders, &ui_proj, &ident,
-			buf, sx - 30.0f, sy - 40.0f,
+			buf, sx - 30.0f * s, sy - 40.0f * s,
 			0.0f, 0.8f, 0.8f, 0.7f);
 	}
 }

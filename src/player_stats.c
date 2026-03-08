@@ -174,9 +174,11 @@ void PlayerStats_update(unsigned int ticks)
 	}
 }
 
+static float barScale = 1.0f; /* set once per frame in PlayerStats_render */
+
 static void render_bar_border(float x, float y, float w, float h)
 {
-	float c = BAR_CHAMF;
+	float c = BAR_CHAMF * barScale;
 	float vx[6] = { x,      x+w-c, x+w,
 	                 x+w,    x+c,   x };
 	float vy[6] = { y,      y,      y+c,
@@ -184,13 +186,13 @@ static void render_bar_border(float x, float y, float w, float h)
 	for (int v = 0; v < 6; v++) {
 		int nv = (v + 1) % 6;
 		Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
-			1.0f, BORDER_COLOR, BORDER_COLOR, BORDER_COLOR, 0.8f);
+			1.0f * barScale, BORDER_COLOR, BORDER_COLOR, BORDER_COLOR, 0.8f);
 	}
 }
 
 static void render_bar_bg(float x, float y, float w, float h)
 {
-	float c = BAR_CHAMF;
+	float c = BAR_CHAMF * barScale;
 	float vx[6] = { x,      x+w-c, x+w,
 	                 x+w,    x+c,   x };
 	float vy[6] = { y,      y,      y+c,
@@ -212,7 +214,7 @@ static void render_bar_fill(float bx, float y, float w, float h,
 	if (fill_frac <= 0.0f) return;
 	float fw = w * fill_frac;
 	if (fw > w) fw = w;
-	float c = BAR_CHAMF;
+	float c = BAR_CHAMF * barScale;
 
 	float vx[6], vy[6];
 	int count;
@@ -256,6 +258,9 @@ static void render_bar_fill(float bx, float y, float w, float h,
 
 void PlayerStats_render(const Screen *screen)
 {
+	float s = Graphics_get_ui_scale();
+	barScale = s;
+
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
 	Mat4 proj = Graphics_get_ui_projection();
@@ -264,20 +269,26 @@ void PlayerStats_render(const Screen *screen)
 	float intFrac = (float)(integrity / INTEGRITY_MAX);
 	float fbFrac = (float)(feedback / FEEDBACK_MAX);
 
+	float margin_x = MARGIN_X * s;
+	float col_gap = COL_GAP * s;
+	float bar_width = BAR_WIDTH * s;
+	float bar_height = BAR_HEIGHT * s;
+	float bar_gap = BAR_GAP * s;
+
 	/* Compute column layout from actual font metrics so nothing overlaps */
 	float labelW = Text_measure_width(tr, "INTEGRITY"); /* widest label */
 	float valueW = Text_measure_width(tr, "100");        /* widest value */
-	float valueCol = MARGIN_X + labelW + COL_GAP;  /* value column left edge */
-	float barX = valueCol + valueW + COL_GAP;       /* bar left edge */
+	float valueCol = margin_x + labelW + col_gap;  /* value column left edge */
+	float barX = valueCol + valueW + col_gap;       /* bar left edge */
 
-	float textY_off = BAR_HEIGHT * 0.5f + tr->font_size * 0.15f + 1.0f;
+	float textY_off = bar_height * 0.5f + tr->font_size * 0.15f + 1.0f * s;
 
 	/* --- Damage flash: red border around entire screen --- */
 	if (flashTicksLeft > 0) {
 		float fade = (float)flashTicksLeft / FLASH_DURATION;
 		float sw = (float)screen->width;
 		float sh = (float)screen->height;
-		float t = FLASH_THICKNESS;
+		float t = FLASH_THICKNESS * s;
 		/* Top */
 		Render_quad_absolute(0, 0, sw, t, 1.0f, 0.0f, 0.0f, fade);
 		/* Bottom */
@@ -289,9 +300,9 @@ void PlayerStats_render(const Screen *screen)
 	}
 
 	/* --- Integrity bar --- */
-	float iy = MARGIN_Y;
+	float iy = MARGIN_Y * s;
 
-	render_bar_bg(barX, iy, BAR_WIDTH, BAR_HEIGHT);
+	render_bar_bg(barX, iy, bar_width, bar_height);
 
 	/* Fill: green -> yellow -> red */
 	float ir, ig, ib;
@@ -306,14 +317,14 @@ void PlayerStats_render(const Screen *screen)
 		ig = 0.8f * t;
 		ib = 0.0f;
 	}
-	render_bar_fill(barX, iy, BAR_WIDTH, BAR_HEIGHT, intFrac, ir, ig, ib, 0.9f);
+	render_bar_fill(barX, iy, bar_width, bar_height, intFrac, ir, ig, ib, 0.9f);
 
-	render_bar_border(barX, iy, BAR_WIDTH, BAR_HEIGHT);
+	render_bar_border(barX, iy, bar_width, bar_height);
 
 	/* --- Feedback bar --- */
-	float fy = iy + BAR_HEIGHT + BAR_GAP;
+	float fy = iy + bar_height + bar_gap;
 
-	render_bar_bg(barX, fy, BAR_WIDTH, BAR_HEIGHT);
+	render_bar_bg(barX, fy, bar_width, bar_height);
 
 	/* Fill: cyan -> yellow -> magenta */
 	float fr, fg, fb;
@@ -331,16 +342,16 @@ void PlayerStats_render(const Screen *screen)
 	/* 4Hz blink when feedback is full: 250ms period, visible first 125ms */
 	bool fbFillVisible = (feedback < FEEDBACK_MAX) || ((feedbackFlashTimer % 250) < 125);
 	if (fbFillVisible)
-		render_bar_fill(barX, fy, BAR_WIDTH, BAR_HEIGHT, fbFrac, fr, fg, fb, 0.9f);
+		render_bar_fill(barX, fy, bar_width, bar_height, fbFrac, fr, fg, fb, 0.9f);
 
-	render_bar_border(barX, fy, BAR_WIDTH, BAR_HEIGHT);
+	render_bar_border(barX, fy, bar_width, bar_height);
 
 	/* --- Flush geometry, then render all text --- */
 	Render_flush(&proj, &ident);
 
 	/* Integrity: label + right-aligned value */
 	Text_render(tr, shaders, &proj, &ident,
-		"INTEGRITY", MARGIN_X, iy + textY_off,
+		"INTEGRITY", margin_x, iy + textY_off,
 		0.5f, 0.5f, 0.5f, 0.8f);
 
 	char intBuf[16];
@@ -352,7 +363,7 @@ void PlayerStats_render(const Screen *screen)
 
 	/* Feedback: label + right-aligned value */
 	Text_render(tr, shaders, &proj, &ident,
-		"FEEDBACK", MARGIN_X, fy + textY_off,
+		"FEEDBACK", margin_x, fy + textY_off,
 		0.5f, 0.5f, 0.5f, 0.8f);
 
 	char fbBuf[16];

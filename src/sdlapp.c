@@ -193,7 +193,7 @@ static void update(Input *input, const unsigned int ticks)
 		break;
 	case GAMEPLAY:
 		Mode_Gameplay_update(input, ticks);
-		if (input->keyEsc && !Mode_Gameplay_consumed_esc())
+		if (Mode_Gameplay_wants_exit())
 			change_mode(MAINMENU);
 		break;
 	};

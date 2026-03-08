@@ -128,6 +128,8 @@ void Progression_update(unsigned int ticks)
 
 void Progression_render(const Screen *screen)
 {
+	float s = Graphics_get_ui_scale();
+	(void)s;
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
 	Mat4 proj = Graphics_get_ui_projection();

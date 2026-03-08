@@ -229,7 +229,8 @@ void Fragment_render_text(const Screen *screen)
 	Mat4 proj = Graphics_get_ui_projection();
 	View view = View_get_view();
 	float vs = (float)view.scale;
-	float ts = vs * 2.0f;
+	float s = Graphics_get_ui_scale();
+	float ts = vs * 2.0f * s;
 
 	float scale_w = screen->width / screen->norm_w;
 	float scale_h = screen->height / screen->norm_h;
@@ -254,8 +255,8 @@ void Fragment_render_text(const Screen *screen)
 		Mat4 textView = Mat4_multiply(&tmp, &t2);
 
 		/* Center text roughly (8 chars * ~7px per char = ~56px, offset by half) */
-		float textX = sx - 28.0f;
-		float textY = sy - 5.0f;
+		float textX = sx - 28.0f * s;
+		float textY = sy - 5.0f * s;
 
 		Text_render(tr, shaders, &proj, &textView,
 			f->binaryText, textX, textY,

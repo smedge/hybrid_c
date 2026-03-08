@@ -43,34 +43,38 @@ void Hud_render(const Screen *screen)
 
 static void render_radar(const Screen *screen)
 {
-	float rx = (float)screen->width - 210.0f;
-	float ry = (float)screen->height - 210.0f;
+	float s = Graphics_get_ui_scale();
+	float radar_size = RADAR_SIZE * s;
+	float margin = 10.0f * s;
+	float rx = (float)screen->width - radar_size - margin;
+	float ry = (float)screen->height - radar_size - margin;
 
 	/* Background */
-	Render_quad_absolute(rx, ry, rx + RADAR_SIZE, ry + RADAR_SIZE,
+	Render_quad_absolute(rx, ry, rx + radar_size, ry + radar_size,
 		0.1f, 0.1f, 0.1f, 0.8f);
 
-	/* Map cells */
+	/* Map cells — same RADAR_RANGE so same terrain coverage at any scale */
 	Position ship_pos = Ship_get_position();
 	Map_render_minimap((float)ship_pos.x, (float)ship_pos.y,
-		rx, ry, RADAR_SIZE, RADAR_RANGE);
+		rx, ry, radar_size, RADAR_RANGE);
 
 	/* Portal blips */
 	Portal_render_minimap((float)ship_pos.x, (float)ship_pos.y,
-		rx, ry, RADAR_SIZE, RADAR_RANGE);
+		rx, ry, radar_size, RADAR_RANGE);
 
 	/* Save point blips */
 	Savepoint_render_minimap((float)ship_pos.x, (float)ship_pos.y,
-		rx, ry, RADAR_SIZE, RADAR_RANGE);
+		rx, ry, radar_size, RADAR_RANGE);
 
 	/* Data node blips */
 	DataNode_render_minimap((float)ship_pos.x, (float)ship_pos.y,
-		rx, ry, RADAR_SIZE, RADAR_RANGE);
+		rx, ry, radar_size, RADAR_RANGE);
 
 	/* Player blip (center) */
-	float cx = rx + RADAR_SIZE * 0.5f;
-	float cy = ry + RADAR_SIZE * 0.5f;
-	Render_quad_absolute(cx - 2.0f, cy - 2.0f, cx + 2.0f, cy + 2.0f,
+	float cx = rx + radar_size * 0.5f;
+	float cy = ry + radar_size * 0.5f;
+	float blip = 2.0f * s;
+	Render_quad_absolute(cx - blip, cy - blip, cx + blip, cy + blip,
 		1.0f, 0.3f, 0.3f, 1.0f);
 
 	/* Zone name — right-justified above minimap */
@@ -82,10 +86,10 @@ static void render_radar(const Screen *screen)
 			Mat4 proj = Graphics_get_ui_projection();
 			Mat4 ident = Mat4_identity();
 
-			float right_edge = rx + RADAR_SIZE;
+			float right_edge = rx + radar_size;
 			float tw = Text_measure_width(tr, z->name);
 			float tx = right_edge - tw;
-			float ty = ry - 4.0f;
+			float ty = ry - 4.0f * s;
 
 			/* Flush geometry before text so quads don't cover it */
 			Render_flush(&proj, &ident);
@@ -98,12 +102,13 @@ static void render_radar(const Screen *screen)
 
 	/* Border */
 	float brc = 0.3f;
-	Render_thick_line(rx, ry, rx + RADAR_SIZE, ry,
-		1.0f, brc, brc, brc, 0.8f);
-	Render_thick_line(rx, ry + RADAR_SIZE, rx + RADAR_SIZE, ry + RADAR_SIZE,
-		1.0f, brc, brc, brc, 0.8f);
-	Render_thick_line(rx, ry, rx, ry + RADAR_SIZE,
-		1.0f, brc, brc, brc, 0.8f);
-	Render_thick_line(rx + RADAR_SIZE, ry, rx + RADAR_SIZE, ry + RADAR_SIZE,
-		1.0f, brc, brc, brc, 0.8f);
+	float lw = 1.0f * s;
+	Render_thick_line(rx, ry, rx + radar_size, ry,
+		lw, brc, brc, brc, 0.8f);
+	Render_thick_line(rx, ry + radar_size, rx + radar_size, ry + radar_size,
+		lw, brc, brc, brc, 0.8f);
+	Render_thick_line(rx, ry, rx, ry + radar_size,
+		lw, brc, brc, brc, 0.8f);
+	Render_thick_line(rx + radar_size, ry, rx + radar_size, ry + radar_size,
+		lw, brc, brc, brc, 0.8f);
 }

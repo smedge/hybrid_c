@@ -178,15 +178,23 @@ void PaletteEditor_render(const Screen *screen)
 	Mat4 proj = Graphics_get_ui_projection();
 	Mat4 ident = Mat4_identity();
 
-	float x = PANEL_X;
-	float y = PANEL_Y;
+	float s = Graphics_get_ui_scale();
+	float panel_x = PANEL_X * s;
+	float panel_y = PANEL_Y * s;
+	float swatch_size = SWATCH_SIZE * s;
+	float swatch_pad = SWATCH_PAD * s;
+	float line_h = LINE_H * s;
+	float label_offset_x = (swatch_size + 8.0f * s);
+
+	float x = panel_x;
+	float y = panel_y;
 	char buf[128];
 	const Zone *z = Zone_get();
 
 	/* Panel background */
-	float panel_w = 220.0f;
-	float panel_h = PANEL_Y + (float)(totalSwatches + 8) * LINE_H;
-	Render_quad_absolute(x - 4.0f, y - 4.0f,
+	float panel_w = 220.0f * s;
+	float panel_h = panel_y + (float)(totalSwatches + 8) * line_h;
+	Render_quad_absolute(x - 4.0f * s, y - 4.0f * s,
 		x + panel_w, panel_h,
 		0.0f, 0.0f, 0.0f, 0.65f);
 
@@ -196,35 +204,35 @@ void PaletteEditor_render(const Screen *screen)
 	Text_render(tr, shaders, &proj, &ident,
 		"PALETTE EDITOR", x, y,
 		0.0f, 1.0f, 1.0f, 1.0f);
-	y += LINE_H + 4.0f;
+	y += line_h + 4.0f * s;
 
 	/* --- CLOUDS section --- */
 	Text_render(tr, shaders, &proj, &ident,
 		"CLOUDS", x, y,
 		0.7f, 0.7f, 0.7f, 0.9f);
-	y += LINE_H;
+	y += line_h;
 
 	for (int i = 0; i < 4; i++) {
 		float sr, sg, sb;
 		get_swatch_rgb(i, &sr, &sg, &sb);
 
 		/* Swatch filled quad */
-		Render_quad_absolute(x, y + 1.0f,
-			x + SWATCH_SIZE, y + 1.0f + SWATCH_SIZE,
+		Render_quad_absolute(x, y + 1.0f * s,
+			x + swatch_size, y + 1.0f * s + swatch_size,
 			sr, sg, sb, 1.0f);
 
 		/* Selection border */
 		if (i == selectedSwatch) {
-			Render_thick_line(x - 1.0f, y, x + SWATCH_SIZE + 1.0f, y,
-				2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-			Render_thick_line(x - 1.0f, y + SWATCH_SIZE + 2.0f,
-				x + SWATCH_SIZE + 1.0f, y + SWATCH_SIZE + 2.0f,
-				2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-			Render_thick_line(x - 1.0f, y, x - 1.0f, y + SWATCH_SIZE + 2.0f,
-				2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-			Render_thick_line(x + SWATCH_SIZE + 1.0f, y,
-				x + SWATCH_SIZE + 1.0f, y + SWATCH_SIZE + 2.0f,
-				2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			Render_thick_line(x - 1.0f * s, y, x + swatch_size + 1.0f * s, y,
+				2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
+			Render_thick_line(x - 1.0f * s, y + swatch_size + 2.0f * s,
+				x + swatch_size + 1.0f * s, y + swatch_size + 2.0f * s,
+				2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
+			Render_thick_line(x - 1.0f * s, y, x - 1.0f * s, y + swatch_size + 2.0f * s,
+				2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
+			Render_thick_line(x + swatch_size + 1.0f * s, y,
+				x + swatch_size + 1.0f * s, y + swatch_size + 2.0f * s,
+				2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
 		}
 
 		Render_flush(&proj, &ident);
@@ -232,7 +240,7 @@ void PaletteEditor_render(const Screen *screen)
 		/* Label */
 		snprintf(buf, sizeof(buf), "C%d", i + 1);
 		Text_render(tr, shaders, &proj, &ident,
-			buf, x + LABEL_OFFSET_X, y + 2.0f,
+			buf, x + label_offset_x, y + 2.0f * s,
 			0.8f, 0.8f, 0.8f, 0.9f);
 
 		/* HSV readout for selected */
@@ -240,20 +248,20 @@ void PaletteEditor_render(const Screen *screen)
 			snprintf(buf, sizeof(buf), "H:%.0f S:%.0f V:%.0f",
 				currentHSV.h, currentHSV.s * 100.0f, currentHSV.v * 100.0f);
 			Text_render(tr, shaders, &proj, &ident,
-				buf, x + LABEL_OFFSET_X + 28.0f, y + 2.0f,
+				buf, x + label_offset_x + 28.0f * s, y + 2.0f * s,
 				0.0f, 1.0f, 1.0f, 0.9f);
 		}
 
-		y += LINE_H;
+		y += line_h;
 	}
 
-	y += SWATCH_PAD;
+	y += swatch_pad;
 
 	/* --- TILES section --- */
 	Text_render(tr, shaders, &proj, &ident,
 		"TILES", x, y,
 		0.7f, 0.7f, 0.7f, 0.9f);
-	y += LINE_H;
+	y += line_h;
 
 	for (int t = 0; t < z->cell_type_count; t++) {
 		int fill_idx = 4 + t * 2;
@@ -264,28 +272,28 @@ void PaletteEditor_render(const Screen *screen)
 			float sr, sg, sb;
 			get_swatch_rgb(fill_idx, &sr, &sg, &sb);
 
-			Render_quad_absolute(x, y + 1.0f,
-				x + SWATCH_SIZE, y + 1.0f + SWATCH_SIZE,
+			Render_quad_absolute(x, y + 1.0f * s,
+				x + swatch_size, y + 1.0f * s + swatch_size,
 				sr, sg, sb, 1.0f);
 
 			if (fill_idx == selectedSwatch) {
-				Render_thick_line(x - 1.0f, y, x + SWATCH_SIZE + 1.0f, y,
-					2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-				Render_thick_line(x - 1.0f, y + SWATCH_SIZE + 2.0f,
-					x + SWATCH_SIZE + 1.0f, y + SWATCH_SIZE + 2.0f,
-					2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-				Render_thick_line(x - 1.0f, y, x - 1.0f, y + SWATCH_SIZE + 2.0f,
-					2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-				Render_thick_line(x + SWATCH_SIZE + 1.0f, y,
-					x + SWATCH_SIZE + 1.0f, y + SWATCH_SIZE + 2.0f,
-					2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+				Render_thick_line(x - 1.0f * s, y, x + swatch_size + 1.0f * s, y,
+					2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
+				Render_thick_line(x - 1.0f * s, y + swatch_size + 2.0f * s,
+					x + swatch_size + 1.0f * s, y + swatch_size + 2.0f * s,
+					2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
+				Render_thick_line(x - 1.0f * s, y, x - 1.0f * s, y + swatch_size + 2.0f * s,
+					2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
+				Render_thick_line(x + swatch_size + 1.0f * s, y,
+					x + swatch_size + 1.0f * s, y + swatch_size + 2.0f * s,
+					2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
 			}
 
 			Render_flush(&proj, &ident);
 
 			snprintf(buf, sizeof(buf), "%s Fill", z->cell_types[t].id);
 			Text_render(tr, shaders, &proj, &ident,
-				buf, x + LABEL_OFFSET_X, y + 2.0f,
+				buf, x + label_offset_x, y + 2.0f * s,
 				0.8f, 0.8f, 0.8f, 0.9f);
 
 			if (fill_idx == selectedSwatch) {
@@ -293,11 +301,11 @@ void PaletteEditor_render(const Screen *screen)
 				snprintf(buf, sizeof(buf), "H:%.0f S:%.0f V:%.0f A:%d",
 					currentHSV.h, currentHSV.s * 100.0f, currentHSV.v * 100.0f, alpha);
 				Text_render(tr, shaders, &proj, &ident,
-					buf, x + LABEL_OFFSET_X + 80.0f, y + 2.0f,
+					buf, x + label_offset_x + 80.0f * s, y + 2.0f * s,
 					0.0f, 1.0f, 1.0f, 0.9f);
 			}
 
-			y += LINE_H;
+			y += line_h;
 		}
 
 		/* Edge swatch */
@@ -305,28 +313,28 @@ void PaletteEditor_render(const Screen *screen)
 			float sr, sg, sb;
 			get_swatch_rgb(edge_idx, &sr, &sg, &sb);
 
-			Render_quad_absolute(x, y + 1.0f,
-				x + SWATCH_SIZE, y + 1.0f + SWATCH_SIZE,
+			Render_quad_absolute(x, y + 1.0f * s,
+				x + swatch_size, y + 1.0f * s + swatch_size,
 				sr, sg, sb, 1.0f);
 
 			if (edge_idx == selectedSwatch) {
-				Render_thick_line(x - 1.0f, y, x + SWATCH_SIZE + 1.0f, y,
-					2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-				Render_thick_line(x - 1.0f, y + SWATCH_SIZE + 2.0f,
-					x + SWATCH_SIZE + 1.0f, y + SWATCH_SIZE + 2.0f,
-					2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-				Render_thick_line(x - 1.0f, y, x - 1.0f, y + SWATCH_SIZE + 2.0f,
-					2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-				Render_thick_line(x + SWATCH_SIZE + 1.0f, y,
-					x + SWATCH_SIZE + 1.0f, y + SWATCH_SIZE + 2.0f,
-					2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+				Render_thick_line(x - 1.0f * s, y, x + swatch_size + 1.0f * s, y,
+					2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
+				Render_thick_line(x - 1.0f * s, y + swatch_size + 2.0f * s,
+					x + swatch_size + 1.0f * s, y + swatch_size + 2.0f * s,
+					2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
+				Render_thick_line(x - 1.0f * s, y, x - 1.0f * s, y + swatch_size + 2.0f * s,
+					2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
+				Render_thick_line(x + swatch_size + 1.0f * s, y,
+					x + swatch_size + 1.0f * s, y + swatch_size + 2.0f * s,
+					2.0f * s, 1.0f, 1.0f, 1.0f, 1.0f);
 			}
 
 			Render_flush(&proj, &ident);
 
 			snprintf(buf, sizeof(buf), "%s Edge", z->cell_types[t].id);
 			Text_render(tr, shaders, &proj, &ident,
-				buf, x + LABEL_OFFSET_X, y + 2.0f,
+				buf, x + label_offset_x, y + 2.0f * s,
 				0.8f, 0.8f, 0.8f, 0.9f);
 
 			if (edge_idx == selectedSwatch) {
@@ -334,29 +342,29 @@ void PaletteEditor_render(const Screen *screen)
 				snprintf(buf, sizeof(buf), "H:%.0f S:%.0f V:%.0f A:%d",
 					currentHSV.h, currentHSV.s * 100.0f, currentHSV.v * 100.0f, alpha);
 				Text_render(tr, shaders, &proj, &ident,
-					buf, x + LABEL_OFFSET_X + 80.0f, y + 2.0f,
+					buf, x + label_offset_x + 80.0f * s, y + 2.0f * s,
 					0.0f, 1.0f, 1.0f, 0.9f);
 			}
 
-			y += LINE_H;
+			y += line_h;
 		}
 	}
 
-	y += SWATCH_PAD + 4.0f;
+	y += swatch_pad + 4.0f * s;
 
 	/* Controls help */
 	Text_render(tr, shaders, &proj, &ident,
 		"Tab: next swatch", x, y,
 		0.5f, 0.5f, 0.5f, 0.8f);
-	y += LINE_H;
+	y += line_h;
 	Text_render(tr, shaders, &proj, &ident,
 		"L/R: Hue  U/D: Sat", x, y,
 		0.5f, 0.5f, 0.5f, 0.8f);
-	y += LINE_H;
+	y += line_h;
 	Text_render(tr, shaders, &proj, &ident,
 		"Shift+U/D: Val", x, y,
 		0.5f, 0.5f, 0.5f, 0.8f);
-	y += LINE_H;
+	y += line_h;
 	Text_render(tr, shaders, &proj, &ident,
 		"Shift+L/R: Alpha", x, y,
 		0.5f, 0.5f, 0.5f, 0.8f);

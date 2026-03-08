@@ -15,8 +15,11 @@ typedef struct {
 void Text_initialize(TextRenderer *tr, const char *font_path, float font_size)
 {
 	tr->font_size = font_size;
-	tr->atlas_width = 512;
-	tr->atlas_height = 512;
+	/* Scale atlas to fit all glyphs — 512 is enough up to ~64pt,
+	   bump to 1024 for larger sizes */
+	int atlas_dim = (font_size > 64.0f) ? 1024 : 512;
+	tr->atlas_width = atlas_dim;
+	tr->atlas_height = atlas_dim;
 
 	/* Read font file */
 	FILE *f = fopen(font_path, "rb");

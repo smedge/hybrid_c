@@ -87,8 +87,14 @@ static char zoneTabs[MAX_ZONE_TABS][64];
 static int zoneTabCount = 0;
 
 /* Panel position helpers (computed each frame from screen size) */
-static float panel_x(const Screen *s) { return (s->width - DLOG_WIDTH) * 0.5f; }
-static float panel_y(const Screen *s) { return (s->height - DLOG_HEIGHT) * 0.5f - 30.0f; }
+static float panel_x(const Screen *s) {
+	float s_ = Graphics_get_ui_scale();
+	return (s->width - DLOG_WIDTH * s_) * 0.5f;
+}
+static float panel_y(const Screen *s) {
+	float s_ = Graphics_get_ui_scale();
+	return (s->height - DLOG_HEIGHT * s_) * 0.5f - 30.0f * s_;
+}
 
 static void rebuild_tabs(void)
 {
@@ -178,6 +184,12 @@ bool DataLogs_is_open(void)
 /* Measure wrapped body height for an entry */
 static float measure_body_height(TextRenderer *tr, const NarrativeEntry *e, float max_w)
 {
+	float s = Graphics_get_ui_scale();
+	float body_line_h = BODY_LINE_HEIGHT * s;
+	float replay_btn_gap = REPLAY_BTN_GAP * s;
+	float replay_btn_h = REPLAY_BTN_H * s;
+	float padding = PADDING * s;
+
 	float h = 0.0f;
 	const char *p = e->body;
 	char linebuf[512];
@@ -185,7 +197,7 @@ static float measure_body_height(TextRenderer *tr, const NarrativeEntry *e, floa
 
 	while (*p) {
 		if (*p == '\n') {
-			h += BODY_LINE_HEIGHT;
+			h += body_line_h;
 			linelen = 0;
 			p++;
 			continue;
@@ -199,20 +211,20 @@ static float measure_body_height(TextRenderer *tr, const NarrativeEntry *e, floa
 				char overflow[512];
 				strncpy(overflow, linebuf + wrap + 1, 511);
 				overflow[511] = '\0';
-				h += BODY_LINE_HEIGHT;
+				h += body_line_h;
 				strcpy(linebuf, overflow);
 				linelen = (int)strlen(linebuf);
 			} else {
-				h += BODY_LINE_HEIGHT;
+				h += body_line_h;
 				linelen = 0;
 			}
 		}
 	}
 	if (linelen > 0)
-		h += BODY_LINE_HEIGHT;
+		h += body_line_h;
 	if (e->voice_count > 0)
-		h += REPLAY_BTN_GAP + REPLAY_BTN_H;
-	return h + 20.0f + PADDING; /* top gap (separator+spacing) + bottom padding */
+		h += replay_btn_gap + replay_btn_h;
+	return h + 20.0f * s + padding; /* top gap (separator+spacing) + bottom padding */
 }
 
 static void truncate_text(TextRenderer *tr, const char *text,
@@ -324,6 +336,20 @@ void DataLogs_update(Input *input, unsigned int ticks)
 {
 	if (!logsOpen) return;
 
+	float s = Graphics_get_ui_scale();
+	float dlog_w = DLOG_WIDTH * s;
+	float dlog_h = DLOG_HEIGHT * s;
+	float tab_w = TAB_WIDTH * s;
+	float tab_h = TAB_HEIGHT * s;
+	float tab_gap = TAB_GAP * s;
+	float padding = PADDING * s;
+	float title_row_h = TITLE_ROW_HEIGHT * s;
+	float scrollbar_w = SCROLLBAR_WIDTH * s;
+	float indicator_w = INDICATOR_WIDTH * s;
+	float replay_btn_h = REPLAY_BTN_H * s;
+	float replay_btn_w = REPLAY_BTN_W * s;
+	float drag_thresh = DRAG_THRESHOLD * s;
+
 	tabMarqueeTimer += ticks;
 
 	if (input->keyEsc) {
@@ -333,11 +359,11 @@ void DataLogs_update(Input *input, unsigned int ticks)
 
 	/* Scroll with mouse wheel — consume events so gameplay doesn't zoom */
 	if (input->mouseWheelUp) {
-		scrollOffset -= 30.0f;
+		scrollOffset -= 30.0f * s;
 		input->mouseWheelUp = false;
 	}
 	if (input->mouseWheelDown) {
-		scrollOffset += 30.0f;
+		scrollOffset += 30.0f * s;
 		input->mouseWheelDown = false;
 	}
 	if (scrollOffset < 0.0f) scrollOffset = 0.0f;
@@ -353,7 +379,7 @@ void DataLogs_update(Input *input, unsigned int ticks)
 	/* Mouse just pressed */
 	if (mouseDown && !mouseWasDown) {
 		/* Outside window → close */
-		if (mx < px || mx > px + DLOG_WIDTH || my < py || my > py + DLOG_HEIGHT) {
+		if (mx < px || mx > px + dlog_w || my < py || my > py + dlog_h) {
 			logsOpen = false;
 			mouseWasDown = mouseDown;
 			return;
@@ -366,7 +392,7 @@ void DataLogs_update(Input *input, unsigned int ticks)
 	/* Mouse held — check for drag-to-scroll */
 	if (mouseDown && mouseWasDown) {
 		float dy = my - dragMouseStartY;
-		if (!dragging && fabsf(dy) > DRAG_THRESHOLD)
+		if (!dragging && fabsf(dy) > drag_thresh)
 			dragging = true;
 		if (dragging) {
 			scrollOffset = dragStartScroll + dy;
@@ -377,12 +403,12 @@ void DataLogs_update(Input *input, unsigned int ticks)
 	/* Mouse just released — if it wasn't a drag, handle as click */
 	if (!mouseDown && mouseWasDown && !dragging) {
 		/* Tab clicks (left column) */
-		float tab_x = px + TAB_GAP;
-		float tab_y = py + TAB_GAP;
+		float tab_x = px + tab_gap;
+		float tab_y = py + tab_gap;
 		for (int t = 0; t < zoneTabCount; t++) {
-			float ty = tab_y + t * (TAB_HEIGHT + TAB_GAP);
-			if (mx >= tab_x && mx <= tab_x + TAB_WIDTH &&
-			    my >= ty && my <= ty + TAB_HEIGHT) {
+			float ty = tab_y + t * (tab_h + tab_gap);
+			if (mx >= tab_x && mx <= tab_x + tab_w &&
+			    my >= ty && my <= ty + tab_h) {
 				selectedTab = t;
 				scrollOffset = 0.0f;
 				expandedEntry = -1;
@@ -393,36 +419,36 @@ void DataLogs_update(Input *input, unsigned int ticks)
 		}
 
 		/* Content area clicks (accordion titles) */
-		float content_x = px + TAB_WIDTH + TAB_GAP * 2.0f;
-		float content_top = py + TAB_GAP;
-		float content_w = DLOG_WIDTH - TAB_WIDTH - TAB_GAP * 3.0f - SCROLLBAR_WIDTH;
+		float content_x = px + tab_w + tab_gap * 2.0f;
+		float content_top = py + tab_gap;
+		float content_w = dlog_w - tab_w - tab_gap * 3.0f - scrollbar_w;
 
 		TextRenderer *tr = Graphics_get_text_renderer();
 		int entry_count = count_entries_for_tab(selectedTab);
 		float cursor_y = content_top - scrollOffset;
 
 		for (int i = 0; i < entry_count; i++) {
-			if (my >= cursor_y && my <= cursor_y + TITLE_ROW_HEIGHT &&
-			    mx >= content_x && mx <= content_x + content_w + SCROLLBAR_WIDTH) {
+			if (my >= cursor_y && my <= cursor_y + title_row_h &&
+			    mx >= content_x && mx <= content_x + content_w + scrollbar_w) {
 				if (expandedEntry == i)
 					expandedEntry = -1;
 				else
 					expandedEntry = i;
 				break;
 			}
-			cursor_y += TITLE_ROW_HEIGHT;
+			cursor_y += title_row_h;
 
 			if (expandedEntry == i) {
 				const NarrativeEntry *e = get_entry_for_tab(selectedTab, i);
 				if (e) {
-					float body_h = measure_body_height(tr, e, content_w - INDICATOR_WIDTH - 4.0f);
+					float body_h = measure_body_height(tr, e, content_w - indicator_w - 4.0f * s);
 
 					/* Replay button click check */
 					if (e->voice_count > 0) {
-						float btn_top = cursor_y + body_h - PADDING - REPLAY_BTN_H;
-						float btn_x = content_x + INDICATOR_WIDTH + 4.0f;
-						if (mx >= btn_x && mx <= btn_x + REPLAY_BTN_W &&
-						    my >= btn_top && my <= btn_top + REPLAY_BTN_H) {
+						float btn_top = cursor_y + body_h - padding - replay_btn_h;
+						float btn_x = content_x + indicator_w + 4.0f * s;
+						if (mx >= btn_x && mx <= btn_x + replay_btn_w &&
+						    my >= btn_top && my <= btn_top + replay_btn_h) {
 							DataNode_play_voice(e);
 							mouseWasDown = mouseDown;
 							return;
@@ -444,10 +470,12 @@ void DataLogs_update(Input *input, unsigned int ticks)
 
 static void render_panel_border(float px, float py, float pw, float ph)
 {
-	Render_thick_line(px, py, px + pw, py, BORDER_W, BORDER_R, BORDER_G, BORDER_B, BORDER_A);
-	Render_thick_line(px + pw, py, px + pw, py + ph, BORDER_W, BORDER_R, BORDER_G, BORDER_B, BORDER_A);
-	Render_thick_line(px + pw, py + ph, px, py + ph, BORDER_W, BORDER_R, BORDER_G, BORDER_B, BORDER_A);
-	Render_thick_line(px, py + ph, px, py, BORDER_W, BORDER_R, BORDER_G, BORDER_B, BORDER_A);
+	float s = Graphics_get_ui_scale();
+	float border_w = BORDER_W * s;
+	Render_thick_line(px, py, px + pw, py, border_w, BORDER_R, BORDER_G, BORDER_B, BORDER_A);
+	Render_thick_line(px + pw, py, px + pw, py + ph, border_w, BORDER_R, BORDER_G, BORDER_B, BORDER_A);
+	Render_thick_line(px + pw, py + ph, px, py + ph, border_w, BORDER_R, BORDER_G, BORDER_B, BORDER_A);
+	Render_thick_line(px, py + ph, px, py, border_w, BORDER_R, BORDER_G, BORDER_B, BORDER_A);
 }
 
 
@@ -455,6 +483,10 @@ static void render_body_text(TextRenderer *tr, Shaders *shaders, Mat4 *proj, Mat
 	const NarrativeEntry *e, float x, float max_w,
 	float clip_top, float clip_bottom, float *cursor_y)
 {
+	float s = Graphics_get_ui_scale();
+	float body_line_h = BODY_LINE_HEIGHT * s;
+	float padding = PADDING * s;
+
 	const char *p = e->body;
 	char linebuf[512];
 	int linelen = 0;
@@ -462,11 +494,11 @@ static void render_body_text(TextRenderer *tr, Shaders *shaders, Mat4 *proj, Mat
 	while (*p) {
 		if (*p == '\n') {
 			linebuf[linelen] = '\0';
-			if (*cursor_y > clip_top - BODY_LINE_HEIGHT && *cursor_y < clip_bottom) {
+			if (*cursor_y > clip_top - body_line_h && *cursor_y < clip_bottom) {
 				Text_render(tr, shaders, proj, ident, linebuf, x, *cursor_y,
 					0.75f, 0.75f, 0.8f, 0.75f);
 			}
-			*cursor_y += BODY_LINE_HEIGHT;
+			*cursor_y += body_line_h;
 			linelen = 0;
 			p++;
 			continue;
@@ -481,32 +513,32 @@ static void render_body_text(TextRenderer *tr, Shaders *shaders, Mat4 *proj, Mat
 				strncpy(overflow, linebuf + wrap + 1, 511);
 				overflow[511] = '\0';
 				linebuf[wrap] = '\0';
-				if (*cursor_y > clip_top - BODY_LINE_HEIGHT && *cursor_y < clip_bottom) {
+				if (*cursor_y > clip_top - body_line_h && *cursor_y < clip_bottom) {
 					Text_render(tr, shaders, proj, ident, linebuf, x, *cursor_y,
 						0.75f, 0.75f, 0.8f, 0.75f);
 				}
-				*cursor_y += BODY_LINE_HEIGHT;
+				*cursor_y += body_line_h;
 				strcpy(linebuf, overflow);
 				linelen = (int)strlen(linebuf);
 			} else {
-				if (*cursor_y > clip_top - BODY_LINE_HEIGHT && *cursor_y < clip_bottom) {
+				if (*cursor_y > clip_top - body_line_h && *cursor_y < clip_bottom) {
 					Text_render(tr, shaders, proj, ident, linebuf, x, *cursor_y,
 						0.75f, 0.75f, 0.8f, 0.75f);
 				}
-				*cursor_y += BODY_LINE_HEIGHT;
+				*cursor_y += body_line_h;
 				linelen = 0;
 			}
 		}
 	}
 	if (linelen > 0) {
 		linebuf[linelen] = '\0';
-		if (*cursor_y > clip_top - BODY_LINE_HEIGHT && *cursor_y < clip_bottom) {
+		if (*cursor_y > clip_top - body_line_h && *cursor_y < clip_bottom) {
 			Text_render(tr, shaders, proj, ident, linebuf, x, *cursor_y,
 				0.75f, 0.75f, 0.8f, 0.75f);
 		}
-		*cursor_y += BODY_LINE_HEIGHT;
+		*cursor_y += body_line_h;
 	}
-	*cursor_y += PADDING;
+	*cursor_y += padding;
 }
 
 static void render_chamfered_button(TextRenderer *tr, Shaders *shaders,
@@ -518,7 +550,9 @@ static void render_chamfered_button(TextRenderer *tr, Shaders *shaders,
 	if (by + bh < clip_top || by > clip_bottom)
 		return;
 
-	float c = REPLAY_CHAMF;
+	float s = Graphics_get_ui_scale();
+	float c = REPLAY_CHAMF * s;
+	float line_w = 1.0f * s;
 	BatchRenderer *batch = Graphics_get_batch();
 
 	/* 6-vertex polygon: sharp NW + SE, chamfered NE + SW (clockwise) */
@@ -540,13 +574,13 @@ static void render_chamfered_button(TextRenderer *tr, Shaders *shaders,
 	for (int i = 0; i < 6; i++) {
 		int j = (i + 1) % 6;
 		Render_thick_line(vx[i], vy[i], vx[j], vy[j],
-			1.0f, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
+			line_w, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
 	}
 
 	/* Play triangle (right-pointing) */
-	float tri_h = 10.0f;
-	float tri_w = 8.0f;
-	float tri_x = bx + 12.0f;
+	float tri_h = 10.0f * s;
+	float tri_w = 8.0f * s;
+	float tri_x = bx + 12.0f * s;
 	float tri_cy = by + bh * 0.5f;
 	Batch_push_triangle_vertices(batch,
 		tri_x, tri_cy - tri_h * 0.5f,
@@ -557,8 +591,8 @@ static void render_chamfered_button(TextRenderer *tr, Shaders *shaders,
 	Render_flush(proj, ident);
 
 	/* "REPLAY" text */
-	float text_x = tri_x + tri_w + 6.0f;
-	float text_y = by + bh * 0.5f + 5.0f;
+	float text_x = tri_x + tri_w + 6.0f * s;
+	float text_y = by + bh * 0.5f + 5.0f * s;
 	Text_render(tr, shaders, proj, ident, "REPLAY",
 		text_x, text_y,
 		TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, 0.9f);
@@ -567,6 +601,25 @@ static void render_chamfered_button(TextRenderer *tr, Shaders *shaders,
 void DataLogs_render(const Screen *screen)
 {
 	if (!logsOpen) return;
+
+	float s = Graphics_get_ui_scale();
+	float dlog_w = DLOG_WIDTH * s;
+	float dlog_h = DLOG_HEIGHT * s;
+	float tab_w = TAB_WIDTH * s;
+	float tab_h = TAB_HEIGHT * s;
+	float tab_gap = TAB_GAP * s;
+	float padding = PADDING * s;
+	float title_row_h = TITLE_ROW_HEIGHT * s;
+	float body_line_h = BODY_LINE_HEIGHT * s;
+	float scrollbar_w = SCROLLBAR_WIDTH * s;
+	float indicator_w = INDICATOR_WIDTH * s;
+	float tab_chamf = TAB_CHAMF * s;
+	float replay_btn_h = REPLAY_BTN_H * s;
+	float replay_btn_w = REPLAY_BTN_W * s;
+	float replay_btn_gap = REPLAY_BTN_GAP * s;
+	float line_w = 1.0f * s;
+
+	(void)body_line_h; /* used indirectly via measure_body_height */
 
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
@@ -578,16 +631,16 @@ void DataLogs_render(const Screen *screen)
 	float py = panel_y(screen);
 
 	/* ── Panel background ── */
-	Render_quad_absolute(px, py, px + DLOG_WIDTH, py + DLOG_HEIGHT,
+	Render_quad_absolute(px, py, px + dlog_w, py + dlog_h,
 		BG_R, BG_G, BG_B, BG_A);
 
 	/* ── Panel border ── */
-	render_panel_border(px, py, DLOG_WIDTH, DLOG_HEIGHT);
+	render_panel_border(px, py, dlog_w, dlog_h);
 
 	/* ── Separator between tabs and content ── */
-	float sep_x = px + TAB_WIDTH + TAB_GAP * 1.5f;
-	Render_thick_line(sep_x, py + TAB_GAP, sep_x, py + DLOG_HEIGHT - TAB_GAP,
-		1.0f, SEP_R, SEP_G, SEP_B, SEP_A);
+	float sep_x = px + tab_w + tab_gap * 1.5f;
+	Render_thick_line(sep_x, py + tab_gap, sep_x, py + dlog_h - tab_gap,
+		line_w, SEP_R, SEP_G, SEP_B, SEP_A);
 
 	/* ── Empty state ── */
 	if (zoneTabCount == 0) {
@@ -597,34 +650,34 @@ void DataLogs_render(const Screen *screen)
 		const char *title = "DATA LOGS";
 		float tw = Text_measure_width(tr, title);
 		Text_render(tr, shaders, &proj, &ident, title,
-			px + DLOG_WIDTH * 0.5f - tw * 0.5f, py - 5.0f,
+			px + dlog_w * 0.5f - tw * 0.5f, py - 5.0f * s,
 			0.7f, 0.7f, 1.0f, 0.9f);
 
 		const char *empty = "No data transfers recorded.";
 		float ew = Text_measure_width(tr, empty);
 		Text_render(tr, shaders, &proj, &ident, empty,
-			px + DLOG_WIDTH * 0.5f - ew * 0.5f,
-			py + DLOG_HEIGHT * 0.5f,
+			px + dlog_w * 0.5f - ew * 0.5f,
+			py + dlog_h * 0.5f,
 			0.5f, 0.5f, 0.5f, 0.6f);
 
 		/* Key hints */
 		Text_render(tr, shaders, &proj, &ident,
 			"[L] Close",
-			px + 10.0f, py + DLOG_HEIGHT + 15.0f,
+			px + 10.0f * s, py + dlog_h + 15.0f * s,
 			0.6f, 0.6f, 0.65f, 0.9f);
 		return;
 	}
 
 	/* ── Tab backgrounds ── */
-	float tab_x = px + TAB_GAP;
-	float tab_y = py + TAB_GAP;
+	float tab_x = px + tab_gap;
+	float tab_y = py + tab_gap;
 	for (int t = 0; t < zoneTabCount; t++) {
-		float ty = tab_y + t * (TAB_HEIGHT + TAB_GAP);
+		float ty = tab_y + t * (tab_h + tab_gap);
 		if (t == selectedTab) {
 			/* Chamfered fill: sharp NW + SE, chamfered NE + SW */
-			float c = TAB_CHAMF;
+			float c = tab_chamf;
 			float tx0 = tab_x, ty0 = ty;
-			float tx1 = tab_x + TAB_WIDTH, ty1 = ty + TAB_HEIGHT;
+			float tx1 = tab_x + tab_w, ty1 = ty + tab_h;
 			float vx[6] = { tx0,      tx1 - c, tx1,
 			                tx1,      tx0 + c, tx0 };
 			float vy[6] = { ty0,      ty0,     ty0 + c,
@@ -642,29 +695,29 @@ void DataLogs_render(const Screen *screen)
 			for (int v = 0; v < 6; v++) {
 				int nv = (v + 1) % 6;
 				Render_thick_line(vx[v], vy[v], vx[nv], vy[nv],
-					1.0f, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
+					line_w, TAB_BORDER_R, TAB_BORDER_G, TAB_BORDER_B, TAB_BORDER_A);
 			}
 		} else {
-			Render_quad_absolute(tab_x, ty, tab_x + TAB_WIDTH, ty + TAB_HEIGHT,
+			Render_quad_absolute(tab_x, ty, tab_x + tab_w, ty + tab_h,
 				TAB_UNSEL_BG_R, TAB_UNSEL_BG_G, TAB_UNSEL_BG_B, 0.9f);
 		}
 	}
 
 	/* ── Accordion title row backgrounds ── */
-	float content_x = px + TAB_WIDTH + TAB_GAP * 2.0f;
-	float content_top = py + TAB_GAP;
-	float content_w = DLOG_WIDTH - TAB_WIDTH - TAB_GAP * 3.0f - SCROLLBAR_WIDTH;
-	float content_h = DLOG_HEIGHT - TAB_GAP * 2.0f;
+	float content_x = px + tab_w + tab_gap * 2.0f;
+	float content_top = py + tab_gap;
+	float content_w = dlog_w - tab_w - tab_gap * 3.0f - scrollbar_w;
+	float content_h = dlog_h - tab_gap * 2.0f;
 
 	int entry_count = count_entries_for_tab(selectedTab);
 	float total_h = 0.0f;
 
 	/* Calculate total content height */
 	for (int i = 0; i < entry_count; i++) {
-		total_h += TITLE_ROW_HEIGHT;
+		total_h += title_row_h;
 		if (expandedEntry == i) {
 			const NarrativeEntry *e = get_entry_for_tab(selectedTab, i);
-			if (e) total_h += measure_body_height(tr, e, content_w - INDICATOR_WIDTH - 4.0f);
+			if (e) total_h += measure_body_height(tr, e, content_w - indicator_w - 4.0f * s);
 		}
 	}
 
@@ -675,17 +728,17 @@ void DataLogs_render(const Screen *screen)
 
 	/* Scrollbar (not clipped) */
 	if (total_h > content_h && max_scroll > 0.0f) {
-		float sb_x = px + DLOG_WIDTH - SCROLLBAR_WIDTH - TAB_GAP;
+		float sb_x = px + dlog_w - scrollbar_w - tab_gap;
 		float track_y = content_top;
 		float track_h = content_h;
 		float thumb_h = (content_h / total_h) * track_h;
-		if (thumb_h < 20.0f) thumb_h = 20.0f;
+		if (thumb_h < 20.0f * s) thumb_h = 20.0f * s;
 		float scroll_ratio = scrollOffset / max_scroll;
 		float thumb_y = track_y + scroll_ratio * (track_h - thumb_h);
 
-		Render_quad_absolute(sb_x, track_y, sb_x + SCROLLBAR_WIDTH, track_y + track_h,
+		Render_quad_absolute(sb_x, track_y, sb_x + scrollbar_w, track_y + track_h,
 			0.2f, 0.2f, 0.2f, 0.3f);
-		Render_quad_absolute(sb_x, thumb_y, sb_x + SCROLLBAR_WIDTH, thumb_y + thumb_h,
+		Render_quad_absolute(sb_x, thumb_y, sb_x + scrollbar_w, thumb_y + thumb_h,
 			0.7f, 0.7f, 0.7f, 0.4f);
 	}
 
@@ -697,15 +750,15 @@ void DataLogs_render(const Screen *screen)
 		const char *title = "DATA LOGS";
 		float tw = Text_measure_width(tr, title);
 		Text_render(tr, shaders, &proj, &ident, title,
-			px + DLOG_WIDTH * 0.5f - tw * 0.5f, py - 5.0f,
+			px + dlog_w * 0.5f - tw * 0.5f, py - 5.0f * s,
 			0.7f, 0.7f, 1.0f, 0.9f);
 	}
 
 	/* ── Tab labels ── */
 	for (int t = 0; t < zoneTabCount; t++) {
-		float ty = tab_y + t * (TAB_HEIGHT + TAB_GAP);
+		float ty = tab_y + t * (tab_h + tab_gap);
 		float alpha = (t == selectedTab) ? 0.9f : 0.5f;
-		float max_label_w = TAB_WIDTH - 16.0f;
+		float max_label_w = tab_w - 16.0f * s;
 		char label[64];
 		if (t == selectedTab) {
 			marquee_text(tr, zoneTabs[t], max_label_w,
@@ -715,7 +768,7 @@ void DataLogs_render(const Screen *screen)
 				label, sizeof(label));
 		}
 		Text_render(tr, shaders, &proj, &ident, label,
-			tab_x + 8.0f, ty + TAB_HEIGHT * 0.5f + 5.0f,
+			tab_x + 8.0f * s, ty + tab_h * 0.5f + 5.0f * s,
 			1.0f, 1.0f, 1.0f, alpha);
 	}
 
@@ -726,7 +779,7 @@ void DataLogs_render(const Screen *screen)
 	float dpi_y = (float)draw_h / screen->height;
 	Render_scissor_begin((int)(content_x * dpi_x),
 		draw_h - (int)((content_top + content_h) * dpi_y),
-		(int)((content_w + SCROLLBAR_WIDTH) * dpi_x),
+		(int)((content_w + scrollbar_w) * dpi_x),
 		(int)(content_h * dpi_y));
 
 	/* Title row backgrounds */
@@ -734,12 +787,12 @@ void DataLogs_render(const Screen *screen)
 		float cursor_y = content_top - scrollOffset;
 		for (int i = 0; i < entry_count; i++) {
 			Render_quad_absolute(content_x, cursor_y,
-				content_x + content_w, cursor_y + TITLE_ROW_HEIGHT,
+				content_x + content_w, cursor_y + title_row_h,
 				0.12f, 0.12f, 0.14f, (i % 2 == 0) ? 0.9f : 0.6f);
-			cursor_y += TITLE_ROW_HEIGHT;
+			cursor_y += title_row_h;
 			if (expandedEntry == i) {
 				const NarrativeEntry *e = get_entry_for_tab(selectedTab, i);
-				if (e) cursor_y += measure_body_height(tr, e, content_w - INDICATOR_WIDTH - 4.0f);
+				if (e) cursor_y += measure_body_height(tr, e, content_w - indicator_w - 4.0f * s);
 			}
 		}
 	}
@@ -748,23 +801,23 @@ void DataLogs_render(const Screen *screen)
 	/* Accordion entries (text) */
 	{
 		float cursor_y = content_top - scrollOffset;
-		float text_x = content_x + INDICATOR_WIDTH;
-		float body_x = content_x + INDICATOR_WIDTH + 4.0f;
-		float body_w = content_w - INDICATOR_WIDTH - 4.0f;
+		float text_x = content_x + indicator_w;
+		float body_x = content_x + indicator_w + 4.0f * s;
+		float body_w = content_w - indicator_w - 4.0f * s;
 
 		for (int i = 0; i < entry_count; i++) {
 			const NarrativeEntry *e = get_entry_for_tab(selectedTab, i);
-			if (!e) { cursor_y += TITLE_ROW_HEIGHT; continue; }
+			if (!e) { cursor_y += title_row_h; continue; }
 
 			/* Title row */
-			float text_y = cursor_y + TITLE_ROW_HEIGHT * 0.5f + 5.0f;
+			float text_y = cursor_y + title_row_h * 0.5f + 5.0f * s;
 			const char *indicator = (expandedEntry == i) ? "v" : ">";
 			Text_render(tr, shaders, &proj, &ident, indicator,
-				content_x + 4.0f, text_y,
+				content_x + 4.0f * s, text_y,
 				0.4f, 0.8f, 0.9f, 0.8f);
 
 			/* Title text — truncate with ".." if too wide */
-			float title_avail = content_w - INDICATOR_WIDTH - 4.0f;
+			float title_avail = content_w - indicator_w - 4.0f * s;
 			char truncTitle[256];
 			strncpy(truncTitle, e->title, 255);
 			truncTitle[255] = '\0';
@@ -782,15 +835,15 @@ void DataLogs_render(const Screen *screen)
 			Text_render(tr, shaders, &proj, &ident, truncTitle,
 				text_x, text_y,
 				0.9f, 0.9f, 1.0f, 0.95f);
-			cursor_y += TITLE_ROW_HEIGHT;
+			cursor_y += title_row_h;
 
 			/* Expanded body */
 			if (expandedEntry == i) {
-				Render_thick_line(body_x, cursor_y - 2.0f,
-					body_x + body_w - 20.0f, cursor_y - 2.0f,
-					1.0f, SEP_R, SEP_G, SEP_B, SEP_A);
+				Render_thick_line(body_x, cursor_y - 2.0f * s,
+					body_x + body_w - 20.0f * s, cursor_y - 2.0f * s,
+					line_w, SEP_R, SEP_G, SEP_B, SEP_A);
 				Render_flush(&proj, &ident);
-				cursor_y += 20.0f;
+				cursor_y += 20.0f * s;
 
 				render_body_text(tr, shaders, &proj, &ident, e,
 					body_x, body_w,
@@ -799,11 +852,11 @@ void DataLogs_render(const Screen *screen)
 
 				/* Replay button (only for entries with voice clips) */
 				if (e->voice_count > 0) {
-					float btn_y = cursor_y - PADDING + REPLAY_BTN_GAP;
+					float btn_y = cursor_y - padding + replay_btn_gap;
 					render_chamfered_button(tr, shaders, &proj, &ident,
-						body_x, btn_y, REPLAY_BTN_W, REPLAY_BTN_H,
+						body_x, btn_y, replay_btn_w, replay_btn_h,
 						content_top, content_top + content_h);
-					cursor_y = btn_y + REPLAY_BTN_H + PADDING;
+					cursor_y = btn_y + replay_btn_h + padding;
 				}
 			}
 		}
@@ -814,6 +867,6 @@ void DataLogs_render(const Screen *screen)
 	/* ── Key hints (below panel, matching catalog style) ── */
 	Text_render(tr, shaders, &proj, &ident,
 		"[L] Close    [Click] Expand/Collapse    [Scroll] Navigate",
-		px + 10.0f, py + DLOG_HEIGHT + 15.0f,
+		px + 10.0f * s, py + dlog_h + 15.0f * s,
 		0.6f, 0.6f, 0.65f, 0.9f);
 }

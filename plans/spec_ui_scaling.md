@@ -2,7 +2,7 @@
 
 ## Overview
 
-All UI is currently rendered in raw pixel coordinates. A 50px skillbar slot is 50 physical pixels regardless of resolution — tiny on 4K, fine on 1080p. This spec adds a single `ui_scale` multiplier that every UI module applies to its sizes, positions, and margins. A slider in Graphics settings lets the user tune it. The default is computed from window resolution.
+All UI is currently rendered in raw pixel coordinates. A 50px skillbar slot is 50 physical pixels regardless of resolution — tiny on 4K, fine on 1080p. This spec adds a single `ui_scale` multiplier that every UI module applies to its sizes, positions, and margins. A slider in Graphics settings lets the user tune it. Default is 1.0 (current UI looks unchanged).
 
 ## Design
 
@@ -10,28 +10,7 @@ All UI is currently rendered in raw pixel coordinates. A 50px skillbar slot is 5
 
 One float: `ui_scale`. Stored in `graphics.c` alongside existing screen state. Range **0.50 to 2.50** in **0.25 increments** (9 stops).
 
-Default computed on window creation and resize:
-```
-raw = min(screen.width / 1440.0f, screen.height / 900.0f)
-ui_scale = round(raw * 4.0f) / 4.0f
-ui_scale = clamp(ui_scale, 0.50f, 2.50f)
-```
-
-Reference resolution is 1440x900 (matches world projection reference). At that resolution, scale = 1.0 and all UI looks exactly as it does today.
-
-### Default Scale by Resolution
-
-| Resolution | Default |
-|---|---|
-| 720p (1280x720) | 0.75 |
-| 900p (1440x900) | 1.00 |
-| 1080p (1920x1080) | 1.25 |
-| 1440p (2560x1440) | 1.50 |
-| 4K (3840x2160) | 2.50 |
-| MacBook Pro 14 | 1.00 |
-| MacBook Pro 16 | 1.25 |
-| Steam Deck | 1.00 |
-| Ultrawide 1080 | 1.25 |
+Default is **1.0** — the UI looks exactly as it does today. No resolution-based computation. The slider is purely a user preference. This avoids the "what reference resolution" problem entirely — the UI was designed and tuned at the developer's current resolution, so 1.0 = no change.
 
 ### API
 
@@ -127,10 +106,10 @@ Behavior:
 
 ### Persistence and Initialization Order
 
-1. `Graphics_initialize()` computes default scale from window size
+1. `Graphics_initialize()` sets `ui_scale = 1.0f`
 2. `Settings_load()` reads `ui_scale` from settings.cfg (if present), calls `Graphics_set_ui_scale()`
-3. On window resize, default is NOT recomputed if user has a saved preference — user's choice takes priority
-4. "Reset Defaults" in settings recomputes from window size and clears the saved preference
+3. On window resize, scale is NOT changed — user's choice persists
+4. "Reset Defaults" in settings resets to 1.0
 
 ### Map Window and Minimap Scaling
 

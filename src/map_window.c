@@ -233,13 +233,15 @@ void MapWindow_render(const Screen *screen)
 	Mat4 proj = Graphics_get_ui_projection();
 	Mat4 ident = Mat4_identity();
 
+	float s = Graphics_get_ui_scale();
+
 	/* Window sizing: 70% of shortest dimension, square, centered */
 	float sw = (float)screen->width;
 	float sh = (float)screen->height;
 	float shortest = sw < sh ? sw : sh;
 	float win_size = shortest * 0.7f;
 
-	float pad = 8.0f;
+	float pad = 8.0f * s;
 
 	float pw = win_size + pad * 2.0f;
 	float ph = pw;
@@ -253,12 +255,12 @@ void MapWindow_render(const Screen *screen)
 
 	/* Panel border */
 	float brc = 0.3f;
-	Render_thick_line(px, py, px + pw, py, 1.0f, brc, brc, brc, 0.8f);
+	Render_thick_line(px, py, px + pw, py, 1.0f * s, brc, brc, brc, 0.8f);
 	Render_thick_line(px, py + ph, px + pw, py + ph,
-		1.0f, brc, brc, brc, 0.8f);
-	Render_thick_line(px, py, px, py + ph, 1.0f, brc, brc, brc, 0.8f);
+		1.0f * s, brc, brc, brc, 0.8f);
+	Render_thick_line(px, py, px, py + ph, 1.0f * s, brc, brc, brc, 0.8f);
 	Render_thick_line(px + pw, py, px + pw, py + ph,
-		1.0f, brc, brc, brc, 0.8f);
+		1.0f * s, brc, brc, brc, 0.8f);
 
 	/* Map texture quad coordinates (inside padding) */
 	float qx = px + pad;
@@ -273,7 +275,7 @@ void MapWindow_render(const Screen *screen)
 	const char *zone_title = Zone_get()->name;
 	float title_w = Text_measure_width(tr, zone_title);
 	Text_render(tr, shaders, &proj, &ident,
-		zone_title, px + pw * 0.5f - title_w * 0.5f, py - 5.0f,
+		zone_title, px + pw * 0.5f - title_w * 0.5f, py - 5.0f * s,
 		0.7f, 0.7f, 1.0f, 0.9f);
 
 	/*
@@ -318,11 +320,11 @@ void MapWindow_render(const Screen *screen)
 			/* Vertical lines */
 			float lx = qx + frac * qw;
 			Render_thick_line(lx, qy, lx, qy + qh,
-				1.0f, 0.3f, 0.3f, 0.4f, 0.15f);
+				1.0f * s, 0.3f, 0.3f, 0.4f, 0.15f);
 			/* Horizontal lines */
 			float ly = qy + frac * qh;
 			Render_thick_line(qx, ly, qx + qw, ly,
-				1.0f, 0.3f, 0.3f, 0.4f, 0.15f);
+				1.0f * s, 0.3f, 0.3f, 0.4f, 0.15f);
 		}
 	}
 
@@ -340,7 +342,7 @@ void MapWindow_render(const Screen *screen)
 	/* Savepoints — cyan dots (0.0, 0.9, 0.9) matching minimap */
 	{
 		const Zone *z = Zone_get();
-		float ds = 3.0f;
+		float ds = 3.0f * s;
 		for (int i = 0; i < z->savepoint_count; i++) {
 			if (!FogOfWar_is_revealed(z->savepoints[i].grid_x,
 				z->savepoints[i].grid_y))
@@ -355,7 +357,7 @@ void MapWindow_render(const Screen *screen)
 	/* Portals — white dots (1.0, 1.0, 1.0) matching minimap */
 	{
 		const Zone *z = Zone_get();
-		float ds = 3.0f;
+		float ds = 3.0f * s;
 		for (int i = 0; i < z->portal_count; i++) {
 			if (!FogOfWar_is_revealed(z->portals[i].grid_x,
 				z->portals[i].grid_y))
@@ -370,7 +372,7 @@ void MapWindow_render(const Screen *screen)
 	/* Data nodes — yellow/grey dots matching minimap */
 	{
 		const Zone *z = Zone_get();
-		float ds = 3.0f;
+		float ds = 3.0f * s;
 		for (int i = 0; i < z->datanode_count; i++) {
 			if (!FogOfWar_is_revealed(z->datanodes[i].grid_x,
 				z->datanodes[i].grid_y))
@@ -394,7 +396,7 @@ void MapWindow_render(const Screen *screen)
 		float gy = (float)(ship.y / MAP_CELL_SIZE) + HALF_MAP_SIZE;
 		float sx = qx + (gx / (float)texSize) * qw;
 		float sy = qy + (1.0f - gy / (float)texSize) * qh;
-		float ds = 3.0f;
+		float ds = 3.0f * s;
 		Render_quad_absolute(sx - ds, sy - ds, sx + ds, sy + ds,
 			1.0f, 0.3f, 0.3f, pulse);
 	}
@@ -405,6 +407,6 @@ void MapWindow_render(const Screen *screen)
 	/* Help text */
 	Text_render(tr, shaders, &proj, &ident,
 		"[M] Close    [ESC] Close",
-		px + 10.0f, py + ph + 15.0f,
+		px + 10.0f * s, py + ph + 15.0f * s,
 		0.6f, 0.6f, 0.65f, 0.9f);
 }
