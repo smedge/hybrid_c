@@ -201,8 +201,8 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 
 | Base Sub | Fire Sub | Name | Description |
 |----------|----------|------|-------------|
-| sub_emp | **sub_heatwave** | Heatwave Pulse | Expanding heat ring that **denies the area it passes through** — anything caught suffers 2x feedback accumulation for ~5s. Doesn't disable like EMP — overheats. The ring leaves a brief heat shimmer on the ground that applies the same debuff. Standing still = overheating. |
-| sub_resist | **sub_temper** | Temper Aura | Fire resistance aura for allies + **allies' attacks create burn zones** while in range. The corruptor turns the whole squad into area denial machines. Defensive buff that multiplies the zone's core mechanic. |
+| sub_emp | **sub_heatwave** | Heatwave Pulse | Expanding heat ring that **denies the area it passes through** — anything caught suffers 3x feedback accumulation for 10s. Doesn't disable like EMP — overheats. The ring leaves a brief heat shimmer on the ground that applies the same debuff. Standing still = overheating. |
+| sub_resist | **sub_temper** | Temper Aura | Fire resistance aura that **reflects 50% of fire and burn damage back on the attacker**. Enemies under temper don't just resist fire — they punish it. The player's own fire subs become a liability when hitting tempered targets. Forces the Hybrid to switch off fire loadouts or focus the corruptor first. |
 
 ### Fire Enemy Variant Summary
 
@@ -213,7 +213,7 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 | Seeker | Fire Seeker | sub_blaze | "Dash trails ignite into flame corridors lasting 4 seconds" | Slightly shorter orbit phase |
 | Defender | Fire Defender | sub_cauterize, sub_immolate | "Cauterizes — healed allies gain brief fire immunity" | Same flee AI, cauterize + immolate on allies |
 | Stalker | Fire Stalker | sub_smolder, sub_blaze | *(not in narrative — extends thesis)* | Heat shimmer cloak, ambush creates burn zone |
-| Corruptor | Fire Corruptor | sub_scorch, sub_heatwave, sub_temper | *(not in narrative — extends thesis)* | Fire trail while sprinting, temper turns squad into area denial |
+| Corruptor | Fire Corruptor | sub_scorch, sub_heatwave, sub_temper | *(not in narrative — extends thesis)* | Fire trail while sprinting, temper reflects 50% fire/burn damage back on attacker |
 
 ### Fire Fragment Types (10 new)
 
