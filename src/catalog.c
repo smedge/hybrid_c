@@ -826,10 +826,10 @@ void Catalog_render(const Screen *screen)
 				"drag to equip", name_x, desc_y + 16.0f,
 				0.3f, 0.3f, 0.4f, 0.5f);
 		} else {
-			/* "Unknown <EnemyType> Subroutine" with enemy name colored */
-			const char *prefix = "Unknown ";
+			/* "unknown_sub <EnemyType>" with enemy name colored */
+			const char *prefix = "unknown_sub ";
 			const char *enemy = Progression_get_enemy_name(i);
-			const char *suffix = " Subroutine";
+			const char *suffix = "";
 			ColorFloat ec = Progression_get_enemy_color(i);
 
 			float cx = name_x;

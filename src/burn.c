@@ -18,7 +18,7 @@ static BurnState playerBurn = {0};
 static Mix_Chunk *sndBurnTick = NULL;
 
 /* --- Player burn pulse system --- */
-#define BURN_PULSE_INTERVAL_MS 500
+#define BURN_PULSE_INTERVAL_MS 250
 static int burnPulseTimer = 0;
 static double burnDamageAccum = 0.0;
 
