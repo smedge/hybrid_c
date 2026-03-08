@@ -20,7 +20,9 @@ bool Seeker_find_aggro(Position from, double range, Position *out_pos);
 void Seeker_heal(int index, double amount);
 void Seeker_alert_nearby(Position origin, double radius, Position threat);
 void Seeker_apply_emp(Position center, double half_size, unsigned int duration_ms);
+void Seeker_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms);
 void Seeker_cleanse_burn(Position center, double radius, int immunity_ms);
+void Seeker_apply_burn(Position center, double radius, int duration_ms);
 int Seeker_get_count(void);
 
 /* Fire seeker corridor */

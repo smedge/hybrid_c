@@ -23,6 +23,8 @@
 #include "sub_immolate.h"
 #include "sub_cinder.h"
 #include "sub_cinder_core.h"
+#include "sub_scorch.h"
+#include "sub_smolder.h"
 #include "fragment.h"
 #include "progression.h"
 #include "skillbar.h"
@@ -125,6 +127,12 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 		r.burn_hits += immolate_hits;
 		r.hit = true;
 	}
+	/* Scorch footprint burn */
+	int scorch_hits = Sub_Scorch_check_footprint_burn(hitBox);
+	if (scorch_hits > 0) {
+		r.burn_hits += scorch_hits;
+		r.hit = true;
+	}
 
 	/* Corruptor resist aura — halves all damage */
 	if (r.hit && Corruptor_is_resist_buffing(enemyPos)) {
@@ -137,8 +145,10 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 
 void Enemy_on_player_kill(const PlayerDamageResult *dmg)
 {
-	if (dmg->ambush)
+	if (dmg->ambush) {
 		Sub_Stealth_notify_kill();
+		Sub_Smolder_notify_kill();
+	}
 }
 
 #define STEALTH_DETECT_RANGE 100.0
@@ -146,7 +156,7 @@ void Enemy_on_player_kill(const PlayerDamageResult *dmg)
 
 void Enemy_check_stealth_proximity(Position enemyPos, double facingDegrees)
 {
-	if (!Sub_Stealth_is_stealthed())
+	if (!Sub_Stealth_is_stealthed() && !Sub_Smolder_is_active())
 		return;
 
 	Position shipPos = Ship_get_position();
@@ -164,7 +174,19 @@ void Enemy_check_stealth_proximity(Position enemyPos, double facingDegrees)
 	while (diff < -180.0) diff += 360.0;
 
 	if (fabs(diff) <= STEALTH_DETECT_HALF_CONE)
-		Sub_Stealth_break();
+		Enemy_break_cloak();
+}
+
+void Enemy_break_cloak(void)
+{
+	Sub_Stealth_break();
+	Sub_Smolder_break();
+}
+
+void Enemy_break_cloak_attack(void)
+{
+	Sub_Stealth_break_attack();
+	Sub_Smolder_break_attack();
 }
 
 double Enemy_distance_between(Position a, Position b)

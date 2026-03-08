@@ -158,7 +158,7 @@ Collision Mine_collide(void *state, const PlaceableComponent *placeable, const R
 	Rectangle bodyTransformed = Collision_transform_bounding_box(position, body);
 	if (core->phase != MINE_PHASE_EXPLODING && Collision_aabb_test(bodyTransformed, boundingBox)) {
 		/* Direct contact — instant explosion, breaks stealth */
-		Sub_Stealth_break();
+		Enemy_break_cloak();
 		SubMine_detonate(core);
 		ms->killedByPlayer = true;
 		collision.collisionDetected = true;

@@ -6,6 +6,7 @@
 #include "render.h"
 #include "skillbar.h"
 #include "sub_stealth.h"
+#include "enemy_util.h"
 #include "sub_egress.h"
 #include "player_stats.h"
 
@@ -49,7 +50,7 @@ void Sub_Mine_try_deploy(void)
 {
 	if (cooldownTimer > 0) return;
 
-	Sub_Stealth_break_attack();
+	Enemy_break_cloak_attack();
 	int slot = -1;
 	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
 		if (mines[i].phase == MINE_PHASE_DORMANT) {

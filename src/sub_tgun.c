@@ -8,6 +8,7 @@
 #include "shipstate.h"
 #include "skillbar.h"
 #include "sub_stealth.h"
+#include "enemy_util.h"
 #include "player_stats.h"
 #include "keybinds.h"
 
@@ -67,7 +68,7 @@ void Sub_Tgun_update(const Input *userInput, const unsigned int ticks, Placeable
 		|| (!Keybinds_is_lmb_rebound() && userInput->mouseLeft);
 	if (fire && tgunCooldown <= 0 && !state->destroyed
 			&& Skillbar_is_active(SUB_ID_TGUN)) {
-		Sub_Stealth_break_attack();
+		Enemy_break_cloak_attack();
 
 		Position position_cursor = {userInput->mouseX, userInput->mouseY};
 		Screen screen = Graphics_get_screen();

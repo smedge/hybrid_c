@@ -9,6 +9,7 @@
 #include "shipstate.h"
 #include "skillbar.h"
 #include "sub_stealth.h"
+#include "enemy_util.h"
 #include "player_stats.h"
 #include "particle_instance.h"
 #include "keybinds.h"
@@ -169,7 +170,7 @@ void Sub_Inferno_update(const Input *userInput, unsigned int ticks, PlaceableCom
 	if (channeling) {
 		/* Break stealth on first frame of channeling */
 		if (!wasChanneling)
-			Sub_Stealth_break_attack();
+			Enemy_break_cloak_attack();
 
 		/* Feedback drain */
 		PlayerStats_add_feedback(FEEDBACK_PER_SEC * dt);

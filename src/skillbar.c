@@ -24,6 +24,10 @@
 #include "sub_cauterize.h"
 #include "sub_immolate.h"
 #include "sub_cinder.h"
+#include "sub_scorch.h"
+#include "sub_smolder.h"
+#include "sub_heatwave.h"
+#include "sub_temper.h"
 #include "keybinds.h"
 
 #include <math.h>
@@ -139,11 +143,13 @@ static void activate_slot(int slot)
 	case SUB_ID_SPRINT:  Sub_Sprint_try_activate(); break;
 	case SUB_ID_BLAZE:   Sub_Blaze_try_activate(); break;
 	case SUB_ID_BOOST:   Sub_Boost_try_activate(); break;
+	case SUB_ID_SCORCH:  Sub_Scorch_try_activate(); break;
 
 	/* Shield */
 	case SUB_ID_AEGIS:   Sub_Aegis_try_activate(); break;
 	case SUB_ID_IMMOLATE: Sub_Immolate_try_activate_player(); break;
 	case SUB_ID_RESIST:  Sub_Resist_try_activate(); break;
+	case SUB_ID_TEMPER:  Sub_Temper_try_activate(); break;
 
 	/* Healing */
 	case SUB_ID_MEND:      Sub_Mend_try_activate(); break;
@@ -155,12 +161,14 @@ static void activate_slot(int slot)
 
 	/* Stealth */
 	case SUB_ID_STEALTH: Sub_Stealth_try_activate(); break;
+	case SUB_ID_SMOLDER: Sub_Smolder_try_activate(); break;
 
 	/* Control */
 	case SUB_ID_GRAVWELL: Sub_Gravwell_try_activate(); break;
 
 	/* Area Effect */
 	case SUB_ID_EMP: Sub_Emp_try_activate(); break;
+	case SUB_ID_HEATWAVE: Sub_Heatwave_try_activate(); break;
 
 	default: break;
 	}
@@ -204,15 +212,21 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 	if (active_sub[SUB_TYPE_STEALTH] == SUB_ID_STEALTH
 			&& !Sub_Stealth_is_stealthed())
 		active_sub[SUB_TYPE_STEALTH] = SUB_NONE;
+	if (active_sub[SUB_TYPE_STEALTH] == SUB_ID_SMOLDER
+			&& !Sub_Smolder_is_active())
+		active_sub[SUB_TYPE_STEALTH] = SUB_NONE;
 
 	/* Sync gravwell border with active state (clears on expire) */
 	if (active_sub[SUB_TYPE_CONTROL] == SUB_ID_GRAVWELL
 			&& !Sub_Gravwell_is_active())
 		active_sub[SUB_TYPE_CONTROL] = SUB_NONE;
 
-	/* Sync EMP border with active state (clears when visual ends) */
+	/* Sync EMP/heatwave border with active state (clears when visual ends) */
 	if (active_sub[SUB_TYPE_AREA_EFFECT] == SUB_ID_EMP
 			&& !Sub_Emp_is_active())
+		active_sub[SUB_TYPE_AREA_EFFECT] = SUB_NONE;
+	if (active_sub[SUB_TYPE_AREA_EFFECT] == SUB_ID_HEATWAVE
+			&& !Sub_Heatwave_is_active())
 		active_sub[SUB_TYPE_AREA_EFFECT] = SUB_NONE;
 
 	clickConsumed = false;
@@ -815,6 +829,10 @@ static float get_cooldown_fraction(SubroutineId id)
 	case SUB_ID_CAUTERIZE: return Sub_Cauterize_get_cooldown_fraction();
 	case SUB_ID_IMMOLATE: return Sub_Immolate_get_cooldown_fraction();
 	case SUB_ID_CINDER: return Sub_Cinder_get_cooldown_fraction();
+	case SUB_ID_SCORCH: return Sub_Scorch_get_cooldown_fraction();
+	case SUB_ID_SMOLDER: return Sub_Smolder_get_cooldown_fraction();
+	case SUB_ID_HEATWAVE: return Sub_Heatwave_get_cooldown_fraction();
+	case SUB_ID_TEMPER: return Sub_Temper_get_cooldown_fraction();
 	default: return 0.0f;
 	}
 }

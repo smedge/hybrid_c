@@ -13,6 +13,8 @@ typedef struct {
 	int aggression;       /* 1-10, random at spawn */
 	bool empDebuffed;
 	unsigned int empTimer;
+	double feedbackMultiplier;
+	int feedbackMultiplierMs;
 } EnemyFeedback;
 
 /* Initialize: zero feedback, randomize aggression 1-10 */
@@ -30,5 +32,8 @@ void EnemyFeedback_apply_emp(EnemyFeedback *fb, unsigned int duration_ms);
 
 /* Reset all state, re-randomize aggression */
 void EnemyFeedback_reset(EnemyFeedback *fb);
+
+/* Heatwave debuff: multiplies feedback cost accumulation */
+void EnemyFeedback_apply_heatwave(EnemyFeedback *fb, double multiplier, unsigned int duration_ms);
 
 #endif

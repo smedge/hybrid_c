@@ -13,7 +13,9 @@ typedef struct {
 	void (*heal)(int index, double amount);
 	void (*alert_nearby)(Position origin, double radius, Position threat);
 	void (*apply_emp)(Position center, double half_size, unsigned int duration_ms);
+	void (*apply_heatwave)(Position center, double half_size, double multiplier, unsigned int duration_ms);
 	void (*cleanse_burn)(Position center, double radius, int immunity_ms);
+	void (*apply_burn)(Position center, double radius, int duration_ms);
 } EnemyTypeCallbacks;
 
 void EnemyRegistry_clear(void);
@@ -23,6 +25,8 @@ const EnemyTypeCallbacks *EnemyRegistry_get_type(int type_id);
 void EnemyRegistry_heal(int type_id, int index, double amount);
 void EnemyRegistry_alert_nearby(Position origin, double radius, Position threat);
 void EnemyRegistry_apply_emp(Position center, double half_size, unsigned int duration_ms);
+void EnemyRegistry_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms);
 void EnemyRegistry_cleanse_burn(Position center, double radius, int immunity_ms);
+void EnemyRegistry_apply_burn(Position center, double radius, int duration_ms);
 
 #endif

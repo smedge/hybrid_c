@@ -31,6 +31,9 @@
 #include "sub_blaze.h"
 #include "sub_cauterize.h"
 #include "sub_immolate.h"
+#include "sub_scorch.h"
+#include "sub_heatwave.h"
+#include "sub_temper.h"
 #include "corruptor.h"
 #include "map_reflect.h"
 #include "map_lighting.h"
@@ -635,6 +638,11 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	Defender_update_fire_auras(ticks);
 	Seeker_update_corridors(ticks);
 	Seeker_check_corridor_burn_player();
+	Stalker_update_corridors(ticks);
+	Stalker_check_corridor_burn_player();
+	Corruptor_update_footprints(ticks);
+	Corruptor_check_footprint_burn_player();
+	Sub_Scorch_update_footprints(ticks);
 	SubEmber_clear_bursts();
 	Burn_update_embers(ticks);
 
@@ -751,6 +759,11 @@ void Mode_Gameplay_render(void)
 		Sub_Immolate_render_light_source();
 		Defender_render_fire_aura_light();
 		Seeker_render_corridor_light_source();
+		Stalker_render_corridor_light_source();
+		Corruptor_render_footprint_light_source();
+		Sub_Scorch_render_footprints_light();
+		Sub_Heatwave_render_light_source();
+		Sub_Temper_render_light_source();
 		Mine_render_light_source();
 		Hunter_render_light_source();
 		Seeker_render_light_source();
@@ -763,37 +776,6 @@ void Mode_Gameplay_render(void)
 		Bloom_blur(lb);
 
 		MapLighting_render(draw_w, draw_h);
-	}
-
-	/* Entities render on top of lit map cells */
-	Portal_render_deactivated();
-	DataNode_render_all();
-	Entity_render_system();
-	Fragment_render();
-	if (godModeActive) {
-		if (godNoiseHeatmapActive)
-			god_mode_render_noise_heatmap();
-		god_mode_render_spawn_markers();
-		god_mode_render_procgen_debug();
-		god_mode_render_chunk_selection();
-		god_mode_render_cursor();
-	}
-	Sub_Blaze_render_corridor();
-	Sub_Cauterize_render_aura();
-	Sub_Cinder_render_pools();
-	Mine_render_fire_pools();
-	Defender_render_fire_auras();
-	Seeker_render_corridors();
-	Render_flush(&world_proj, &view);
-	Burn_render_all();
-
-	/* God mode labels (world-space text) */
-	if (godModeActive) {
-		god_mode_render_spawn_labels();
-		god_mode_render_zone_labels();
-		Portal_render_god_labels();
-		Savepoint_render_god_labels();
-		DataNode_render_god_labels();
 	}
 
 	/* Disintegrate bloom pass (dedicated purple FBO) */
@@ -809,7 +791,7 @@ void Mode_Gameplay_render(void)
 		Bloom_composite(disint_bloom, draw_w, draw_h);
 	}
 
-	/* FBO bloom pass */
+	/* FBO bloom pass — rendered before entities so bloom halos appear behind */
 	if (Graphics_get_bloom_enabled()) {
 		Bloom *bloom = Graphics_get_bloom();
 
@@ -837,11 +819,48 @@ void Mode_Gameplay_render(void)
 		Mine_render_fire_pool_bloom();
 		Defender_render_fire_aura_bloom();
 		Seeker_render_corridor_bloom_source();
+		Stalker_render_corridor_bloom_source();
+		Corruptor_render_footprint_bloom_source();
+		Sub_Scorch_render_footprints_bloom();
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bloom, draw_w, draw_h);
 
 		Bloom_blur(bloom);
 		Bloom_composite(bloom, draw_w, draw_h);
+	}
+
+	/* Entities render on top of bloom */
+	Portal_render_deactivated();
+	DataNode_render_all();
+	Entity_render_system();
+	Fragment_render();
+	if (godModeActive) {
+		if (godNoiseHeatmapActive)
+			god_mode_render_noise_heatmap();
+		god_mode_render_spawn_markers();
+		god_mode_render_procgen_debug();
+		god_mode_render_chunk_selection();
+		god_mode_render_cursor();
+	}
+	Sub_Blaze_render_corridor();
+	Sub_Cauterize_render_aura();
+	Sub_Cinder_render_pools();
+	Mine_render_fire_pools();
+	Defender_render_fire_auras();
+	Seeker_render_corridors();
+	Stalker_render_corridors();
+	Corruptor_render_footprints();
+	Sub_Scorch_render_footprints();
+	Render_flush(&world_proj, &view);
+	Burn_render_all();
+
+	/* God mode labels (world-space text) */
+	if (godModeActive) {
+		god_mode_render_spawn_labels();
+		god_mode_render_zone_labels();
+		Portal_render_god_labels();
+		Savepoint_render_god_labels();
+		DataNode_render_god_labels();
 	}
 
 	/* UI pass — disable pixel snap (UI coords are already pixel-aligned) */

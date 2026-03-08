@@ -56,10 +56,26 @@ void EnemyRegistry_apply_emp(Position center, double half_size, unsigned int dur
 	}
 }
 
+void EnemyRegistry_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms)
+{
+	for (int i = 0; i < typeCount; i++) {
+		if (types[i].apply_heatwave)
+			types[i].apply_heatwave(center, half_size, multiplier, duration_ms);
+	}
+}
+
 void EnemyRegistry_cleanse_burn(Position center, double radius, int immunity_ms)
 {
 	for (int i = 0; i < typeCount; i++) {
 		if (types[i].cleanse_burn)
 			types[i].cleanse_burn(center, radius, immunity_ms);
+	}
+}
+
+void EnemyRegistry_apply_burn(Position center, double radius, int duration_ms)
+{
+	for (int i = 0; i < typeCount; i++) {
+		if (types[i].apply_burn)
+			types[i].apply_burn(center, radius, duration_ms);
 	}
 }

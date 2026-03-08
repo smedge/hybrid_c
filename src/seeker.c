@@ -246,7 +246,7 @@ void Seeker_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal, Seeker_alert_nearby, Seeker_apply_emp, Seeker_cleanse_burn};
+		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal, Seeker_alert_nearby, Seeker_apply_emp, Seeker_apply_heatwave, Seeker_cleanse_burn, Seeker_apply_burn};
 		EnemyRegistry_register(cb);
 	}
 
@@ -294,7 +294,7 @@ Collision Seeker_collide(void *state, const PlaceableComponent *placeable, const
 		collision.collisionDetected = true;
 		/* Dash damage handled in update via explicit AABB check + hitThisDash.
 		   Do NOT set solid here — Ship_resolve treats solid as wall → force_kill. */
-		Sub_Stealth_break();
+		Enemy_break_cloak();
 	}
 
 	return collision;
@@ -713,34 +713,25 @@ void Seeker_render(const void *state, const PlaceableComponent *placeable)
 
 	/* Choose color based on state + theme tint */
 	const ColorFloat *bodyColor;
-	ColorFloat themedColor;
-	float stateBrightness = 1.0f;
-	bool applyTheme = true;
 	switch (s->aiState) {
-	case SEEKER_IDLE:       bodyColor = &colorIdle; stateBrightness = 0.6f; break;
-	case SEEKER_STALKING:   bodyColor = &colorStalk; stateBrightness = 0.8f; break;
-	case SEEKER_ORBITING:   bodyColor = &colorOrbit; stateBrightness = 1.0f; break;
-	case SEEKER_RECOVERING: bodyColor = &colorRecover; stateBrightness = 0.5f; break;
+	case SEEKER_IDLE:       bodyColor = &colorIdle; break;
+	case SEEKER_STALKING:   bodyColor = &colorStalk; break;
+	case SEEKER_ORBITING:   bodyColor = &colorOrbit; break;
+	case SEEKER_RECOVERING: bodyColor = &colorRecover; break;
 	case SEEKER_WINDING_UP: {
 		/* Rapid white flash telegraph */
 		bool flashOn = (s->windupTimer / 50) % 2 == 0;
 		static const ColorFloat white = {1.0f, 1.0f, 1.0f, 1.0f};
 		bodyColor = flashOn ? &white : &colorOrbit;
-		applyTheme = false; /* keep flash as gameplay tell */
 		break;
 	}
 	case SEEKER_DASHING: {
 		/* Bright white during dash */
 		static const ColorFloat dashColor = {1.0f, 1.0f, 1.0f, 1.0f};
 		bodyColor = &dashColor;
-		applyTheme = false;
 		break;
 	}
 	default: bodyColor = &colorIdle; break;
-	}
-	if (applyTheme && s->theme != THEME_NONE) {
-		themedColor = Variant_get_color(seekerVariants, s->theme, bodyColor, stateBrightness);
-		bodyColor = &themedColor;
 	}
 
 	/* Dash motion trail */
@@ -810,7 +801,8 @@ void Seeker_render_bloom_source(void)
 		default: bodyColor = &colorOrbit; break;
 		}
 
-		Render_point(&pl->position, 6.0, bodyColor);
+		ColorFloat bloomColor = Variant_get_color(seekerVariants, s->theme, bodyColor, 1.0f);
+		Render_point(&pl->position, 6.0, &bloomColor);
 
 		/* Dash trail bloom */
 		if (s->aiState == SEEKER_DASHING) {
@@ -1009,6 +1001,20 @@ void Seeker_apply_emp(Position center, double half_size, unsigned int duration_m
 	}
 }
 
+void Seeker_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		SeekerState *s = &seekers[i];
+		if (!s->alive || s->aiState == SEEKER_DYING || s->aiState == SEEKER_DEAD)
+			continue;
+		double dx = placeables[i].position.x - center.x;
+		double dy = placeables[i].position.y - center.y;
+		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
+			continue;
+		EnemyFeedback_apply_heatwave(&s->fb, multiplier, duration_ms);
+	}
+}
+
 void Seeker_cleanse_burn(Position center, double radius, int immunity_ms)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {
@@ -1018,6 +1024,18 @@ void Seeker_cleanse_burn(Position center, double radius, int immunity_ms)
 		double dist = Enemy_distance_between(placeables[i].position, center);
 		if (dist <= radius)
 			Burn_grant_immunity(&s->burn, immunity_ms);
+	}
+}
+
+void Seeker_apply_burn(Position center, double radius, int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		SeekerState *s = &seekers[i];
+		if (!s->alive || s->aiState == SEEKER_DYING || s->aiState == SEEKER_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_apply(&s->burn, duration_ms);
 	}
 }
 

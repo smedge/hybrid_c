@@ -1341,3 +1341,7 @@ All 20 skills — every score expressed as 3-axis decomposition.
 | sub_blaze | 7 | +1 | +1 | 9 | 10 | ✓ |
 | sub_cauterize | 6 | +1 | +1 | 8 | 10 | ✓ |
 | sub_immolate | 8 | −1 | +1 | 8 | 10 | ✓ |
+| sub_smolder | 7 | +1 | −1 | 7 | 10 | ✓ |
+| sub_scorch | 6 | +1 | +1 | 8 | 10 | ✓ |
+| sub_heatwave | 7 | −1 | +3 | 9 | 10 | ✓ |
+| sub_temper | 6 | +1 | +1 | 8 | 10 | ✓ |

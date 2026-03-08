@@ -1,0 +1,168 @@
+#include "sub_heatwave_core.h"
+#include "render.h"
+#include "audio.h"
+
+#include <math.h>
+#include <SDL2/SDL_mixer.h>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+/* --- Config singleton --- */
+
+static const SubHeatwaveConfig heatwaveCfg = {
+	.cooldown_ms = 30000,
+	.visual_ms = 300,
+	.half_size = 400.0f,
+	.ring_max_radius = 400.0f,
+	.feedback_multiplier = 3.0,
+	.debuff_duration_ms = 10000,
+	/* Ring visuals — orange-red heat ring */
+	.inner_ring_ratio = 0.6f,
+	.segments = 24,
+	.outer_r = 1.0f, .outer_g = 0.45f, .outer_b = 0.05f,
+	.outer_thickness = 3.5f,
+	.inner_r = 1.0f, .inner_g = 0.7f, .inner_b = 0.2f,
+	.inner_thickness = 2.0f,
+	.inner_alpha_mult = 0.8f,
+};
+
+const SubHeatwaveConfig *SubHeatwave_get_config(void)
+{
+	return &heatwaveCfg;
+}
+
+/* --- Audio --- */
+
+static Mix_Chunk *sampleFire = 0;
+
+void SubHeatwave_initialize_audio(void)
+{
+	Audio_load_sample(&sampleFire, "resources/sounds/bomb_explode.wav");
+}
+
+void SubHeatwave_cleanup_audio(void)
+{
+	Audio_unload_sample(&sampleFire);
+}
+
+/* --- Init --- */
+
+void SubHeatwave_init(SubHeatwaveCore *core)
+{
+	core->cooldownMs = 0;
+	core->visualActive = false;
+	core->visualTimer = 0;
+	core->visualCenter = (Position){0, 0};
+}
+
+/* --- Activation --- */
+
+bool SubHeatwave_try_activate(SubHeatwaveCore *core, const SubHeatwaveConfig *cfg, Position center)
+{
+	if (core->cooldownMs > 0)
+		return false;
+
+	core->cooldownMs = cfg->cooldown_ms;
+	core->visualActive = true;
+	core->visualTimer = 0;
+	core->visualCenter = center;
+	Audio_play_sample(&sampleFire);
+	return true;
+}
+
+/* --- Update --- */
+
+void SubHeatwave_update(SubHeatwaveCore *core, const SubHeatwaveConfig *cfg, unsigned int ticks)
+{
+	if (core->cooldownMs > 0) {
+		core->cooldownMs -= (int)ticks;
+		if (core->cooldownMs < 0)
+			core->cooldownMs = 0;
+	}
+
+	if (core->visualActive) {
+		core->visualTimer += ticks;
+		if (core->visualTimer >= cfg->visual_ms)
+			core->visualActive = false;
+	}
+}
+
+bool SubHeatwave_is_active(const SubHeatwaveCore *core)
+{
+	return core->visualActive;
+}
+
+float SubHeatwave_get_cooldown_fraction(const SubHeatwaveCore *core, const SubHeatwaveConfig *cfg)
+{
+	if (core->cooldownMs > 0)
+		return (float)core->cooldownMs / cfg->cooldown_ms;
+	return 0.0f;
+}
+
+/* --- Rendering --- */
+
+void SubHeatwave_render_ring(const SubHeatwaveCore *core, const SubHeatwaveConfig *cfg)
+{
+	if (!core->visualActive)
+		return;
+
+	float t = (float)core->visualTimer / cfg->visual_ms;
+	float radius = cfg->ring_max_radius * t;
+	float alpha = 1.0f - t;
+
+	/* Outer expanding heat ring */
+	for (int i = 0; i < cfg->segments; i++) {
+		float a0 = i * (2.0f * (float)M_PI / cfg->segments);
+		float a1 = (i + 1) * (2.0f * (float)M_PI / cfg->segments);
+		float x0 = (float)core->visualCenter.x + cosf(a0) * radius;
+		float y0 = (float)core->visualCenter.y + sinf(a0) * radius;
+		float x1 = (float)core->visualCenter.x + cosf(a1) * radius;
+		float y1 = (float)core->visualCenter.y + sinf(a1) * radius;
+		Render_thick_line(x0, y0, x1, y1, cfg->outer_thickness,
+			cfg->outer_r, cfg->outer_g, cfg->outer_b, alpha);
+	}
+
+	/* Inner bright ring */
+	float innerRadius = radius * cfg->inner_ring_ratio;
+	for (int i = 0; i < cfg->segments; i++) {
+		float a0 = i * (2.0f * (float)M_PI / cfg->segments);
+		float a1 = (i + 1) * (2.0f * (float)M_PI / cfg->segments);
+		float x0 = (float)core->visualCenter.x + cosf(a0) * innerRadius;
+		float y0 = (float)core->visualCenter.y + sinf(a0) * innerRadius;
+		float x1 = (float)core->visualCenter.x + cosf(a1) * innerRadius;
+		float y1 = (float)core->visualCenter.y + sinf(a1) * innerRadius;
+		Render_thick_line(x0, y0, x1, y1, cfg->inner_thickness,
+			cfg->inner_r, cfg->inner_g, cfg->inner_b, alpha * cfg->inner_alpha_mult);
+	}
+}
+
+void SubHeatwave_render_bloom(const SubHeatwaveCore *core, const SubHeatwaveConfig *cfg)
+{
+	if (!core->visualActive)
+		return;
+
+	float t = (float)core->visualTimer / cfg->visual_ms;
+	float radius = cfg->ring_max_radius * t;
+	float alpha = 1.0f - t;
+
+	Render_filled_circle(
+		(float)core->visualCenter.x, (float)core->visualCenter.y,
+		radius, cfg->segments,
+		cfg->outer_r, cfg->outer_g, cfg->outer_b, alpha * 0.5f);
+}
+
+void SubHeatwave_render_light(const SubHeatwaveCore *core, const SubHeatwaveConfig *cfg)
+{
+	if (!core->visualActive)
+		return;
+
+	float t = (float)core->visualTimer / cfg->visual_ms;
+	float radius = cfg->ring_max_radius * t * 1.5f;
+	float alpha = (1.0f - t) * 0.8f;
+
+	Render_filled_circle(
+		(float)core->visualCenter.x, (float)core->visualCenter.y,
+		radius, cfg->segments,
+		cfg->outer_r, cfg->outer_g, cfg->outer_b, alpha);
+}

@@ -54,6 +54,10 @@ static bool empDebuffed;
 static int empDebuffMs;
 static bool hasResist;
 static int resistMs;
+static bool hasReflect;
+static double reflectedDamage;
+static double feedbackMultiplier;
+static int feedbackMultiplierMs;
 static Mix_Chunk *sampleHurt = 0;
 
 void PlayerStats_initialize(void)
@@ -74,6 +78,10 @@ void PlayerStats_initialize(void)
 	empDebuffMs = 0;
 	hasResist = false;
 	resistMs = 0;
+	hasReflect = false;
+	reflectedDamage = 0.0;
+	feedbackMultiplier = 1.0;
+	feedbackMultiplierMs = 0;
 
 	Audio_load_sample(&sampleHurt, "resources/sounds/samus_hurt.wav");
 }
@@ -142,6 +150,15 @@ void PlayerStats_update(unsigned int ticks)
 		if (resistMs <= 0) {
 			resistMs = 0;
 			hasResist = false;
+		}
+	}
+
+	/* Feedback multiplier decay (heatwave) */
+	if (feedbackMultiplierMs > 0) {
+		feedbackMultiplierMs -= (int)ticks;
+		if (feedbackMultiplierMs <= 0) {
+			feedbackMultiplierMs = 0;
+			feedbackMultiplier = 1.0;
 		}
 	}
 
@@ -376,7 +393,7 @@ void PlayerStats_render(const Screen *screen)
 
 void PlayerStats_add_feedback(double amount)
 {
-	feedback += amount;
+	feedback += amount * feedbackMultiplier;
 
 	/* Any feedback past max spills over as integrity damage */
 	if (feedback > FEEDBACK_MAX) {
@@ -400,7 +417,11 @@ void PlayerStats_damage(double amount)
 			Sub_Aegis_on_hit();
 		return;
 	}
+	if (hasReflect)
+		reflectedDamage += amount * 0.5;
 	if (hasResist)
+		amount *= 0.5;
+	if (hasReflect)
 		amount *= 0.5;
 	integrity -= amount;
 	if (integrity < 0.0)
@@ -410,7 +431,7 @@ void PlayerStats_damage(double amount)
 	Audio_play_sample(&sampleHurt);
 
 	/* Combat feedback — taking damage generates feedback (no spillover) */
-	feedback += amount * DAMAGE_FEEDBACK_RATIO;
+	feedback += amount * DAMAGE_FEEDBACK_RATIO * feedbackMultiplier;
 	if (feedback > FEEDBACK_MAX)
 		feedback = FEEDBACK_MAX;
 	timeSinceLastFeedback = 0;
@@ -493,6 +514,10 @@ void PlayerStats_reset(void)
 	empDebuffMs = 0;
 	hasResist = false;
 	resistMs = 0;
+	hasReflect = false;
+	reflectedDamage = 0.0;
+	feedbackMultiplier = 1.0;
+	feedbackMultiplierMs = 0;
 }
 
 PlayerStatsSnapshot PlayerStats_snapshot(void)
@@ -519,6 +544,8 @@ void PlayerStats_restore(PlayerStatsSnapshot snap)
 	empDebuffMs = 0;
 	hasResist = false;
 	resistMs = 0;
+	hasReflect = false;
+	reflectedDamage = 0.0;
 }
 
 void PlayerStats_apply_emp(unsigned int duration_ms)
@@ -543,4 +570,39 @@ void PlayerStats_set_resist(bool enabled, unsigned int duration_ms)
 bool PlayerStats_has_resist(void)
 {
 	return hasResist;
+}
+
+void PlayerStats_set_reflect(bool enabled)
+{
+	hasReflect = enabled;
+	if (!enabled)
+		reflectedDamage = 0.0;
+}
+
+bool PlayerStats_has_reflect(void)
+{
+	return hasReflect;
+}
+
+double PlayerStats_flush_reflected_damage(void)
+{
+	double d = reflectedDamage;
+	reflectedDamage = 0.0;
+	return d;
+}
+
+void PlayerStats_apply_feedback_multiplier(double multiplier, unsigned int duration_ms)
+{
+	feedbackMultiplier = multiplier;
+	feedbackMultiplierMs = (int)duration_ms;
+}
+
+bool PlayerStats_has_feedback_multiplier(void)
+{
+	return feedbackMultiplierMs > 0 && feedbackMultiplier != 1.0;
+}
+
+double PlayerStats_get_feedback_multiplier(void)
+{
+	return feedbackMultiplier;
 }

@@ -7,6 +7,7 @@
 #include "render.h"
 #include "skillbar.h"
 #include "sub_stealth.h"
+#include "enemy_util.h"
 #include "sub_egress.h"
 #include "player_stats.h"
 
@@ -59,7 +60,7 @@ void Sub_Cinder_try_deploy(void)
 	if (cooldownTimer > 0) return;
 
 	const SubMineConfig *cfg = SubCinder_get_fire_mine_config();
-	Sub_Stealth_break_attack();
+	Enemy_break_cloak_attack();
 	int slot = -1;
 	for (int i = 0; i < MAX_CINDER_MINES; i++) {
 		if (mines[i].phase == MINE_PHASE_DORMANT) {

@@ -9,6 +9,8 @@ void EnemyFeedback_init(EnemyFeedback *fb)
 	fb->aggression = (rand() % 10) + 1;
 	fb->empDebuffed = false;
 	fb->empTimer = 0;
+	fb->feedbackMultiplier = 1.0;
+	fb->feedbackMultiplierMs = 0;
 }
 
 void EnemyFeedback_update(EnemyFeedback *fb, unsigned int ticks)
@@ -29,6 +31,15 @@ void EnemyFeedback_update(EnemyFeedback *fb, unsigned int ticks)
 		}
 	}
 
+	/* Tick heatwave (feedback multiplier) debuff */
+	if (fb->feedbackMultiplierMs > 0) {
+		fb->feedbackMultiplierMs -= (int)ticks;
+		if (fb->feedbackMultiplierMs <= 0) {
+			fb->feedbackMultiplierMs = 0;
+			fb->feedbackMultiplier = 1.0;
+		}
+	}
+
 	/* Decay after grace period */
 	if (fb->graceTimer >= ENEMY_FEEDBACK_GRACE_MS) {
 		double decay = ENEMY_FEEDBACK_DECAY;
@@ -42,7 +53,8 @@ void EnemyFeedback_update(EnemyFeedback *fb, unsigned int ticks)
 
 bool EnemyFeedback_try_spend(EnemyFeedback *fb, double cost, double *hp_ptr)
 {
-	double newFeedback = fb->feedback + cost;
+	double effectiveCost = cost * fb->feedbackMultiplier;
+	double newFeedback = fb->feedback + effectiveCost;
 	double spillover = 0.0;
 
 	if (newFeedback > ENEMY_FEEDBACK_MAX)
@@ -65,7 +77,7 @@ bool EnemyFeedback_try_spend(EnemyFeedback *fb, double cost, double *hp_ptr)
 	}
 
 	/* Commit the spend */
-	fb->feedback += cost;
+	fb->feedback += effectiveCost;
 	if (fb->feedback > ENEMY_FEEDBACK_MAX) {
 		spillover = fb->feedback - ENEMY_FEEDBACK_MAX;
 		fb->feedback = ENEMY_FEEDBACK_MAX;
@@ -91,4 +103,12 @@ void EnemyFeedback_reset(EnemyFeedback *fb)
 	fb->aggression = (rand() % 10) + 1;
 	fb->empDebuffed = false;
 	fb->empTimer = 0;
+	fb->feedbackMultiplier = 1.0;
+	fb->feedbackMultiplierMs = 0;
+}
+
+void EnemyFeedback_apply_heatwave(EnemyFeedback *fb, double multiplier, unsigned int duration_ms)
+{
+	fb->feedbackMultiplier = multiplier;
+	fb->feedbackMultiplierMs = (int)duration_ms;
 }

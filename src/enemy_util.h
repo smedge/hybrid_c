@@ -26,6 +26,11 @@ void Enemy_on_player_kill(const PlayerDamageResult *dmg);
 /* Break stealth if player is within 100 units and inside the enemy's 90° vision cone. */
 void Enemy_check_stealth_proximity(Position enemyPos, double facingDegrees);
 
+/* Centralized cloak break — breaks all stealth-type subs (stealth, smolder) */
+void Enemy_break_cloak(void);
+/* Centralized cloak break on attack — triggers ambush window for active stealth-type sub */
+void Enemy_break_cloak_attack(void);
+
 double Enemy_distance_between(Position a, Position b);
 bool Enemy_has_line_of_sight(Position from, Position to);
 void Enemy_move_toward(PlaceableComponent *pl, Position target, double speed, double dt, double wallCheckDist);

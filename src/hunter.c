@@ -253,7 +253,7 @@ void Hunter_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal, Hunter_alert_nearby, Hunter_apply_emp, Hunter_cleanse_burn};
+		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal, Hunter_alert_nearby, Hunter_apply_emp, Hunter_apply_heatwave, Hunter_cleanse_burn, Hunter_apply_burn};
 		EnemyRegistry_register(cb);
 	}
 
@@ -307,7 +307,7 @@ Collision Hunter_collide(void *state, const PlaceableComponent *placeable, const
 	if (Collision_aabb_test(transformed, boundingBox)) {
 		collision.collisionDetected = true;
 		collision.solid = true;
-		Sub_Stealth_break();
+		Enemy_break_cloak();
 	}
 
 	return collision;
@@ -642,7 +642,7 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 	/* Choose color based on aggro state + theme tint */
 	float brightness = (h->aiState == HUNTER_IDLE) ? 0.7f : 1.0f;
 	const ColorFloat *baseColor = (h->aiState == HUNTER_IDLE) ? &colorBody : &colorAggro;
-	ColorFloat bodyColor = Variant_get_color(hunterVariants, h->theme, baseColor, brightness);
+	ColorFloat bodyColor = {baseColor->red * brightness, baseColor->green * brightness, baseColor->blue * brightness, baseColor->alpha};
 
 	/* Render as a triangle pointing in facing direction */
 	float rad = (float)get_radians(h->facing);
@@ -688,8 +688,9 @@ void Hunter_render_bloom_source(void)
 		}
 
 		/* Body glow */
-		const ColorFloat *bodyColor = (h->aiState == HUNTER_IDLE) ? &colorBody : &colorAggro;
-		Render_point(&pl->position, 6.0, bodyColor);
+		const ColorFloat *baseColor = (h->aiState == HUNTER_IDLE) ? &colorBody : &colorAggro;
+		ColorFloat bloomColor = Variant_get_color(hunterVariants, h->theme, baseColor, 1.0f);
+		Render_point(&pl->position, 6.0, &bloomColor);
 	}
 
 	/* Projectile bloom */
@@ -872,6 +873,20 @@ void Hunter_apply_emp(Position center, double half_size, unsigned int duration_m
 	}
 }
 
+void Hunter_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		HunterState *h = &hunters[i];
+		if (!h->alive || h->aiState == HUNTER_DYING || h->aiState == HUNTER_DEAD)
+			continue;
+		double dx = placeables[i].position.x - center.x;
+		double dy = placeables[i].position.y - center.y;
+		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
+			continue;
+		EnemyFeedback_apply_heatwave(&h->fb, multiplier, duration_ms);
+	}
+}
+
 void Hunter_cleanse_burn(Position center, double radius, int immunity_ms)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {
@@ -881,6 +896,18 @@ void Hunter_cleanse_burn(Position center, double radius, int immunity_ms)
 		double dist = Enemy_distance_between(placeables[i].position, center);
 		if (dist <= radius)
 			Burn_grant_immunity(&h->burn, immunity_ms);
+	}
+}
+
+void Hunter_apply_burn(Position center, double radius, int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		HunterState *h = &hunters[i];
+		if (!h->alive || h->aiState == HUNTER_DYING || h->aiState == HUNTER_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_apply(&h->burn, duration_ms);
 	}
 }
 

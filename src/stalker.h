@@ -20,8 +20,17 @@ bool Stalker_find_aggro(Position from, double range, Position *out_pos);
 void Stalker_heal(int index, double amount);
 void Stalker_alert_nearby(Position origin, double radius, Position threat);
 void Stalker_apply_emp(Position center, double half_size, unsigned int duration_ms);
+void Stalker_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms);
 void Stalker_cleanse_burn(Position center, double radius, int immunity_ms);
+void Stalker_apply_burn(Position center, double radius, int duration_ms);
 int Stalker_get_count(void);
 void Stalker_update_projectiles(unsigned int ticks);
+
+/* Fire stalker corridor (blaze dash trail) */
+void Stalker_update_corridors(unsigned int ticks);
+void Stalker_check_corridor_burn_player(void);
+void Stalker_render_corridors(void);
+void Stalker_render_corridor_bloom_source(void);
+void Stalker_render_corridor_light_source(void);
 
 #endif

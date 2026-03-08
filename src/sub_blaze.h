@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include "input.h"
 #include "collision.h"
+#include "sub_dash_core.h"
+
+const SubDashConfig *Sub_Blaze_get_dash_config(void);
 
 void Sub_Blaze_initialize(void);
 void Sub_Blaze_cleanup(void);

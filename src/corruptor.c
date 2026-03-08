@@ -12,6 +12,9 @@
 #include "sub_emp_core.h"
 #include "sub_sprint_core.h"
 #include "sub_resist_core.h"
+#include "sub_scorch_core.h"
+#include "sub_heatwave_core.h"
+#include "sub_temper_core.h"
 #include "view.h"
 #include "render.h"
 #include "color.h"
@@ -51,6 +54,14 @@
 
 #define SPRINT_TRAIL_GHOSTS 12
 #define SPRINT_TRAIL_LENGTH 3.0
+
+/* Fire variant — scorch footprint pool */
+#define CORRUPTOR_FOOTPRINT_MAX 64
+static ScorchFootprint corruptorFootprintBuf[CORRUPTOR_FOOTPRINT_MAX];
+static bool corruptorFootprintsInitialized = false;
+
+/* Fire variant — heatwave feedback cost + player debuff */
+#define HEATWAVE_FEEDBACK_COST 30.0
 
 static const CarriedSubroutine corruptorCarried[] = {
 	{ SUB_ID_SPRINT,  FRAG_TYPE_SPRINT },
@@ -118,6 +129,11 @@ typedef struct {
 
 	/* Burn DOT */
 	BurnState burn;
+
+	/* Fire variant cores */
+	SubScorchCore scorchCore;
+	SubHeatwaveCore heatwaveCore;
+	SubTemperCore temperCore;
 } CorruptorState;
 
 /* Shared singleton components */
@@ -180,11 +196,17 @@ static bool can_engage_player(CorruptorState *c, Position myPos)
 {
 	if (Ship_is_destroyed() || Sub_Stealth_is_stealthed())
 		return false;
-	if (c->empCore.cooldownMs > 0)
-		return false;
-	/* Stay near allies while actively buffing them with resist */
-	if (c->resistCore.active)
-		return false;
+	if (c->theme == THEME_FIRE) {
+		if (c->heatwaveCore.cooldownMs > 0)
+			return false;
+		if (SubTemper_is_active(&c->temperCore))
+			return false;
+	} else {
+		if (c->empCore.cooldownMs > 0)
+			return false;
+		if (c->resistCore.active)
+			return false;
+	}
 
 	Position shipPos = Ship_get_position();
 	double dist = Enemy_distance_between(myPos, shipPos);
@@ -245,6 +267,52 @@ static void try_apply_resist(CorruptorState *c, Position myPos)
 	SubResist_try_activate(&c->resistCore, SubResist_get_config());
 }
 
+static void try_apply_temper(CorruptorState *c, Position myPos)
+{
+	if (SubTemper_is_active(&c->temperCore))
+		return;
+	if (SubTemper_get_cooldown_fraction(&c->temperCore, SubTemper_get_config()) > 0.0f)
+		return;
+
+	/* Same reactive logic as resist — protect wounded/aggro'd allies */
+	bool shouldActivate = false;
+
+	int typeCount = EnemyRegistry_type_count();
+	for (int t = 0; t < typeCount; t++) {
+		const EnemyTypeCallbacks *et = EnemyRegistry_get_type(t);
+		Position pos;
+		int eidx;
+		if (et->find_wounded && et->find_wounded(myPos, RESIST_RANGE, 9999.0, &pos, &eidx)) {
+			shouldActivate = true;
+			break;
+		}
+	}
+
+	if (!shouldActivate && c->hp < CORRUPTOR_HP)
+		shouldActivate = true;
+
+	if (!shouldActivate)
+		return;
+
+	double hpBefore = c->hp;
+	if (!EnemyFeedback_try_spend(&c->fb, RESIST_FEEDBACK_COST, &c->hp))
+		return;
+	if (c->hp < hpBefore) {
+		activate_spark(myPos);
+		Audio_play_sample(&sampleHit);
+	}
+
+	if (c->hp <= 0.0) {
+		c->alive = false;
+		c->aiState = CORRUPTOR_DYING;
+		c->deathTimer = 0;
+		c->killedByPlayer = false;
+		return;
+	}
+
+	SubTemper_try_activate(&c->temperCore, SubTemper_get_config());
+}
+
 /* ---- Public API ---- */
 
 void Corruptor_initialize(Position position, ZoneTheme theme)
@@ -266,9 +334,15 @@ void Corruptor_initialize(Position position, ZoneTheme theme)
 	c->theme = theme;
 	c->prevPosition = position;
 	Burn_reset(&c->burn);
-	SubSprint_init(&c->sprintCore);
-	SubEmp_init(&c->empCore);
-	SubResist_init(&c->resistCore);
+	if (theme == THEME_FIRE) {
+		SubScorch_init(&c->scorchCore);
+		SubHeatwave_init(&c->heatwaveCore);
+		SubTemper_init(&c->temperCore);
+	} else {
+		SubSprint_init(&c->sprintCore);
+		SubEmp_init(&c->empCore);
+		SubResist_init(&c->resistCore);
+	}
 	c->hasResistTarget = false;
 	c->resistBeamTarget = position;
 	c->deathTimer = 0;
@@ -298,9 +372,17 @@ void Corruptor_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 		SubEmp_initialize_audio();
+		SubHeatwave_initialize_audio();
+		SubScorch_initialize_audio();
 		EnemyTypeCallbacks cb = {Corruptor_find_wounded, Corruptor_find_aggro,
-			Corruptor_heal, Corruptor_alert_nearby, Corruptor_apply_emp, Corruptor_cleanse_burn};
+			Corruptor_heal, Corruptor_alert_nearby, Corruptor_apply_emp, Corruptor_apply_heatwave, Corruptor_cleanse_burn, Corruptor_apply_burn};
 		corruptorTypeId = EnemyRegistry_register(cb);
+	}
+
+	/* Init fire footprint pool on first fire corruptor */
+	if (theme == THEME_FIRE && !corruptorFootprintsInitialized) {
+		SubScorch_init_footprints(corruptorFootprintBuf, CORRUPTOR_FOOTPRINT_MAX);
+		corruptorFootprintsInitialized = true;
 	}
 }
 
@@ -321,6 +403,13 @@ void Corruptor_cleanup(void)
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
 	SubEmp_cleanup_audio();
+	SubHeatwave_cleanup_audio();
+	SubScorch_cleanup_audio();
+
+	if (corruptorFootprintsInitialized) {
+		SubScorch_deactivate_all_footprints();
+		corruptorFootprintsInitialized = false;
+	}
 }
 
 Collision Corruptor_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)
@@ -337,7 +426,7 @@ Collision Corruptor_collide(void *state, const PlaceableComponent *placeable, co
 	if (Collision_aabb_test(transformed, boundingBox)) {
 		collision.collisionDetected = true;
 		collision.solid = true;
-		Sub_Stealth_break();
+		Enemy_break_cloak();
 	}
 
 	return collision;
@@ -377,9 +466,15 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 				c->aiState = CORRUPTOR_IDLE;
 				c->killedByPlayer = false;
 				Burn_reset(&c->burn);
-				SubSprint_init(&c->sprintCore);
-				SubEmp_init(&c->empCore);
-				SubResist_init(&c->resistCore);
+				if (c->theme == THEME_FIRE) {
+					SubScorch_init(&c->scorchCore);
+					SubHeatwave_init(&c->heatwaveCore);
+					SubTemper_init(&c->temperCore);
+				} else {
+					SubSprint_init(&c->sprintCore);
+					SubEmp_init(&c->empCore);
+					SubResist_init(&c->resistCore);
+				}
 				c->hasResistTarget = false;
 				EnemyFeedback_reset(&c->fb);
 				Position oldPos = pl->position;
@@ -414,11 +509,19 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 	currentUpdaterIdx = idx;
 
 	/* Tick cores */
-	SubEmp_update(&c->empCore, SubEmp_get_config(), ticks);
-	SubResist_update(&c->resistCore, SubResist_get_config(), ticks);
+	if (c->theme == THEME_FIRE) {
+		SubHeatwave_update(&c->heatwaveCore, SubHeatwave_get_config(), ticks);
+		SubTemper_update(&c->temperCore, SubTemper_get_config(), ticks);
+		if (SubScorch_is_active(&c->scorchCore))
+			SubScorch_update(&c->scorchCore, SubScorch_get_config(), ticks);
+	} else {
+		SubEmp_update(&c->empCore, SubEmp_get_config(), ticks);
+		SubResist_update(&c->resistCore, SubResist_get_config(), ticks);
+	}
 
-	/* Update resist beam target — find nearest ally in resist range each frame */
-	if (c->resistCore.active) {
+	/* Update resist/temper beam target — find nearest ally in range each frame */
+	bool auraActive = (c->theme == THEME_FIRE) ? SubTemper_is_active(&c->temperCore) : c->resistCore.active;
+	if (auraActive) {
 		c->hasResistTarget = false;
 		double bestDist = RESIST_RANGE + 1.0;
 		int typeCount = EnemyRegistry_type_count();
@@ -541,8 +644,11 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			break;
 		}
 
-		/* Priority 2: Reactive resist — protect ally that's taking damage */
-		try_apply_resist(c, pl->position);
+		/* Priority 2: Reactive resist/temper — protect ally that's taking damage */
+		if (c->theme == THEME_FIRE)
+			try_apply_temper(c, pl->position);
+		else
+			try_apply_resist(c, pl->position);
 
 		/* Orbit at medium distance — stay near allies but not too close to player */
 		double targetDist = SPRINT_ENGAGE_MIN;
@@ -559,11 +665,24 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 		Position shipPos = Ship_get_position();
 		double shipDist = Enemy_distance_between(pl->position, shipPos);
 
-		c->sprintCore.active = true;
+		if (c->theme == THEME_FIRE) {
+			c->scorchCore.sprint.active = true;
+			/* Deposit scorch footprints while sprinting */
+			c->scorchCore.footprint_timer += ticks;
+			if (c->scorchCore.footprint_timer >= SubScorch_get_config()->footprint_interval_ms) {
+				c->scorchCore.footprint_timer = 0;
+				SubScorch_spawn_footprint(&c->scorchCore, SubScorch_get_config(), pl->position);
+			}
+		} else {
+			c->sprintCore.active = true;
+		}
 
 		/* LOS broken — abort charge */
 		if (!Enemy_has_line_of_sight(pl->position, shipPos)) {
-			c->sprintCore.active = false;
+			if (c->theme == THEME_FIRE)
+				c->scorchCore.sprint.active = false;
+			else
+				c->sprintCore.active = false;
 			c->aiState = CORRUPTOR_SUPPORTING;
 			break;
 		}
@@ -572,11 +691,11 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 		Enemy_move_toward(pl, shipPos, SPRINT_SPEED, dt, WALL_CHECK_DIST);
 		c->facing = Position_get_heading(pl->position, shipPos);
 
-		/* Within range — fire EMP */
+		/* Within range — fire EMP/heatwave */
 		if (shipDist <= SPRINT_FIRE_RANGE) {
-			/* Try to spend feedback for EMP */
+			double cost = (c->theme == THEME_FIRE) ? HEATWAVE_FEEDBACK_COST : EMP_FEEDBACK_COST;
 			double hpBefore = c->hp;
-			if (EnemyFeedback_try_spend(&c->fb, EMP_FEEDBACK_COST, &c->hp)) {
+			if (EnemyFeedback_try_spend(&c->fb, cost, &c->hp)) {
 				if (c->hp < hpBefore) {
 					activate_spark(pl->position);
 					Audio_play_sample(&sampleHit);
@@ -590,9 +709,16 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 					break;
 				}
 
-				/* Fire EMP at player */
-				PlayerStats_apply_emp(EMP_PLAYER_DURATION_MS);
-				SubEmp_try_activate(&c->empCore, SubEmp_get_config(), pl->position);
+				if (c->theme == THEME_FIRE) {
+					/* Fire heatwave — feedback multiplier debuff */
+					const SubHeatwaveConfig *hwcfg = SubHeatwave_get_config();
+					PlayerStats_apply_feedback_multiplier(hwcfg->feedback_multiplier, hwcfg->debuff_duration_ms);
+					SubHeatwave_try_activate(&c->heatwaveCore, hwcfg, pl->position);
+				} else {
+					/* Fire EMP at player */
+					PlayerStats_apply_emp(EMP_PLAYER_DURATION_MS);
+					SubEmp_try_activate(&c->empCore, SubEmp_get_config(), pl->position);
+				}
 				c->aiState = CORRUPTOR_EMP_FIRING;
 			} else {
 				/* Can't afford — abort to retreat */
@@ -602,16 +728,22 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 
 		/* Abort if player destroyed or stealthed mid-charge */
 		if (Ship_is_destroyed() || Sub_Stealth_is_stealthed()) {
+			if (c->theme == THEME_FIRE)
+				c->scorchCore.sprint.active = false;
+			else
+				c->sprintCore.active = false;
 			c->aiState = CORRUPTOR_IDLE;
 			pick_wander_target(c);
 		}
 		break;
 	}
 	case CORRUPTOR_EMP_FIRING: {
-		/* Brief pause while EMP visual plays, then retreat */
-		if (!SubEmp_is_active(&c->empCore)) {
+		/* Brief pause while EMP/heatwave visual plays, then retreat */
+		bool visualDone = (c->theme == THEME_FIRE) ?
+			!SubHeatwave_is_active(&c->heatwaveCore) :
+			!SubEmp_is_active(&c->empCore);
+		if (visualDone)
 			c->aiState = CORRUPTOR_RETREATING;
-		}
 		break;
 	}
 	case CORRUPTOR_RETREATING: {
@@ -657,9 +789,15 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			c->aiState = CORRUPTOR_IDLE;
 			c->killedByPlayer = false;
 			Burn_reset(&c->burn);
-			SubSprint_init(&c->sprintCore);
-			SubEmp_init(&c->empCore);
-			SubResist_init(&c->resistCore);
+			if (c->theme == THEME_FIRE) {
+				SubScorch_init(&c->scorchCore);
+				SubHeatwave_init(&c->heatwaveCore);
+				SubTemper_init(&c->temperCore);
+			} else {
+				SubSprint_init(&c->sprintCore);
+				SubEmp_init(&c->empCore);
+				SubResist_init(&c->resistCore);
+			}
 			c->hasResistTarget = false;
 			EnemyFeedback_reset(&c->fb);
 			pl->position = c->spawnPoint;
@@ -709,10 +847,11 @@ void Corruptor_render(const void *state, const PlaceableComponent *placeable)
 
 	float brightness = (c->aiState == CORRUPTOR_IDLE) ? 0.7f : 1.0f;
 	const ColorFloat *baseColor = (c->aiState == CORRUPTOR_IDLE) ? &colorBody : &colorAggro;
-	ColorFloat bodyColor = Variant_get_color(corruptorVariants, c->theme, baseColor, brightness);
+	ColorFloat bodyColor = {baseColor->red * brightness, baseColor->green * brightness, baseColor->blue * brightness, baseColor->alpha};
 
 	/* Sprint motion trail */
-	if (c->sprintCore.active) {
+	bool sprinting = (c->theme == THEME_FIRE) ? c->scorchCore.sprint.active : c->sprintCore.active;
+	if (sprinting) {
 		double dx = placeable->position.x - c->prevPosition.x;
 		double dy = placeable->position.y - c->prevPosition.y;
 		for (int g = SPRINT_TRAIL_GHOSTS; g >= 1; g--) {
@@ -733,13 +872,18 @@ void Corruptor_render(const void *state, const PlaceableComponent *placeable)
 	/* Center dot */
 	Render_point(&placeable->position, 4.0, &bodyColor);
 
-	/* Resist aura + beam to protected ally */
-	SubResist_render_ring(&c->resistCore, SubResist_get_config(), placeable->position);
-	if (c->hasResistTarget)
-		SubResist_render_beam(&c->resistCore, SubResist_get_config(), placeable->position, c->resistBeamTarget);
-
-	/* EMP visual — expanding ring */
-	SubEmp_render_ring(&c->empCore, SubEmp_get_config());
+	/* Resist/temper aura + beam to protected ally */
+	if (c->theme == THEME_FIRE) {
+		SubTemper_render_ring(&c->temperCore, SubTemper_get_config(), placeable->position);
+		if (c->hasResistTarget)
+			SubTemper_render_beam(&c->temperCore, SubTemper_get_config(), placeable->position, c->resistBeamTarget);
+		SubHeatwave_render_ring(&c->heatwaveCore, SubHeatwave_get_config());
+	} else {
+		SubResist_render_ring(&c->resistCore, SubResist_get_config(), placeable->position);
+		if (c->hasResistTarget)
+			SubResist_render_beam(&c->resistCore, SubResist_get_config(), placeable->position, c->resistBeamTarget);
+		SubEmp_render_ring(&c->empCore, SubEmp_get_config());
+	}
 
 	/* Sparks (from idx 0 only) */
 	if (idx == 0) {
@@ -767,10 +911,13 @@ void Corruptor_render_bloom_source(void)
 			continue;
 		}
 
-		const ColorFloat *bodyColor = (c->aiState == CORRUPTOR_IDLE) ? &colorBody : &colorAggro;
+		const ColorFloat *baseColor = (c->aiState == CORRUPTOR_IDLE) ? &colorBody : &colorAggro;
+		ColorFloat bloomColor = Variant_get_color(corruptorVariants, c->theme, baseColor, 1.0f);
+		const ColorFloat *bodyColor = &bloomColor;
 
 		/* Sprint trail bloom */
-		if (c->sprintCore.active) {
+		bool isSprinting = (c->theme == THEME_FIRE) ? c->scorchCore.sprint.active : c->sprintCore.active;
+		if (isSprinting) {
 			double dx = pl->position.x - c->prevPosition.x;
 			double dy = pl->position.y - c->prevPosition.y;
 			for (int g = SPRINT_TRAIL_GHOSTS; g >= 1; g--) {
@@ -786,13 +933,18 @@ void Corruptor_render_bloom_source(void)
 		/* Body glow */
 		Render_point(&pl->position, 6.0, bodyColor);
 
-		/* Resist aura bloom + beam bloom */
-		SubResist_render_bloom(&c->resistCore, SubResist_get_config(), pl->position);
-		if (c->hasResistTarget)
-			SubResist_render_beam_bloom(&c->resistCore, SubResist_get_config(), pl->position, c->resistBeamTarget);
-
-		/* EMP ring bloom */
-		SubEmp_render_bloom(&c->empCore, SubEmp_get_config());
+		/* Resist/temper aura bloom + beam bloom */
+		if (c->theme == THEME_FIRE) {
+			SubTemper_render_bloom(&c->temperCore, SubTemper_get_config(), pl->position);
+			if (c->hasResistTarget)
+				SubTemper_render_beam_bloom(&c->temperCore, SubTemper_get_config(), pl->position, c->resistBeamTarget);
+			SubHeatwave_render_bloom(&c->heatwaveCore, SubHeatwave_get_config());
+		} else {
+			SubResist_render_bloom(&c->resistCore, SubResist_get_config(), pl->position);
+			if (c->hasResistTarget)
+				SubResist_render_beam_bloom(&c->resistCore, SubResist_get_config(), pl->position, c->resistBeamTarget);
+			SubEmp_render_bloom(&c->empCore, SubEmp_get_config());
+		}
 	}
 
 	/* Spark bloom */
@@ -815,10 +967,15 @@ void Corruptor_render_light_source(void)
 			continue;
 
 		/* Body light */
-		Render_point(&pl->position, 4.0, &colorBody);
+		const ColorFloat *lightColor = (c->theme == THEME_FIRE) ?
+			&(ColorFloat){1.0f, 0.5f, 0.05f, 1.0f} : &colorBody;
+		Render_point(&pl->position, 4.0, lightColor);
 
-		/* EMP flash — bright light during firing */
-		SubEmp_render_light(&c->empCore, SubEmp_get_config());
+		/* EMP/heatwave flash — bright light during firing */
+		if (c->theme == THEME_FIRE)
+			SubHeatwave_render_light(&c->heatwaveCore, SubHeatwave_get_config());
+		else
+			SubEmp_render_light(&c->empCore, SubEmp_get_config());
 	}
 }
 
@@ -829,8 +986,13 @@ void Corruptor_deaggro_all(void)
 		if (c->aiState == CORRUPTOR_SUPPORTING || c->aiState == CORRUPTOR_SPRINTING ||
 			c->aiState == CORRUPTOR_EMP_FIRING || c->aiState == CORRUPTOR_RETREATING) {
 			c->aiState = CORRUPTOR_IDLE;
-			c->sprintCore.active = false;
-			c->empCore.visualActive = false;
+			if (c->theme == THEME_FIRE) {
+				c->scorchCore.sprint.active = false;
+				c->heatwaveCore.visualActive = false;
+			} else {
+				c->sprintCore.active = false;
+				c->empCore.visualActive = false;
+			}
 			pick_wander_target(c);
 		}
 	}
@@ -845,9 +1007,15 @@ void Corruptor_reset_all(void)
 		c->aiState = CORRUPTOR_IDLE;
 		c->killedByPlayer = false;
 		Burn_reset(&c->burn);
-		SubSprint_init(&c->sprintCore);
-		SubEmp_init(&c->empCore);
-		SubResist_init(&c->resistCore);
+		if (c->theme == THEME_FIRE) {
+			SubScorch_init(&c->scorchCore);
+			SubHeatwave_init(&c->heatwaveCore);
+			SubTemper_init(&c->temperCore);
+		} else {
+			SubSprint_init(&c->sprintCore);
+			SubEmp_init(&c->empCore);
+			SubResist_init(&c->resistCore);
+		}
 		c->hasResistTarget = false;
 		c->deathTimer = 0;
 		c->respawnTimer = 0;
@@ -858,13 +1026,20 @@ void Corruptor_reset_all(void)
 	}
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
+
+	if (corruptorFootprintsInitialized)
+		SubScorch_deactivate_all_footprints();
 }
 
 bool Corruptor_is_resist_buffing(Position pos)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {
 		CorruptorState *c = &corruptors[i];
-		if (!c->alive || !c->resistCore.active)
+		if (!c->alive)
+			continue;
+		bool hasAura = (c->theme == THEME_FIRE) ?
+			SubTemper_is_active(&c->temperCore) : c->resistCore.active;
+		if (!hasAura)
 			continue;
 		double dist = Enemy_distance_between(placeables[i].position, pos);
 		if (dist < RESIST_RANGE)
@@ -984,6 +1159,75 @@ void Corruptor_cleanse_burn(Position center, double radius, int immunity_ms)
 		if (dist <= radius)
 			Burn_grant_immunity(&c->burn, immunity_ms);
 	}
+}
+
+void Corruptor_apply_burn(Position center, double radius, int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		CorruptorState *c = &corruptors[i];
+		if (!c->alive || c->aiState == CORRUPTOR_DYING || c->aiState == CORRUPTOR_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_apply(&c->burn, duration_ms);
+	}
+}
+
+void Corruptor_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		CorruptorState *c = &corruptors[i];
+		if (!c->alive || c->aiState == CORRUPTOR_DYING || c->aiState == CORRUPTOR_DEAD)
+			continue;
+		double dx = placeables[i].position.x - center.x;
+		double dy = placeables[i].position.y - center.y;
+		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
+			continue;
+		EnemyFeedback_apply_heatwave(&c->fb, multiplier, duration_ms);
+	}
+}
+
+/* --- Scorch footprint public API --- */
+
+void Corruptor_update_footprints(unsigned int ticks)
+{
+	if (!corruptorFootprintsInitialized)
+		return;
+	SubScorch_update_footprints(SubScorch_get_config(), ticks);
+}
+
+void Corruptor_check_footprint_burn_player(void)
+{
+	if (!corruptorFootprintsInitialized || Ship_is_destroyed())
+		return;
+
+	Position shipPos = Ship_get_position();
+	Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
+	Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
+	int hits = SubScorch_check_footprint_burn(SubScorch_get_config(), shipWorld);
+	for (int i = 0; i < hits; i++)
+		Burn_apply_to_player(BURN_DURATION_MS);
+}
+
+void Corruptor_render_footprints(void)
+{
+	if (!corruptorFootprintsInitialized)
+		return;
+	SubScorch_render_footprints(SubScorch_get_config());
+}
+
+void Corruptor_render_footprint_bloom_source(void)
+{
+	if (!corruptorFootprintsInitialized)
+		return;
+	SubScorch_render_footprints_bloom(SubScorch_get_config());
+}
+
+void Corruptor_render_footprint_light_source(void)
+{
+	if (!corruptorFootprintsInitialized)
+		return;
+	SubScorch_render_footprints_light();
 }
 
 int Corruptor_get_count(void)

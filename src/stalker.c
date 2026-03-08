@@ -1,6 +1,9 @@
 #include "stalker.h"
 #include "sub_pea.h"
 #include "sub_egress.h"
+#include "sub_smolder_core.h"
+#include "sub_blaze_core.h"
+#include "sub_blaze.h"
 #include "enemy_util.h"
 #include "enemy_variant.h"
 #include "enemy_feedback.h"
@@ -118,6 +121,9 @@ typedef struct {
 
 	/* Status effects */
 	BurnState burn;
+
+	/* Fire variant — smolder stealth */
+	SubSmolderCore smolderCore;
 } StalkerState;
 
 /* Shared singleton components */
@@ -132,6 +138,7 @@ static AIUpdatableComponent updatable = {Stalker_update};
 /* Colors */
 static const ColorFloat colorStealth  = {0.4f, 0.0f, 0.6f, 1.0f};
 static const ColorFloat colorVisible  = {0.7f, 0.2f, 0.9f, 1.0f};
+static const ColorFloat colorFireVisible = {1.0f, 0.45f, 0.05f, 1.0f};
 
 /* State arrays */
 static StalkerState stalkers[STALKER_COUNT];
@@ -142,6 +149,12 @@ static int highestUsedIndex = 0;
 /* Projectile pool (shared across all stalkers, uses sub_pea config) */
 #define STALKER_PROJ_POOL_SIZE 256
 static SubProjectilePool stalkerProjPool;
+
+/* Fire stalker corridor (shared across all fire stalkers) */
+#define STALKER_CORRIDOR_MAX 128
+static BlazeCorridorSegment stalkerCorridorBuf[STALKER_CORRIDOR_MAX];
+static SubBlazeCore stalkerCorridorCore;
+static bool stalkerCorridorInitialized;
 
 /* Body-hit sparks */
 #define SPARK_POOL_SIZE 8
@@ -180,6 +193,26 @@ static void pick_wander_target(StalkerState *s)
 
 static float compute_stealth_alpha(StalkerState *s, unsigned int globalTicks)
 {
+	/* Fire stalker uses smolder core for alpha */
+	if (s->theme == THEME_FIRE) {
+		switch (s->aiState) {
+		case STALKER_WINDING_UP: {
+			float t = (float)s->windupTimer / WINDUP_MS;
+			if (t > 1.0f) t = 1.0f;
+			float base = SubSmolder_get_alpha(&s->smolderCore, SubSmolder_get_config());
+			return base + (1.0f - base) * t;
+		}
+		case STALKER_DASHING:
+			return 1.0f;
+		case STALKER_DYING:
+			return 1.0f;
+		case STALKER_DEAD:
+			return 0.0f;
+		default:
+			return SubSmolder_get_alpha(&s->smolderCore, SubSmolder_get_config());
+		}
+	}
+
 	switch (s->aiState) {
 	case STALKER_IDLE:
 	case STALKER_STALKING:
@@ -204,6 +237,13 @@ static float compute_stealth_alpha(StalkerState *s, unsigned int globalTicks)
 		return 0.0f;
 	}
 	return 1.0f;
+}
+
+static const SubDashConfig *stalker_dash_config(const StalkerState *s)
+{
+	if (s->theme == THEME_FIRE)
+		return Sub_Blaze_get_dash_config();
+	return Sub_Egress_get_config();
 }
 
 /* ---- Render helpers ---- */
@@ -266,7 +306,12 @@ void Stalker_initialize(Position position, ZoneTheme theme)
 	s->stealthAlpha = STEALTH_ALPHA_MIN;
 	EnemyFeedback_init(&s->fb);
 	Burn_reset(&s->burn);
+	SubSmolder_init(&s->smolderCore);
 	pick_wander_target(s);
+
+	/* Fire stalker: activate smolder cloak at spawn (silent — no audio on init) */
+	if (theme == THEME_FIRE)
+		SubSmolder_activate_silent(&s->smolderCore, SubSmolder_get_config());
 
 	placeables[idx].position = position;
 	placeables[idx].heading = 0.0;
@@ -284,6 +329,13 @@ void Stalker_initialize(Position position, ZoneTheme theme)
 
 	SpatialGrid_add((EntityRef){ENTITY_STALKER, idx}, position.x, position.y);
 
+	/* Init fire corridor once when first fire stalker spawns */
+	if (theme == THEME_FIRE && !stalkerCorridorInitialized) {
+		SubBlaze_init(&stalkerCorridorCore, stalkerCorridorBuf, STALKER_CORRIDOR_MAX);
+		stalkerCorridorInitialized = true;
+		SubSmolder_initialize_audio();
+	}
+
 	/* Load audio and register with enemy registry once */
 	if (!sampleDeath) {
 		SubProjectile_pool_init(&stalkerProjPool, STALKER_PROJ_POOL_SIZE);
@@ -291,7 +343,7 @@ void Stalker_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 
-		EnemyTypeCallbacks cb = {Stalker_find_wounded, Stalker_find_aggro, Stalker_heal, Stalker_alert_nearby, Stalker_apply_emp, Stalker_cleanse_burn};
+		EnemyTypeCallbacks cb = {Stalker_find_wounded, Stalker_find_aggro, Stalker_heal, Stalker_alert_nearby, Stalker_apply_emp, Stalker_apply_heatwave, Stalker_cleanse_burn, Stalker_apply_burn};
 		EnemyRegistry_register(cb);
 	}
 }
@@ -309,6 +361,12 @@ void Stalker_cleanup(void)
 	SubProjectile_deactivate_all(&stalkerProjPool);
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
+
+	if (stalkerCorridorInitialized) {
+		SubBlaze_deactivate_all(&stalkerCorridorCore);
+		stalkerCorridorInitialized = false;
+		SubSmolder_cleanup_audio();
+	}
 
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
@@ -330,7 +388,7 @@ Collision Stalker_collide(void *state, const PlaceableComponent *placeable, cons
 		collision.collisionDetected = true;
 		/* Dash damage handled in update via explicit AABB check + hitThisDash.
 		   Do NOT set solid here — Ship_resolve treats solid as wall → force_kill. */
-		Sub_Stealth_break();
+		Enemy_break_cloak();
 	}
 
 	return collision;
@@ -388,6 +446,9 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 				s->killedByPlayer = false;
 				EnemyFeedback_reset(&s->fb);
 				Burn_reset(&s->burn);
+				SubSmolder_reset(&s->smolderCore);
+				if (s->theme == THEME_FIRE)
+					SubSmolder_activate_silent(&s->smolderCore, SubSmolder_get_config());
 				Position oldPos = pl->position;
 				pl->position = s->spawnPoint;
 				pick_wander_target(s);
@@ -421,6 +482,10 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 
 	/* Compute stealth alpha */
 	s->stealthAlpha = compute_stealth_alpha(s, globalTicks);
+
+	/* Fire stalker: tick smolder core */
+	if (s->theme == THEME_FIRE)
+		SubSmolder_update(&s->smolderCore, SubSmolder_get_config(), ticks);
 
 	/* Tick dash cooldown every frame so it doesn't freeze outside DASHING state */
 	if (!s->dashCore.active && s->dashCore.cooldownMs > 0) {
@@ -548,13 +613,23 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 
 		if (s->windupTimer >= WINDUP_MS) {
 			s->aiState = STALKER_DASHING;
-			SubDash_try_activate(&s->dashCore, Sub_Egress_get_config(), s->pendingDirX, s->pendingDirY);
+			const SubDashConfig *dcfg = stalker_dash_config(s);
+			SubDash_try_activate(&s->dashCore, dcfg, s->pendingDirX, s->pendingDirY);
+
+			/* Fire stalker: break smolder on dash (ambush attack) */
+			if (s->theme == THEME_FIRE && SubSmolder_is_active(&s->smolderCore)) {
+				SubSmolder_break_attack(&s->smolderCore);
+				/* Reset corridor spawn timer for fresh trail */
+				if (stalkerCorridorInitialized)
+					stalkerCorridorCore.spawn_timer = 0;
+			}
 		}
 		break;
 	}
 	case STALKER_DASHING: {
-		double moveX = s->dashCore.dirX * Sub_Egress_get_config()->speed * dt;
-		double moveY = s->dashCore.dirY * Sub_Egress_get_config()->speed * dt;
+		const SubDashConfig *dcfg = stalker_dash_config(s);
+		double moveX = s->dashCore.dirX * dcfg->speed * dt;
+		double moveY = s->dashCore.dirY * dcfg->speed * dt;
 
 		/* Wall collision */
 		double hx, hy;
@@ -563,7 +638,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		if (Map_line_test_hit(pl->position.x, pl->position.y, newX, newY, &hx, &hy)) {
 			pl->position.x = hx - s->dashCore.dirX * 5.0;
 			pl->position.y = hy - s->dashCore.dirY * 5.0;
-			SubDash_end_early(&s->dashCore, Sub_Egress_get_config());
+			SubDash_end_early(&s->dashCore, dcfg);
 			s->aiState = STALKER_RETREATING;
 			s->retreatTimer = 0;
 			s->retreatShotFired = false;
@@ -574,6 +649,16 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		pl->position.y = newY;
 		s->facing = atan2(s->dashCore.dirX, s->dashCore.dirY) * 180.0 / PI;
 
+		/* Fire stalker: deposit corridor segments during dash */
+		if (s->theme == THEME_FIRE && stalkerCorridorInitialized) {
+			const SubBlazeConfig *blazeCfg = SubBlaze_get_config();
+			stalkerCorridorCore.spawn_timer += ticks;
+			while (stalkerCorridorCore.spawn_timer >= blazeCfg->segment_spawn_ms) {
+				stalkerCorridorCore.spawn_timer -= blazeCfg->segment_spawn_ms;
+				SubBlaze_spawn_segment(&stalkerCorridorCore, pl->position);
+			}
+		}
+
 		/* Check hit on player during dash */
 		if (!Ship_is_destroyed() && !s->dashCore.hitThisDash) {
 			Position shipPos = Ship_get_position();
@@ -583,12 +668,15 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			Rectangle stalkerWorld = Collision_transform_bounding_box(pl->position, stalkerBB);
 
 			if (Collision_aabb_test(stalkerWorld, shipWorld)) {
-				PlayerStats_damage(Sub_Egress_get_config()->damage);
+				PlayerStats_damage(dcfg->damage);
 				s->dashCore.hitThisDash = true;
+				/* Fire stalker: burn on contact */
+				if (s->theme == THEME_FIRE)
+					Burn_apply_to_player(BURN_DURATION_MS);
 			}
 		}
 
-		if (SubDash_update(&s->dashCore, Sub_Egress_get_config(), ticks)) {
+		if (SubDash_update(&s->dashCore, dcfg, ticks)) {
 			s->aiState = STALKER_RETREATING;
 			s->retreatTimer = 0;
 			s->retreatShotFired = false;
@@ -626,6 +714,10 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 
 		/* Re-stealth after 3s */
 		if (s->retreatTimer >= RETREAT_RESTEALTH_MS) {
+			/* Fire stalker: re-activate smolder cloak */
+			if (s->theme == THEME_FIRE)
+				SubSmolder_try_activate(&s->smolderCore, SubSmolder_get_config());
+
 			/* Back to idle if player out of range, else re-stalk */
 			if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed()) {
 				double dist = Enemy_distance_between(pl->position, shipPos);
@@ -663,6 +755,9 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			s->killedByPlayer = false;
 			EnemyFeedback_reset(&s->fb);
 			Burn_reset(&s->burn);
+			SubSmolder_reset(&s->smolderCore);
+			if (s->theme == THEME_FIRE)
+				SubSmolder_activate_silent(&s->smolderCore, SubSmolder_get_config());
 			pl->position = s->spawnPoint;
 			pick_wander_target(s);
 			Audio_play_sample(&sampleRespawn);
@@ -709,26 +804,20 @@ void Stalker_render(const void *state, const PlaceableComponent *placeable)
 
 	float alpha = s->stealthAlpha;
 
-	/* Choose color and rendering based on state + theme tint */
+	/* Choose color based on stealth alpha — always use base purple */
 	const ColorFloat *baseColor;
-	ColorFloat themedColor;
+
 	if (alpha < 0.5f)
 		baseColor = &colorStealth;
 	else
 		baseColor = &colorVisible;
 
-	if (s->theme != THEME_NONE) {
-		float brightness = (alpha < 0.5f) ? 0.6f : 1.0f;
-		themedColor = Variant_get_color(stalkerVariants, s->theme, baseColor, brightness);
-		baseColor = &themedColor;
-	}
-
 	/* Windup flash */
 	if (s->aiState == STALKER_WINDING_UP) {
 		bool flashOn = (s->windupTimer / 50) % 2 == 0;
 		if (flashOn) {
-			static const ColorFloat white = {1.0f, 1.0f, 1.0f, 1.0f};
-			render_crescent(placeable->position, s->facing, &white, alpha);
+			static const ColorFloat flashColor = {1.0f, 1.0f, 1.0f, 1.0f};
+			render_crescent(placeable->position, s->facing, &flashColor, alpha);
 			Render_point(&placeable->position, 3.0, &(ColorFloat){1.0f, 1.0f, 1.0f, alpha});
 			return;
 		}
@@ -744,12 +833,16 @@ void Stalker_render(const void *state, const PlaceableComponent *placeable)
 			float ghostAlpha = (1.0f - t) * 0.5f;
 			render_crescent(ghost, s->facing, &colorVisible, ghostAlpha);
 		}
-		/* White flash body during dash */
 		static const ColorFloat dashColor = {1.0f, 1.0f, 1.0f, 1.0f};
 		render_crescent(placeable->position, s->facing, &dashColor, 1.0f);
 		Render_point(&placeable->position, 3.0, &dashColor);
 		return;
 	}
+
+	/* Fire stalker: shimmer particles when cloaked */
+	if (s->theme == THEME_FIRE)
+		SubSmolder_render_shimmer(&s->smolderCore, SubSmolder_get_config(),
+			(float)placeable->position.x, (float)placeable->position.y);
 
 	render_crescent(placeable->position, s->facing, baseColor, alpha);
 
@@ -779,20 +872,29 @@ void Stalker_render_bloom_source(void)
 			continue;
 
 		/* Body glow */
+		bool isFire = (s->theme == THEME_FIRE);
 		const ColorFloat *bodyColor;
 		if (s->aiState == STALKER_WINDING_UP) {
 			bool flashOn = (s->windupTimer / 50) % 2 == 0;
 			static const ColorFloat white = {1.0f, 1.0f, 1.0f, 1.0f};
-			bodyColor = flashOn ? &white : &colorVisible;
+			static const ColorFloat fireFlash = {1.0f, 0.7f, 0.2f, 1.0f};
+			bodyColor = flashOn ? (isFire ? &fireFlash : &white) : (isFire ? &colorFireVisible : &colorVisible);
 		} else if (s->aiState == STALKER_DASHING) {
 			static const ColorFloat dashColor = {1.0f, 1.0f, 1.0f, 1.0f};
-			bodyColor = &dashColor;
+			static const ColorFloat fireDash = {1.0f, 0.8f, 0.3f, 1.0f};
+			bodyColor = isFire ? &fireDash : &dashColor;
 		} else {
-			bodyColor = &colorVisible;
+			bodyColor = isFire ? &colorFireVisible : &colorVisible;
 		}
 
-		ColorFloat bloomColor = {bodyColor->red, bodyColor->green, bodyColor->blue, s->stealthAlpha};
+		ColorFloat tinted = Variant_get_color(stalkerVariants, s->theme, bodyColor, 1.0f);
+		ColorFloat bloomColor = {tinted.red, tinted.green, tinted.blue, s->stealthAlpha};
 		Render_point(&pl->position, 6.0, &bloomColor);
+
+		/* Fire stalker: shimmer bloom */
+		if (isFire)
+			SubSmolder_render_shimmer_bloom(&s->smolderCore, SubSmolder_get_config(),
+				(float)pl->position.x, (float)pl->position.y);
 
 		/* Dash trail bloom */
 		if (s->aiState == STALKER_DASHING) {
@@ -801,8 +903,10 @@ void Stalker_render_bloom_source(void)
 				Position ghost;
 				ghost.x = pl->position.x - s->dashCore.dirX * BODY_RADIUS * 2.0 * t;
 				ghost.y = pl->position.y - s->dashCore.dirY * BODY_RADIUS * 2.0 * t;
-				float alpha = (1.0f - t) * 0.6f;
-				ColorFloat gc = {0.7f, 0.2f, 0.9f, alpha};
+				float a = (1.0f - t) * 0.6f;
+				ColorFloat gc = isFire
+					? (ColorFloat){1.0f, 0.5f, 0.1f, a}
+					: (ColorFloat){0.7f, 0.2f, 0.9f, a};
 				Render_point(&ghost, 4.0, &gc);
 			}
 		}
@@ -830,17 +934,22 @@ void Stalker_render_light_source(void)
 		if (s->aiState == STALKER_DEAD || s->aiState == STALKER_DYING)
 			continue;
 
+		bool isFire = (s->theme == THEME_FIRE);
+		float lr = isFire ? 1.0f : 0.5f;
+		float lg = isFire ? 0.4f : 0.1f;
+		float lb = isFire ? 0.05f : 0.8f;
+
 		if (s->aiState == STALKER_WINDING_UP) {
 			bool flashOn = (s->windupTimer / 50) % 2 == 0;
 			if (flashOn) {
 				Render_filled_circle(
 					(float)pl->position.x, (float)pl->position.y,
-					180.0f, 12, 0.5f, 0.1f, 0.8f, 0.6f);
+					180.0f, 12, lr, lg, lb, 0.6f);
 			}
 		} else if (s->aiState == STALKER_DASHING) {
 			Render_filled_circle(
 				(float)pl->position.x, (float)pl->position.y,
-				240.0f, 12, 0.5f, 0.1f, 0.8f, 0.8f);
+				240.0f, 12, lr, lg, lb, 0.8f);
 		}
 	}
 
@@ -890,11 +999,16 @@ void Stalker_reset_all(void)
 		s->respawnTimer = 0;
 		EnemyFeedback_reset(&s->fb);
 		Burn_reset(&s->burn);
+		SubSmolder_reset(&s->smolderCore);
+		if (s->theme == THEME_FIRE)
+			SubSmolder_activate_silent(&s->smolderCore, SubSmolder_get_config());
 		placeables[i].position = s->spawnPoint;
 		pick_wander_target(s);
 	}
 
 	SubProjectile_deactivate_all(&stalkerProjPool);
+	if (stalkerCorridorInitialized)
+		SubBlaze_deactivate_all(&stalkerCorridorCore);
 	for (int i = 0; i < SPARK_POOL_SIZE; i++)
 		sparks[i].active = false;
 }
@@ -995,6 +1109,20 @@ void Stalker_apply_emp(Position center, double half_size, unsigned int duration_
 	}
 }
 
+void Stalker_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		StalkerState *s = &stalkers[i];
+		if (!s->alive || s->aiState == STALKER_DYING || s->aiState == STALKER_DEAD)
+			continue;
+		double dx = placeables[i].position.x - center.x;
+		double dy = placeables[i].position.y - center.y;
+		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
+			continue;
+		EnemyFeedback_apply_heatwave(&s->fb, multiplier, duration_ms);
+	}
+}
+
 void Stalker_cleanse_burn(Position center, double radius, int immunity_ms)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {
@@ -1007,7 +1135,59 @@ void Stalker_cleanse_burn(Position center, double radius, int immunity_ms)
 	}
 }
 
+void Stalker_apply_burn(Position center, double radius, int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		StalkerState *s = &stalkers[i];
+		if (!s->alive || s->aiState == STALKER_DYING || s->aiState == STALKER_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_apply(&s->burn, duration_ms);
+	}
+}
+
 int Stalker_get_count(void)
 {
 	return highestUsedIndex;
+}
+
+/* --- Fire stalker corridor public API --- */
+
+void Stalker_update_corridors(unsigned int ticks)
+{
+	if (stalkerCorridorInitialized)
+		SubBlaze_update_corridor(&stalkerCorridorCore, SubBlaze_get_config(), ticks);
+}
+
+void Stalker_check_corridor_burn_player(void)
+{
+	if (!stalkerCorridorInitialized || Ship_is_destroyed())
+		return;
+
+	Position shipPos = Ship_get_position();
+	Rectangle shipBB = {-SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, SHIP_BB_HALF_SIZE, -SHIP_BB_HALF_SIZE};
+	Rectangle shipWorld = Collision_transform_bounding_box(shipPos, shipBB);
+
+	int hits = SubBlaze_check_corridor_burn(&stalkerCorridorCore, SubBlaze_get_config(), shipWorld);
+	for (int i = 0; i < hits; i++)
+		Burn_apply_to_player(BURN_DURATION_MS);
+}
+
+void Stalker_render_corridors(void)
+{
+	if (stalkerCorridorInitialized)
+		SubBlaze_render_corridor(&stalkerCorridorCore, SubBlaze_get_config());
+}
+
+void Stalker_render_corridor_bloom_source(void)
+{
+	if (stalkerCorridorInitialized)
+		SubBlaze_render_corridor_bloom_source(&stalkerCorridorCore, SubBlaze_get_config());
+}
+
+void Stalker_render_corridor_light_source(void)
+{
+	if (stalkerCorridorInitialized)
+		SubBlaze_render_corridor_light_source(&stalkerCorridorCore, SubBlaze_get_config());
 }

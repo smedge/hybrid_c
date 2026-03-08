@@ -20,10 +20,19 @@ bool Corruptor_find_aggro(Position from, double range, Position *out_pos);
 void Corruptor_heal(int index, double amount);
 void Corruptor_alert_nearby(Position origin, double radius, Position threat);
 void Corruptor_apply_emp(Position center, double half_size, unsigned int duration_ms);
+void Corruptor_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms);
 void Corruptor_cleanse_burn(Position center, double radius, int immunity_ms);
+void Corruptor_apply_burn(Position center, double radius, int duration_ms);
 int Corruptor_get_count(void);
 
-/* Returns true if a corruptor with active resist aura covers this position */
+/* Returns true if a corruptor with active resist/temper aura covers this position */
 bool Corruptor_is_resist_buffing(Position pos);
+
+/* Scorch footprint public API */
+void Corruptor_update_footprints(unsigned int ticks);
+void Corruptor_check_footprint_burn_player(void);
+void Corruptor_render_footprints(void);
+void Corruptor_render_footprint_bloom_source(void);
+void Corruptor_render_footprint_light_source(void);
 
 #endif

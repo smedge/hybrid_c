@@ -22,6 +22,10 @@
 #include "sub_blaze.h"
 #include "sub_cauterize.h"
 #include "sub_immolate.h"
+#include "sub_scorch.h"
+#include "sub_smolder.h"
+#include "sub_heatwave.h"
+#include "sub_temper.h"
 #include "corruptor.h"
 #include "color.h"
 #include "shipstate.h"
@@ -134,6 +138,10 @@ void Ship_initialize()
 	Sub_Blaze_initialize();
 	Sub_Cauterize_initialize();
 	Sub_Immolate_initialize();
+	Sub_Scorch_initialize();
+	Sub_Smolder_initialize();
+	Sub_Heatwave_initialize();
+	Sub_Temper_initialize();
 }
 
 void Ship_cleanup()
@@ -159,6 +167,10 @@ void Ship_cleanup()
 	Sub_Blaze_cleanup();
 	Sub_Cauterize_cleanup();
 	Sub_Immolate_cleanup();
+	Sub_Scorch_cleanup();
+	Sub_Smolder_cleanup();
+	Sub_Heatwave_cleanup();
+	Sub_Temper_cleanup();
 
 	placeable.position.x = 0.0;
 	placeable.position.y = 0.0;
@@ -294,8 +306,9 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Egress_update(userInput, ticks);
 		Sub_Sprint_update(userInput, ticks);
 		Sub_Blaze_update(userInput, ticks);
+		Sub_Scorch_update(userInput, ticks);
 
-		isBoosting = Sub_Boost_is_boosting() || Sub_Egress_is_dashing() || Sub_Sprint_is_sprinting() || Sub_Blaze_is_dashing();
+		isBoosting = Sub_Boost_is_boosting() || Sub_Egress_is_dashing() || Sub_Sprint_is_sprinting() || Sub_Blaze_is_dashing() || Sub_Scorch_is_sprinting();
 
 		/* Dash phases through enemies/mines (but not walls) */
 		if (Sub_Egress_is_dashing() || Sub_Blaze_is_dashing())
@@ -320,12 +333,12 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			double maxSpeed;
 			if (Sub_Boost_is_boosting())
 				maxSpeed = FAST_VELOCITY;
-			else if (Sub_Sprint_is_sprinting())
+			else if (Sub_Sprint_is_sprinting() || Sub_Scorch_is_sprinting())
 				maxSpeed = FAST_VELOCITY;
 			else
 				maxSpeed = NORMAL_VELOCITY;
 
-			if (Sub_Stealth_is_stealthed())
+			if (Sub_Stealth_is_stealthed() || Sub_Smolder_is_active())
 				maxSpeed *= 0.5;
 
 			/* Target velocity from input */
@@ -381,6 +394,7 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Mend_update(userInput, ticks);
 		Sub_Aegis_update(userInput, ticks);
 		Sub_Stealth_update(ticks);
+		Sub_Smolder_update(ticks);
 		Sub_Inferno_update(userInput, ticks, placeable);
 		Sub_Disintegrate_update(userInput, ticks, placeable);
 		Sub_Gravwell_update(userInput, ticks);
@@ -391,6 +405,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 		Sub_Resist_update(userInput, ticks);
 		Sub_Cauterize_update(userInput, ticks);
 		Sub_Immolate_update(userInput, ticks);
+		Sub_Heatwave_update(userInput, ticks);
+		Sub_Temper_update(userInput, ticks);
 	} else {
 		/* Ship dead — keep ticking projectiles/mines so animations finish */
 		Sub_Pea_tick(ticks);
@@ -408,7 +424,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	if (!shipState.destroyed) {
 		/* Motion trail when boosting */
 		if (isBoosting) {
-			float stealthAlpha = Sub_Stealth_get_ship_alpha();
+			float stealthAlpha = Sub_Stealth_get_ship_alpha() * Sub_Smolder_get_ship_alpha();
 			double dx = placeable->position.x - prevPosition.x;
 			double dy = placeable->position.y - prevPosition.y;
 			for (int i = TRAIL_GHOSTS; i >= 1; i--) {
@@ -425,7 +441,7 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 		View view =  View_get_view();
 
 		ColorFloat shipColor = color;
-		shipColor.alpha = Sub_Stealth_get_ship_alpha();
+		shipColor.alpha = Sub_Stealth_get_ship_alpha() * Sub_Smolder_get_ship_alpha();
 
 		if (view.scale > 0.09)
 			Render_triangle(&placeable->position, placeable->heading, &shipColor);
@@ -457,11 +473,13 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Ember_render();
 	Sub_Emp_render();
 	Sub_Resist_render();
+	Sub_Heatwave_render();
+	Sub_Temper_render();
 }
 
 void Ship_render_bloom_source(void)
 {
-	if (!shipState.destroyed && !Sub_Stealth_is_stealthed()) {
+	if (!shipState.destroyed && !Sub_Stealth_is_stealthed() && !Sub_Smolder_is_active()) {
 		if (isBoosting) {
 			double dx = placeable.position.x - prevPosition.x;
 			double dy = placeable.position.y - prevPosition.y;
@@ -497,6 +515,8 @@ void Ship_render_bloom_source(void)
 	Sub_Ember_render_bloom_source();
 	Sub_Emp_render_bloom_source();
 	Sub_Resist_render_bloom_source();
+	Sub_Heatwave_render_bloom_source();
+	Sub_Temper_render_bloom_source();
 	/* Sub_Disintegrate has its own dedicated FBO bloom pass in mode_gameplay */
 }
 

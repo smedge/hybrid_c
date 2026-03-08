@@ -423,7 +423,7 @@ void Defender_initialize(Position position, ZoneTheme theme)
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
-		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal, Defender_alert_nearby, Defender_apply_emp, Defender_cleanse_burn};
+		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal, Defender_alert_nearby, Defender_apply_emp, Defender_apply_heatwave, Defender_cleanse_burn, Defender_apply_burn};
 		defenderTypeId = EnemyRegistry_register(cb);
 	}
 
@@ -473,7 +473,7 @@ Collision Defender_collide(void *state, const PlaceableComponent *placeable, con
 	if (Collision_aabb_test(transformed, boundingBox)) {
 		collision.collisionDetected = true;
 		collision.solid = true;
-		Sub_Stealth_break();
+		Enemy_break_cloak();
 	}
 
 	return collision;
@@ -879,7 +879,7 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 	/* Body hexagon — theme-tinted */
 	float brightness = (d->aiState == DEFENDER_IDLE) ? 0.7f : 1.0f;
 	const ColorFloat *baseColor = (d->aiState == DEFENDER_IDLE) ? &colorBody : &colorAggro;
-	ColorFloat bodyColor = Variant_get_color(defenderVariants, d->theme, baseColor, brightness);
+	ColorFloat bodyColor = {baseColor->red * brightness, baseColor->green * brightness, baseColor->blue * brightness, baseColor->alpha};
 
 	/* Boost motion trail */
 	if (d->boosting) {
@@ -940,7 +940,9 @@ void Defender_render_bloom_source(void)
 		}
 
 		/* Boost trail bloom */
-		const ColorFloat *bodyColor = (d->aiState == DEFENDER_IDLE) ? &colorBody : &colorAggro;
+		const ColorFloat *baseColor = (d->aiState == DEFENDER_IDLE) ? &colorBody : &colorAggro;
+		ColorFloat bloomColor = Variant_get_color(defenderVariants, d->theme, baseColor, 1.0f);
+		const ColorFloat *bodyColor = &bloomColor;
 		if (d->boosting) {
 			double dx = pl->position.x - d->prevPosition.x;
 			double dy = pl->position.y - d->prevPosition.y;
@@ -1152,6 +1154,20 @@ void Defender_apply_emp(Position center, double half_size, unsigned int duration
 	}
 }
 
+void Defender_apply_heatwave(Position center, double half_size, double multiplier, unsigned int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (!d->alive || d->aiState == DEFENDER_DYING || d->aiState == DEFENDER_DEAD)
+			continue;
+		double dx = placeables[i].position.x - center.x;
+		double dy = placeables[i].position.y - center.y;
+		if (dx < -half_size || dx > half_size || dy < -half_size || dy > half_size)
+			continue;
+		EnemyFeedback_apply_heatwave(&d->fb, multiplier, duration_ms);
+	}
+}
+
 void Defender_cleanse_burn(Position center, double radius, int immunity_ms)
 {
 	for (int i = 0; i < highestUsedIndex; i++) {
@@ -1161,6 +1177,18 @@ void Defender_cleanse_burn(Position center, double radius, int immunity_ms)
 		double dist = Enemy_distance_between(placeables[i].position, center);
 		if (dist <= radius)
 			Burn_grant_immunity(&d->burn, immunity_ms);
+	}
+}
+
+void Defender_apply_burn(Position center, double radius, int duration_ms)
+{
+	for (int i = 0; i < highestUsedIndex; i++) {
+		DefenderState *d = &defenders[i];
+		if (!d->alive || d->aiState == DEFENDER_DYING || d->aiState == DEFENDER_DEAD)
+			continue;
+		double dist = Enemy_distance_between(placeables[i].position, center);
+		if (dist <= radius)
+			Burn_apply(&d->burn, duration_ms);
 	}
 }
 

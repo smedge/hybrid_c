@@ -7,6 +7,7 @@
 #include "graphics.h"
 #include "view.h"
 #include "sub_stealth.h"
+#include "enemy_util.h"
 #include "skillbar.h"
 #include "particle_instance.h"
 
@@ -294,7 +295,7 @@ void Sub_Gravwell_try_activate(void)
 	PlayerStats_add_feedback(FEEDBACK_COST);
 
 	/* Break stealth */
-	Sub_Stealth_break_attack();
+	Enemy_break_cloak_attack();
 
 	/* Replace existing well */
 	wellActive = true;

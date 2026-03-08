@@ -25,6 +25,11 @@ static const SubDashConfig dashCfg = {
 	.damage = 0.0,  /* no contact damage — corridor is the damage */
 };
 
+const SubDashConfig *Sub_Blaze_get_dash_config(void)
+{
+	return &dashCfg;
+}
+
 static const double FEEDBACK_COST = 20.0;
 
 /* --- Corridor (player) --- */
