@@ -10,6 +10,7 @@
 #include "skillbar.h"
 #include "sub_stealth.h"
 #include "player_stats.h"
+#include "keybinds.h"
 
 static Entity *parent;
 static SubProjectilePool pool;
@@ -35,7 +36,9 @@ void Sub_Ember_update(const Input *userInput, const unsigned int ticks, Placeabl
 	const SubEmberConfig *cfg = SubEmber_get_config();
 	ShipState *state = (ShipState *)parent->state;
 
-	if (userInput->mouseLeft && !state->destroyed
+	bool fire = Keybinds_held(BIND_PRIMARY_WEAPON)
+		|| (!Keybinds_is_lmb_rebound() && userInput->mouseLeft);
+	if (fire && !state->destroyed
 			&& Skillbar_is_active(SUB_ID_EMBER)) {
 		Sub_Stealth_break_attack();
 
@@ -94,11 +97,11 @@ void Sub_Ember_render_light_source(void)
 	SubProjectile_render_light(&pool, &cfg->proj);
 }
 
-double Sub_Ember_check_hit(Rectangle target)
+bool Sub_Ember_check_hit(Rectangle target)
 {
 	const SubEmberConfig *cfg = SubEmber_get_config();
 	SubProjectileHitResult r = SubProjectile_check_hit_multi(&pool, &cfg->proj, target);
-	return r.damage;
+	return r.hits > 0;
 }
 
 int Sub_Ember_check_hit_burn(Rectangle target)

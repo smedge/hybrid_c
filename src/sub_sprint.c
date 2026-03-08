@@ -10,38 +10,33 @@
 
 
 static SubSprintCore sprintCore;
-static bool shiftWasDown;
 
 void Sub_Sprint_initialize(void)
 {
 	SubSprint_init(&sprintCore);
-	shiftWasDown = false;
 }
 
 void Sub_Sprint_cleanup(void)
 {
 }
 
+void Sub_Sprint_try_activate(void)
+{
+	if (sprintCore.active || sprintCore.cooldownMs > 0) return;
+	SubSprint_try_activate(&sprintCore, SubSprint_get_config());
+	if (FEEDBACK_COST > 0.0)
+		PlayerStats_add_feedback(FEEDBACK_COST);
+}
+
 void Sub_Sprint_update(const Input *input, unsigned int ticks)
 {
+	(void)input;
 	if (Ship_is_destroyed()) {
 		sprintCore.active = false;
 		return;
 	}
 
 	SubSprint_update(&sprintCore, SubSprint_get_config(), ticks);
-
-	/* Edge-detect shift press (same pattern as egress) */
-	bool shiftDown = input->keyLShift && Skillbar_is_active(SUB_ID_SPRINT);
-
-	if (shiftDown && !shiftWasDown && !sprintCore.active && sprintCore.cooldownMs <= 0) {
-		SubSprint_try_activate(&sprintCore, SubSprint_get_config());
-		/* 0 feedback cost, but keep the add call for consistency */
-		if (FEEDBACK_COST > 0.0)
-			PlayerStats_add_feedback(FEEDBACK_COST);
-	}
-
-	shiftWasDown = shiftDown;
 }
 
 bool Sub_Sprint_is_sprinting(void)

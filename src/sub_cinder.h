@@ -7,6 +7,7 @@
 
 void Sub_Cinder_initialize(void);
 void Sub_Cinder_cleanup(void);
+void Sub_Cinder_try_deploy(void);
 void Sub_Cinder_update(const Input *userInput, unsigned int ticks);
 void Sub_Cinder_tick(unsigned int ticks);
 void Sub_Cinder_render(void);

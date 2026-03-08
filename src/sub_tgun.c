@@ -9,6 +9,7 @@
 #include "skillbar.h"
 #include "sub_stealth.h"
 #include "player_stats.h"
+#include "keybinds.h"
 
 #include <math.h>
 
@@ -62,7 +63,9 @@ void Sub_Tgun_update(const Input *userInput, const unsigned int ticks, Placeable
 	if (tgunCooldown > 0)
 		tgunCooldown -= (int)ticks;
 
-	if (userInput->mouseLeft && tgunCooldown <= 0 && !state->destroyed
+	bool fire = Keybinds_held(BIND_PRIMARY_WEAPON)
+		|| (!Keybinds_is_lmb_rebound() && userInput->mouseLeft);
+	if (fire && tgunCooldown <= 0 && !state->destroyed
 			&& Skillbar_is_active(SUB_ID_TGUN)) {
 		Sub_Stealth_break_attack();
 

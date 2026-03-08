@@ -25,8 +25,21 @@ void Sub_Cauterize_cleanup(void)
 	SubCauterize_cleanup_audio();
 }
 
+void Sub_Cauterize_try_activate_player(void)
+{
+	if (!SubCauterize_is_ready(&core)) return;
+	const SubCauterizeConfig *cfg = SubCauterize_get_config();
+	Position shipPos = Ship_get_position();
+	SubCauterize_try_activate(&core, cfg, shipPos, shipPos);
+	PlayerStats_heal(cfg->heal_amount);
+	PlayerStats_boost_regen(REGEN_BOOST_DURATION, REGEN_BOOST_MULTIPLIER);
+	PlayerStats_add_feedback(FEEDBACK_COST);
+	Burn_grant_immunity_player(cfg->immunity_duration_ms);
+}
+
 void Sub_Cauterize_update(const Input *input, unsigned int ticks)
 {
+	(void)input;
 	if (Ship_is_destroyed()) return;
 
 	const SubCauterizeConfig *cfg = SubCauterize_get_config();
@@ -34,15 +47,6 @@ void Sub_Cauterize_update(const Input *input, unsigned int ticks)
 	/* Only tick cooldown here — auras ticked separately */
 	SubHealConfig healCfg = { .cooldown_ms = cfg->cooldown_ms };
 	SubHeal_update(&core.heal, &healCfg, ticks);
-
-	if (input->keyG && Skillbar_is_active(SUB_ID_CAUTERIZE) && SubCauterize_is_ready(&core)) {
-		Position shipPos = Ship_get_position();
-		SubCauterize_try_activate(&core, cfg, shipPos, shipPos);
-		PlayerStats_heal(cfg->heal_amount);
-		PlayerStats_boost_regen(REGEN_BOOST_DURATION, REGEN_BOOST_MULTIPLIER);
-		PlayerStats_add_feedback(FEEDBACK_COST);
-		Burn_grant_immunity_player(cfg->immunity_duration_ms);
-	}
 }
 
 void Sub_Cauterize_update_auras(unsigned int ticks)

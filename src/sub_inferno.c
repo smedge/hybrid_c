@@ -11,6 +11,7 @@
 #include "sub_stealth.h"
 #include "player_stats.h"
 #include "particle_instance.h"
+#include "keybinds.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -160,7 +161,9 @@ void Sub_Inferno_update(const Input *userInput, unsigned int ticks, PlaceableCom
 	ShipState *state = (ShipState *)parent->state;
 	double dt = ticks / 1000.0;
 
-	channeling = userInput->mouseLeft && !state->destroyed
+	bool fire = Keybinds_held(BIND_PRIMARY_WEAPON)
+		|| (!Keybinds_is_lmb_rebound() && userInput->mouseLeft);
+	channeling = fire && !state->destroyed
 		&& Skillbar_is_active(SUB_ID_INFERNO);
 
 	if (channeling) {

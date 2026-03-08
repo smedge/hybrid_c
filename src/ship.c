@@ -42,6 +42,7 @@
 #include "spatial_grid.h"
 #include "data_node.h"
 #include "burn.h"
+#include "keybinds.h"
 
 #include <string.h>
 
@@ -49,7 +50,6 @@
 
 static const double NORMAL_VELOCITY = 800.0;
 static const double FAST_VELOCITY = 1600.0;
-static const double SLOW_VELOCITY = 6400.0;  // warp speed right now, not slow
 
 static const double ACCEL_RATE = 10.0;  /* how fast velocity ramps up (per second, multiplier) */
 static const double FRICTION = 14.0;    /* how fast velocity bleeds off (per second, multiplier) */
@@ -322,8 +322,6 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 				maxSpeed = FAST_VELOCITY;
 			else if (Sub_Sprint_is_sprinting())
 				maxSpeed = FAST_VELOCITY;
-			else if (userInput->keyLControl)
-				maxSpeed = SLOW_VELOCITY;
 			else
 				maxSpeed = NORMAL_VELOCITY;
 
@@ -332,10 +330,10 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 
 			/* Target velocity from input */
 			double target_vx = 0.0, target_vy = 0.0;
-			if (userInput->keyW) target_vy += 1.0;
-			if (userInput->keyS) target_vy -= 1.0;
-			if (userInput->keyD) target_vx += 1.0;
-			if (userInput->keyA) target_vx -= 1.0;
+			if (Keybinds_held(BIND_MOVE_UP))    target_vy += 1.0;
+			if (Keybinds_held(BIND_MOVE_DOWN))  target_vy -= 1.0;
+			if (Keybinds_held(BIND_MOVE_RIGHT)) target_vx += 1.0;
+			if (Keybinds_held(BIND_MOVE_LEFT))  target_vx -= 1.0;
 
 			/* Normalize diagonal so it doesn't go faster */
 			if (target_vx != 0.0 && target_vy != 0.0) {
@@ -347,8 +345,8 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			target_vy *= maxSpeed;
 
 			/* Lerp toward target (acceleration) or toward zero (friction) */
-			int hasInput = userInput->keyW || userInput->keyA ||
-				userInput->keyS || userInput->keyD;
+			int hasInput = Keybinds_held(BIND_MOVE_UP) || Keybinds_held(BIND_MOVE_LEFT) ||
+				Keybinds_held(BIND_MOVE_DOWN) || Keybinds_held(BIND_MOVE_RIGHT);
 
 			double rate = hasInput ? ACCEL_RATE : FRICTION;
 			double blend = rate * ticksNormalized;
@@ -362,8 +360,9 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			placeable->position.y += vel_y * ticksNormalized;
 
 			if (hasInput) {
-				placeable->heading = get_heading(userInput->keyW, userInput->keyS,
-												userInput->keyD, userInput->keyA);
+				placeable->heading = get_heading(
+					Keybinds_held(BIND_MOVE_UP), Keybinds_held(BIND_MOVE_DOWN),
+					Keybinds_held(BIND_MOVE_RIGHT), Keybinds_held(BIND_MOVE_LEFT));
 			}
 		}
 	}

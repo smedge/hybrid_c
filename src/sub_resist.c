@@ -24,8 +24,18 @@ void Sub_Resist_cleanup(void)
 {
 }
 
+void Sub_Resist_try_activate(void)
+{
+	if (resistCore.active || resistCore.cooldownMs > 0) return;
+	if (SubResist_try_activate(&resistCore, SubResist_get_config())) {
+		PlayerStats_add_feedback(RESIST_FEEDBACK_COST);
+		PlayerStats_set_resist(true, SubResist_get_config()->duration_ms);
+	}
+}
+
 void Sub_Resist_update(const Input *input, unsigned int ticks)
 {
+	(void)input;
 	if (Ship_is_destroyed()) {
 		if (resistCore.active) {
 			resistCore.active = false;
@@ -37,15 +47,6 @@ void Sub_Resist_update(const Input *input, unsigned int ticks)
 	bool expired = SubResist_update(&resistCore, SubResist_get_config(), ticks);
 	if (expired)
 		PlayerStats_set_resist(false, 0);
-
-	/* F key activation (same key as aegis — type exclusivity handles conflict) */
-	if (input->keyF && !resistCore.active && resistCore.cooldownMs <= 0 &&
-		Skillbar_is_active(SUB_ID_RESIST)) {
-		if (SubResist_try_activate(&resistCore, SubResist_get_config())) {
-			PlayerStats_add_feedback(RESIST_FEEDBACK_COST);
-			PlayerStats_set_resist(true, SubResist_get_config()->duration_ms);
-		}
-	}
 }
 
 bool Sub_Resist_is_active(void)

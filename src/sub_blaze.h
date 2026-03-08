@@ -7,6 +7,7 @@
 
 void Sub_Blaze_initialize(void);
 void Sub_Blaze_cleanup(void);
+void Sub_Blaze_try_activate(void);
 void Sub_Blaze_update(const Input *input, unsigned int ticks);
 bool Sub_Blaze_is_dashing(void);
 double Sub_Blaze_get_dash_vx(void);

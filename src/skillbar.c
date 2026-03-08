@@ -24,6 +24,7 @@
 #include "sub_cauterize.h"
 #include "sub_immolate.h"
 #include "sub_cinder.h"
+#include "keybinds.h"
 
 #include <math.h>
 #ifndef M_PI
@@ -56,15 +57,15 @@ typedef struct {
 
 static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 	[SUB_ID_PEA]    = { SUB_ID_PEA,    SUB_TYPE_PROJECTILE, "sub_pea",    "PEA",
-		"Basic projectile. Fires toward cursor.", TIER_NORMAL },
+		"Basic projectile. Respectable damage.", TIER_NORMAL },
 	[SUB_ID_MINE]   = { SUB_ID_MINE,   SUB_TYPE_DEPLOYABLE, "sub_mine",   "MINE",
 		"Deployable mine. Detonates after 2 seconds.", TIER_NORMAL },
 	[SUB_ID_BOOST]  = { SUB_ID_BOOST,  SUB_TYPE_MOVEMENT,   "sub_boost",  "BOOST",
-		"Hold shift for unlimited speed boost.", TIER_ELITE },
+		"Toggle 2x speed. Halts health regen and feedback decay while active.", TIER_ELITE },
 	[SUB_ID_EGRESS] = { SUB_ID_EGRESS, SUB_TYPE_MOVEMENT,   "sub_egress", "EGRESS",
-		"Shift-tap dash burst. Quick escape with cooldown.", TIER_NORMAL },
+		"Dash thru an enemy causing damage. Quick escape a dangerous spot.", TIER_NORMAL },
 	[SUB_ID_MGUN]   = { SUB_ID_MGUN,   SUB_TYPE_PROJECTILE, "sub_mgun",   "MGUN",
-		"Machine gun. Rapid-fire projectiles at 5 shots/sec.", TIER_NORMAL },
+		"Machine gun. Rapid-fire projectiles.", TIER_NORMAL },
 	[SUB_ID_MEND]   = { SUB_ID_MEND,   SUB_TYPE_HEALING,    "sub_mend",   "MEND",
 		"Instant heal. Restores 50 integrity.", TIER_NORMAL },
 	[SUB_ID_AEGIS]  = { SUB_ID_AEGIS,  SUB_TYPE_SHIELD,     "sub_aegis",  "AEGIS",
@@ -78,7 +79,7 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 	[SUB_ID_GRAVWELL] = { SUB_ID_GRAVWELL, SUB_TYPE_CONTROL, "sub_gravwell", "GRAV",
 		"Gravity well. Pulls and slows enemies at cursor position.", TIER_NORMAL },
 	[SUB_ID_TGUN] = { SUB_ID_TGUN, SUB_TYPE_PROJECTILE, "sub_tgun", "TGUN",
-		"Twin gun. Dual alternating streams at double fire rate.", TIER_RARE },
+		"Twin gun. Dual alternating streams at a massive fire rate.", TIER_RARE },
 	[SUB_ID_SPRINT] = { SUB_ID_SPRINT, SUB_TYPE_MOVEMENT, "sub_sprint", "SPRINT",
 		"Sprint burst. 3x speed for 5 seconds.", TIER_NORMAL },
 	[SUB_ID_EMP] = { SUB_ID_EMP, SUB_TYPE_AREA_EFFECT, "sub_emp", "EMP",
@@ -87,17 +88,17 @@ static const SubroutineInfo sub_registry[SUB_ID_COUNT] = {
 		"Damage resistance. 50% damage reduction for 5 seconds.", TIER_NORMAL },
 	/* Fire zone (The Crucible) */
 	[SUB_ID_EMBER] = { SUB_ID_EMBER, SUB_TYPE_PROJECTILE, "sub_ember", "EMBER",
-		"Ember shot. Projectiles create burn zones on impact.", TIER_NORMAL },
+		"Shoot concentrated fire energy. Targets burn on impact.", TIER_NORMAL },
 	[SUB_ID_FLAK] = { SUB_ID_FLAK, SUB_TYPE_PROJECTILE, "sub_flak", "FLAK",
-		"Flak cannon. Narrow cone of fire pellets that burn on hit.", TIER_RARE },
+		"Flak cannon. Narrow cone of fire pellets that burn on impact.", TIER_RARE },
 	[SUB_ID_BLAZE] = { SUB_ID_BLAZE, SUB_TYPE_MOVEMENT, "sub_blaze", "BLAZE",
-		"Blaze dash. Leaves a flame corridor behind you.", TIER_NORMAL },
+		"Dash thru an enemy. Leaves a flame corridor behind you.", TIER_NORMAL },
 	[SUB_ID_SCORCH] = { SUB_ID_SCORCH, SUB_TYPE_MOVEMENT, "sub_scorch", "SCORCH",
 		"Scorch sprint. Speed boost that leaves burning footprints.", TIER_NORMAL },
 	[SUB_ID_CINDER] = { SUB_ID_CINDER, SUB_TYPE_DEPLOYABLE, "sub_cinder", "CINDR",
 		"Cinder mine. Detonates into a lingering fire pool.", TIER_NORMAL },
 	[SUB_ID_CAUTERIZE] = { SUB_ID_CAUTERIZE, SUB_TYPE_HEALING, "sub_cauterize", "CAUT",
-		"Cauterize. Heals and burns nearby enemies.", TIER_NORMAL },
+		"Cauterize. Heals, stops burning and burns nearby enemies.", TIER_NORMAL },
 	[SUB_ID_IMMOLATE] = { SUB_ID_IMMOLATE, SUB_TYPE_SHIELD, "sub_immolate", "IMMOL",
 		"Immolation shield. Burns anything near you.", TIER_NORMAL },
 	[SUB_ID_SMOLDER] = { SUB_ID_SMOLDER, SUB_TYPE_STEALTH, "sub_smolder", "SMOLD",
@@ -116,39 +117,53 @@ static int pressedSlot;  /* slot pressed on mouse-down, -1 if none */
 
 static void render_icon(SubroutineId id, float cx, float cy, float alpha);
 static float get_cooldown_fraction(SubroutineId id);
-static void toggle_slot(int slot);
+static void activate_slot(int slot);
 
-static void toggle_slot(int slot)
+static void activate_slot(int slot)
 {
 	int id = slots[slot];
 	if (id == SUB_NONE) return;
 
-	/* Stealth: slot key activates the ability, border tracks stealth state */
-	if (id == SUB_ID_STEALTH) {
-		Sub_Stealth_try_activate();
-		if (Sub_Stealth_is_stealthed())
-			active_sub[SUB_TYPE_STEALTH] = SUB_ID_STEALTH;
-		return;
-	}
-
-	/* Gravwell: instant-cast at cursor, border tracks active state */
-	if (id == SUB_ID_GRAVWELL) {
-		Sub_Gravwell_try_activate();
-		if (Sub_Gravwell_is_active())
-			active_sub[SUB_TYPE_CONTROL] = SUB_ID_GRAVWELL;
-		return;
-	}
-
-	/* EMP: instant-cast area effect, border tracks active state */
-	if (id == SUB_ID_EMP) {
-		Sub_Emp_try_activate();
-		if (Sub_Emp_is_active())
-			active_sub[SUB_TYPE_AREA_EFFECT] = SUB_ID_EMP;
-		return;
-	}
-
 	SubroutineType type = sub_registry[id].type;
-	active_sub[type] = (active_sub[type] == id) ? SUB_NONE : id;
+
+	/* Projectile subs: toggle active/inactive (existing behavior) */
+	if (type == SUB_TYPE_PROJECTILE) {
+		active_sub[type] = (active_sub[type] == id) ? SUB_NONE : id;
+		return;
+	}
+
+	/* All other subs: instant-use activation */
+	switch (id) {
+	/* Movement */
+	case SUB_ID_EGRESS:  Sub_Egress_try_activate(); break;
+	case SUB_ID_SPRINT:  Sub_Sprint_try_activate(); break;
+	case SUB_ID_BLAZE:   Sub_Blaze_try_activate(); break;
+	case SUB_ID_BOOST:   Sub_Boost_try_activate(); break;
+
+	/* Shield */
+	case SUB_ID_AEGIS:   Sub_Aegis_try_activate(); break;
+	case SUB_ID_IMMOLATE: Sub_Immolate_try_activate_player(); break;
+	case SUB_ID_RESIST:  Sub_Resist_try_activate(); break;
+
+	/* Healing */
+	case SUB_ID_MEND:      Sub_Mend_try_activate(); break;
+	case SUB_ID_CAUTERIZE: Sub_Cauterize_try_activate_player(); break;
+
+	/* Deployable */
+	case SUB_ID_MINE:   Sub_Mine_try_deploy(); break;
+	case SUB_ID_CINDER: Sub_Cinder_try_deploy(); break;
+
+	/* Stealth */
+	case SUB_ID_STEALTH: Sub_Stealth_try_activate(); break;
+
+	/* Control */
+	case SUB_ID_GRAVWELL: Sub_Gravwell_try_activate(); break;
+
+	/* Area Effect */
+	case SUB_ID_EMP: Sub_Emp_try_activate(); break;
+
+	default: break;
+	}
 }
 
 static int slot_under_mouse(const Input *input)
@@ -202,9 +217,19 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 
 	clickConsumed = false;
 
-	/* Number key activation */
+	/* Number key activation (permanent, non-rebindable) */
 	if (input->keySlot >= 0 && input->keySlot < SKILLBAR_SLOTS)
-		toggle_slot(input->keySlot);
+		activate_slot(input->keySlot);
+
+	/* Alternate keybind activation (rebindable per slot) */
+	static const BindAction slot_binds[SKILLBAR_SLOTS] = {
+		BIND_SLOT_1, BIND_SLOT_2, BIND_SLOT_3, BIND_SLOT_4, BIND_SLOT_5,
+		BIND_SLOT_6, BIND_SLOT_7, BIND_SLOT_8, BIND_SLOT_9, BIND_SLOT_0,
+	};
+	for (int i = 0; i < SKILLBAR_SLOTS; i++) {
+		if (Keybinds_pressed(slot_binds[i]))
+			activate_slot(i);
+	}
 
 	/* Mouse click activation — activate on mouse-up */
 	int hover = slot_under_mouse(input);
@@ -214,7 +239,7 @@ void Skillbar_update(const Input *input, const unsigned int ticks)
 		if (!mouseWasDown)
 			pressedSlot = hover;
 	} else if (!input->mouseLeft && mouseWasDown && hover == pressedSlot && pressedSlot >= 0) {
-		toggle_slot(pressedSlot);
+		activate_slot(pressedSlot);
 		pressedSlot = -1;
 	} else if (!input->mouseLeft) {
 		pressedSlot = -1;
@@ -270,8 +295,12 @@ void Skillbar_render(const Screen *screen)
 
 		if (id != SUB_NONE) {
 			SubroutineType type = sub_registry[id].type;
-			bool is_active = (active_sub[type] == id);
 			float cooldown = get_cooldown_fraction(id);
+			bool is_active;
+			if (type == SUB_TYPE_PROJECTILE)
+				is_active = (active_sub[type] == id);
+			else
+				is_active = (cooldown <= 0.0f);
 
 			/* Border — gold for elite, blue for rare, white for normal */
 			float br, bg, bb, ba;
@@ -686,9 +715,9 @@ static void render_icon(SubroutineId id, float cx, float cy, float alpha)
 		Position p2 = {cx, cy};
 		Position p3 = {cx + 4, cy + 4};
 		ColorFloat ec = {1.0f, 0.5f, 0.1f, alpha};
-		Render_point(&p1, 3.0f, &ec);
-		Render_point(&p2, 3.0f, &ec);
-		Render_point(&p3, 3.0f, &ec);
+		Render_point(&p1, 5.0f, &ec);
+		Render_point(&p2, 5.0f, &ec);
+		Render_point(&p3, 5.0f, &ec);
 		break;
 	}
 	case SUB_ID_FLAK: {

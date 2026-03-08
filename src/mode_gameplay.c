@@ -51,6 +51,7 @@
 #include "data_logs.h"
 #include "palette_editor.h"
 #include "burn.h"
+#include "keybinds.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -243,6 +244,7 @@ void Mode_Gameplay_initialize(void)
 	Progression_initialize();
 	Skillbar_initialize();
 	Catalog_initialize();
+	Keybinds_initialize();
 	Settings_initialize();
 	DataLogs_initialize();
 	FogOfWar_initialize();
@@ -318,6 +320,7 @@ void Mode_Gameplay_initialize_from_save(void)
 	Progression_initialize();
 	Skillbar_initialize();
 	Catalog_initialize();
+	Keybinds_initialize();
 	Settings_initialize();
 	DataLogs_initialize();
 	FogOfWar_initialize();
@@ -385,6 +388,8 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 {
 	escConsumed = false;
 
+	Keybinds_update();
+
 	/* FPS counter */
 	if (input->keyBackslash)
 		fpsVisible = !fpsVisible;
@@ -445,7 +450,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	}
 
 	/* Toggle god mode */
-	if (input->keyO) {
+	if (Keybinds_pressed(BIND_GODMODE)) {
 		godModeActive = !godModeActive;
 		Ship_set_god_mode(godModeActive);
 		if (godModeActive) {
@@ -480,7 +485,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	}
 
 	/* Toggle data logs (close other panels if opening) */
-	if (input->keyL && !godModeActive && !dataNodeReading) {
+	if (Keybinds_pressed(BIND_DATA_LOGS) && !godModeActive && !dataNodeReading) {
 		if (!DataLogs_is_open() && Catalog_is_open())
 			Catalog_toggle();
 		if (!DataLogs_is_open() && Settings_is_open())
@@ -491,7 +496,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	}
 
 	/* Toggle catalog (close settings/map/logs if opening) */
-	if (input->keyP && !godModeActive && !dataNodeReading) {
+	if (Keybinds_pressed(BIND_CATALOG) && !godModeActive && !dataNodeReading) {
 		if (!Catalog_is_open() && Settings_is_open())
 			Settings_toggle();
 		if (!Catalog_is_open() && MapWindow_is_open())
@@ -502,7 +507,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	}
 
 	/* Toggle settings (close catalog/map/logs if opening) */
-	if (input->keyI && !godModeActive && !dataNodeReading) {
+	if (Keybinds_pressed(BIND_SETTINGS) && !godModeActive && !dataNodeReading) {
 		if (!Settings_is_open() && Catalog_is_open())
 			Catalog_toggle();
 		if (!Settings_is_open() && MapWindow_is_open())
@@ -513,7 +518,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	}
 
 	/* Toggle map window (close catalog/settings/logs if opening) */
-	if (input->keyM && !godModeActive && !dataNodeReading) {
+	if (Keybinds_pressed(BIND_MAP) && !godModeActive && !dataNodeReading) {
 		if (!MapWindow_is_open() && Catalog_is_open())
 			Catalog_toggle();
 		if (!MapWindow_is_open() && Settings_is_open())
@@ -985,10 +990,10 @@ static void god_mode_update(Input *input, const unsigned int ticks)
 	/* Free camera pan with WASD — speed scales with zoom so it feels consistent */
 	double camSpeed = GOD_CAM_SPEED / view.scale * dt;
 	Position camPos = view.position;
-	if (input->keyW) camPos.y += camSpeed;
-	if (input->keyS) camPos.y -= camSpeed;
-	if (input->keyD) camPos.x += camSpeed;
-	if (input->keyA) camPos.x -= camSpeed;
+	if (Keybinds_held(BIND_MOVE_UP))    camPos.y += camSpeed;
+	if (Keybinds_held(BIND_MOVE_DOWN))  camPos.y -= camSpeed;
+	if (Keybinds_held(BIND_MOVE_RIGHT)) camPos.x += camSpeed;
+	if (Keybinds_held(BIND_MOVE_LEFT))  camPos.x -= camSpeed;
 	View_set_position(camPos);
 
 	/* Zoom still works */

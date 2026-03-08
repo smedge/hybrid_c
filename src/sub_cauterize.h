@@ -6,6 +6,7 @@
 
 void Sub_Cauterize_initialize(void);
 void Sub_Cauterize_cleanup(void);
+void Sub_Cauterize_try_activate_player(void);
 void Sub_Cauterize_update(const Input *input, unsigned int ticks);
 void Sub_Cauterize_update_auras(unsigned int ticks);
 int Sub_Cauterize_check_aura_burn(Rectangle target);

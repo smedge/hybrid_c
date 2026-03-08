@@ -23,7 +23,7 @@ This is a **living document** — updated whenever a skill is added, modified, o
 | sub_tgun | **Rare** | 6 | +3 | +3 | **12** | 15 | -3 under. Constant stream of death. Best DPS/feedback ratio. |
 | sub_flak | **Rare** | 12 | +1 | +1 | **14** | 15 | -1 under. Fire shotgun + burn DOT. Nearly at cap. |
 | sub_ember | Normal | 6 | +3 | +1 | **10** | 10 | At cap. AOE ignite on impact — group burn applicator. |
-| sub_boost | **Elite** | 11 | +3 | +3 | **17** | 20 | -3 under. Free unlimited speed. Room for a damage component. |
+| sub_boost | **Elite** | 11 | +2 | +3 | **16** | 20 | -4 under. Free speed but halts regen/feedback decay. Low-tier elite. |
 | sub_sprint | Normal | 5 | +2 | +1 | **8** | 10 | -2 under. Timed boost — same speed, limited window. |
 | sub_inferno | **Elite** | 14 | +3 | +2 | **19** | 20 | -1 under. Melts everything close-range + burn DOT. |
 | sub_disintegrate | **Elite** | 14 | +3 | +3 | **20** | 20 | At cap. THE elite benchmark. Finger of god. |
@@ -60,7 +60,7 @@ Every subroutine falls into one of three activation categories. This is a fundam
 - **No cooldown** between toggle on/off (but may have an activation delay)
 - **Budget consideration**: Toggles are available on demand — the player chooses when the effect is active. This flexibility is inherently powerful. Budget must account for effective uptime.
 
-**Current examples**: sub_boost (hold shift for speed, no feedback drain)
+**Current examples**: sub_boost (toggle 2x speed, halts regen and feedback decay while active)
 
 **Future examples**: damage auras (toggle on for AoE damage, drains feedback/sec), detection fields (toggle on to reveal cloaked enemies, drains feedback/sec), weapon modes (toggle between fire patterns)
 
@@ -468,12 +468,12 @@ Sub_ember scores 10 against a Normal cap of 10 — **at cap**. The identity is g
 
 | Axis | Rating | Points | Reasoning |
 |------|--------|--------|-----------|
-| POWER | 11 | 11 | Best-in-class utility: unlimited 2x speed, zero feedback, full steering. Outrun anything, kite indefinitely. No damage output keeps it below 14. |
-| SUSTAIN | +3 | +3 | 0 fb toggle. Literally free. Available whenever you want, for as long as you want. |
+| POWER | 11 | 11 | Best-in-class utility: unlimited 2x speed, full steering. Outrun anything, kite indefinitely. No damage output keeps it below 14. |
+| SUSTAIN | +2 | +2 | 0 fb cost but halts health regen AND feedback decay while active. Free to use but punishes sustained use — you accumulate damage debt and feedback won't drain. Toggle on/off creates a pulsing rhythm. |
 | REACH | +3 | +3 | Permanent self-effect — always available, no downtime, no positioning constraints. |
-| **TOTAL** | | **17** | |
+| **TOTAL** | | **16** | |
 
-**Assessment**: 3 under elite cap (20). Boost is pure mobility — zero cost, unlimited duration, full control. Against disintegrate at 20, boost's lack of ANY damage output is what keeps POWER at 11 instead of 14. The 3-point gap is real design space — boost could gain a damage component (ram damage, afterburner trail) to close the gap.
+**Assessment**: 4 under elite cap (20). Boost is pure mobility with a survivability tax — no direct cost to activate, but suppressing regen and feedback decay means you're trading durability for speed. The toggle mechanic creates decision points: stay boosted to outrun threats, or drop boost to heal and drain feedback. Intentionally low-tier for an elite — an early-game power spike that later elites (inferno at 20, disintegrate at 20) clearly outclass.
 
 ---
 
@@ -1030,11 +1030,11 @@ Timed speed boost. Activate for 5 seconds of 2x movement speed, then wait 15 sec
 #### Balance Notes
 Sub_sprint is the non-elite movement option — the "normal human" speed boost vs boost's "elite unlimited" fantasy. At budget 8, it's 2 under normal cap.
 
-**Comparison to sub_boost (17, Elite)**: Both hit 1600 units/s (2x normal). The gap:
-- **Boost**: POWER 11 + SUSTAIN +3 + REACH +3 = 17. Unlimited, zero cost, permanent.
+**Comparison to sub_boost (16, Elite)**: Both hit 1600 units/s (2x normal). The gap:
+- **Boost**: POWER 11 + SUSTAIN +2 + REACH +3 = 16. Unlimited duration, but halts regen and feedback decay — sustained use is a survivability gamble.
 - **Sprint**: POWER 5 + SUSTAIN +2 + REACH +1 = 8. 5s burst, 25% uptime.
 
-The 9-point gap (17 vs 8) is the cost of "always available" vs "sometimes available." Sprint gives non-elite players access to the same top speed but requires timing — you burn your sprint window, then walk for 15 seconds. Boost users never have to think about it.
+The 8-point gap (16 vs 8) is the tier difference. Boost is always available but carries a passive survivability tax — sprint has no hidden costs, just limited uptime. Sprint gives non-elite players access to the same top speed with cleaner tradeoffs.
 
 **Zero feedback cost**: Sprint is free to activate. This is appropriate because the gating is entirely temporal (5s on, 15s off). Adding feedback cost would double-tax an already limited skill. The free cost earns +4 points, which is the main budget contributor.
 
@@ -1108,7 +1108,7 @@ The 3-axis system captures the tradeoff clearly: aegis has massively more POWER 
 | sub_tgun | Rare | 6 | +3 | +3 | 12 | 15 | -3 under (best sustained DPS/feedback ratio) |
 | sub_flak | Rare | 12 | +1 | +1 | 14 | 15 | -1 under (fire shotgun + burn DOT, nearly at cap) |
 | sub_ember | Normal | 6 | +3 | +1 | 10 | 10 | At cap (AOE ignite on impact, group burn applicator) |
-| sub_boost | Elite | 11 | +3 | +3 | 17 | 20 | -3 under (pure mobility, no damage) |
+| sub_boost | Elite | 11 | +2 | +3 | 16 | 20 | -4 under (halts regen/fb decay, low-tier elite) |
 | sub_sprint | Normal | 5 | +2 | +1 | 8 | 10 | -2 under (timed boost, 25% uptime) |
 | sub_inferno | Elite | 14 | +3 | +2 | 19 | 20 | -1 under (highest eDPS + burn DOT) |
 | sub_disintegrate | Elite | 14 | +3 | +3 | 20 | 20 | At cap — THE elite benchmark |
@@ -1327,7 +1327,7 @@ All 20 skills — every score expressed as 3-axis decomposition.
 | sub_tgun | 6 | +3 | +3 | 12 | 15 | ✓ |
 | sub_flak | 12 | +1 | +1 | 14 | 15 | ✓ |
 | sub_ember | 6 | +3 | +1 | 10 | 10 | ✓ |
-| sub_boost | 11 | +3 | +3 | 17 | 20 | ✓ |
+| sub_boost | 11 | +2 | +3 | 16 | 20 | ✓ |
 | sub_sprint | 5 | +2 | +1 | 8 | 10 | ✓ |
 | sub_inferno | 14 | +3 | +2 | 19 | 20 | ✓ |
 | sub_disintegrate | 14 | +3 | +3 | 20 | 20 | ✓ |

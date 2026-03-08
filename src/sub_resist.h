@@ -6,6 +6,7 @@
 
 void Sub_Resist_initialize(void);
 void Sub_Resist_cleanup(void);
+void Sub_Resist_try_activate(void);
 void Sub_Resist_update(const Input *input, unsigned int ticks);
 void Sub_Resist_render(void);
 void Sub_Resist_render_bloom_source(void);

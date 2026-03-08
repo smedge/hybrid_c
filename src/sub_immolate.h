@@ -6,6 +6,7 @@
 
 void Sub_Immolate_initialize(void);
 void Sub_Immolate_cleanup(void);
+void Sub_Immolate_try_activate_player(void);
 void Sub_Immolate_update(const Input *input, unsigned int ticks);
 void Sub_Immolate_render(void);
 void Sub_Immolate_render_bloom_source(void);

@@ -14,7 +14,7 @@ void Sub_Ember_render(void);
 void Sub_Ember_render_bloom_source(void);
 void Sub_Ember_render_light_source(void);
 
-double Sub_Ember_check_hit(Rectangle target);
+bool Sub_Ember_check_hit(Rectangle target);
 int Sub_Ember_check_hit_burn(Rectangle target);
 bool Sub_Ember_check_nearby(Position pos, double radius);
 void Sub_Ember_deactivate_all(void);

@@ -54,31 +54,35 @@ static void handle_detonation(int idx)
 		PlayerStats_damage(100.0);
 }
 
+void Sub_Cinder_try_deploy(void)
+{
+	if (cooldownTimer > 0) return;
+
+	const SubMineConfig *cfg = SubCinder_get_fire_mine_config();
+	Sub_Stealth_break_attack();
+	int slot = -1;
+	for (int i = 0; i < MAX_CINDER_MINES; i++) {
+		if (mines[i].phase == MINE_PHASE_DORMANT) {
+			slot = i;
+			break;
+		}
+	}
+
+	if (slot >= 0) {
+		cooldownTimer = PLACE_COOLDOWN;
+		SubMine_arm(&mines[slot], cfg, Ship_get_position());
+	}
+}
+
 void Sub_Cinder_update(const Input *userInput, unsigned int ticks)
 {
+	(void)userInput;
 	if (Ship_is_destroyed()) return;
 
 	const SubMineConfig *cfg = SubCinder_get_fire_mine_config();
 
 	if (cooldownTimer > 0)
 		cooldownTimer -= ticks;
-
-	if (userInput->keySpace && cooldownTimer <= 0
-			&& Skillbar_is_active(SUB_ID_CINDER)) {
-		Sub_Stealth_break_attack();
-		int slot = -1;
-		for (int i = 0; i < MAX_CINDER_MINES; i++) {
-			if (mines[i].phase == MINE_PHASE_DORMANT) {
-				slot = i;
-				break;
-			}
-		}
-
-		if (slot >= 0) {
-			cooldownTimer = PLACE_COOLDOWN;
-			SubMine_arm(&mines[slot], cfg, Ship_get_position());
-		}
-	}
 
 	for (int i = 0; i < MAX_CINDER_MINES; i++) {
 		SubMineCore *m = &mines[i];

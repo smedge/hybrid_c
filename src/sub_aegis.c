@@ -42,18 +42,22 @@ void Sub_Aegis_cleanup(void)
 	SubShield_cleanup_audio();
 }
 
+void Sub_Aegis_try_activate(void)
+{
+	if (SubShield_is_active(&core)) return;
+	if (SubShield_try_activate(&core, &cfg)) {
+		PlayerStats_set_shielded(true);
+		PlayerStats_add_feedback(FEEDBACK_COST);
+	}
+}
+
 void Sub_Aegis_update(const Input *input, unsigned int ticks)
 {
+	(void)input;
 	if (Ship_is_destroyed()) return;
 
 	if (!SubShield_is_active(&core)) {
-		/* Try to activate */
-		if (input->keyF && Skillbar_is_active(SUB_ID_AEGIS)) {
-			if (SubShield_try_activate(&core, &cfg)) {
-				PlayerStats_set_shielded(true);
-				PlayerStats_add_feedback(FEEDBACK_COST);
-			}
-		}
+		/* Activation handled by skillbar -> Sub_Aegis_try_activate() */
 	} else {
 		/* Check if shield was broken externally (e.g. by mine) */
 		if (!PlayerStats_is_shielded()) {

@@ -6,6 +6,7 @@
 #include "ship.h"
 #include "player_stats.h"
 #include "collision.h"
+#include "keybinds.h"
 
 #include <math.h>
 
@@ -20,8 +21,6 @@ static const SubDashConfig cfg = {
 	.damage = 50.0,
 };
 
-static bool shiftWasDown;
-
 const SubDashConfig *Sub_Egress_get_config(void)
 {
 	return &cfg;
@@ -31,7 +30,6 @@ void Sub_Egress_initialize(void)
 {
 	SubDash_init(&core);
 	SubDash_initialize_audio();
-	shiftWasDown = false;
 }
 
 void Sub_Egress_cleanup(void)
@@ -39,39 +37,36 @@ void Sub_Egress_cleanup(void)
 	SubDash_cleanup_audio();
 }
 
-void Sub_Egress_update(const Input *input, unsigned int ticks)
+void Sub_Egress_try_activate(void)
 {
-	bool shiftDown = input->keyLShift && Skillbar_is_active(SUB_ID_EGRESS);
+	if (SubDash_is_active(&core) || core.cooldownMs > 0) return;
 
-	if (!SubDash_is_active(&core) && core.cooldownMs <= 0) {
-		/* Edge-detect: shift just pressed */
-		if (shiftDown && !shiftWasDown) {
-			double dx = 0.0, dy = 0.0;
-			if (input->keyW) dy += 1.0;
-			if (input->keyS) dy -= 1.0;
-			if (input->keyD) dx += 1.0;
-			if (input->keyA) dx -= 1.0;
+	double dx = 0.0, dy = 0.0;
+	if (Keybinds_held(BIND_MOVE_UP))    dy += 1.0;
+	if (Keybinds_held(BIND_MOVE_DOWN))  dy -= 1.0;
+	if (Keybinds_held(BIND_MOVE_RIGHT)) dx += 1.0;
+	if (Keybinds_held(BIND_MOVE_LEFT))  dx -= 1.0;
 
-			double len = sqrt(dx * dx + dy * dy);
-			if (len > 0.0) {
-				dx /= len;
-				dy /= len;
-			} else {
-				double heading = Ship_get_heading();
-				dx = sin(heading * DEG_TO_RAD);
-				dy = cos(heading * DEG_TO_RAD);
-			}
-
-			if (SubDash_try_activate(&core, &cfg, dx, dy)) {
-				PlayerStats_add_feedback(25.0);
-				PlayerStats_set_iframes(cfg.duration_ms);
-			}
-		}
+	double len = sqrt(dx * dx + dy * dy);
+	if (len > 0.0) {
+		dx /= len;
+		dy /= len;
+	} else {
+		double heading = Ship_get_heading();
+		dx = sin(heading * DEG_TO_RAD);
+		dy = cos(heading * DEG_TO_RAD);
 	}
 
-	SubDash_update(&core, &cfg, ticks);
+	if (SubDash_try_activate(&core, &cfg, dx, dy)) {
+		PlayerStats_add_feedback(25.0);
+		PlayerStats_set_iframes(cfg.duration_ms);
+	}
+}
 
-	shiftWasDown = shiftDown;
+void Sub_Egress_update(const Input *input, unsigned int ticks)
+{
+	(void)input;
+	SubDash_update(&core, &cfg, ticks);
 }
 
 bool Sub_Egress_is_dashing(void)

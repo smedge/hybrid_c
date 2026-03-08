@@ -31,19 +31,22 @@ void Sub_Mend_cleanup(void)
 	SubHeal_cleanup_audio();
 }
 
+void Sub_Mend_try_activate(void)
+{
+	if (!SubHeal_is_ready(&core)) return;
+	Position shipPos = Ship_get_position();
+	SubHeal_try_activate(&core, &cfg, shipPos, shipPos);
+	PlayerStats_heal(cfg.heal_amount);
+	PlayerStats_boost_regen(REGEN_BOOST_DURATION, REGEN_BOOST_MULTIPLIER);
+	PlayerStats_add_feedback(FEEDBACK_COST);
+}
+
 void Sub_Mend_update(const Input *input, unsigned int ticks)
 {
+	(void)input;
 	if (Ship_is_destroyed()) return;
 
 	SubHeal_update(&core, &cfg, ticks);
-
-	if (input->keyG && Skillbar_is_active(SUB_ID_MEND) && SubHeal_is_ready(&core)) {
-		Position shipPos = Ship_get_position();
-		SubHeal_try_activate(&core, &cfg, shipPos, shipPos);
-		PlayerStats_heal(cfg.heal_amount);
-		PlayerStats_boost_regen(REGEN_BOOST_DURATION, REGEN_BOOST_MULTIPLIER);
-		PlayerStats_add_feedback(FEEDBACK_COST);
-	}
 }
 
 float Sub_Mend_get_cooldown_fraction(void)

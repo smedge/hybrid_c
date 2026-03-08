@@ -14,9 +14,19 @@ void Sub_Boost_cleanup(void)
 {
 }
 
+void Sub_Boost_try_activate(void)
+{
+	boosting = !boosting;
+}
+
 void Sub_Boost_update(const Input *input, unsigned int ticks)
 {
-	boosting = input->keyLShift && Skillbar_is_active(SUB_ID_BOOST);
+	(void)input;
+	(void)ticks;
+
+	/* Deactivate if skill is unequipped */
+	if (boosting && !Skillbar_is_active(SUB_ID_BOOST))
+		boosting = false;
 }
 
 bool Sub_Boost_is_boosting(void)

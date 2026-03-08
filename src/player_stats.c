@@ -1,6 +1,7 @@
 #include "player_stats.h"
 
 #include "sub_aegis.h"
+#include "sub_boost.h"
 #include "render.h"
 #include "text.h"
 #include "graphics.h"
@@ -144,8 +145,11 @@ void PlayerStats_update(unsigned int ticks)
 		}
 	}
 
+	/* Boost suppresses both feedback decay and integrity regen */
+	bool boostSuppressed = Sub_Boost_is_boosting();
+
 	/* Feedback decay after grace period (halved when EMP debuffed) */
-	if (timeSinceLastFeedback >= FEEDBACK_GRACE_MS) {
+	if (!boostSuppressed && timeSinceLastFeedback >= FEEDBACK_GRACE_MS) {
 		double decay = FEEDBACK_DECAY;
 		if (empDebuffed)
 			decay *= 0.5;
@@ -155,7 +159,7 @@ void PlayerStats_update(unsigned int ticks)
 	}
 
 	/* Integrity regen after delay — 2x rate when feedback is empty, boosted by mend */
-	if (timeSinceLastDamage >= REGEN_DELAY_MS && integrity < INTEGRITY_MAX) {
+	if (!boostSuppressed && timeSinceLastDamage >= REGEN_DELAY_MS && integrity < INTEGRITY_MAX) {
 		double rate = (feedback <= 0.0) ? INTEGRITY_REGEN * 2.0 : INTEGRITY_REGEN;
 		rate *= regenBoostMultiplier;
 		integrity += rate * dt;

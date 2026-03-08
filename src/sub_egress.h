@@ -10,6 +10,7 @@ const SubDashConfig *Sub_Egress_get_config(void);
 
 void Sub_Egress_initialize(void);
 void Sub_Egress_cleanup(void);
+void Sub_Egress_try_activate(void);
 void Sub_Egress_update(const Input *input, unsigned int ticks);
 bool Sub_Egress_is_dashing(void);
 double Sub_Egress_get_dash_vx(void);

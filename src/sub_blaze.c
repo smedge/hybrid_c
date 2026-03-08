@@ -8,6 +8,7 @@
 #include "player_stats.h"
 #include "burn.h"
 #include "render.h"
+#include "keybinds.h"
 
 #include <math.h>
 #include <string.h>
@@ -32,8 +33,6 @@ static const double FEEDBACK_COST = 20.0;
 static BlazeCorridorSegment playerCorridor[PLAYER_CORRIDOR_MAX];
 static SubBlazeCore playerBlazeCore;
 
-static bool shiftWasDown;
-
 /* --- Lifecycle --- */
 
 void Sub_Blaze_initialize(void)
@@ -41,7 +40,6 @@ void Sub_Blaze_initialize(void)
 	SubDash_init(&dashCore);
 	SubDash_initialize_audio();
 	SubBlaze_init(&playerBlazeCore, playerCorridor, PLAYER_CORRIDOR_MAX);
-	shiftWasDown = false;
 	Sub_Blaze_deactivate_all();
 }
 
@@ -51,38 +49,41 @@ void Sub_Blaze_cleanup(void)
 	Sub_Blaze_deactivate_all();
 }
 
+/* --- Activate --- */
+
+void Sub_Blaze_try_activate(void)
+{
+	if (SubDash_is_active(&dashCore) || dashCore.cooldownMs > 0) return;
+
+	double dx = 0.0, dy = 0.0;
+	if (Keybinds_held(BIND_MOVE_UP))    dy += 1.0;
+	if (Keybinds_held(BIND_MOVE_DOWN))  dy -= 1.0;
+	if (Keybinds_held(BIND_MOVE_RIGHT)) dx += 1.0;
+	if (Keybinds_held(BIND_MOVE_LEFT))  dx -= 1.0;
+
+	double len = sqrt(dx * dx + dy * dy);
+	if (len > 0.0) {
+		dx /= len;
+		dy /= len;
+	} else {
+		double heading = Ship_get_heading();
+		dx = sin(heading * DEG_TO_RAD);
+		dy = cos(heading * DEG_TO_RAD);
+	}
+
+	if (SubDash_try_activate(&dashCore, &dashCfg, dx, dy)) {
+		PlayerStats_add_feedback(FEEDBACK_COST);
+		PlayerStats_set_iframes(dashCfg.duration_ms);
+		playerBlazeCore.spawn_timer = 0;
+		SubBlaze_spawn_segment(&playerBlazeCore, Ship_get_position());
+	}
+}
+
 /* --- Update --- */
 
 void Sub_Blaze_update(const Input *input, unsigned int ticks)
 {
-	bool shiftDown = input->keyLShift && Skillbar_is_active(SUB_ID_BLAZE);
-
-	if (!SubDash_is_active(&dashCore) && dashCore.cooldownMs <= 0) {
-		if (shiftDown && !shiftWasDown) {
-			double dx = 0.0, dy = 0.0;
-			if (input->keyW) dy += 1.0;
-			if (input->keyS) dy -= 1.0;
-			if (input->keyD) dx += 1.0;
-			if (input->keyA) dx -= 1.0;
-
-			double len = sqrt(dx * dx + dy * dy);
-			if (len > 0.0) {
-				dx /= len;
-				dy /= len;
-			} else {
-				double heading = Ship_get_heading();
-				dx = sin(heading * DEG_TO_RAD);
-				dy = cos(heading * DEG_TO_RAD);
-			}
-
-			if (SubDash_try_activate(&dashCore, &dashCfg, dx, dy)) {
-				PlayerStats_add_feedback(FEEDBACK_COST);
-				PlayerStats_set_iframes(dashCfg.duration_ms);
-				playerBlazeCore.spawn_timer = 0;
-				SubBlaze_spawn_segment(&playerBlazeCore, Ship_get_position());
-			}
-		}
-	}
+	(void)input;
 
 	/* Deposit corridor segments during dash */
 	if (SubDash_is_active(&dashCore)) {
@@ -95,7 +96,6 @@ void Sub_Blaze_update(const Input *input, unsigned int ticks)
 	}
 
 	SubDash_update(&dashCore, &dashCfg, ticks);
-	shiftWasDown = shiftDown;
 }
 
 /* --- Corridor update --- */

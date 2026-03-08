@@ -45,30 +45,32 @@ void Sub_Mine_cleanup(void)
 	SubMine_cleanup_audio();
 }
 
+void Sub_Mine_try_deploy(void)
+{
+	if (cooldownTimer > 0) return;
+
+	Sub_Stealth_break_attack();
+	int slot = -1;
+	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
+		if (mines[i].phase == MINE_PHASE_DORMANT) {
+			slot = i;
+			break;
+		}
+	}
+
+	if (slot >= 0) {
+		cooldownTimer = PLACE_COOLDOWN;
+		SubMine_arm(&mines[slot], &playerMineCfg, Ship_get_position());
+	}
+}
+
 void Sub_Mine_update(const Input *userInput, const unsigned int ticks)
 {
+	(void)userInput;
 	if (Ship_is_destroyed()) return;
 
 	if (cooldownTimer > 0)
 		cooldownTimer -= ticks;
-
-	if (userInput->keySpace && cooldownTimer <= 0
-			&& Skillbar_is_active(SUB_ID_MINE)) {
-		Sub_Stealth_break_attack();
-		/* Only place if there's a free slot */
-		int slot = -1;
-		for (int i = 0; i < MAX_PLAYER_MINES; i++) {
-			if (mines[i].phase == MINE_PHASE_DORMANT) {
-				slot = i;
-				break;
-			}
-		}
-
-		if (slot >= 0) {
-			cooldownTimer = PLACE_COOLDOWN;
-			SubMine_arm(&mines[slot], &playerMineCfg, Ship_get_position());
-		}
-	}
 
 	for (int i = 0; i < MAX_PLAYER_MINES; i++) {
 		SubMineCore *m = &mines[i];

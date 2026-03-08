@@ -6,6 +6,7 @@
 
 void Sub_Boost_initialize(void);
 void Sub_Boost_cleanup(void);
+void Sub_Boost_try_activate(void);
 void Sub_Boost_update(const Input *input, unsigned int ticks);
 bool Sub_Boost_is_boosting(void);
 float Sub_Boost_get_cooldown_fraction(void);

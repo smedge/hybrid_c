@@ -5,6 +5,7 @@
 
 void Sub_Mend_initialize(void);
 void Sub_Mend_cleanup(void);
+void Sub_Mend_try_activate(void);
 void Sub_Mend_update(const Input *input, unsigned int ticks);
 float Sub_Mend_get_cooldown_fraction(void);
 

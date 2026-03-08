@@ -24,18 +24,22 @@ void Sub_Immolate_cleanup(void)
 	SubImmolate_cleanup_audio();
 }
 
+void Sub_Immolate_try_activate_player(void)
+{
+	if (SubImmolate_is_active(&core)) return;
+	if (SubImmolate_try_activate(&core)) {
+		PlayerStats_set_shielded(true);
+		PlayerStats_add_feedback(FEEDBACK_COST);
+	}
+}
+
 void Sub_Immolate_update(const Input *input, unsigned int ticks)
 {
+	(void)input;
 	if (Ship_is_destroyed()) return;
 
 	if (!SubImmolate_is_active(&core)) {
-		/* Try to activate */
-		if (input->keyF && Skillbar_is_active(SUB_ID_IMMOLATE)) {
-			if (SubImmolate_try_activate(&core)) {
-				PlayerStats_set_shielded(true);
-				PlayerStats_add_feedback(FEEDBACK_COST);
-			}
-		}
+		/* Activation handled by skillbar */
 	} else {
 		/* Check if shield was broken externally */
 		if (!PlayerStats_is_shielded()) {

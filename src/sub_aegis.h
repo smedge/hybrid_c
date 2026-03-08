@@ -5,6 +5,7 @@
 
 void Sub_Aegis_initialize(void);
 void Sub_Aegis_cleanup(void);
+void Sub_Aegis_try_activate(void);
 void Sub_Aegis_update(const Input *input, unsigned int ticks);
 void Sub_Aegis_render(void);
 void Sub_Aegis_render_bloom_source(void);

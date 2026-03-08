@@ -9,6 +9,7 @@
 #include "map_reflect.h"
 #include "map.h"
 #include "audio.h"
+#include "keybinds.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -72,6 +73,18 @@ static float origSFXVol   = 1.0f;
 static float origVoiceVol = 1.0f;
 static int draggingSlider = -1;  /* -1=none, 0=music, 1=sfx, 2=voice */
 
+/* Keybind pending values */
+static BindInput pendingBinds[BIND_COUNT];
+static BindInput origBinds[BIND_COUNT];
+static int listenAction = -1;  /* -1=not listening, >=0 = action waiting for input */
+static bool listenReady = false; /* true once all inputs released after entering listen mode */
+static int scrollOffset = 0;
+static bool draggingScrollbar = false;
+#define KEYBIND_ROW_HEIGHT 30.0f
+#define KEYBIND_VISIBLE_ROWS 11
+#define KEYBIND_BTN_WIDTH 140.0f
+#define KEYBIND_BTN_HEIGHT 24.0f
+
 /* Mouse tracking */
 static bool mouseWasDown = false;
 
@@ -89,6 +102,7 @@ static void get_panel_rect(const Screen *screen,
 
 void Settings_load(void)
 {
+	Keybinds_initialize();
 	printf("Settings_load: attempting to open %s\n", SETTINGS_FILE_PATH);
 	FILE *f = fopen(SETTINGS_FILE_PATH, "r");
 	if (!f) {
@@ -96,10 +110,20 @@ void Settings_load(void)
 		return;
 	}
 
-	char key[64];
-	int value;
-	while (fscanf(f, "%63s %d", key, &value) == 2) {
-		printf("Settings_load: parsed key='%s' value=%d\n", key, value);
+	char line[256];
+	while (fgets(line, sizeof(line), f)) {
+		char key[64];
+		int v1, v2;
+		int tokens = sscanf(line, "%63s %d %d", key, &v1, &v2);
+		if (tokens < 2) continue;
+
+		/* Keybind entries have 3 tokens: key device code */
+		if (tokens == 3 && strncmp(key, "bind_", 5) == 0) {
+			Keybinds_load_entry(key, v1, v2);
+			continue;
+		}
+
+		int value = v1;
 		if (strcmp(key, "multisampling") == 0)
 			Graphics_set_multisampling(value != 0);
 		else if (strcmp(key, "antialiasing") == 0)
@@ -148,6 +172,7 @@ void Settings_save(void)
 	fprintf(f, "music_volume %d\n", (int)(Audio_get_master_music() * 100.0f + 0.5f));
 	fprintf(f, "sfx_volume %d\n", (int)(Audio_get_master_sfx() * 100.0f + 0.5f));
 	fprintf(f, "voice_volume %d\n", (int)(Audio_get_master_voice() * 100.0f + 0.5f));
+	Keybinds_save(f);
 	fclose(f);
 	printf("Settings saved to %s\n", SETTINGS_FILE_PATH);
 }
@@ -200,23 +225,106 @@ void Settings_toggle(void)
 		origMusicVol = pendingMusicVol;
 		origSFXVol   = pendingSFXVol;
 		origVoiceVol = pendingVoiceVol;
+
+		/* Keybinds: copy current to pending */
+		for (int i = 0; i < BIND_COUNT; i++) {
+			pendingBinds[i] = Keybinds_get_binding((BindAction)i);
+			origBinds[i] = pendingBinds[i];
+		}
+		listenAction = -1;
+		scrollOffset = 0;
+		draggingScrollbar = false;
 	}
 }
 
-void Settings_update(const Input *input, const unsigned int ticks)
+void Settings_update(Input *input, const unsigned int ticks)
 {
 	(void)ticks;
 
 	if (!settingsOpen)
 		return;
 
-	/* ESC closes settings (cancel) */
+	/* Consume mouse wheel after reading for scroll (below) */
+	bool wheelUp = input->mouseWheelUp;
+	bool wheelDown = input->mouseWheelDown;
+	input->mouseWheelUp = false;
+	input->mouseWheelDown = false;
+
+	/* ESC: cancel listen mode, or close settings */
 	if (input->keyEsc) {
-		Audio_set_master_music(origMusicVol);
-		Audio_set_master_sfx(origSFXVol);
-		Audio_set_master_voice(origVoiceVol);
-		settingsOpen = false;
-		mouseWasDown = false;
+		if (listenAction >= 0) {
+			listenAction = -1;
+		} else {
+			Audio_set_master_music(origMusicVol);
+			Audio_set_master_sfx(origSFXVol);
+			Audio_set_master_voice(origVoiceVol);
+			settingsOpen = false;
+			mouseWasDown = false;
+		}
+		return;
+	}
+
+	/* Listen mode: capture next key or mouse button */
+	if (listenAction >= 0) {
+		/* Wait for all inputs to be released before accepting a new binding.
+		 * This prevents the click that activated listen mode from immediately
+		 * being captured as a LMB binding. */
+		const Uint8 *keys = SDL_GetKeyboardState(NULL);
+		Uint32 mb = SDL_GetMouseState(NULL, NULL);
+
+		bool anyKeyDown = false;
+		for (int sc = 0; sc < SDL_NUM_SCANCODES; sc++) {
+			if (keys[sc] && SDL_GetKeyFromScancode((SDL_Scancode)sc) != SDLK_ESCAPE) {
+				anyKeyDown = true;
+				break;
+			}
+		}
+		bool anyMouseDown = (mb != 0);
+
+		if (!listenReady) {
+			/* Wait until everything is released first */
+			if (!anyKeyDown && !anyMouseDown)
+				listenReady = true;
+			mouseWasDown = input->mouseLeft;
+			return;
+		}
+
+		/* Check keyboard */
+		if (anyKeyDown) {
+			for (int sc = 0; sc < SDL_NUM_SCANCODES; sc++) {
+				if (keys[sc]) {
+					SDL_Keycode kc = SDL_GetKeyFromScancode((SDL_Scancode)sc);
+					if (kc == SDLK_ESCAPE) continue;
+					BindInput newBind = BindInput_key(kc);
+					for (int j = 0; j < BIND_COUNT; j++) {
+						if (j != listenAction && BindInput_equals(pendingBinds[j], newBind))
+							pendingBinds[j] = BindInput_none();
+					}
+					pendingBinds[listenAction] = newBind;
+					listenAction = -1;
+					mouseWasDown = true;
+					return;
+				}
+			}
+		}
+		/* Check mouse buttons */
+		if (anyMouseDown) {
+			for (int btn = SDL_BUTTON_LEFT; btn <= SDL_BUTTON_X2; btn++) {
+				if (mb & SDL_BUTTON(btn)) {
+					BindInput newBind = BindInput_mouse(btn);
+					for (int j = 0; j < BIND_COUNT; j++) {
+						if (j != listenAction && BindInput_equals(pendingBinds[j], newBind))
+							pendingBinds[j] = BindInput_none();
+					}
+					pendingBinds[listenAction] = newBind;
+					listenAction = -1;
+					mouseWasDown = true;
+					return;
+				}
+			}
+		}
+		/* Still listening — consume all input */
+		mouseWasDown = input->mouseLeft;
 		return;
 	}
 
@@ -357,6 +465,74 @@ void Settings_update(const Input *input, const unsigned int ticks)
 		}
 	}
 
+	/* Keybinds tab interaction */
+	if (selectedTab == TAB_KEYBINDS) {
+		/* Scroll with mouse wheel */
+		int maxScroll = BIND_COUNT - KEYBIND_VISIBLE_ROWS;
+		if (maxScroll < 0) maxScroll = 0;
+		if (wheelUp && scrollOffset > 0)
+			scrollOffset--;
+		if (wheelDown && scrollOffset < maxScroll)
+			scrollOffset++;
+
+		/* Scrollbar drag */
+		float list_x = content_x + 10.0f;
+		float list_y = content_y + 10.0f;
+		float sb_w = 8.0f;
+		float sb_x = list_x + content_width - 20.0f;
+		float track_y = list_y;
+		float track_h = KEYBIND_VISIBLE_ROWS * KEYBIND_ROW_HEIGHT;
+
+		if (clicked && maxScroll > 0 &&
+			mx >= sb_x && mx <= sb_x + sb_w &&
+			my >= track_y && my <= track_y + track_h) {
+			draggingScrollbar = true;
+		}
+
+		if (draggingScrollbar && input->mouseLeft && maxScroll > 0) {
+			float ratio = (my - track_y) / track_h;
+			if (ratio < 0.0f) ratio = 0.0f;
+			if (ratio > 1.0f) ratio = 1.0f;
+			scrollOffset = (int)(ratio * maxScroll + 0.5f);
+		}
+
+		if (draggingScrollbar && !input->mouseLeft)
+			draggingScrollbar = false;
+
+		/* Click on bind buttons or reset button */
+		if (clicked && !draggingScrollbar) {
+			float list_x = content_x + 10.0f;
+			float list_y = content_y + 10.0f;
+			float btn_x = list_x + content_width - 30.0f - KEYBIND_BTN_WIDTH;
+
+			for (int i = 0; i < KEYBIND_VISIBLE_ROWS && (i + scrollOffset) < BIND_COUNT; i++) {
+				float row_y = list_y + i * KEYBIND_ROW_HEIGHT;
+				if (mx >= btn_x && mx <= btn_x + KEYBIND_BTN_WIDTH &&
+					my >= row_y && my <= row_y + KEYBIND_BTN_HEIGHT) {
+					listenAction = i + scrollOffset;
+					listenReady = false;
+					break;
+				}
+			}
+
+			/* Reset Defaults button */
+			float reset_w = 160.0f;
+			float reset_x = content_x + (content_width - reset_w) * 0.5f;
+			float reset_y = list_y + KEYBIND_VISIBLE_ROWS * KEYBIND_ROW_HEIGHT + 8.0f;
+			if (mx >= reset_x && mx <= reset_x + reset_w &&
+				my >= reset_y && my <= reset_y + KEYBIND_BTN_HEIGHT) {
+				/* Reset all pending to defaults */
+				Keybinds_reset_defaults();
+				for (int i = 0; i < BIND_COUNT; i++)
+					pendingBinds[i] = Keybinds_get_binding((BindAction)i);
+				/* Restore originals so we can re-read them on OK */
+				for (int i = 0; i < BIND_COUNT; i++)
+					Keybinds_set_binding((BindAction)i, origBinds[i]);
+				listenAction = -1;
+			}
+		}
+	}
+
 	/* Button clicks */
 	if (clicked) {
 		float btn_y = py + ph - BUTTON_HEIGHT - BUTTON_GAP;
@@ -399,6 +575,9 @@ void Settings_update(const Input *input, const unsigned int ticks)
 			Audio_set_master_music(pendingMusicVol);
 			Audio_set_master_sfx(pendingSFXVol);
 			Audio_set_master_voice(pendingVoiceVol);
+			/* Apply keybinds */
+			for (int i = 0; i < BIND_COUNT; i++)
+				Keybinds_set_binding((BindAction)i, pendingBinds[i]);
 			Settings_save();
 			if (msChanged || aaChanged || fsChanged)
 				Graphics_recreate();
@@ -706,6 +885,97 @@ void Settings_render(const Screen *screen)
 		}
 	}
 
+	/* Keybinds tab geometry */
+	if (selectedTab == TAB_KEYBINDS) {
+		float list_x = content_x + 10.0f;
+		float list_y = content_y + 10.0f;
+		float btn_x = list_x + content_width - 30.0f - KEYBIND_BTN_WIDTH;
+
+		for (int i = 0; i < KEYBIND_VISIBLE_ROWS && (i + scrollOffset) < BIND_COUNT; i++) {
+			float row_y = list_y + i * KEYBIND_ROW_HEIGHT;
+			int action = i + scrollOffset;
+
+			/* Alternating row background */
+			if (i % 2 == 0) {
+				Render_quad_absolute(list_x, row_y,
+					list_x + content_width - 20.0f, row_y + KEYBIND_ROW_HEIGHT,
+					0.1f, 0.1f, 0.15f, 0.3f);
+			}
+
+			/* Bind button background */
+			float br, bg, bb, ba;
+			if (action == listenAction) {
+				br = 0.2f; bg = 0.25f; bb = 0.4f; ba = 0.9f;
+			} else {
+				br = 0.15f; bg = 0.15f; bb = 0.2f; ba = 0.8f;
+			}
+			Render_quad_absolute(btn_x, row_y + 3.0f,
+				btn_x + KEYBIND_BTN_WIDTH, row_y + 3.0f + KEYBIND_BTN_HEIGHT,
+				br, bg, bb, ba);
+
+			/* Bind button border */
+			float bdr, bdg, bdb, bda;
+			if (action == listenAction) {
+				bdr = 0.4f; bdg = 0.5f; bdb = 1.0f; bda = 0.9f;
+			} else {
+				bdr = 0.3f; bdg = 0.3f; bdb = 0.4f; bda = 0.6f;
+			}
+			float bx0 = btn_x, by0 = row_y + 3.0f;
+			float bx1 = btn_x + KEYBIND_BTN_WIDTH, by1 = row_y + 3.0f + KEYBIND_BTN_HEIGHT;
+			Render_thick_line(bx0, by0, bx1, by0, 1.0f, bdr, bdg, bdb, bda);
+			Render_thick_line(bx0, by1, bx1, by1, 1.0f, bdr, bdg, bdb, bda);
+			Render_thick_line(bx0, by0, bx0, by1, 1.0f, bdr, bdg, bdb, bda);
+			Render_thick_line(bx1, by0, bx1, by1, 1.0f, bdr, bdg, bdb, bda);
+		}
+
+		/* Reset Defaults button — chamfered NE+SW, centered */
+		float reset_w = 160.0f;
+		float reset_x = content_x + (content_width - reset_w) * 0.5f;
+		float reset_y = list_y + KEYBIND_VISIBLE_ROWS * KEYBIND_ROW_HEIGHT + 8.0f;
+		float reset_h = KEYBIND_BTN_HEIGHT;
+		{
+			BatchRenderer *batch = Graphics_get_batch();
+			float ch = 6.0f;
+			float rvx[6] = { reset_x,            reset_x + reset_w - ch, reset_x + reset_w,
+			                  reset_x + reset_w,  reset_x + ch,           reset_x };
+			float rvy[6] = { reset_y,             reset_y,                reset_y + ch,
+			                  reset_y + reset_h,   reset_y + reset_h,      reset_y + reset_h - ch };
+			float rcx = reset_x + reset_w * 0.5f, rcy = reset_y + reset_h * 0.5f;
+			for (int i = 0; i < 6; i++) {
+				int j = (i + 1) % 6;
+				Batch_push_triangle_vertices(batch,
+					rcx, rcy, rvx[i], rvy[i], rvx[j], rvy[j],
+					0.15f, 0.12f, 0.12f, 0.9f);
+			}
+			for (int i = 0; i < 6; i++) {
+				int j = (i + 1) % 6;
+				Render_thick_line(rvx[i], rvy[i], rvx[j], rvy[j],
+					1.0f, 0.4f, 0.3f, 0.3f, 0.6f);
+			}
+		}
+
+		/* Scrollbar */
+		int maxScroll = BIND_COUNT - KEYBIND_VISIBLE_ROWS;
+		if (maxScroll < 0) maxScroll = 0;
+		if (maxScroll > 0) {
+			float sb_w = 8.0f;
+			float sb_x = list_x + content_width - 20.0f;
+			float track_y = list_y;
+			float track_h = KEYBIND_VISIBLE_ROWS * KEYBIND_ROW_HEIGHT;
+			float thumb_h = (track_h * KEYBIND_VISIBLE_ROWS) / (float)BIND_COUNT;
+			if (thumb_h < 20.0f) thumb_h = 20.0f;
+			float scroll_ratio = (float)scrollOffset / (float)maxScroll;
+			float thumb_y = track_y + scroll_ratio * (track_h - thumb_h);
+
+			/* Track */
+			Render_quad_absolute(sb_x, track_y, sb_x + sb_w, track_y + track_h,
+				0.2f, 0.2f, 0.2f, 0.3f);
+			/* Thumb */
+			Render_quad_absolute(sb_x, thumb_y, sb_x + sb_w, thumb_y + thumb_h,
+				0.7f, 0.7f, 0.7f, 0.4f);
+		}
+	}
+
 	/* Buttons */
 	float btn_y = py + ph - BUTTON_HEIGHT - BUTTON_GAP;
 	float btn_gap = 40.0f;
@@ -947,6 +1217,47 @@ void Settings_render(const Screen *screen)
 				val_buf, slider_x + SLIDER_WIDTH + 42.0f, bar_center_y,
 				0.6f, 0.75f, 1.0f, 0.9f);
 		}
+	}
+
+	/* Keybinds tab text */
+	if (selectedTab == TAB_KEYBINDS) {
+		float list_x = content_x + 10.0f;
+		float list_y = content_y + 10.0f;
+		float btn_x = list_x + content_width - 30.0f - KEYBIND_BTN_WIDTH;
+
+		for (int i = 0; i < KEYBIND_VISIBLE_ROWS && (i + scrollOffset) < BIND_COUNT; i++) {
+			float row_y = list_y + i * KEYBIND_ROW_HEIGHT;
+			int action = i + scrollOffset;
+
+			/* Action name */
+			Text_render(tr, shaders, &proj, &ident,
+				Keybinds_get_action_name((BindAction)action),
+				list_x + 8.0f, row_y + 18.0f,
+				0.8f, 0.8f, 0.9f, 0.9f);
+
+			/* Binding name or "Press key..." */
+			if (action == listenAction) {
+				Text_render(tr, shaders, &proj, &ident,
+					"Press key...",
+					btn_x + 8.0f, row_y + 18.0f,
+					0.4f, 0.6f, 1.0f, 0.9f);
+			} else {
+				const char *bindName = Keybinds_input_name(pendingBinds[action]);
+				Text_render(tr, shaders, &proj, &ident,
+					bindName,
+					btn_x + 8.0f, row_y + 18.0f,
+					0.6f, 0.7f, 0.9f, 0.9f);
+			}
+		}
+
+		/* Reset Defaults button text */
+		float reset_w = 160.0f;
+		float reset_x = content_x + (content_width - reset_w) * 0.5f;
+		float reset_y = list_y + KEYBIND_VISIBLE_ROWS * KEYBIND_ROW_HEIGHT + 8.0f;
+		float rtext_w = Text_measure_width(tr, "Reset Defaults");
+		Text_render(tr, shaders, &proj, &ident,
+			"Reset Defaults", reset_x + (reset_w - rtext_w) * 0.5f, reset_y + 16.0f,
+			0.8f, 0.6f, 0.6f, 0.9f);
 	}
 
 	/* Button text */

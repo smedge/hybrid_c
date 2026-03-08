@@ -14,7 +14,7 @@ void Sub_Flak_render(void);
 void Sub_Flak_render_bloom_source(void);
 void Sub_Flak_render_light_source(void);
 
-double Sub_Flak_check_hit(Rectangle target);
+bool Sub_Flak_check_hit(Rectangle target);
 int Sub_Flak_check_hit_burn(Rectangle target); /* returns hit count for burn application */
 bool Sub_Flak_check_nearby(Position pos, double radius);
 void Sub_Flak_deactivate_all(void);
