@@ -33,7 +33,7 @@ static PlaceableComponent placeables[PORTAL_COUNT];
 static Entity *entityRefs[PORTAL_COUNT];
 static int portalCount = 0;
 
-static RenderableComponent renderable = {Portal_render};
+static RenderableComponent renderable = {.passes = {[RENDER_PASS_MAIN] = Portal_render}};
 
 /* Pending transition state */
 static bool pendingTransition = false;

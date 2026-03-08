@@ -36,6 +36,7 @@ void Entity_recalculate_highest_index(void);
 void Entity_user_update_system(const Input *input, const unsigned int ticks);
 void Entity_ai_update_system(const unsigned int ticks);
 void Entity_render_system(void);
+void Entity_render_pass(RenderPass pass);
 void Entity_collision_system(void);
 void Entity_create_collision_command(void (*resolve)(void *state, const Collision collision),
 	void *state, Collision collision);

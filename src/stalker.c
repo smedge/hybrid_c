@@ -20,6 +20,8 @@
 #include "audio.h"
 #include "map.h"
 #include "enemy_registry.h"
+#include "global_render.h"
+#include "global_update.h"
 #include "spatial_grid.h"
 
 #include <math.h>
@@ -127,7 +129,16 @@ typedef struct {
 } StalkerState;
 
 /* Shared singleton components */
-static RenderableComponent renderable = {Stalker_render};
+static void stalker_render_bloom(const void *state, const PlaceableComponent *placeable);
+static void stalker_render_light(const void *state, const PlaceableComponent *placeable);
+static void stalker_render_pool_bloom(void);
+static void stalker_render_pool_light(void);
+static void stalker_corridor_burn_wrapper(const unsigned int ticks);
+static RenderableComponent renderable = {.passes = {
+	[RENDER_PASS_MAIN] = Stalker_render,
+	[RENDER_PASS_BLOOM_SOURCE] = stalker_render_bloom,
+	[RENDER_PASS_LIGHT_SOURCE] = stalker_render_light,
+}};
 static CollidableComponent collidable = {{-BODY_WIDTH, BODY_RADIUS, BODY_WIDTH, -BODY_RADIUS},
 										  true,
 										  COLLISION_LAYER_ENEMY,
@@ -183,6 +194,7 @@ static void activate_spark(Position pos, bool shielded) {
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
+static bool pipelineRegistered = false;
 
 /* Helpers */
 static void pick_wander_target(StalkerState *s)
@@ -345,6 +357,19 @@ void Stalker_initialize(Position position, ZoneTheme theme)
 
 		EnemyTypeCallbacks cb = {Stalker_find_wounded, Stalker_find_aggro, Stalker_heal, Stalker_alert_nearby, Stalker_apply_emp, Stalker_apply_heatwave, Stalker_cleanse_burn, Stalker_apply_burn};
 		EnemyRegistry_register(cb);
+	}
+
+	/* Register pipeline callbacks (survives Zone_rebuild_enemies) */
+	if (!pipelineRegistered) {
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, stalker_render_pool_bloom);
+		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, stalker_render_pool_light);
+		GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Stalker_render_corridors);
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Stalker_render_corridor_bloom_source);
+		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Stalker_render_corridor_light_source);
+		GlobalUpdate_register_pre_collision(Stalker_update_projectiles);
+		GlobalUpdate_register_post_collision(Stalker_update_corridors);
+		GlobalUpdate_register_post_collision(stalker_corridor_burn_wrapper);
+		pipelineRegistered = true;
 	}
 }
 
@@ -853,65 +878,91 @@ void Stalker_render(const void *state, const PlaceableComponent *placeable)
 	Enemy_render_resist_indicator(placeable->position);
 }
 
-void Stalker_render_bloom_source(void)
+static void stalker_render_bloom(const void *state, const PlaceableComponent *placeable)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		StalkerState *s = &stalkers[i];
-		PlaceableComponent *pl = &placeables[i];
+	const StalkerState *s = (const StalkerState *)state;
 
-		if (s->aiState == STALKER_DEAD)
-			continue;
+	if (s->aiState == STALKER_DEAD)
+		return;
 
-		if (s->aiState == STALKER_DYING) {
-			Enemy_render_death_flash(pl, (float)s->deathTimer, (float)DEATH_FLASH_MS);
-			continue;
-		}
-
-		/* Only bloom when sufficiently visible */
-		if (s->stealthAlpha < 0.3f)
-			continue;
-
-		/* Body glow */
-		bool isFire = (s->theme == THEME_FIRE);
-		const ColorFloat *bodyColor;
-		if (s->aiState == STALKER_WINDING_UP) {
-			bool flashOn = (s->windupTimer / 50) % 2 == 0;
-			static const ColorFloat white = {1.0f, 1.0f, 1.0f, 1.0f};
-			static const ColorFloat fireFlash = {1.0f, 0.7f, 0.2f, 1.0f};
-			bodyColor = flashOn ? (isFire ? &fireFlash : &white) : (isFire ? &colorFireVisible : &colorVisible);
-		} else if (s->aiState == STALKER_DASHING) {
-			static const ColorFloat dashColor = {1.0f, 1.0f, 1.0f, 1.0f};
-			static const ColorFloat fireDash = {1.0f, 0.8f, 0.3f, 1.0f};
-			bodyColor = isFire ? &fireDash : &dashColor;
-		} else {
-			bodyColor = isFire ? &colorFireVisible : &colorVisible;
-		}
-
-		ColorFloat tinted = Variant_get_color(stalkerVariants, s->theme, bodyColor, 1.0f);
-		ColorFloat bloomColor = {tinted.red, tinted.green, tinted.blue, s->stealthAlpha};
-		Render_point(&pl->position, 6.0, &bloomColor);
-
-		/* Fire stalker: shimmer bloom */
-		if (isFire)
-			SubSmolder_render_shimmer_bloom(&s->smolderCore, SubSmolder_get_config(),
-				(float)pl->position.x, (float)pl->position.y);
-
-		/* Dash trail bloom */
-		if (s->aiState == STALKER_DASHING) {
-			for (int g = 3; g >= 1; g--) {
-				float t = (float)g / 4.0f;
-				Position ghost;
-				ghost.x = pl->position.x - s->dashCore.dirX * BODY_RADIUS * 2.0 * t;
-				ghost.y = pl->position.y - s->dashCore.dirY * BODY_RADIUS * 2.0 * t;
-				float a = (1.0f - t) * 0.6f;
-				ColorFloat gc = isFire
-					? (ColorFloat){1.0f, 0.5f, 0.1f, a}
-					: (ColorFloat){0.7f, 0.2f, 0.9f, a};
-				Render_point(&ghost, 4.0, &gc);
-			}
-		}
+	if (s->aiState == STALKER_DYING) {
+		Enemy_render_death_flash(placeable, (float)s->deathTimer, (float)DEATH_FLASH_MS);
+		return;
 	}
 
+	/* Only bloom when sufficiently visible */
+	if (s->stealthAlpha < 0.3f)
+		return;
+
+	/* Body glow */
+	bool isFire = (s->theme == THEME_FIRE);
+	const ColorFloat *bodyColor;
+	if (s->aiState == STALKER_WINDING_UP) {
+		bool flashOn = (s->windupTimer / 50) % 2 == 0;
+		static const ColorFloat white = {1.0f, 1.0f, 1.0f, 1.0f};
+		static const ColorFloat fireFlash = {1.0f, 0.7f, 0.2f, 1.0f};
+		bodyColor = flashOn ? (isFire ? &fireFlash : &white) : (isFire ? &colorFireVisible : &colorVisible);
+	} else if (s->aiState == STALKER_DASHING) {
+		static const ColorFloat dashColor = {1.0f, 1.0f, 1.0f, 1.0f};
+		static const ColorFloat fireDash = {1.0f, 0.8f, 0.3f, 1.0f};
+		bodyColor = isFire ? &fireDash : &dashColor;
+	} else {
+		bodyColor = isFire ? &colorFireVisible : &colorVisible;
+	}
+
+	ColorFloat tinted = Variant_get_color(stalkerVariants, s->theme, bodyColor, 1.0f);
+	ColorFloat bloomColor = {tinted.red, tinted.green, tinted.blue, s->stealthAlpha};
+	Render_point(&placeable->position, 6.0, &bloomColor);
+
+	/* Fire stalker: shimmer bloom */
+	if (isFire)
+		SubSmolder_render_shimmer_bloom(&s->smolderCore, SubSmolder_get_config(),
+			(float)placeable->position.x, (float)placeable->position.y);
+
+	/* Dash trail bloom */
+	if (s->aiState == STALKER_DASHING) {
+		for (int g = 3; g >= 1; g--) {
+			float t = (float)g / 4.0f;
+			Position ghost;
+			ghost.x = placeable->position.x - s->dashCore.dirX * BODY_RADIUS * 2.0 * t;
+			ghost.y = placeable->position.y - s->dashCore.dirY * BODY_RADIUS * 2.0 * t;
+			float a = (1.0f - t) * 0.6f;
+			ColorFloat gc = isFire
+				? (ColorFloat){1.0f, 0.5f, 0.1f, a}
+				: (ColorFloat){0.7f, 0.2f, 0.9f, a};
+			Render_point(&ghost, 4.0, &gc);
+		}
+	}
+}
+
+static void stalker_render_light(const void *state, const PlaceableComponent *placeable)
+{
+	const StalkerState *s = (const StalkerState *)state;
+
+	if (s->aiState == STALKER_DEAD || s->aiState == STALKER_DYING)
+		return;
+
+	bool isFire = (s->theme == THEME_FIRE);
+	float lr = isFire ? 1.0f : 0.5f;
+	float lg = isFire ? 0.4f : 0.1f;
+	float lbl = isFire ? 0.05f : 0.8f;
+
+	if (s->aiState == STALKER_WINDING_UP) {
+		bool flashOn = (s->windupTimer / 50) % 2 == 0;
+		if (flashOn) {
+			Render_filled_circle(
+				(float)placeable->position.x, (float)placeable->position.y,
+				180.0f, 12, lr, lg, lbl, 0.6f);
+		}
+	} else if (s->aiState == STALKER_DASHING) {
+		Render_filled_circle(
+			(float)placeable->position.x, (float)placeable->position.y,
+			240.0f, 12, lr, lg, lbl, 0.8f);
+	}
+}
+
+static void stalker_render_pool_bloom(void)
+{
 	/* Projectile bloom */
 	SubProjectile_render_bloom(&stalkerProjPool, Sub_Pea_get_config());
 
@@ -925,34 +976,8 @@ void Stalker_render_bloom_source(void)
 	}
 }
 
-void Stalker_render_light_source(void)
+static void stalker_render_pool_light(void)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		StalkerState *s = &stalkers[i];
-		PlaceableComponent *pl = &placeables[i];
-
-		if (s->aiState == STALKER_DEAD || s->aiState == STALKER_DYING)
-			continue;
-
-		bool isFire = (s->theme == THEME_FIRE);
-		float lr = isFire ? 1.0f : 0.5f;
-		float lg = isFire ? 0.4f : 0.1f;
-		float lb = isFire ? 0.05f : 0.8f;
-
-		if (s->aiState == STALKER_WINDING_UP) {
-			bool flashOn = (s->windupTimer / 50) % 2 == 0;
-			if (flashOn) {
-				Render_filled_circle(
-					(float)pl->position.x, (float)pl->position.y,
-					180.0f, 12, lr, lg, lb, 0.6f);
-			}
-		} else if (s->aiState == STALKER_DASHING) {
-			Render_filled_circle(
-				(float)pl->position.x, (float)pl->position.y,
-				240.0f, 12, lr, lg, lb, 0.8f);
-		}
-	}
-
 	/* Projectile light */
 	SubProjectile_render_light(&stalkerProjPool, Sub_Pea_get_config());
 
@@ -964,6 +989,12 @@ void Stalker_render_light_source(void)
 				300.0f, 12, 0.6f, 0.1f, 0.8f, 0.6f);
 		}
 	}
+}
+
+static void stalker_corridor_burn_wrapper(const unsigned int ticks)
+{
+	(void)ticks;
+	Stalker_check_corridor_burn_player();
 }
 
 void Stalker_deaggro_all(void)

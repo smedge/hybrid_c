@@ -47,6 +47,8 @@
 #include "data_node.h"
 #include "burn.h"
 #include "keybinds.h"
+#include "global_render.h"
+#include "global_update.h"
 
 #include <string.h>
 
@@ -80,7 +82,11 @@ static int sparkTicksLeft;
 #define SPARK_SIZE 30.0
 
 static PlaceableComponent placeable = {{0.0, 0.0}, 0.0};
-static RenderableComponent renderable = {Ship_render};
+static void ship_render_bloom(const void *state, const PlaceableComponent *placeable);
+static RenderableComponent renderable = {.passes = {
+	[RENDER_PASS_MAIN] = Ship_render,
+	[RENDER_PASS_BLOOM_SOURCE] = ship_render_bloom,
+}};
 static UserUpdatableComponent updatable = {Ship_update};
 static CollidableComponent collidable = {{-20.0, 20.0, 20.0, -20.0}, true,
 	COLLISION_LAYER_PLAYER, COLLISION_LAYER_TERRAIN | COLLISION_LAYER_ENEMY,
@@ -142,6 +148,61 @@ void Ship_initialize()
 	Sub_Smolder_initialize();
 	Sub_Heatwave_initialize();
 	Sub_Temper_initialize();
+
+	/* Register player sub render passes */
+	/* Bloom sources */
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Pea_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Mgun_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Mine_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Cinder_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Gravwell_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Tgun_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Flak_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Ember_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Aegis_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Immolate_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Emp_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Resist_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Heatwave_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Temper_render_bloom_source);
+	/* Weapon bloom (beam weapons) */
+	GlobalRender_register(RENDER_PASS_WEAPON_BLOOM, Sub_Disintegrate_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_WEAPON_BLOOM, Sub_Inferno_render_bloom_source);
+	/* Light sources */
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Pea_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Mgun_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Mine_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Cinder_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Cinder_render_pools_light);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Aegis_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Inferno_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Disintegrate_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Gravwell_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Tgun_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Flak_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Ember_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Emp_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Resist_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Immolate_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Heatwave_render_light_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Temper_render_light_source);
+	/* Player sub overlays + bloom/light for ground effects */
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Sub_Blaze_render_corridor);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Blaze_render_corridor_bloom_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Blaze_render_corridor_light_source);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Sub_Cauterize_render_aura);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Cauterize_render_aura_bloom_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Cauterize_render_aura_light_source);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Sub_Cinder_render_pools);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Cinder_render_pools_bloom);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Sub_Scorch_render_footprints);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Sub_Scorch_render_footprints_bloom);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Sub_Scorch_render_footprints_light);
+	/* Player sub post-collision updates */
+	GlobalUpdate_register_post_collision(Sub_Blaze_update_corridor);
+	GlobalUpdate_register_post_collision(Sub_Cauterize_update_auras);
+	GlobalUpdate_register_post_collision(Sub_Cinder_update_pools);
+	GlobalUpdate_register_post_collision(Sub_Scorch_update_footprints);
 }
 
 void Ship_cleanup()
@@ -477,23 +538,24 @@ void Ship_render(const void *state, const PlaceableComponent *placeable)
 	Sub_Temper_render();
 }
 
-void Ship_render_bloom_source(void)
+static void ship_render_bloom(const void *state, const PlaceableComponent *pl)
 {
+	(void)state;
 	if (!shipState.destroyed && !Sub_Stealth_is_stealthed() && !Sub_Smolder_is_active()) {
 		if (isBoosting) {
-			double dx = placeable.position.x - prevPosition.x;
-			double dy = placeable.position.y - prevPosition.y;
+			double dx = pl->position.x - prevPosition.x;
+			double dy = pl->position.y - prevPosition.y;
 			for (int i = TRAIL_GHOSTS; i >= 1; i--) {
 				float t = (float)i / (float)(TRAIL_GHOSTS + 1);
 				Position ghost;
-				ghost.x = placeable.position.x - dx * TRAIL_LENGTH * t;
-				ghost.y = placeable.position.y - dy * TRAIL_LENGTH * t;
+				ghost.x = pl->position.x - dx * TRAIL_LENGTH * t;
+				ghost.y = pl->position.y - dy * TRAIL_LENGTH * t;
 				float alpha = (1.0f - t) * 0.4f;
 				ColorFloat ghostColor = {color.red, color.green, color.blue, alpha};
-				Render_triangle(&ghost, placeable.heading, &ghostColor);
+				Render_triangle(&ghost, pl->heading, &ghostColor);
 			}
 		}
-		Render_triangle(&placeable.position, placeable.heading, &color);
+		Render_triangle(&pl->position, pl->heading, &color);
 	}
 
 	if (sparkActive) {
@@ -503,21 +565,6 @@ void Ship_render_bloom_source(void)
 		Render_quad(&sparkPosition, 0.0, sparkRect, &sparkColor);
 		Render_quad(&sparkPosition, 45.0, sparkRect, &sparkColor);
 	}
-
-	Sub_Pea_render_bloom_source();
-	Sub_Mgun_render_bloom_source();
-	Sub_Mine_render_bloom_source();
-	Sub_Cinder_render_bloom_source();
-	Sub_Inferno_render_bloom_source();
-	Sub_Gravwell_render_bloom_source();
-	Sub_Tgun_render_bloom_source();
-	Sub_Flak_render_bloom_source();
-	Sub_Ember_render_bloom_source();
-	Sub_Emp_render_bloom_source();
-	Sub_Resist_render_bloom_source();
-	Sub_Heatwave_render_bloom_source();
-	Sub_Temper_render_bloom_source();
-	/* Sub_Disintegrate has its own dedicated FBO bloom pass in mode_gameplay */
 }
 
 Position Ship_get_position()

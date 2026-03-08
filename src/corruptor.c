@@ -21,6 +21,8 @@
 #include "audio.h"
 #include "map.h"
 #include "spatial_grid.h"
+#include "global_render.h"
+#include "global_update.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -137,7 +139,15 @@ typedef struct {
 } CorruptorState;
 
 /* Shared singleton components */
-static RenderableComponent renderable = {Corruptor_render};
+static void corruptor_render_bloom(const void *state, const PlaceableComponent *placeable);
+static void corruptor_render_light(const void *state, const PlaceableComponent *placeable);
+static void corruptor_render_pool_bloom(void);
+static void corruptor_footprint_burn_wrapper(const unsigned int ticks);
+static RenderableComponent renderable = {.passes = {
+	[RENDER_PASS_MAIN] = Corruptor_render,
+	[RENDER_PASS_BLOOM_SOURCE] = corruptor_render_bloom,
+	[RENDER_PASS_LIGHT_SOURCE] = corruptor_render_light,
+}};
 static CollidableComponent collidable = {{-BODY_SIZE, BODY_SIZE, BODY_SIZE, -BODY_SIZE},
 										  true,
 										  COLLISION_LAYER_ENEMY,
@@ -184,6 +194,7 @@ static void activate_spark(Position pos) {
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
+static bool pipelineRegistered = false;
 
 /* Helpers */
 static void pick_wander_target(CorruptorState *c)
@@ -377,6 +388,17 @@ void Corruptor_initialize(Position position, ZoneTheme theme)
 		EnemyTypeCallbacks cb = {Corruptor_find_wounded, Corruptor_find_aggro,
 			Corruptor_heal, Corruptor_alert_nearby, Corruptor_apply_emp, Corruptor_apply_heatwave, Corruptor_cleanse_burn, Corruptor_apply_burn};
 		corruptorTypeId = EnemyRegistry_register(cb);
+	}
+
+	/* Register pipeline callbacks (survives Zone_rebuild_enemies) */
+	if (!pipelineRegistered) {
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, corruptor_render_pool_bloom);
+		GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Corruptor_render_footprints);
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Corruptor_render_footprint_bloom_source);
+		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Corruptor_render_footprint_light_source);
+		GlobalUpdate_register_post_collision(Corruptor_update_footprints);
+		GlobalUpdate_register_post_collision(corruptor_footprint_burn_wrapper);
+		pipelineRegistered = true;
 	}
 
 	/* Init fire footprint pool on first fire corruptor */
@@ -897,56 +919,75 @@ void Corruptor_render(const void *state, const PlaceableComponent *placeable)
 	}
 }
 
-void Corruptor_render_bloom_source(void)
+static void corruptor_render_bloom(const void *state, const PlaceableComponent *placeable)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		CorruptorState *c = &corruptors[i];
-		PlaceableComponent *pl = &placeables[i];
+	const CorruptorState *c = (const CorruptorState *)state;
 
-		if (c->aiState == CORRUPTOR_DEAD)
-			continue;
+	if (c->aiState == CORRUPTOR_DEAD)
+		return;
 
-		if (c->aiState == CORRUPTOR_DYING) {
-			Enemy_render_death_flash(pl, (float)c->deathTimer, (float)DEATH_FLASH_MS);
-			continue;
-		}
+	if (c->aiState == CORRUPTOR_DYING) {
+		Enemy_render_death_flash(placeable, (float)c->deathTimer, (float)DEATH_FLASH_MS);
+		return;
+	}
 
-		const ColorFloat *baseColor = (c->aiState == CORRUPTOR_IDLE) ? &colorBody : &colorAggro;
-		ColorFloat bloomColor = Variant_get_color(corruptorVariants, c->theme, baseColor, 1.0f);
-		const ColorFloat *bodyColor = &bloomColor;
+	const ColorFloat *baseColor = (c->aiState == CORRUPTOR_IDLE) ? &colorBody : &colorAggro;
+	ColorFloat bloomColor = Variant_get_color(corruptorVariants, c->theme, baseColor, 1.0f);
+	const ColorFloat *bodyColor = &bloomColor;
 
-		/* Sprint trail bloom */
-		bool isSprinting = (c->theme == THEME_FIRE) ? c->scorchCore.sprint.active : c->sprintCore.active;
-		if (isSprinting) {
-			double dx = pl->position.x - c->prevPosition.x;
-			double dy = pl->position.y - c->prevPosition.y;
-			for (int g = SPRINT_TRAIL_GHOSTS; g >= 1; g--) {
-				float t = (float)g / (float)(SPRINT_TRAIL_GHOSTS + 1);
-				Position ghost;
-				ghost.x = pl->position.x - dx * SPRINT_TRAIL_LENGTH * t;
-				ghost.y = pl->position.y - dy * SPRINT_TRAIL_LENGTH * t;
-				float alpha = (1.0f - t) * 0.25f;
-				Render_point(&ghost, 6.0f, &(ColorFloat){bodyColor->red, bodyColor->green, bodyColor->blue, alpha});
-			}
-		}
-
-		/* Body glow */
-		Render_point(&pl->position, 6.0, bodyColor);
-
-		/* Resist/temper aura bloom + beam bloom */
-		if (c->theme == THEME_FIRE) {
-			SubTemper_render_bloom(&c->temperCore, SubTemper_get_config(), pl->position);
-			if (c->hasResistTarget)
-				SubTemper_render_beam_bloom(&c->temperCore, SubTemper_get_config(), pl->position, c->resistBeamTarget);
-			SubHeatwave_render_bloom(&c->heatwaveCore, SubHeatwave_get_config());
-		} else {
-			SubResist_render_bloom(&c->resistCore, SubResist_get_config(), pl->position);
-			if (c->hasResistTarget)
-				SubResist_render_beam_bloom(&c->resistCore, SubResist_get_config(), pl->position, c->resistBeamTarget);
-			SubEmp_render_bloom(&c->empCore, SubEmp_get_config());
+	/* Sprint trail bloom */
+	bool isSprinting = (c->theme == THEME_FIRE) ? c->scorchCore.sprint.active : c->sprintCore.active;
+	if (isSprinting) {
+		double dx = placeable->position.x - c->prevPosition.x;
+		double dy = placeable->position.y - c->prevPosition.y;
+		for (int g = SPRINT_TRAIL_GHOSTS; g >= 1; g--) {
+			float t = (float)g / (float)(SPRINT_TRAIL_GHOSTS + 1);
+			Position ghost;
+			ghost.x = placeable->position.x - dx * SPRINT_TRAIL_LENGTH * t;
+			ghost.y = placeable->position.y - dy * SPRINT_TRAIL_LENGTH * t;
+			float alpha = (1.0f - t) * 0.25f;
+			Render_point(&ghost, 6.0f, &(ColorFloat){bodyColor->red, bodyColor->green, bodyColor->blue, alpha});
 		}
 	}
 
+	/* Body glow */
+	Render_point(&placeable->position, 6.0, bodyColor);
+
+	/* Resist/temper aura bloom + beam bloom */
+	if (c->theme == THEME_FIRE) {
+		SubTemper_render_bloom(&c->temperCore, SubTemper_get_config(), placeable->position);
+		if (c->hasResistTarget)
+			SubTemper_render_beam_bloom(&c->temperCore, SubTemper_get_config(), placeable->position, c->resistBeamTarget);
+		SubHeatwave_render_bloom(&c->heatwaveCore, SubHeatwave_get_config());
+	} else {
+		SubResist_render_bloom(&c->resistCore, SubResist_get_config(), placeable->position);
+		if (c->hasResistTarget)
+			SubResist_render_beam_bloom(&c->resistCore, SubResist_get_config(), placeable->position, c->resistBeamTarget);
+		SubEmp_render_bloom(&c->empCore, SubEmp_get_config());
+	}
+}
+
+static void corruptor_render_light(const void *state, const PlaceableComponent *placeable)
+{
+	const CorruptorState *c = (const CorruptorState *)state;
+
+	if (!c->alive || c->aiState == CORRUPTOR_DYING || c->aiState == CORRUPTOR_DEAD)
+		return;
+
+	/* Body light */
+	const ColorFloat *lightColor = (c->theme == THEME_FIRE) ?
+		&(ColorFloat){1.0f, 0.5f, 0.05f, 1.0f} : &colorBody;
+	Render_point(&placeable->position, 4.0, lightColor);
+
+	/* EMP/heatwave flash — bright light during firing */
+	if (c->theme == THEME_FIRE)
+		SubHeatwave_render_light(&c->heatwaveCore, SubHeatwave_get_config());
+	else
+		SubEmp_render_light(&c->empCore, SubEmp_get_config());
+}
+
+static void corruptor_render_pool_bloom(void)
+{
 	/* Spark bloom */
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 		if (sparks[si].active) {
@@ -957,26 +998,10 @@ void Corruptor_render_bloom_source(void)
 	}
 }
 
-void Corruptor_render_light_source(void)
+static void corruptor_footprint_burn_wrapper(const unsigned int ticks)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		CorruptorState *c = &corruptors[i];
-		PlaceableComponent *pl = &placeables[i];
-
-		if (!c->alive || c->aiState == CORRUPTOR_DYING || c->aiState == CORRUPTOR_DEAD)
-			continue;
-
-		/* Body light */
-		const ColorFloat *lightColor = (c->theme == THEME_FIRE) ?
-			&(ColorFloat){1.0f, 0.5f, 0.05f, 1.0f} : &colorBody;
-		Render_point(&pl->position, 4.0, lightColor);
-
-		/* EMP/heatwave flash — bright light during firing */
-		if (c->theme == THEME_FIRE)
-			SubHeatwave_render_light(&c->heatwaveCore, SubHeatwave_get_config());
-		else
-			SubEmp_render_light(&c->empCore, SubEmp_get_config());
-	}
+	(void)ticks;
+	Corruptor_check_footprint_burn_player();
 }
 
 void Corruptor_deaggro_all(void)

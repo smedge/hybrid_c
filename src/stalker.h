@@ -9,8 +9,6 @@ void Stalker_initialize(Position position, ZoneTheme theme);
 void Stalker_cleanup(void);
 void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned int ticks);
 void Stalker_render(const void *state, const PlaceableComponent *placeable);
-void Stalker_render_bloom_source(void);
-void Stalker_render_light_source(void);
 Collision Stalker_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Stalker_resolve(void *state, const Collision collision);
 void Stalker_deaggro_all(void);

@@ -14,6 +14,8 @@
 #include "burn.h"
 #include "ship.h"
 #include "player_stats.h"
+#include "global_render.h"
+#include "global_update.h"
 
 #include <stdlib.h>
 #include <SDL2/SDL_mixer.h>
@@ -63,7 +65,13 @@ static const EnemyVariant mineVariants[THEME_COUNT] = {
 	},
 };
 
-static RenderableComponent renderable = {Mine_render};
+static void mine_render_bloom(const void *state, const PlaceableComponent *placeable);
+static void mine_render_light(const void *state, const PlaceableComponent *placeable);
+static RenderableComponent renderable = {.passes = {
+	[RENDER_PASS_MAIN] = Mine_render,
+	[RENDER_PASS_BLOOM_SOURCE] = mine_render_bloom,
+	[RENDER_PASS_LIGHT_SOURCE] = mine_render_light,
+}};
 static CollidableComponent collidable = {{-250.0, 250.0, 250.0, -250.0},
 											true,
 											COLLISION_LAYER_ENEMY,
@@ -85,6 +93,7 @@ static int highestUsedIndex = 0;
 
 /* Audio — entity sounds only (respawn) */
 static Mix_Chunk *sampleRespawn = 0;
+static bool pipelineRegistered = false;
 
 void Mine_initialize(Position position, ZoneTheme theme)
 {
@@ -120,8 +129,16 @@ void Mine_initialize(Position position, ZoneTheme theme)
 	SpatialGrid_add((EntityRef){ENTITY_MINE, highestUsedIndex - 1}, position.x, position.y);
 
 	/* Load audio once, not per-entity */
-	if (!sampleRespawn) {
+	if (!sampleRespawn)
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
+
+	/* Register pipeline callbacks (survives Zone_rebuild_enemies) */
+	if (!pipelineRegistered) {
+		GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Mine_render_fire_pools);
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Mine_render_fire_pool_bloom);
+		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Mine_render_fire_pool_light);
+		GlobalUpdate_register_post_collision(Mine_update_fire_pools);
+		pipelineRegistered = true;
 	}
 }
 
@@ -265,30 +282,28 @@ void Mine_render(const void *state, const PlaceableComponent *placeable)
 	SubMine_render(&renderCore, cfg);
 }
 
-void Mine_render_bloom_source(void)
+static void mine_render_bloom(const void *state, const PlaceableComponent *placeable)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		SubMineCore *core = &mines[i].core;
-		if (core->phase == MINE_PHASE_DEAD)
-			continue;
-		const SubMineConfig *cfg = (mines[i].theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
-		SubMineCore renderCore = *core;
-		renderCore.position = placeables[i].position;
-		SubMine_render_bloom(&renderCore, cfg);
-	}
+	const MineState *ms = (const MineState *)state;
+	const SubMineCore *core = &ms->core;
+	if (core->phase == MINE_PHASE_DEAD)
+		return;
+	const SubMineConfig *cfg = (ms->theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
+	SubMineCore renderCore = *core;
+	renderCore.position = placeable->position;
+	SubMine_render_bloom(&renderCore, cfg);
 }
 
-void Mine_render_light_source(void)
+static void mine_render_light(const void *state, const PlaceableComponent *placeable)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		SubMineCore *core = &mines[i].core;
-		if (core->phase == MINE_PHASE_DEAD)
-			continue;
-		const SubMineConfig *cfg = (mines[i].theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
-		SubMineCore renderCore = *core;
-		renderCore.position = placeables[i].position;
-		SubMine_render_light(&renderCore, cfg);
-	}
+	const MineState *ms = (const MineState *)state;
+	const SubMineCore *core = &ms->core;
+	if (core->phase == MINE_PHASE_DEAD)
+		return;
+	const SubMineConfig *cfg = (ms->theme == THEME_FIRE) ? &fireMineCfg : &enemyMineCfg;
+	SubMineCore renderCore = *core;
+	renderCore.position = placeable->position;
+	SubMine_render_light(&renderCore, cfg);
 }
 
 void Mine_reset_all(void)

@@ -82,7 +82,7 @@ static PlaceableComponent placeables[SAVEPOINT_COUNT];
 static Entity *entityRefs[SAVEPOINT_COUNT];
 static int savepointCount = 0;
 
-static RenderableComponent renderable = {Savepoint_render};
+static RenderableComponent renderable = {.passes = {[RENDER_PASS_MAIN] = Savepoint_render}};
 
 /* Global checkpoint */
 static SaveCheckpoint checkpoint = {false};

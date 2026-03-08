@@ -103,14 +103,22 @@ void Entity_ai_update_system(const unsigned int ticks)
 	}
 }
 
-void Entity_render_system(void) 
+void Entity_render_system(void)
 {
-	for(int i = 0; i <= highestIndex; i++) 
+	Entity_render_pass(RENDER_PASS_MAIN);
+}
+
+void Entity_render_pass(RenderPass pass)
+{
+	for (int i = 0; i <= highestIndex; i++)
 	{
-		if (entities[i].empty || entities[i].disabled || entities[i].renderable == 0)	
+		if (entities[i].empty || entities[i].disabled || entities[i].renderable == 0 ||
+			entities[i].placeable == 0)
 			continue;
-		
-		entities[i].renderable->render(entities[i].state, entities[i].placeable);
+
+		RenderFunc fn = entities[i].renderable->passes[pass];
+		if (fn)
+			fn(entities[i].state, entities[i].placeable);
 	}
 }
 

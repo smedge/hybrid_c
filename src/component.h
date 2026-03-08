@@ -1,6 +1,8 @@
 #ifndef COMPONENT_H
 #define COMPONENT_H
 
+#include "render_pass.h"
+
 #define COLLISION_LAYER_TERRAIN  0x01
 #define COLLISION_LAYER_PLAYER   0x02
 #define COLLISION_LAYER_ENEMY    0x04
@@ -10,8 +12,10 @@ typedef struct {
 	double heading;
 } PlaceableComponent;
 
+typedef void (*RenderFunc)(const void *state, const PlaceableComponent *placeable);
+
 typedef struct {
-	void (*render)(const void *state, const PlaceableComponent *placeable);
+	RenderFunc passes[RENDER_PASS_COUNT];
 } RenderableComponent;
 
 typedef struct {

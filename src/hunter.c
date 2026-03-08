@@ -18,6 +18,8 @@
 #include "audio.h"
 #include "map.h"
 #include "enemy_registry.h"
+#include "global_render.h"
+#include "global_update.h"
 #include "spatial_grid.h"
 
 #include <math.h>
@@ -111,7 +113,13 @@ typedef struct {
 } HunterState;
 
 /* Shared singleton components */
-static RenderableComponent renderable = {Hunter_render};
+static void hunter_render_bloom(const void *state, const PlaceableComponent *placeable);
+static void hunter_render_pool_bloom(void);
+static void hunter_render_pool_light(void);
+static RenderableComponent renderable = {.passes = {
+	[RENDER_PASS_MAIN] = Hunter_render,
+	[RENDER_PASS_BLOOM_SOURCE] = hunter_render_bloom,
+}};
 static CollidableComponent collidable = {{-BODY_SIZE, BODY_SIZE, BODY_SIZE, -BODY_SIZE},
 										  true,
 										  COLLISION_LAYER_ENEMY,
@@ -185,6 +193,7 @@ static void activate_spark(Position pos, bool shielded) {
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
+static bool pipelineRegistered = false;
 
 /* Helpers */
 static double get_radians(double degrees)
@@ -246,7 +255,7 @@ void Hunter_initialize(Position position, ZoneTheme theme)
 
 	SpatialGrid_add((EntityRef){ENTITY_HUNTER, idx}, position.x, position.y);
 
-	/* Load audio and register with enemy registry once, not per-entity */
+	/* Load audio and register with enemy registry once */
 	if (!sampleDeath) {
 		SubProjectile_pool_init(&hunterProjPool, hunterProjCfg.pool_size);
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
@@ -255,6 +264,14 @@ void Hunter_initialize(Position position, ZoneTheme theme)
 
 		EnemyTypeCallbacks cb = {Hunter_find_wounded, Hunter_find_aggro, Hunter_heal, Hunter_alert_nearby, Hunter_apply_emp, Hunter_apply_heatwave, Hunter_cleanse_burn, Hunter_apply_burn};
 		EnemyRegistry_register(cb);
+	}
+
+	/* Register pipeline callbacks (survives Zone_rebuild_enemies) */
+	if (!pipelineRegistered) {
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, hunter_render_pool_bloom);
+		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, hunter_render_pool_light);
+		GlobalUpdate_register_pre_collision(Hunter_update_projectiles);
+		pipelineRegistered = true;
 	}
 
 	/* Init fire pools once when first fire hunter spawns */
@@ -673,26 +690,26 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 	Enemy_render_resist_indicator(placeable->position);
 }
 
-void Hunter_render_bloom_source(void)
+static void hunter_render_bloom(const void *state, const PlaceableComponent *placeable)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		HunterState *h = &hunters[i];
-		PlaceableComponent *pl = &placeables[i];
+	const HunterState *h = (const HunterState *)state;
 
-		if (h->aiState == HUNTER_DEAD)
-			continue;
+	if (h->aiState == HUNTER_DEAD)
+		return;
 
-		if (h->aiState == HUNTER_DYING) {
-			Enemy_render_death_flash(pl, (float)h->deathTimer, (float)DEATH_FLASH_MS);
-			continue;
-		}
-
-		/* Body glow */
-		const ColorFloat *baseColor = (h->aiState == HUNTER_IDLE) ? &colorBody : &colorAggro;
-		ColorFloat bloomColor = Variant_get_color(hunterVariants, h->theme, baseColor, 1.0f);
-		Render_point(&pl->position, 6.0, &bloomColor);
+	if (h->aiState == HUNTER_DYING) {
+		Enemy_render_death_flash(placeable, (float)h->deathTimer, (float)DEATH_FLASH_MS);
+		return;
 	}
 
+	/* Body glow */
+	const ColorFloat *baseColor = (h->aiState == HUNTER_IDLE) ? &colorBody : &colorAggro;
+	ColorFloat bloomColor = Variant_get_color(hunterVariants, h->theme, baseColor, 1.0f);
+	Render_point(&placeable->position, 6.0, &bloomColor);
+}
+
+static void hunter_render_pool_bloom(void)
+{
 	/* Projectile bloom */
 	SubProjectile_render_bloom(&hunterProjPool, &hunterProjCfg);
 	if (firePoolsInitialized) {
@@ -710,7 +727,7 @@ void Hunter_render_bloom_source(void)
 	}
 }
 
-void Hunter_render_light_source(void)
+static void hunter_render_pool_light(void)
 {
 	SubProjectile_render_light(&hunterProjPool, &hunterProjCfg);
 	if (firePoolsInitialized) {

@@ -14,27 +14,12 @@
 #include "sub_mgun.h"
 #include "sub_mine.h"
 #include "sub_cinder.h"
-#include "hunter.h"
-#include "seeker.h"
-#include "defender.h"
-#include "stalker.h"
-#include "sub_aegis.h"
-#include "sub_disintegrate.h"
-#include "sub_inferno.h"
-#include "sub_gravwell.h"
 #include "sub_tgun.h"
 #include "sub_flak.h"
 #include "sub_ember.h"
 #include "sub_ember_core.h"
-#include "sub_emp.h"
-#include "sub_resist.h"
 #include "sub_blaze.h"
 #include "sub_cauterize.h"
-#include "sub_immolate.h"
-#include "sub_scorch.h"
-#include "sub_heatwave.h"
-#include "sub_temper.h"
-#include "corruptor.h"
 #include "map_reflect.h"
 #include "map_lighting.h"
 #include "grid.h"
@@ -56,6 +41,8 @@
 #include "burn.h"
 #include "keybinds.h"
 #include "confirm_dialog.h"
+#include "global_render.h"
+#include "global_update.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -235,6 +222,8 @@ static void warp_render_effects(const Screen *screen);
 void Mode_Gameplay_initialize(void)
 {
 	Entity_destroy_all();
+	GlobalRender_clear();
+	GlobalUpdate_clear();
 
 	selectedBgm = rand() % 7;
 
@@ -260,6 +249,22 @@ void Mode_Gameplay_initialize(void)
 	Zone_load("./resources/zones/procgen_001.zone");
 	FogOfWar_set_zone("./resources/zones/procgen_001.zone");
 	Destructible_initialize();
+
+	/* Register system-level render/update globals */
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Map_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Portal_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Savepoint_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, DataNode_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Fragment_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Burn_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Burn_render_light_source);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Portal_render_deactivated);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, DataNode_render_all);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Fragment_render);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Burn_render_all);
+
+	printf("=== Pipeline Registry Counts ===\n");
+	GlobalRender_debug_counts();
 
 	godModeActive = false;
 	godModeSelectedType = 0;
@@ -311,6 +316,8 @@ void Mode_Gameplay_initialize_from_save(void)
 	}
 
 	Entity_destroy_all();
+	GlobalRender_clear();
+	GlobalUpdate_clear();
 
 	selectedBgm = rand() % 7;
 
@@ -338,6 +345,19 @@ void Mode_Gameplay_initialize_from_save(void)
 	FogOfWar_set_zone(ckpt->zone_path);
 	FogOfWar_load_all_from_disk();
 	Destructible_initialize();
+
+	/* Register system-level render/update globals */
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Map_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Portal_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Savepoint_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, DataNode_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Fragment_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Burn_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Burn_render_light_source);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Portal_render_deactivated);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, DataNode_render_all);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Fragment_render);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Burn_render_all);
 
 	/* Restore progression + skillbar + fragment counts from checkpoint */
 	for (int i = 0; i < FRAG_TYPE_COUNT; i++)
@@ -429,8 +449,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 
 		/* AI still runs so the world feels alive */
 		SpatialGrid_set_player_bucket(Ship_get_position().x, Ship_get_position().y);
-		Hunter_update_projectiles(ticks);
-		Stalker_update_projectiles(ticks);
+		GlobalUpdate_pre_collision(ticks);
 		Entity_ai_update_system(ticks);
 		Destructible_update(ticks);
 		Fragment_update(ticks);
@@ -627,22 +646,10 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	Burn_update_player(ticks);
 
 	SpatialGrid_set_player_bucket(Ship_get_position().x, Ship_get_position().y);
-	Hunter_update_projectiles(ticks);
-	Stalker_update_projectiles(ticks);
+	GlobalUpdate_pre_collision(ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();
-	Sub_Blaze_update_corridor(ticks);
-	Sub_Cauterize_update_auras(ticks);
-	Sub_Cinder_update_pools(ticks);
-	Mine_update_fire_pools(ticks);
-	Defender_update_fire_auras(ticks);
-	Seeker_update_corridors(ticks);
-	Seeker_check_corridor_burn_player();
-	Stalker_update_corridors(ticks);
-	Stalker_check_corridor_burn_player();
-	Corruptor_update_footprints(ticks);
-	Corruptor_check_footprint_burn_player();
-	Sub_Scorch_update_footprints(ticks);
+	GlobalUpdate_post_collision(ticks);
 	SubEmber_clear_bursts();
 	Burn_update_embers(ticks);
 
@@ -733,43 +740,14 @@ void Mode_Gameplay_render(void)
 	/* Cloud reflection on solid blocks (also writes stencil for lighting) */
 	MapReflect_render(&world_proj, &view, draw_w, draw_h);
 
-	/* Weapon lighting on map cells (stencil data written by MapReflect) */
+	/* Light FBO — weapon lighting on map cells */
 	if (MapLighting_get_enabled()) {
 		Bloom *lb = Graphics_get_light_bloom();
 
 		Bloom_begin_source(lb);
 		Render_set_pass(&world_proj, &view);
-		Sub_Pea_render_light_source();
-		Sub_Mgun_render_light_source();
-		Sub_Mine_render_light_source();
-		Sub_Cinder_render_light_source();
-		Sub_Cinder_render_pools_light();
-		Mine_render_fire_pool_light();
-		Sub_Aegis_render_light_source();
-		Sub_Inferno_render_light_source();
-		Sub_Disintegrate_render_light_source();
-		Sub_Gravwell_render_light_source();
-		Sub_Tgun_render_light_source();
-		Sub_Flak_render_light_source();
-		Sub_Ember_render_light_source();
-		Sub_Emp_render_light_source();
-		Sub_Resist_render_light_source();
-		Sub_Blaze_render_corridor_light_source();
-		Sub_Cauterize_render_aura_light_source();
-		Sub_Immolate_render_light_source();
-		Defender_render_fire_aura_light();
-		Seeker_render_corridor_light_source();
-		Stalker_render_corridor_light_source();
-		Corruptor_render_footprint_light_source();
-		Sub_Scorch_render_footprints_light();
-		Sub_Heatwave_render_light_source();
-		Sub_Temper_render_light_source();
-		Mine_render_light_source();
-		Hunter_render_light_source();
-		Seeker_render_light_source();
-		Stalker_render_light_source();
-		Corruptor_render_light_source();
-		Burn_render_light_source();
+		Entity_render_pass(RENDER_PASS_LIGHT_SOURCE);
+		GlobalRender_pass(RENDER_PASS_LIGHT_SOURCE);
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(lb, draw_w, draw_h);
 
@@ -778,50 +756,27 @@ void Mode_Gameplay_render(void)
 		MapLighting_render(draw_w, draw_h);
 	}
 
-	/* Disintegrate bloom pass (dedicated purple FBO) */
+	/* Weapon bloom FBO (beam weapons: disintegrate, inferno) */
 	if (Graphics_get_bloom_enabled()) {
-		Bloom *disint_bloom = Graphics_get_disint_bloom();
+		Bloom *weapon_bloom = Graphics_get_disint_bloom();
 
-		Bloom_begin_source(disint_bloom);
-		Sub_Disintegrate_render_bloom_source();
+		Bloom_begin_source(weapon_bloom);
+		Entity_render_pass(RENDER_PASS_WEAPON_BLOOM);
+		GlobalRender_pass(RENDER_PASS_WEAPON_BLOOM);
 		Render_flush(&world_proj, &view);
-		Bloom_end_source(disint_bloom, draw_w, draw_h);
+		Bloom_end_source(weapon_bloom, draw_w, draw_h);
 
-		Bloom_blur(disint_bloom);
-		Bloom_composite(disint_bloom, draw_w, draw_h);
+		Bloom_blur(weapon_bloom);
+		Bloom_composite(weapon_bloom, draw_w, draw_h);
 	}
 
-	/* FBO bloom pass — rendered before entities so bloom halos appear behind */
+	/* Main bloom FBO — rendered before entities so bloom halos appear behind */
 	if (Graphics_get_bloom_enabled()) {
 		Bloom *bloom = Graphics_get_bloom();
 
 		Bloom_begin_source(bloom);
-		Map_render_bloom_source();
-		Ship_render_bloom_source();
-		Mine_render_bloom_source();
-		Hunter_render_bloom_source();
-		Seeker_render_bloom_source();
-		Defender_render_bloom_source();
-		Stalker_render_bloom_source();
-		Corruptor_render_bloom_source();
-		Sub_Aegis_render_bloom_source();
-		Sub_Immolate_render_bloom_source();
-		Sub_Emp_render_bloom_source();
-		Sub_Resist_render_bloom_source();
-		Portal_render_bloom_source();
-		Savepoint_render_bloom_source();
-		DataNode_render_bloom_source();
-		Fragment_render_bloom_source();
-		Burn_render_bloom_source();
-		Sub_Blaze_render_corridor_bloom_source();
-		Sub_Cauterize_render_aura_bloom_source();
-		Sub_Cinder_render_pools_bloom();
-		Mine_render_fire_pool_bloom();
-		Defender_render_fire_aura_bloom();
-		Seeker_render_corridor_bloom_source();
-		Stalker_render_corridor_bloom_source();
-		Corruptor_render_footprint_bloom_source();
-		Sub_Scorch_render_footprints_bloom();
+		Entity_render_pass(RENDER_PASS_BLOOM_SOURCE);
+		GlobalRender_pass(RENDER_PASS_BLOOM_SOURCE);
 		Render_flush(&world_proj, &view);
 		Bloom_end_source(bloom, draw_w, draw_h);
 
@@ -829,11 +784,10 @@ void Mode_Gameplay_render(void)
 		Bloom_composite(bloom, draw_w, draw_h);
 	}
 
-	/* Entities render on top of bloom */
-	Portal_render_deactivated();
-	DataNode_render_all();
-	Entity_render_system();
-	Fragment_render();
+	/* Entities render on top of bloom, overlays on top of entities */
+	Entity_render_pass(RENDER_PASS_MAIN);
+	Entity_render_pass(RENDER_PASS_WORLD_OVERLAY);
+	GlobalRender_pass(RENDER_PASS_WORLD_OVERLAY);
 	if (godModeActive) {
 		if (godNoiseHeatmapActive)
 			god_mode_render_noise_heatmap();
@@ -842,17 +796,7 @@ void Mode_Gameplay_render(void)
 		god_mode_render_chunk_selection();
 		god_mode_render_cursor();
 	}
-	Sub_Blaze_render_corridor();
-	Sub_Cauterize_render_aura();
-	Sub_Cinder_render_pools();
-	Mine_render_fire_pools();
-	Defender_render_fire_auras();
-	Seeker_render_corridors();
-	Stalker_render_corridors();
-	Corruptor_render_footprints();
-	Sub_Scorch_render_footprints();
 	Render_flush(&world_proj, &view);
-	Burn_render_all();
 
 	/* God mode labels (world-space text) */
 	if (godModeActive) {
@@ -1392,8 +1336,7 @@ static void god_mode_update(Input *input, const unsigned int ticks)
 
 	/* AI still runs so the world feels alive */
 	SpatialGrid_set_player_bucket(Ship_get_position().x, Ship_get_position().y);
-	Hunter_update_projectiles(ticks);
-	Stalker_update_projectiles(ticks);
+	GlobalUpdate_pre_collision(ticks);
 	Entity_ai_update_system(ticks);
 	Destructible_update(ticks);
 	Fragment_update(ticks);

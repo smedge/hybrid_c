@@ -18,6 +18,8 @@
 #include "map.h"
 #include "enemy_registry.h"
 #include "spatial_grid.h"
+#include "global_render.h"
+#include "global_update.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -128,7 +130,16 @@ typedef struct {
 } SeekerState;
 
 /* Shared singleton components */
-static RenderableComponent renderable = {Seeker_render};
+static void seeker_render_bloom(const void *state, const PlaceableComponent *placeable);
+static void seeker_render_light(const void *state, const PlaceableComponent *placeable);
+static void seeker_render_pool_bloom(void);
+static void seeker_render_pool_light(void);
+static void seeker_corridor_burn_wrapper(const unsigned int ticks);
+static RenderableComponent renderable = {.passes = {
+	[RENDER_PASS_MAIN] = Seeker_render,
+	[RENDER_PASS_BLOOM_SOURCE] = seeker_render_bloom,
+	[RENDER_PASS_LIGHT_SOURCE] = seeker_render_light,
+}};
 static CollidableComponent collidable = {{-BODY_WIDTH, BODY_LENGTH, BODY_WIDTH, -BODY_LENGTH},
 										  true,
 										  COLLISION_LAYER_ENEMY,
@@ -181,6 +192,7 @@ static bool seekerCorridorInitialized;
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
+static bool pipelineRegistered = false;
 
 /* Helpers */
 static void pick_wander_target(SeekerState *s)
@@ -240,7 +252,7 @@ void Seeker_initialize(Position position, ZoneTheme theme)
 
 	SpatialGrid_add((EntityRef){ENTITY_SEEKER, idx}, position.x, position.y);
 
-	/* Load audio and register with enemy registry once, not per-entity */
+	/* Load audio and register with enemy registry once */
 	if (!sampleDeath) {
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
@@ -248,6 +260,18 @@ void Seeker_initialize(Position position, ZoneTheme theme)
 
 		EnemyTypeCallbacks cb = {Seeker_find_wounded, Seeker_find_aggro, Seeker_heal, Seeker_alert_nearby, Seeker_apply_emp, Seeker_apply_heatwave, Seeker_cleanse_burn, Seeker_apply_burn};
 		EnemyRegistry_register(cb);
+	}
+
+	/* Register pipeline callbacks (survives Zone_rebuild_enemies) */
+	if (!pipelineRegistered) {
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, seeker_render_pool_bloom);
+		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, seeker_render_pool_light);
+		GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Seeker_render_corridors);
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Seeker_render_corridor_bloom_source);
+		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Seeker_render_corridor_light_source);
+		GlobalUpdate_register_post_collision(Seeker_update_corridors);
+		GlobalUpdate_register_post_collision(seeker_corridor_burn_wrapper);
+		pipelineRegistered = true;
 	}
 
 	/* Init fire corridor once when first fire seeker spawns */
@@ -767,58 +791,78 @@ void Seeker_render(const void *state, const PlaceableComponent *placeable)
 	}
 }
 
-void Seeker_render_bloom_source(void)
+static void seeker_render_bloom(const void *state, const PlaceableComponent *placeable)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		SeekerState *s = &seekers[i];
-		PlaceableComponent *pl = &placeables[i];
+	const SeekerState *s = (const SeekerState *)state;
 
-		if (s->aiState == SEEKER_DEAD)
-			continue;
+	if (s->aiState == SEEKER_DEAD)
+		return;
 
-		if (s->aiState == SEEKER_DYING) {
-			Enemy_render_death_flash(pl, (float)s->deathTimer, (float)DEATH_FLASH_MS);
-			continue;
-		}
-
-		/* Body glow */
-		const ColorFloat *bodyColor;
-		switch (s->aiState) {
-		case SEEKER_IDLE:       bodyColor = &colorIdle; break;
-		case SEEKER_STALKING:   bodyColor = &colorStalk; break;
-		case SEEKER_RECOVERING: bodyColor = &colorRecover; break;
-		case SEEKER_WINDING_UP: {
-			static const ColorFloat white = {1.0f, 1.0f, 1.0f, 1.0f};
-			bool flashOn = (s->windupTimer / 50) % 2 == 0;
-			bodyColor = flashOn ? &white : &colorOrbit;
-			break;
-		}
-		case SEEKER_DASHING: {
-			static const ColorFloat dashColor = {1.0f, 1.0f, 1.0f, 1.0f};
-			bodyColor = &dashColor;
-			break;
-		}
-		default: bodyColor = &colorOrbit; break;
-		}
-
-		ColorFloat bloomColor = Variant_get_color(seekerVariants, s->theme, bodyColor, 1.0f);
-		Render_point(&pl->position, 6.0, &bloomColor);
-
-		/* Dash trail bloom */
-		if (s->aiState == SEEKER_DASHING) {
-			for (int g = 3; g >= 1; g--) {
-				float t = (float)g / 4.0f;
-				Position ghost;
-				ghost.x = pl->position.x - s->dashCore.dirX * BODY_LENGTH * 2.0 * t;
-				ghost.y = pl->position.y - s->dashCore.dirY * BODY_LENGTH * 2.0 * t;
-				float alpha = (1.0f - t) * 0.6f;
-				ColorFloat gc = {1.0f, 1.0f, 1.0f, alpha};
-				Render_point(&ghost, 4.0, &gc);
-			}
-		}
+	if (s->aiState == SEEKER_DYING) {
+		Enemy_render_death_flash(placeable, (float)s->deathTimer, (float)DEATH_FLASH_MS);
+		return;
 	}
 
-	/* Spark bloom */
+	/* Body glow */
+	const ColorFloat *bodyColor;
+	switch (s->aiState) {
+	case SEEKER_IDLE:       bodyColor = &colorIdle; break;
+	case SEEKER_STALKING:   bodyColor = &colorStalk; break;
+	case SEEKER_RECOVERING: bodyColor = &colorRecover; break;
+	case SEEKER_WINDING_UP: {
+		static const ColorFloat white = {1.0f, 1.0f, 1.0f, 1.0f};
+		bool flashOn = (s->windupTimer / 50) % 2 == 0;
+		bodyColor = flashOn ? &white : &colorOrbit;
+		break;
+	}
+	case SEEKER_DASHING: {
+		static const ColorFloat dashColor = {1.0f, 1.0f, 1.0f, 1.0f};
+		bodyColor = &dashColor;
+		break;
+	}
+	default: bodyColor = &colorOrbit; break;
+	}
+
+	ColorFloat bloomColor = Variant_get_color(seekerVariants, s->theme, bodyColor, 1.0f);
+	Render_point(&placeable->position, 6.0, &bloomColor);
+
+	/* Dash trail bloom */
+	if (s->aiState == SEEKER_DASHING) {
+		for (int g = 3; g >= 1; g--) {
+			float t = (float)g / 4.0f;
+			Position ghost;
+			ghost.x = placeable->position.x - s->dashCore.dirX * BODY_LENGTH * 2.0 * t;
+			ghost.y = placeable->position.y - s->dashCore.dirY * BODY_LENGTH * 2.0 * t;
+			float alpha = (1.0f - t) * 0.6f;
+			ColorFloat gc = {1.0f, 1.0f, 1.0f, alpha};
+			Render_point(&ghost, 4.0, &gc);
+		}
+	}
+}
+
+static void seeker_render_light(const void *state, const PlaceableComponent *placeable)
+{
+	const SeekerState *s = (const SeekerState *)state;
+
+	if (s->aiState == SEEKER_DEAD || s->aiState == SEEKER_DYING)
+		return;
+
+	if (s->aiState == SEEKER_WINDING_UP) {
+		bool flashOn = (s->windupTimer / 50) % 2 == 0;
+		if (flashOn) {
+			Render_filled_circle(
+				(float)placeable->position.x, (float)placeable->position.y,
+				180.0f, 12, 0.2f, 1.0f, 0.3f, 0.6f);
+		}
+	} else if (s->aiState == SEEKER_DASHING) {
+		Render_filled_circle(
+			(float)placeable->position.x, (float)placeable->position.y,
+			240.0f, 12, 0.2f, 1.0f, 0.3f, 0.8f);
+	}
+}
+
+static void seeker_render_pool_bloom(void)
+{
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 		if (sparks[si].active) {
 			Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
@@ -828,29 +872,8 @@ void Seeker_render_bloom_source(void)
 	}
 }
 
-void Seeker_render_light_source(void)
+static void seeker_render_pool_light(void)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		SeekerState *s = &seekers[i];
-		PlaceableComponent *pl = &placeables[i];
-
-		if (s->aiState == SEEKER_DEAD || s->aiState == SEEKER_DYING)
-			continue;
-
-		if (s->aiState == SEEKER_WINDING_UP) {
-			bool flashOn = (s->windupTimer / 50) % 2 == 0;
-			if (flashOn) {
-				Render_filled_circle(
-					(float)pl->position.x, (float)pl->position.y,
-					180.0f, 12, 0.2f, 1.0f, 0.3f, 0.6f);
-			}
-		} else if (s->aiState == SEEKER_DASHING) {
-			Render_filled_circle(
-				(float)pl->position.x, (float)pl->position.y,
-				240.0f, 12, 0.2f, 1.0f, 0.3f, 0.8f);
-		}
-	}
-
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 		if (sparks[si].active) {
 			Render_filled_circle(
@@ -859,6 +882,12 @@ void Seeker_render_light_source(void)
 				240.0f, 12, 0.2f, 1.0f, 0.3f, 0.5f);
 		}
 	}
+}
+
+static void seeker_corridor_burn_wrapper(const unsigned int ticks)
+{
+	(void)ticks;
+	Seeker_check_corridor_burn_player();
 }
 
 void Seeker_deaggro_all(void)

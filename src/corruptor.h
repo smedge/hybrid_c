@@ -9,8 +9,6 @@ void Corruptor_initialize(Position position, ZoneTheme theme);
 void Corruptor_cleanup(void);
 void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned int ticks);
 void Corruptor_render(const void *state, const PlaceableComponent *placeable);
-void Corruptor_render_bloom_source(void);
-void Corruptor_render_light_source(void);
 Collision Corruptor_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox);
 void Corruptor_resolve(void *state, const Collision collision);
 void Corruptor_deaggro_all(void);

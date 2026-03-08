@@ -19,6 +19,8 @@
 #include "audio.h"
 #include "map.h"
 #include "spatial_grid.h"
+#include "global_render.h"
+#include "global_update.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -152,7 +154,12 @@ typedef struct {
 } DefenderState;
 
 /* Shared singleton components */
-static RenderableComponent renderable = {Defender_render};
+static void defender_render_bloom(const void *state, const PlaceableComponent *placeable);
+static void defender_render_pool_bloom(void);
+static RenderableComponent renderable = {.passes = {
+	[RENDER_PASS_MAIN] = Defender_render,
+	[RENDER_PASS_BLOOM_SOURCE] = defender_render_bloom,
+}};
 static CollidableComponent collidable = {{-BODY_SIZE, BODY_SIZE, BODY_SIZE, -BODY_SIZE},
 										  true,
 										  COLLISION_LAYER_ENEMY,
@@ -201,6 +208,7 @@ static void activate_spark(Position pos, bool shielded) {
 static Mix_Chunk *sampleDeath = 0;
 static Mix_Chunk *sampleRespawn = 0;
 static Mix_Chunk *sampleHit = 0;
+static bool pipelineRegistered = false;
 
 /* Fire theme audio (initialized once) */
 static bool fireDefInitialized = false;
@@ -418,13 +426,23 @@ void Defender_initialize(Position position, ZoneTheme theme)
 
 	SpatialGrid_add((EntityRef){ENTITY_DEFENDER, idx}, position.x, position.y);
 
-	/* Load audio and register with enemy registry once, not per-entity */
+	/* Load audio and register with enemy registry once */
 	if (!sampleDeath) {
 		Audio_load_sample(&sampleDeath, "resources/sounds/bomb_explode.wav");
 		Audio_load_sample(&sampleRespawn, "resources/sounds/door.wav");
 		Audio_load_sample(&sampleHit, "resources/sounds/samus_hurt.wav");
 		EnemyTypeCallbacks cb = {Defender_find_wounded, Defender_find_aggro, Defender_heal, Defender_alert_nearby, Defender_apply_emp, Defender_apply_heatwave, Defender_cleanse_burn, Defender_apply_burn};
 		defenderTypeId = EnemyRegistry_register(cb);
+	}
+
+	/* Register pipeline callbacks (survives Zone_rebuild_enemies) */
+	if (!pipelineRegistered) {
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, defender_render_pool_bloom);
+		GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Defender_render_fire_auras);
+		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Defender_render_fire_aura_bloom);
+		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Defender_render_fire_aura_light);
+		GlobalUpdate_register_post_collision(Defender_update_fire_auras);
+		pipelineRegistered = true;
 	}
 
 	/* Fire theme: initialize skill audio once */
@@ -925,50 +943,50 @@ void Defender_render(const void *state, const PlaceableComponent *placeable)
 	}
 }
 
-void Defender_render_bloom_source(void)
+static void defender_render_bloom(const void *state, const PlaceableComponent *placeable)
 {
-	for (int i = 0; i < highestUsedIndex; i++) {
-		DefenderState *d = &defenders[i];
-		PlaceableComponent *pl = &placeables[i];
+	const DefenderState *d = (const DefenderState *)state;
 
-		if (d->aiState == DEFENDER_DEAD)
-			continue;
+	if (d->aiState == DEFENDER_DEAD)
+		return;
 
-		if (d->aiState == DEFENDER_DYING) {
-			Enemy_render_death_flash(pl, (float)d->deathTimer, (float)DEATH_FLASH_MS);
-			continue;
-		}
+	if (d->aiState == DEFENDER_DYING) {
+		Enemy_render_death_flash(placeable, (float)d->deathTimer, (float)DEATH_FLASH_MS);
+		return;
+	}
 
-		/* Boost trail bloom */
-		const ColorFloat *baseColor = (d->aiState == DEFENDER_IDLE) ? &colorBody : &colorAggro;
-		ColorFloat bloomColor = Variant_get_color(defenderVariants, d->theme, baseColor, 1.0f);
-		const ColorFloat *bodyColor = &bloomColor;
-		if (d->boosting) {
-			double dx = pl->position.x - d->prevPosition.x;
-			double dy = pl->position.y - d->prevPosition.y;
-			for (int g = BOOST_TRAIL_GHOSTS; g >= 1; g--) {
-				float t = (float)g / (float)(BOOST_TRAIL_GHOSTS + 1);
-				Position ghost;
-				ghost.x = pl->position.x - dx * BOOST_TRAIL_LENGTH * t;
-				ghost.y = pl->position.y - dy * BOOST_TRAIL_LENGTH * t;
-				float alpha = (1.0f - t) * 0.25f;
-				Render_point(&ghost, 6.0f, &(ColorFloat){bodyColor->red, bodyColor->green, bodyColor->blue, alpha});
-			}
-		}
-
-		/* Body glow */
-		Render_point(&pl->position, 6.0, bodyColor);
-
-		/* Shield ring bloom + heal beam bloom */
-		if (d->theme == THEME_FIRE) {
-			SubImmolate_render_bloom_small(&d->immolateCore, pl->position);
-			SubCauterize_render_beam_bloom(&d->cauterizeCore, SubCauterize_get_defender_config());
-		} else {
-			SubShield_render_bloom(&d->shieldCore, &defShieldCfg, pl->position);
-			SubHeal_render_beam_bloom(&d->healCore, &defHealCfg);
+	/* Boost trail bloom */
+	const ColorFloat *baseColor = (d->aiState == DEFENDER_IDLE) ? &colorBody : &colorAggro;
+	ColorFloat bloomColor = Variant_get_color(defenderVariants, d->theme, baseColor, 1.0f);
+	const ColorFloat *bodyColor = &bloomColor;
+	if (d->boosting) {
+		double dx = placeable->position.x - d->prevPosition.x;
+		double dy = placeable->position.y - d->prevPosition.y;
+		for (int g = BOOST_TRAIL_GHOSTS; g >= 1; g--) {
+			float t = (float)g / (float)(BOOST_TRAIL_GHOSTS + 1);
+			Position ghost;
+			ghost.x = placeable->position.x - dx * BOOST_TRAIL_LENGTH * t;
+			ghost.y = placeable->position.y - dy * BOOST_TRAIL_LENGTH * t;
+			float alpha = (1.0f - t) * 0.25f;
+			Render_point(&ghost, 6.0f, &(ColorFloat){bodyColor->red, bodyColor->green, bodyColor->blue, alpha});
 		}
 	}
 
+	/* Body glow */
+	Render_point(&placeable->position, 6.0, bodyColor);
+
+	/* Shield ring bloom + heal beam bloom */
+	if (d->theme == THEME_FIRE) {
+		SubImmolate_render_bloom_small(&d->immolateCore, placeable->position);
+		SubCauterize_render_beam_bloom(&d->cauterizeCore, SubCauterize_get_defender_config());
+	} else {
+		SubShield_render_bloom(&d->shieldCore, &defShieldCfg, placeable->position);
+		SubHeal_render_beam_bloom(&d->healCore, &defHealCfg);
+	}
+}
+
+static void defender_render_pool_bloom(void)
+{
 	/* Spark bloom */
 	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
 		if (sparks[si].active) {
