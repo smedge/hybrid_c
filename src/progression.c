@@ -57,6 +57,7 @@ static unsigned int notifyTimer = 0;
 static char notifyText[64];
 
 
+
 void Progression_initialize(void)
 {
 	for (int i = 0; i < SUB_ID_COUNT; i++) {
@@ -169,6 +170,7 @@ void Progression_render(const Screen *screen)
 				1.0f, 1.0f, 1.0f, alpha);
 		}
 	}
+
 }
 
 void Progression_restore(const bool *unlocked, const bool *discovered)

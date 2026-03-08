@@ -16,8 +16,11 @@ static BurnState playerBurn = {0};
 
 /* --- Audio --- */
 static Mix_Chunk *sndBurnTick = NULL;
-static int burnTickTimer = 0;
-#define BURN_TICK_INTERVAL_MS 500 /* sizzle sound every 500ms while burning */
+
+/* --- Player burn pulse system --- */
+#define BURN_PULSE_INTERVAL_MS 500
+static int burnPulseTimer = 0;
+static double burnDamageAccum = 0.0;
 
 /* --- Registration system --- */
 
@@ -445,18 +448,24 @@ void Burn_apply_to_player(int duration_ms)
 
 void Burn_update_player(unsigned int ticks)
 {
+	/* Accumulate damage continuously (preserves exact total) */
 	double damage = Burn_update(&playerBurn, ticks);
-	if (damage > 0.0) {
-		PlayerStats_damage(damage);
+	burnDamageAccum += damage;
 
-		/* Periodic sizzle sound */
-		burnTickTimer -= (int)ticks;
-		if (burnTickTimer <= 0 && sndBurnTick) {
-			Mix_PlayChannel(-1, sndBurnTick, 0);
-			burnTickTimer = BURN_TICK_INTERVAL_MS;
+	/* Deliver accumulated damage in 500ms pulses */
+	if (burnDamageAccum > 0.0) {
+		burnPulseTimer -= (int)ticks;
+		if (burnPulseTimer <= 0) {
+			PlayerStats_damage(burnDamageAccum);
+			burnDamageAccum = 0.0;
+			burnPulseTimer = BURN_PULSE_INTERVAL_MS;
+
+			if (sndBurnTick)
+				Mix_PlayChannel(-1, sndBurnTick, 0);
 		}
 	} else {
-		burnTickTimer = 0;
+		burnPulseTimer = 0;
+		burnDamageAccum = 0.0;
 	}
 
 	/* Register player burn for centralized rendering */
@@ -473,7 +482,8 @@ void Burn_render_player(Position pos)
 void Burn_reset_player(void)
 {
 	Burn_reset(&playerBurn);
-	burnTickTimer = 0;
+	burnPulseTimer = 0;
+	burnDamageAccum = 0.0;
 }
 
 bool Burn_player_is_burning(void)

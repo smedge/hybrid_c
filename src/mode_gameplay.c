@@ -631,6 +631,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	Destructible_update(ticks);
 	Fragment_update(ticks);
 	Progression_update(ticks);
+	Zone_update_notification(ticks);
 	View_update(input, ticks);
 
 	View_set_position(Ship_get_position());
@@ -832,6 +833,7 @@ void Mode_Gameplay_render(void)
 	Hud_render(&screen);
 	PlayerStats_render(&screen);
 	Progression_render(&screen);
+	Zone_render_notification();
 	Savepoint_render_notification(&screen);
 	DataNode_render_notification(&screen);
 	DataNode_render_voice_indicator(&screen);
@@ -888,6 +890,8 @@ static void complete_rebirth(void)
 
 	/* Fade out Memory Man over 2 seconds */
 	Audio_fade_out_channel(REBIRTH_CHANNEL, REBIRTH_FADE_MS);
+
+	Zone_notify_enter();
 }
 
 static void on_music_finished(void)
@@ -1830,6 +1834,8 @@ static void zone_teardown_and_load(const char *zone_path)
 
 	/* Swap fog of war to destination zone (stashes current, loads cached) */
 	FogOfWar_set_zone(zone_path);
+
+	Zone_notify_enter();
 }
 
 /* --- Zone navigation --- */

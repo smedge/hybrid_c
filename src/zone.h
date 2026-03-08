@@ -223,4 +223,9 @@ void Zone_set_celltype_colors(int type_idx, ColorRGB primary, ColorRGB outline);
 /* Procgen: regenerate non-hand-placed cells from current master seed */
 void Zone_regenerate_procgen(void);
 
+/* Zone entry notification */
+void Zone_notify_enter(void);
+void Zone_update_notification(unsigned int ticks);
+void Zone_render_notification(void);
+
 #endif

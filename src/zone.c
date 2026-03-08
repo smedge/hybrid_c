@@ -1,4 +1,7 @@
 #include "zone.h"
+#include "graphics.h"
+#include "text.h"
+#include "mat4.h"
 #include "entity.h"
 #include "procgen.h"
 #include "mine.h"
@@ -1352,4 +1355,53 @@ static void push_undo(UndoEntry entry)
 		undoCount = ZONE_MAX_UNDO - 1;
 	}
 	undoStack[undoCount++] = entry;
+}
+
+/* --- Zone entry notification --- */
+
+#define ZONE_NOTIFY_DURATION_MS 4000
+#define ZONE_NOTIFY_FADE_MS 1500
+
+static bool zoneNotifyActive = false;
+static unsigned int zoneNotifyTimer = 0;
+static char zoneNotifyText[128];
+
+void Zone_notify_enter(void)
+{
+	snprintf(zoneNotifyText, sizeof(zoneNotifyText),
+		">> Entering %s <<", zone.name);
+	zoneNotifyActive = true;
+	zoneNotifyTimer = 0;
+}
+
+void Zone_update_notification(unsigned int ticks)
+{
+	if (!zoneNotifyActive) return;
+	zoneNotifyTimer += ticks;
+	if (zoneNotifyTimer >= ZONE_NOTIFY_DURATION_MS)
+		zoneNotifyActive = false;
+}
+
+void Zone_render_notification(void)
+{
+	if (!zoneNotifyActive) return;
+
+	TextRenderer *tr = Graphics_get_text_renderer();
+	Shaders *shaders = Graphics_get_shaders();
+	Mat4 proj = Graphics_get_ui_projection();
+	Mat4 ident = Mat4_identity();
+	Screen screen = Graphics_get_screen();
+
+	float alpha = 1.0f;
+	unsigned int remaining = ZONE_NOTIFY_DURATION_MS - zoneNotifyTimer;
+	if (remaining < ZONE_NOTIFY_FADE_MS)
+		alpha = (float)remaining / ZONE_NOTIFY_FADE_MS;
+
+	float tw = Text_measure_width(tr, zoneNotifyText);
+	float nx = (float)screen.width * 0.5f - tw * 0.5f;
+	float ny = (float)screen.height * 0.3f;
+
+	Text_render(tr, shaders, &proj, &ident,
+		zoneNotifyText, nx, ny,
+		1.0f, 1.0f, 1.0f, alpha);
 }
