@@ -263,9 +263,6 @@ void Mode_Gameplay_initialize(void)
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Fragment_render);
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Burn_render_all);
 
-	printf("=== Pipeline Registry Counts ===\n");
-	GlobalRender_debug_counts();
-
 	godModeActive = false;
 	godModeSelectedType = 0;
 
@@ -756,7 +753,21 @@ void Mode_Gameplay_render(void)
 		MapLighting_render(draw_w, draw_h);
 	}
 
-	/* Weapon bloom FBO (beam weapons: disintegrate, inferno) */
+	/* Entities + overlays render on top of lit map cells */
+	Entity_render_pass(RENDER_PASS_MAIN);
+	Entity_render_pass(RENDER_PASS_WORLD_OVERLAY);
+	GlobalRender_pass(RENDER_PASS_WORLD_OVERLAY);
+	if (godModeActive) {
+		if (godNoiseHeatmapActive)
+			god_mode_render_noise_heatmap();
+		god_mode_render_spawn_markers();
+		god_mode_render_procgen_debug();
+		god_mode_render_chunk_selection();
+		god_mode_render_cursor();
+	}
+	Render_flush(&world_proj, &view);
+
+	/* Weapon bloom FBO — composite glows on top of entities + overlays */
 	if (Graphics_get_bloom_enabled()) {
 		Bloom *weapon_bloom = Graphics_get_disint_bloom();
 
@@ -770,7 +781,7 @@ void Mode_Gameplay_render(void)
 		Bloom_composite(weapon_bloom, draw_w, draw_h);
 	}
 
-	/* Main bloom FBO — rendered before entities so bloom halos appear behind */
+	/* Main bloom FBO — composite adds glow halos on top of everything */
 	if (Graphics_get_bloom_enabled()) {
 		Bloom *bloom = Graphics_get_bloom();
 
@@ -783,20 +794,6 @@ void Mode_Gameplay_render(void)
 		Bloom_blur(bloom);
 		Bloom_composite(bloom, draw_w, draw_h);
 	}
-
-	/* Entities render on top of bloom, overlays on top of entities */
-	Entity_render_pass(RENDER_PASS_MAIN);
-	Entity_render_pass(RENDER_PASS_WORLD_OVERLAY);
-	GlobalRender_pass(RENDER_PASS_WORLD_OVERLAY);
-	if (godModeActive) {
-		if (godNoiseHeatmapActive)
-			god_mode_render_noise_heatmap();
-		god_mode_render_spawn_markers();
-		god_mode_render_procgen_debug();
-		god_mode_render_chunk_selection();
-		god_mode_render_cursor();
-	}
-	Render_flush(&world_proj, &view);
 
 	/* God mode labels (world-space text) */
 	if (godModeActive) {

@@ -25,13 +25,6 @@ void GlobalRender_pass(RenderPass pass)
 		registry[pass][i]();
 }
 
-void GlobalRender_debug_counts(void)
-{
-	static const char *names[] = {"LIGHT", "WEAPON_BLOOM", "BLOOM", "OVERLAY", "MAIN"};
-	for (int i = 0; i < RENDER_PASS_COUNT; i++)
-		printf("  GlobalRender[%s]: %d callbacks\n", names[i], counts[i]);
-}
-
 void GlobalRender_clear(void)
 {
 	for (int i = 0; i < RENDER_PASS_COUNT; i++)

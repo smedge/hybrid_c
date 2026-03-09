@@ -116,6 +116,10 @@ void Entity_render_pass(RenderPass pass)
 			entities[i].placeable == 0)
 			continue;
 
+		if (!SpatialGrid_is_active(entities[i].placeable->position.x,
+								   entities[i].placeable->position.y))
+			continue;
+
 		RenderFunc fn = entities[i].renderable->passes[pass];
 		if (fn)
 			fn(entities[i].state, entities[i].placeable);
