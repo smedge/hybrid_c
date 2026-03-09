@@ -429,7 +429,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 		h->aiState = HUNTER_DYING;
 		h->deathTimer = 0;
 		h->killedByPlayer = true;
-		Audio_play_sample(&sampleDeath);
+		Audio_play_sample_at(&sampleDeath, pl->position);
 	}
 	if (h->alive && Burn_is_active(&h->burn))
 		Burn_register(&h->burn, pl->position);
@@ -456,7 +456,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			if (shielded)
 				Defender_notify_shield_hit(pl->position);
 			else
-				Audio_play_sample(&sampleHit);
+				Audio_play_sample_at(&sampleHit, pl->position);
 
 			/* Getting shot immediately aggroes */
 			if (h->aiState == HUNTER_IDLE) {
@@ -471,7 +471,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			h->aiState = HUNTER_DYING;
 			h->deathTimer = 0;
 			h->killedByPlayer = true;
-			Audio_play_sample(&sampleDeath);
+			Audio_play_sample_at(&sampleDeath, pl->position);
 			Enemy_on_player_kill(&dmg);
 		}
 	}
@@ -527,7 +527,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			if (EnemyFeedback_try_spend(&h->fb, 15.0, &h->hp)) {
 				if (h->hp < hpBefore) {
 					activate_spark(pl->position, false);
-					Audio_play_sample(&sampleHit);
+					Audio_play_sample_at(&sampleHit, pl->position);
 				}
 				h->aiState = HUNTER_SHOOTING;
 				h->burstShotsFired = 0;
@@ -538,7 +538,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 					h->aiState = HUNTER_DYING;
 					h->deathTimer = 0;
 					h->killedByPlayer = false;
-					Audio_play_sample(&sampleDeath);
+					Audio_play_sample_at(&sampleDeath, pl->position);
 				}
 			}
 		}
@@ -611,7 +611,7 @@ void Hunter_update(void *state, const PlaceableComponent *placeable, unsigned in
 			Burn_reset(&h->burn);
 			pl->position = h->spawnPoint;
 			pick_wander_target(h);
-			Audio_play_sample(&sampleRespawn);
+			Audio_play_sample_at(&sampleRespawn, pl->position);
 		}
 		break;
 	}

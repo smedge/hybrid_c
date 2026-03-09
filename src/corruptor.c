@@ -263,7 +263,7 @@ static void try_apply_resist(CorruptorState *c, Position myPos)
 		return;
 	if (c->hp < hpBefore) {
 		activate_spark(myPos);
-		Audio_play_sample(&sampleHit);
+		Audio_play_sample_at(&sampleHit, myPos);
 	}
 
 	/* Feedback spillover self-kill */
@@ -310,7 +310,7 @@ static void try_apply_temper(CorruptorState *c, Position myPos)
 		return;
 	if (c->hp < hpBefore) {
 		activate_spark(myPos);
-		Audio_play_sample(&sampleHit);
+		Audio_play_sample_at(&sampleHit, myPos);
 	}
 
 	if (c->hp <= 0.0) {
@@ -521,7 +521,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 		c->aiState = CORRUPTOR_DYING;
 		c->deathTimer = 0;
 		c->killedByPlayer = true;
-		Audio_play_sample(&sampleDeath);
+		Audio_play_sample_at(&sampleDeath, pl->position);
 	}
 	if (c->alive && Burn_is_active(&c->burn))
 		Burn_register(&c->burn, pl->position);
@@ -589,7 +589,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			double totalDmg = dmg.damage + (dmg.mine_hit ? dmg.mine_damage : 0.0);
 			c->hp -= totalDmg;
 			Burn_apply_from_hits(&c->burn, dmg.burn_hits);
-			Audio_play_sample(&sampleHit);
+			Audio_play_sample_at(&sampleHit, pl->position);
 
 			/* Getting hit while idle triggers awareness */
 			if (c->aiState == CORRUPTOR_IDLE) {
@@ -603,7 +603,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			c->aiState = CORRUPTOR_DYING;
 			c->deathTimer = 0;
 			c->killedByPlayer = true;
-			Audio_play_sample(&sampleDeath);
+			Audio_play_sample_at(&sampleDeath, pl->position);
 			Enemy_on_player_kill(&dmg);
 		}
 	}
@@ -720,7 +720,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			if (EnemyFeedback_try_spend(&c->fb, cost, &c->hp)) {
 				if (c->hp < hpBefore) {
 					activate_spark(pl->position);
-					Audio_play_sample(&sampleHit);
+					Audio_play_sample_at(&sampleHit, pl->position);
 				}
 				/* Feedback spillover self-kill */
 				if (c->hp <= 0.0) {
@@ -824,7 +824,7 @@ void Corruptor_update(void *state, const PlaceableComponent *placeable, unsigned
 			EnemyFeedback_reset(&c->fb);
 			pl->position = c->spawnPoint;
 			pick_wander_target(c);
-			Audio_play_sample(&sampleRespawn);
+			Audio_play_sample_at(&sampleRespawn, c->spawnPoint);
 		}
 		break;
 	}

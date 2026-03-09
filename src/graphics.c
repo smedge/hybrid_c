@@ -309,7 +309,7 @@ static void initialize_gl(void)
 		BASE_FONT_SIZE * uiScale);
 	Text_initialize(&title_text_renderer, TITLE_FONT_PATH,
 		BASE_TITLE_FONT_SIZE * uiScale);
-	Bloom_initialize(&bloom, draw_w, draw_h, 2, 3.0f, 4);
+	Bloom_initialize(&bloom, draw_w, draw_h, 2, 2.5f, 4);
 	Bloom_initialize(&bg_bloom, draw_w, draw_h, 8, 2.5f, 20);
 	Bloom_initialize(&disint_bloom, draw_w, draw_h, 2, 3.0f, 4);
 	Bloom_initialize(&light_bloom, draw_w, draw_h, 8, 1.0f, 7);

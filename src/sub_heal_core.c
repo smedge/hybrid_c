@@ -36,7 +36,7 @@ bool SubHeal_try_activate(SubHealCore *core, const SubHealConfig *cfg, Position 
 		core->beamOrigin = origin;
 		core->beamTarget = target;
 	}
-	Audio_play_sample(&sampleHeal);
+	Audio_play_sample_at(&sampleHeal, origin);
 	return true;
 }
 

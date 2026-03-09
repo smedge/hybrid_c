@@ -83,6 +83,6 @@ bool SubFlak_try_fire(SubProjectilePool *pool, const SubFlakConfig *cfg,
 		}
 	}
 
-	Audio_play_sample(&sampleFire);
+	Audio_play_sample_at(&sampleFire, origin);
 	return true;
 }

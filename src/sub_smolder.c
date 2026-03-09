@@ -33,12 +33,12 @@ void Sub_Smolder_try_activate(void)
 	if (PlayerStats_get_feedback() > 0.0)
 		return;
 
-	SubSmolder_try_activate(&smolderCore, SubSmolder_get_config());
+	SubSmolder_try_activate(&smolderCore, SubSmolder_get_config(), Ship_get_position());
 }
 
 void Sub_Smolder_break(void)
 {
-	SubSmolder_break(&smolderCore);
+	SubSmolder_break(&smolderCore, Ship_get_position());
 }
 
 void Sub_Smolder_break_attack(void)
@@ -46,7 +46,7 @@ void Sub_Smolder_break_attack(void)
 	if (!SubSmolder_is_active(&smolderCore))
 		return;
 
-	SubSmolder_break_attack(&smolderCore);
+	SubSmolder_break_attack(&smolderCore, Ship_get_position());
 }
 
 void Sub_Smolder_update(unsigned int ticks)
@@ -60,7 +60,7 @@ void Sub_Smolder_update(unsigned int ticks)
 		return;
 	}
 
-	SubSmolder_update(&smolderCore, SubSmolder_get_config(), ticks);
+	SubSmolder_update(&smolderCore, SubSmolder_get_config(), ticks, Ship_get_position());
 }
 
 bool Sub_Smolder_is_active(void)

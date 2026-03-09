@@ -62,7 +62,7 @@ void SubSmolder_reset(SubSmolderCore *core)
 
 /* --- Activation --- */
 
-bool SubSmolder_try_activate(SubSmolderCore *core, const SubSmolderConfig *cfg)
+bool SubSmolder_try_activate(SubSmolderCore *core, const SubSmolderConfig *cfg, Position pos)
 {
 	if (core->state != SMOLDER_READY)
 		return false;
@@ -71,7 +71,7 @@ bool SubSmolder_try_activate(SubSmolderCore *core, const SubSmolderConfig *cfg)
 	core->duration_ms = cfg->cloak_duration_ms;
 	core->cooldown_ms = cfg->cooldown_ms;
 	core->pulse_timer = 0.0f;
-	Audio_play_sample(&sampleActivate);
+	Audio_play_sample_at(&sampleActivate, pos);
 	return true;
 }
 
@@ -87,27 +87,27 @@ void SubSmolder_activate_silent(SubSmolderCore *core, const SubSmolderConfig *cf
 
 /* --- Break --- */
 
-void SubSmolder_break(SubSmolderCore *core)
+void SubSmolder_break(SubSmolderCore *core, Position pos)
 {
 	if (core->state != SMOLDER_ACTIVE)
 		return;
 
 	core->state = SMOLDER_COOLDOWN;
-	Audio_play_sample(&sampleBreak);
+	Audio_play_sample_at(&sampleBreak, pos);
 }
 
-void SubSmolder_break_attack(SubSmolderCore *core)
+void SubSmolder_break_attack(SubSmolderCore *core, Position pos)
 {
 	if (core->state != SMOLDER_ACTIVE)
 		return;
 
 	core->ambush_ms = SubSmolder_get_config()->ambush_duration_ms;
-	SubSmolder_break(core);
+	SubSmolder_break(core, pos);
 }
 
 /* --- Update --- */
 
-void SubSmolder_update(SubSmolderCore *core, const SubSmolderConfig *cfg, unsigned int ticks)
+void SubSmolder_update(SubSmolderCore *core, const SubSmolderConfig *cfg, unsigned int ticks, Position pos)
 {
 	/* Tick ambush window */
 	if (core->ambush_ms > 0) {
@@ -126,7 +126,7 @@ void SubSmolder_update(SubSmolderCore *core, const SubSmolderConfig *cfg, unsign
 			/* Cloak expired — auto-break (no ambush) */
 			core->duration_ms = 0;
 			core->state = SMOLDER_COOLDOWN;
-			Audio_play_sample(&sampleBreak);
+			Audio_play_sample_at(&sampleBreak, pos);
 		}
 		break;
 

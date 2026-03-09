@@ -48,14 +48,14 @@ void SubScorch_init(SubScorchCore *core)
 
 /* --- Activation --- */
 
-bool SubScorch_try_activate(SubScorchCore *core, const SubScorchConfig *cfg)
+bool SubScorch_try_activate(SubScorchCore *core, const SubScorchConfig *cfg, Position pos)
 {
 	SubSprintConfig scfg = {cfg->sprint_duration_ms, cfg->sprint_cooldown_ms};
 	if (!SubSprint_try_activate(&core->sprint, &scfg))
 		return false;
 
 	core->footprint_timer = 0;
-	Audio_play_sample(&sampleActivate);
+	Audio_play_sample_at(&sampleActivate, pos);
 	return true;
 }
 

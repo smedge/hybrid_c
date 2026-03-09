@@ -56,7 +56,7 @@ bool SubEmp_try_activate(SubEmpCore *core, const SubEmpConfig *cfg, Position cen
 	core->visualActive = true;
 	core->visualTimer = 0;
 	core->visualCenter = center;
-	Audio_play_sample(&sampleFire);
+	Audio_play_sample_at(&sampleFire, center);
 	return true;
 }
 

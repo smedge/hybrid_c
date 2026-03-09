@@ -57,7 +57,7 @@ void Sub_Egress_try_activate(void)
 		dy = cos(heading * DEG_TO_RAD);
 	}
 
-	if (SubDash_try_activate(&core, &cfg, dx, dy)) {
+	if (SubDash_try_activate(&core, &cfg, dx, dy, Ship_get_position())) {
 		PlayerStats_add_feedback(25.0);
 		PlayerStats_set_iframes(cfg.duration_ms);
 	}

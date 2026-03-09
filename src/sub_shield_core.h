@@ -32,16 +32,16 @@ typedef struct {
 } SubShieldConfig;
 
 void SubShield_init(SubShieldCore *core);
-bool SubShield_try_activate(SubShieldCore *core, const SubShieldConfig *cfg);
-void SubShield_break(SubShieldCore *core, const SubShieldConfig *cfg);
-bool SubShield_update(SubShieldCore *core, const SubShieldConfig *cfg, unsigned int ticks);
+bool SubShield_try_activate(SubShieldCore *core, const SubShieldConfig *cfg, Position pos);
+void SubShield_break(SubShieldCore *core, const SubShieldConfig *cfg, Position pos);
+bool SubShield_update(SubShieldCore *core, const SubShieldConfig *cfg, unsigned int ticks, Position pos);
 bool SubShield_is_active(const SubShieldCore *core);
 bool SubShield_in_grace(const SubShieldCore *core);
 float SubShield_get_cooldown_fraction(const SubShieldCore *core, const SubShieldConfig *cfg);
 
 void SubShield_initialize_audio(void);
 void SubShield_cleanup_audio(void);
-void SubShield_on_hit(const SubShieldCore *core);
+void SubShield_on_hit(const SubShieldCore *core, Position pos);
 
 void SubShield_render_ring(const SubShieldCore *core, const SubShieldConfig *cfg, Position pos);
 void SubShield_render_bloom(const SubShieldCore *core, const SubShieldConfig *cfg, Position pos);

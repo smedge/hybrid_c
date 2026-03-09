@@ -253,7 +253,7 @@ void Mine_update(void *state, const PlaceableComponent *placeable, const unsigne
 
 	/* Just transitioned out of DEAD back to DORMANT — respawn */
 	if (phase == MINE_PHASE_DORMANT && prevPhase == MINE_PHASE_DEAD) {
-		Audio_play_sample(&sampleRespawn);
+		Audio_play_sample_at(&sampleRespawn, placeable->position);
 		ms->killedByPlayer = false;
 	}
 

@@ -382,7 +382,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		s->aiState = SEEKER_DYING;
 		s->deathTimer = 0;
 		s->killedByPlayer = true;
-		Audio_play_sample(&sampleDeath);
+		Audio_play_sample_at(&sampleDeath, pl->position);
 	}
 	if (s->alive && Burn_is_active(&s->burn))
 		Burn_register(&s->burn, pl->position);
@@ -408,7 +408,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			if (shielded)
 				Defender_notify_shield_hit(pl->position);
 			else
-				Audio_play_sample(&sampleHit);
+				Audio_play_sample_at(&sampleHit, pl->position);
 
 			/* Getting shot immediately aggroes */
 			if (s->aiState == SEEKER_IDLE) {
@@ -422,7 +422,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			s->aiState = SEEKER_DYING;
 			s->deathTimer = 0;
 			s->killedByPlayer = true;
-			Audio_play_sample(&sampleDeath);
+			Audio_play_sample_at(&sampleDeath, pl->position);
 			Enemy_on_player_kill(&dmg);
 		}
 	}
@@ -512,7 +512,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			}
 			if (s->hp < hpBefore) {
 				activate_spark(pl->position, false);
-				Audio_play_sample(&sampleHit);
+				Audio_play_sample_at(&sampleHit, pl->position);
 			}
 			/* Feedback spillover self-kill */
 			if (s->hp <= 0.0) {
@@ -520,7 +520,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 				s->aiState = SEEKER_DYING;
 				s->deathTimer = 0;
 				s->killedByPlayer = false;
-				Audio_play_sample(&sampleDeath);
+				Audio_play_sample_at(&sampleDeath, pl->position);
 				break;
 			}
 			/* Transition to windup */
@@ -552,7 +552,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 		if (s->windupTimer >= WINDUP_MS) {
 			s->aiState = SEEKER_DASHING;
 			s->dashStartPos = pl->position;
-			SubDash_try_activate(&s->dashCore, &seekerDashCfg, s->pendingDirX, s->pendingDirY);
+			SubDash_try_activate(&s->dashCore, &seekerDashCfg, s->pendingDirX, s->pendingDirY, pl->position);
 			/* Fire seeker: spawn initial corridor segment at dash origin */
 			if (s->theme == THEME_FIRE && seekerCorridorInitialized) {
 				seekerCorridorCore.spawn_timer = 0;
@@ -675,7 +675,7 @@ void Seeker_update(void *state, const PlaceableComponent *placeable, unsigned in
 			Burn_reset(&s->burn);
 			pl->position = s->spawnPoint;
 			pick_wander_target(s);
-			Audio_play_sample(&sampleRespawn);
+			Audio_play_sample_at(&sampleRespawn, pl->position);
 		}
 		break;
 	}

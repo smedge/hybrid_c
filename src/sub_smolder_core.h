@@ -2,6 +2,7 @@
 #define SUB_SMOLDER_CORE_H
 
 #include <stdbool.h>
+#include "position.h"
 
 /*
  * Sub Smolder Core — Heat shimmer stealth (fire variant of stealth)
@@ -39,11 +40,11 @@ typedef struct {
 const SubSmolderConfig *SubSmolder_get_config(void);
 
 void SubSmolder_init(SubSmolderCore *core);
-bool SubSmolder_try_activate(SubSmolderCore *core, const SubSmolderConfig *cfg);
+bool SubSmolder_try_activate(SubSmolderCore *core, const SubSmolderConfig *cfg, Position pos);
 void SubSmolder_activate_silent(SubSmolderCore *core, const SubSmolderConfig *cfg);
-void SubSmolder_break(SubSmolderCore *core);
-void SubSmolder_break_attack(SubSmolderCore *core);
-void SubSmolder_update(SubSmolderCore *core, const SubSmolderConfig *cfg, unsigned int ticks);
+void SubSmolder_break(SubSmolderCore *core, Position pos);
+void SubSmolder_break_attack(SubSmolderCore *core, Position pos);
+void SubSmolder_update(SubSmolderCore *core, const SubSmolderConfig *cfg, unsigned int ticks, Position pos);
 void SubSmolder_reset(SubSmolderCore *core);
 
 bool SubSmolder_is_active(const SubSmolderCore *core);

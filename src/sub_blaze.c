@@ -76,7 +76,7 @@ void Sub_Blaze_try_activate(void)
 		dy = cos(heading * DEG_TO_RAD);
 	}
 
-	if (SubDash_try_activate(&dashCore, &dashCfg, dx, dy)) {
+	if (SubDash_try_activate(&dashCore, &dashCfg, dx, dy, Ship_get_position())) {
 		PlayerStats_add_feedback(FEEDBACK_COST);
 		PlayerStats_set_iframes(dashCfg.duration_ms);
 		playerBlazeCore.spawn_timer = 0;

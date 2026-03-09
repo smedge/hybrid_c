@@ -75,7 +75,9 @@ void Destructible_update(unsigned int ticks)
 					MapCell cell = {false, strcmp(ct->pattern, "circuit") == 0,
 						ct->primaryColor, ct->outlineColor};
 					Map_set_cell(ds->grid_x, ds->grid_y, &cell);
-					Audio_play_sample(&respawnSample);
+					Position respawnPos = {(ds->grid_x - HALF_MAP_SIZE) * MAP_CELL_SIZE,
+					                       (ds->grid_y - HALF_MAP_SIZE) * MAP_CELL_SIZE};
+					Audio_play_sample_at(&respawnSample, respawnPos);
 				}
 				ds->destroyed = false;
 			}

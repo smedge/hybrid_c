@@ -47,7 +47,7 @@ typedef struct {
 const SubScorchConfig *SubScorch_get_config(void);
 
 void SubScorch_init(SubScorchCore *core);
-bool SubScorch_try_activate(SubScorchCore *core, const SubScorchConfig *cfg);
+bool SubScorch_try_activate(SubScorchCore *core, const SubScorchConfig *cfg, Position pos);
 bool SubScorch_update(SubScorchCore *core, const SubScorchConfig *cfg, unsigned int ticks);
 bool SubScorch_is_active(const SubScorchCore *core);
 float SubScorch_get_cooldown_fraction(const SubScorchCore *core, const SubScorchConfig *cfg);

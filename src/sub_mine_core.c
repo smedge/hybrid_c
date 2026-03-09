@@ -35,7 +35,7 @@ bool SubMine_arm(SubMineCore *core, const SubMineConfig *cfg, Position pos)
 	core->phase = MINE_PHASE_ARMED;
 	core->position = pos;
 	core->phaseTicks = 0;
-	Audio_play_sample(&sampleArm);
+	Audio_play_sample_at(&sampleArm, pos);
 	(void)cfg;
 	return true;
 }
@@ -46,7 +46,7 @@ void SubMine_detonate(SubMineCore *core)
 		return;
 	core->phase = MINE_PHASE_EXPLODING;
 	core->phaseTicks = 0;
-	Audio_play_sample(&sampleExplode);
+	Audio_play_sample_at(&sampleExplode, core->position);
 }
 
 MinePhase SubMine_update(SubMineCore *core, const SubMineConfig *cfg, unsigned int ticks)
@@ -57,7 +57,7 @@ MinePhase SubMine_update(SubMineCore *core, const SubMineConfig *cfg, unsigned i
 		if (core->phaseTicks >= cfg->armed_duration_ms) {
 			core->phase = MINE_PHASE_EXPLODING;
 			core->phaseTicks = 0;
-			Audio_play_sample(&sampleExplode);
+			Audio_play_sample_at(&sampleExplode, core->position);
 			return MINE_PHASE_EXPLODING;
 		}
 		break;

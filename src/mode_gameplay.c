@@ -43,6 +43,7 @@
 #include "confirm_dialog.h"
 #include "global_render.h"
 #include "global_update.h"
+#include "audio.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -643,6 +644,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	Burn_update_player(ticks);
 
 	SpatialGrid_set_player_bucket(Ship_get_position().x, Ship_get_position().y);
+	Audio_set_listener_position(Ship_get_position().x, Ship_get_position().y);
 	GlobalUpdate_pre_collision(ticks);
 	Entity_ai_update_system(ticks);
 	Entity_collision_system();

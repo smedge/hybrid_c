@@ -25,7 +25,7 @@ void SubDash_init(SubDashCore *core)
 	core->hitThisDash = false;
 }
 
-bool SubDash_try_activate(SubDashCore *core, const SubDashConfig *cfg, double dirX, double dirY)
+bool SubDash_try_activate(SubDashCore *core, const SubDashConfig *cfg, double dirX, double dirY, Position pos)
 {
 	if (core->active || core->cooldownMs > 0)
 		return false;
@@ -34,7 +34,7 @@ bool SubDash_try_activate(SubDashCore *core, const SubDashConfig *cfg, double di
 	core->dirX = dirX;
 	core->dirY = dirY;
 	core->hitThisDash = false;
-	Audio_play_sample(&sampleDash);
+	Audio_play_sample_at(&sampleDash, pos);
 	return true;
 }
 

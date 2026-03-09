@@ -80,7 +80,7 @@ bool SubProjectile_try_fire(SubProjectilePool *pool, const SubProjectileConfig *
 	p->headingCos = cos(rad);
 	p->speedMult = 1.0;
 
-	Audio_play_sample(&sampleFire);
+	Audio_play_sample_at(&sampleFire, origin);
 
 	return true;
 }
@@ -119,7 +119,8 @@ void SubProjectile_update(SubProjectilePool *pool, const SubProjectileConfig *cf
 			pool->sparkPosition.y = hy;
 			pool->sparkTicksLeft = cfg->spark_duration_ms;
 			p->active = false;
-			Audio_play_sample(&sampleHit);
+			Position hitPos = {hx, hy};
+			Audio_play_sample_at(&sampleHit, hitPos);
 		}
 	}
 

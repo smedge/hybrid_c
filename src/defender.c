@@ -326,7 +326,7 @@ static bool try_heal_ally(DefenderState *d, PlaceableComponent *pl)
 	if (d->hp < hpBefore) {
 		int idx = (int)(d - defenders);
 		activate_spark(placeables[idx].position, false);
-		Audio_play_sample(&sampleHit);
+		Audio_play_sample_at(&sampleHit, pl->position);
 	}
 
 	if (isFire) {
@@ -362,7 +362,7 @@ static void activate_aegis(DefenderState *d)
 	if (d->hp < hpBefore) {
 		int idx = (int)(d - defenders);
 		activate_spark(placeables[idx].position, false);
-		Audio_play_sample(&sampleHit);
+		Audio_play_sample_at(&sampleHit, placeables[idx].position);
 	}
 	/* Feedback spillover self-kill */
 	if (d->hp <= 0.0) {
@@ -373,10 +373,11 @@ static void activate_aegis(DefenderState *d)
 		return;
 	}
 
+	int defIdx = (int)(d - defenders);
 	if (isFire)
-		SubImmolate_try_activate(&d->immolateCore);
+		SubImmolate_try_activate(&d->immolateCore, placeables[defIdx].position);
 	else
-		SubShield_try_activate(&d->shieldCore, &defShieldCfg);
+		SubShield_try_activate(&d->shieldCore, &defShieldCfg, placeables[defIdx].position);
 }
 
 /* ---- Public API ---- */
@@ -559,7 +560,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 		d->aiState = DEFENDER_DYING;
 		d->deathTimer = 0;
 		d->killedByPlayer = true;
-		Audio_play_sample(&sampleDeath);
+		Audio_play_sample_at(&sampleDeath, pl->position);
 	}
 	if (d->alive && Burn_is_active(&d->burn))
 		Burn_register(&d->burn, pl->position);
@@ -573,10 +574,10 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 	/* --- Tick timers --- */
 	if (d->theme == THEME_FIRE) {
 		SubCauterize_update(&d->cauterizeCore, SubCauterize_get_defender_config(), ticks);
-		SubImmolate_update(&d->immolateCore, ticks);
+		SubImmolate_update(&d->immolateCore, ticks, pl->position);
 	} else {
 		SubHeal_update(&d->healCore, &defHealCfg, ticks);
-		SubShield_update(&d->shieldCore, &defShieldCfg, ticks);
+		SubShield_update(&d->shieldCore, &defShieldCfg, ticks, pl->position);
 	}
 
 	if (d->alive)
@@ -598,18 +599,18 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 				if (dmg.mine_hit) {
 					/* Mine breaks shield — no damage, grace outlasts explosion */
 					if (d->theme == THEME_FIRE)
-						SubImmolate_break(&d->immolateCore);
+						SubImmolate_break(&d->immolateCore, pl->position);
 					else
-						SubShield_break(&d->shieldCore, &defShieldCfg);
+						SubShield_break(&d->shieldCore, &defShieldCfg, pl->position);
 				}
 				if (d->theme == THEME_FIRE)
-					SubImmolate_on_hit(&d->immolateCore);
+					SubImmolate_on_hit(&d->immolateCore, pl->position);
 				else
-					SubShield_on_hit(&d->shieldCore);
+					SubShield_on_hit(&d->shieldCore, pl->position);
 			} else {
 				d->hp -= dmg.damage + (dmg.mine_hit ? dmg.mine_damage : 0.0);
 				Burn_apply_from_hits(&d->burn, dmg.burn_hits);
-				Audio_play_sample(&sampleHit);
+				Audio_play_sample_at(&sampleHit, pl->position);
 
 				/* Self-shield reaction — pop aegis after taking damage */
 				if (!dmg.ambush)
@@ -628,7 +629,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			d->aiState = DEFENDER_DYING;
 			d->deathTimer = 0;
 			d->killedByPlayer = true;
-			Audio_play_sample(&sampleDeath);
+			Audio_play_sample_at(&sampleDeath, pl->position);
 			Enemy_on_player_kill(&dmg);
 		}
 	}
@@ -852,7 +853,7 @@ void Defender_update(void *state, const PlaceableComponent *placeable, unsigned 
 			Burn_reset(&d->burn);
 			pl->position = d->spawnPoint;
 			pick_wander_target(d);
-			Audio_play_sample(&sampleRespawn);
+			Audio_play_sample_at(&sampleRespawn, pl->position);
 		}
 		break;
 	}
@@ -1064,9 +1065,9 @@ void Defender_notify_shield_hit(Position pos)
 		double dist = Enemy_distance_between(placeables[i].position, pos);
 		if (dist < PROTECT_RADIUS) {
 			if (d->theme == THEME_FIRE)
-				SubImmolate_on_hit(&d->immolateCore);
+				SubImmolate_on_hit(&d->immolateCore, placeables[i].position);
 			else
-				SubShield_on_hit(&d->shieldCore);
+				SubShield_on_hit(&d->shieldCore, placeables[i].position);
 			return;
 		}
 	}

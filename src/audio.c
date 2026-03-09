@@ -1,10 +1,17 @@
 #include "audio.h"
+#include <math.h>
 
 static Mix_Music *music = NULL;
 
 static float masterMusic = 1.0f;
 static float masterSFX   = 1.0f;
 static float masterVoice = 1.0f;
+
+static float listenerX = 0.0f;
+static float listenerY = 0.0f;
+
+#define SPATIAL_FULL_RADIUS  1600.0f
+#define SPATIAL_MAX_RADIUS   6400.0f
 
 // TODO audio files/resonrces SHOUD be managed here, not in the entities
 
@@ -67,6 +74,37 @@ void Audio_play_sample(Mix_Chunk **sample)
 {
 	if (Mix_PlayChannel(-1, *sample, 0) == -1)
 		printf("WARNING: out of audio channels: %s\n", Mix_GetError());
+}
+
+void Audio_set_listener_position(float x, float y)
+{
+	listenerX = x;
+	listenerY = y;
+}
+
+static float spatial_volume(float x, float y)
+{
+	float dx = x - listenerX;
+	float dy = y - listenerY;
+	float dist = sqrtf(dx * dx + dy * dy);
+	if (dist <= SPATIAL_FULL_RADIUS)
+		return 1.0f;
+	if (dist >= SPATIAL_MAX_RADIUS)
+		return 0.0f;
+	return 1.0f - (dist - SPATIAL_FULL_RADIUS) / (SPATIAL_MAX_RADIUS - SPATIAL_FULL_RADIUS);
+}
+
+void Audio_play_sample_at(Mix_Chunk **sample, Position pos)
+{
+	float vol = spatial_volume((float)pos.x, (float)pos.y);
+	if (vol <= 0.0f)
+		return;
+	int ch = Mix_PlayChannel(-1, *sample, 0);
+	if (ch == -1) {
+		printf("WARNING: out of audio channels: %s\n", Mix_GetError());
+		return;
+	}
+	Mix_Volume(ch, (int)(vol * masterSFX * MIX_MAX_VOLUME));
 }
 
 int Audio_play_sample_on_channel(Mix_Chunk **sample, int channel)

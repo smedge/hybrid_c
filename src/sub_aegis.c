@@ -45,7 +45,7 @@ void Sub_Aegis_cleanup(void)
 void Sub_Aegis_try_activate(void)
 {
 	if (SubShield_is_active(&core)) return;
-	if (SubShield_try_activate(&core, &cfg)) {
+	if (SubShield_try_activate(&core, &cfg, Ship_get_position())) {
 		PlayerStats_set_shielded(true);
 		PlayerStats_add_feedback(FEEDBACK_COST);
 	}
@@ -61,11 +61,11 @@ void Sub_Aegis_update(const Input *input, unsigned int ticks)
 	} else {
 		/* Check if shield was broken externally (e.g. by mine) */
 		if (!PlayerStats_is_shielded()) {
-			SubShield_break(&core, &cfg);
+			SubShield_break(&core, &cfg, Ship_get_position());
 			return;
 		}
 		/* Tick the core — returns true if shield just expired */
-		if (SubShield_update(&core, &cfg, ticks)) {
+		if (SubShield_update(&core, &cfg, ticks, Ship_get_position())) {
 			PlayerStats_set_shielded(false);
 			return;
 		}
@@ -73,7 +73,7 @@ void Sub_Aegis_update(const Input *input, unsigned int ticks)
 
 	/* Tick cooldown when not active */
 	if (!SubShield_is_active(&core))
-		SubShield_update(&core, &cfg, ticks);
+		SubShield_update(&core, &cfg, ticks, Ship_get_position());
 }
 
 void Sub_Aegis_render(void)
@@ -98,5 +98,5 @@ float Sub_Aegis_get_cooldown_fraction(void)
 
 void Sub_Aegis_on_hit(void)
 {
-	SubShield_on_hit(&core);
+	SubShield_on_hit(&core, Ship_get_position());
 }

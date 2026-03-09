@@ -35,7 +35,7 @@ void Sub_Scorch_try_activate(void)
 	if (Skillbar_find_equipped_slot(SUB_ID_SCORCH) < 0)
 		return;
 
-	if (SubScorch_try_activate(&scorchCore, SubScorch_get_config()))
+	if (SubScorch_try_activate(&scorchCore, SubScorch_get_config(), Ship_get_position()))
 		PlayerStats_add_feedback(SCORCH_FEEDBACK_COST);
 }
 

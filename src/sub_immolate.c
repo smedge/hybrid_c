@@ -27,7 +27,7 @@ void Sub_Immolate_cleanup(void)
 void Sub_Immolate_try_activate_player(void)
 {
 	if (SubImmolate_is_active(&core)) return;
-	if (SubImmolate_try_activate(&core)) {
+	if (SubImmolate_try_activate(&core, Ship_get_position())) {
 		PlayerStats_set_shielded(true);
 		PlayerStats_add_feedback(FEEDBACK_COST);
 	}
@@ -43,11 +43,11 @@ void Sub_Immolate_update(const Input *input, unsigned int ticks)
 	} else {
 		/* Check if shield was broken externally */
 		if (!PlayerStats_is_shielded()) {
-			SubImmolate_break(&core);
+			SubImmolate_break(&core, Ship_get_position());
 			return;
 		}
 		/* Tick the core — returns true if shield just expired */
-		if (SubImmolate_update(&core, ticks)) {
+		if (SubImmolate_update(&core, ticks, Ship_get_position())) {
 			PlayerStats_set_shielded(false);
 			return;
 		}
@@ -55,7 +55,7 @@ void Sub_Immolate_update(const Input *input, unsigned int ticks)
 
 	/* Tick cooldown when not active */
 	if (!SubImmolate_is_active(&core))
-		SubImmolate_update(&core, ticks);
+		SubImmolate_update(&core, ticks, Ship_get_position());
 }
 
 void Sub_Immolate_render(void)
@@ -82,7 +82,7 @@ float Sub_Immolate_get_cooldown_fraction(void)
 
 void Sub_Immolate_on_hit(void)
 {
-	SubImmolate_on_hit(&core);
+	SubImmolate_on_hit(&core, Ship_get_position());
 }
 
 int Sub_Immolate_check_burn(Rectangle target)

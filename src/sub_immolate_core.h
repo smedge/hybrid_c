@@ -19,14 +19,14 @@ typedef struct {
 const SubImmolateConfig *SubImmolate_get_config(void);
 
 void SubImmolate_init(SubImmolateCore *core);
-bool SubImmolate_try_activate(SubImmolateCore *core);
-void SubImmolate_break(SubImmolateCore *core);
-bool SubImmolate_update(SubImmolateCore *core, unsigned int ticks);
+bool SubImmolate_try_activate(SubImmolateCore *core, Position pos);
+void SubImmolate_break(SubImmolateCore *core, Position pos);
+bool SubImmolate_update(SubImmolateCore *core, unsigned int ticks, Position pos);
 bool SubImmolate_is_active(const SubImmolateCore *core);
 bool SubImmolate_in_grace(const SubImmolateCore *core);
 float SubImmolate_get_cooldown_fraction(const SubImmolateCore *core);
 int SubImmolate_check_burn(SubImmolateCore *core, Position shield_pos, Rectangle target);
-void SubImmolate_on_hit(SubImmolateCore *core);
+void SubImmolate_on_hit(SubImmolateCore *core, Position pos);
 
 /* Rendering */
 void SubImmolate_render_ring(const SubImmolateCore *core, Position pos);

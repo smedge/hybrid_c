@@ -35,28 +35,28 @@ void SubShield_init(SubShieldCore *core)
 	core->graceMs = 0;
 }
 
-bool SubShield_try_activate(SubShieldCore *core, const SubShieldConfig *cfg)
+bool SubShield_try_activate(SubShieldCore *core, const SubShieldConfig *cfg, Position pos)
 {
 	if (core->active || core->cooldownMs > 0)
 		return false;
 	core->active = true;
 	core->activeMs = cfg->duration_ms;
 	core->pulseTimer = 0.0f;
-	Audio_play_sample(&sampleActivate);
+	Audio_play_sample_at(&sampleActivate, pos);
 	return true;
 }
 
-void SubShield_break(SubShieldCore *core, const SubShieldConfig *cfg)
+void SubShield_break(SubShieldCore *core, const SubShieldConfig *cfg, Position pos)
 {
 	if (!core->active)
 		return;
 	core->active = false;
 	core->cooldownMs = cfg->cooldown_ms;
 	core->graceMs = cfg->break_grace_ms;
-	Audio_play_sample(&sampleDeactivate);
+	Audio_play_sample_at(&sampleDeactivate, pos);
 }
 
-bool SubShield_update(SubShieldCore *core, const SubShieldConfig *cfg, unsigned int ticks)
+bool SubShield_update(SubShieldCore *core, const SubShieldConfig *cfg, unsigned int ticks, Position pos)
 {
 	if (core->graceMs > 0)
 		core->graceMs -= (int)ticks;
@@ -68,7 +68,7 @@ bool SubShield_update(SubShieldCore *core, const SubShieldConfig *cfg, unsigned 
 			core->activeMs = 0;
 			core->active = false;
 			core->cooldownMs = cfg->cooldown_ms;
-			Audio_play_sample(&sampleDeactivate);
+			Audio_play_sample_at(&sampleDeactivate, pos);
 			return true;
 		}
 	} else if (core->cooldownMs > 0) {
@@ -99,10 +99,10 @@ float SubShield_get_cooldown_fraction(const SubShieldCore *core, const SubShield
 	return 0.0f;
 }
 
-void SubShield_on_hit(const SubShieldCore *core)
+void SubShield_on_hit(const SubShieldCore *core, Position pos)
 {
 	if (core->active || core->graceMs > 0)
-		Audio_play_sample(&sampleHit);
+		Audio_play_sample_at(&sampleHit, pos);
 }
 
 void SubShield_render_ring(const SubShieldCore *core, const SubShieldConfig *cfg, Position pos)

@@ -497,7 +497,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		s->aiState = STALKER_DYING;
 		s->deathTimer = 0;
 		s->killedByPlayer = true;
-		Audio_play_sample(&sampleDeath);
+		Audio_play_sample_at(&sampleDeath, pl->position);
 	}
 	if (s->alive && Burn_is_active(&s->burn))
 		Burn_register(&s->burn, pl->position);
@@ -508,9 +508,13 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 	/* Compute stealth alpha */
 	s->stealthAlpha = compute_stealth_alpha(s, globalTicks);
 
-	/* Fire stalker: tick smolder core */
-	if (s->theme == THEME_FIRE)
-		SubSmolder_update(&s->smolderCore, SubSmolder_get_config(), ticks);
+	/* Fire stalker: tick smolder core, re-cloak when cooldown expires */
+	if (s->theme == THEME_FIRE) {
+		SubSmolder_update(&s->smolderCore, SubSmolder_get_config(), ticks, pl->position);
+		if (s->smolderCore.state == SMOLDER_READY && s->aiState != STALKER_DYING
+			&& s->aiState != STALKER_DEAD)
+			SubSmolder_try_activate(&s->smolderCore, SubSmolder_get_config(), pl->position);
+	}
 
 	/* Tick dash cooldown every frame so it doesn't freeze outside DASHING state */
 	if (!s->dashCore.active && s->dashCore.cooldownMs > 0) {
@@ -537,7 +541,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			if (shielded)
 				Defender_notify_shield_hit(pl->position);
 			else
-				Audio_play_sample(&sampleHit);
+				Audio_play_sample_at(&sampleHit, pl->position);
 
 			/* Getting shot immediately aggroes */
 			if (s->aiState == STALKER_IDLE) {
@@ -551,7 +555,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			s->aiState = STALKER_DYING;
 			s->deathTimer = 0;
 			s->killedByPlayer = true;
-			Audio_play_sample(&sampleDeath);
+			Audio_play_sample_at(&sampleDeath, pl->position);
 			Enemy_on_player_kill(&dmg);
 		}
 	}
@@ -601,7 +605,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 				break;
 			if (s->hp < hpBefore) {
 				activate_spark(pl->position, false);
-				Audio_play_sample(&sampleHit);
+				Audio_play_sample_at(&sampleHit, pl->position);
 			}
 			/* Feedback spillover self-kill */
 			if (s->hp <= 0.0) {
@@ -609,7 +613,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 				s->aiState = STALKER_DYING;
 				s->deathTimer = 0;
 				s->killedByPlayer = false;
-				Audio_play_sample(&sampleDeath);
+				Audio_play_sample_at(&sampleDeath, pl->position);
 				break;
 			}
 			s->aiState = STALKER_WINDING_UP;
@@ -639,11 +643,11 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		if (s->windupTimer >= WINDUP_MS) {
 			s->aiState = STALKER_DASHING;
 			const SubDashConfig *dcfg = stalker_dash_config(s);
-			SubDash_try_activate(&s->dashCore, dcfg, s->pendingDirX, s->pendingDirY);
+			SubDash_try_activate(&s->dashCore, dcfg, s->pendingDirX, s->pendingDirY, pl->position);
 
 			/* Fire stalker: break smolder on dash (ambush attack) */
 			if (s->theme == THEME_FIRE && SubSmolder_is_active(&s->smolderCore)) {
-				SubSmolder_break_attack(&s->smolderCore);
+				SubSmolder_break_attack(&s->smolderCore, pl->position);
 				/* Reset corridor spawn timer for fresh trail */
 				if (stalkerCorridorInitialized)
 					stalkerCorridorCore.spawn_timer = 0;
@@ -722,7 +726,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 			if (EnemyFeedback_try_spend(&s->fb, 5.0, &s->hp)) {
 				if (s->hp < hpBefore) {
 					activate_spark(pl->position, false);
-					Audio_play_sample(&sampleHit);
+					Audio_play_sample_at(&sampleHit, pl->position);
 				}
 				SubProjectile_try_fire(&stalkerProjPool, Sub_Pea_get_config(), pl->position, shipPos);
 				s->retreatShotFired = true;
@@ -731,7 +735,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 					s->aiState = STALKER_DYING;
 					s->deathTimer = 0;
 					s->killedByPlayer = false;
-					Audio_play_sample(&sampleDeath);
+					Audio_play_sample_at(&sampleDeath, pl->position);
 					break;
 				}
 			}
@@ -741,7 +745,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 		if (s->retreatTimer >= RETREAT_RESTEALTH_MS) {
 			/* Fire stalker: re-activate smolder cloak */
 			if (s->theme == THEME_FIRE)
-				SubSmolder_try_activate(&s->smolderCore, SubSmolder_get_config());
+				SubSmolder_try_activate(&s->smolderCore, SubSmolder_get_config(), pl->position);
 
 			/* Back to idle if player out of range, else re-stalk */
 			if (!Ship_is_destroyed() && !Sub_Stealth_is_stealthed()) {
@@ -785,7 +789,7 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 				SubSmolder_activate_silent(&s->smolderCore, SubSmolder_get_config());
 			pl->position = s->spawnPoint;
 			pick_wander_target(s);
-			Audio_play_sample(&sampleRespawn);
+			Audio_play_sample_at(&sampleRespawn, pl->position);
 		}
 		break;
 	}

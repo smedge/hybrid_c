@@ -64,24 +64,24 @@ void SubImmolate_init(SubImmolateCore *core)
 	core->aura_burn_timer = 0;
 }
 
-bool SubImmolate_try_activate(SubImmolateCore *core)
+bool SubImmolate_try_activate(SubImmolateCore *core, Position pos)
 {
-	return SubShield_try_activate(&core->shield, &immolateConfig.shield);
+	return SubShield_try_activate(&core->shield, &immolateConfig.shield, pos);
 }
 
-void SubImmolate_break(SubImmolateCore *core)
+void SubImmolate_break(SubImmolateCore *core, Position pos)
 {
-	SubShield_break(&core->shield, &immolateConfig.shield);
+	SubShield_break(&core->shield, &immolateConfig.shield, pos);
 }
 
-bool SubImmolate_update(SubImmolateCore *core, unsigned int ticks)
+bool SubImmolate_update(SubImmolateCore *core, unsigned int ticks, Position pos)
 {
 	if (core->aura_burn_timer > 0) {
 		core->aura_burn_timer -= (int)ticks;
 		if (core->aura_burn_timer < 0)
 			core->aura_burn_timer = 0;
 	}
-	return SubShield_update(&core->shield, &immolateConfig.shield, ticks);
+	return SubShield_update(&core->shield, &immolateConfig.shield, ticks, pos);
 }
 
 bool SubImmolate_is_active(const SubImmolateCore *core)
@@ -133,9 +133,9 @@ int SubImmolate_check_burn(SubImmolateCore *core, Position shield_pos, Rectangle
 	return 0;
 }
 
-void SubImmolate_on_hit(SubImmolateCore *core)
+void SubImmolate_on_hit(SubImmolateCore *core, Position pos)
 {
-	SubShield_on_hit(&core->shield);
+	SubShield_on_hit(&core->shield, pos);
 }
 
 /* --- Rendering --- */

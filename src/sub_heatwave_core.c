@@ -67,7 +67,7 @@ bool SubHeatwave_try_activate(SubHeatwaveCore *core, const SubHeatwaveConfig *cf
 	core->visualActive = true;
 	core->visualTimer = 0;
 	core->visualCenter = center;
-	Audio_play_sample(&sampleFire);
+	Audio_play_sample_at(&sampleFire, center);
 	return true;
 }
 
