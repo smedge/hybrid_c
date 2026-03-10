@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include "zone.h"
 
-#define CHUNK_MAX_CELLS  4096
-#define CHUNK_MAX_SPAWNS 32
+#define CHUNK_MAX_CELLS  16384
+#define CHUNK_MAX_SPAWNS 128
 
 typedef enum {
 	OBSTACLE_ORGANIC,
