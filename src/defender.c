@@ -476,6 +476,7 @@ void Defender_cleanup(void)
 		SubImmolate_cleanup_audio();
 		fireDefInitialized = false;
 	}
+	pipelineRegistered = false;
 }
 
 Collision Defender_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)

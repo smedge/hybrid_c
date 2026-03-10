@@ -69,17 +69,18 @@ bool SubFlak_try_fire(SubProjectilePool *pool, const SubFlakConfig *cfg,
 	double spread_rad = cfg->spread_half_angle_deg * M_PI / 180.0;
 
 	/* Spawn pellets with random offsets within the cone + slight speed variation */
+	uint32_t vid = SubProjectile_next_volley_id();
 	for (int i = 0; i < cfg->pellets_per_shot; i++) {
 		double offset = ((double)(rand() % 10000) / 10000.0 - 0.5) * 2.0 * spread_rad;
 		double pellet_rad = base_rad + offset;
 		SubProjectile_spawn_pellet(pool, origin, pellet_rad);
 	}
-	/* Apply per-pellet speed variation to freshly spawned pellets (ticksLived == 0) */
+	/* Apply per-pellet speed variation + volley ID to freshly spawned pellets */
 	for (int i = 0; i < pool->poolSize; i++) {
 		SubProjectile *p = &pool->projectiles[i];
 		if (p->active && p->ticksLived == 0) {
-			/* +/-10% speed variation for a cloud-of-shot feel */
 			p->speedMult = 0.9 + (double)(rand() % 200) / 1000.0;
+			p->volley_id = vid;
 		}
 	}
 

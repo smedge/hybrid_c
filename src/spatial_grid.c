@@ -33,6 +33,7 @@ static bool entity_is_valid(EntityRef ref)
 	case ENTITY_DEFENDER: return ref.index < Defender_get_count();
 	case ENTITY_STALKER:  return ref.index < Stalker_get_count();
 	case ENTITY_CORRUPTOR: return ref.index < Corruptor_get_count();
+	case ENTITY_BOSS_PYRAXIS: return ref.index == 0; /* single instance */
 	}
 	return false;
 }

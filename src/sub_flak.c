@@ -91,6 +91,13 @@ int Sub_Flak_check_hit_burn(Rectangle target)
 	return r.hits;
 }
 
+int Sub_Flak_check_hit_burn_capped(Rectangle target, int max_per_volley)
+{
+	const SubFlakConfig *cfg = SubFlak_get_config();
+	SubProjectileHitResult r = SubProjectile_check_hit_multi_capped(&pool, &cfg->proj, target, max_per_volley);
+	return r.hits;
+}
+
 bool Sub_Flak_check_nearby(Position pos, double radius)
 {
 	return SubProjectile_check_nearby(&pool, pos, radius);

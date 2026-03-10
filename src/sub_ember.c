@@ -121,6 +121,21 @@ int Sub_Ember_check_hit_burn(Rectangle target)
 	return r.hits;
 }
 
+int Sub_Ember_check_hit_burn_capped(Rectangle target, int max_per_volley)
+{
+	const SubEmberConfig *cfg = SubEmber_get_config();
+	SubProjectileHitResult r = SubProjectile_check_hit_multi_capped(&pool, &cfg->proj, target, max_per_volley);
+
+	if (r.hits > 0) {
+		Position impact;
+		impact.x = (target.aX + target.bX) * 0.5;
+		impact.y = (target.aY + target.bY) * 0.5;
+		SubEmber_add_burst(impact);
+	}
+
+	return r.hits;
+}
+
 bool Sub_Ember_check_nearby(Position pos, double radius)
 {
 	return SubProjectile_check_nearby(&pool, pos, radius);

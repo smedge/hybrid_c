@@ -432,6 +432,7 @@ void Corruptor_cleanup(void)
 		SubScorch_deactivate_all_footprints();
 		corruptorFootprintsInitialized = false;
 	}
+	pipelineRegistered = false;
 }
 
 Collision Corruptor_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)

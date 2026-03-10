@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 
-PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos)
+static PlayerDamageResult check_player_damage_internal(Rectangle hitBox, Position enemyPos, int volley_cap)
 {
 	PlayerDamageResult r = {false, false, false, 0.0, 0.0};
 	double dist = Enemy_distance_between(enemyPos, Ship_get_position());
@@ -56,7 +56,9 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 		r.damage += tgun_dmg * mul;
 		r.hit = true;
 	}
-	int flak_hits = Sub_Flak_check_hit_burn(hitBox);
+	int flak_hits = (volley_cap > 0)
+		? Sub_Flak_check_hit_burn_capped(hitBox, volley_cap)
+		: Sub_Flak_check_hit_burn(hitBox);
 	if (flak_hits > 0) {
 		const SubFlakConfig *flak_cfg = SubFlak_get_config();
 		r.damage += flak_hits * flak_cfg->proj.damage * mul;
@@ -64,7 +66,9 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 		r.hit = true;
 	}
 	/* Ember projectile direct hits */
-	int ember_hits = Sub_Ember_check_hit_burn(hitBox);
+	int ember_hits = (volley_cap > 0)
+		? Sub_Ember_check_hit_burn_capped(hitBox, volley_cap)
+		: Sub_Ember_check_hit_burn(hitBox);
 	if (ember_hits > 0) {
 		const SubEmberConfig *ember_cfg = SubEmber_get_config();
 		r.damage += ember_hits * ember_cfg->proj.damage * mul;
@@ -141,6 +145,16 @@ PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos
 	}
 
 	return r;
+}
+
+PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos)
+{
+	return check_player_damage_internal(hitBox, enemyPos, 0);
+}
+
+PlayerDamageResult Enemy_check_player_damage_capped(Rectangle hitBox, Position enemyPos, int max_per_volley)
+{
+	return check_player_damage_internal(hitBox, enemyPos, max_per_volley);
 }
 
 void Enemy_on_player_kill(const PlayerDamageResult *dmg)

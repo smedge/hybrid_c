@@ -30,8 +30,9 @@ landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
 landmark_portal exit_point portal_to_003 ./resources/zones/procgen_003.zone portal_to_002
 landmark_savepoint exit_point save_002
 
-landmark exit_point resources/chunks/portal_boss.chunk 1 moderate 80 0.6 2
-landmark_portal exit_point_02 portal_to_pyraxis ./resources/zones/pyraxis.zone portal_to_002
+landmark boss_portal resources/chunks/portal_boss.chunk 1 moderate 80 0.6 2
+landmark_portal boss_portal portal_to_pyraxis ./resources/zones/pyraxis.zone portal_from_crucible
+landmark_savepoint boss_portal save_boss
 
 
 landmark data_node_crucible_01 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2

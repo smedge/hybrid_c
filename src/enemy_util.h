@@ -20,6 +20,10 @@ typedef struct {
    distance from enemyPos to ship. Returns damage split: non-mine vs mine. */
 PlayerDamageResult Enemy_check_player_damage(Rectangle hitBox, Position enemyPos);
 
+/* Volley-capped variant: limits multi-hit weapons (flak/ember) to max_per_volley
+   hits per firing event. 0 = unlimited. Use for large targets like bosses. */
+PlayerDamageResult Enemy_check_player_damage_capped(Rectangle hitBox, Position enemyPos, int max_per_volley);
+
 /* Call when an enemy is killed by the player. Handles ambush kill rewards. */
 void Enemy_on_player_kill(const PlayerDamageResult *dmg);
 

@@ -153,6 +153,7 @@ void Mine_cleanup()
 	highestUsedIndex = 0;
 
 	Audio_unload_sample(&sampleRespawn);
+	pipelineRegistered = false;
 }
 
 Collision Mine_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)

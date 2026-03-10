@@ -396,6 +396,7 @@ void Stalker_cleanup(void)
 	Audio_unload_sample(&sampleDeath);
 	Audio_unload_sample(&sampleRespawn);
 	Audio_unload_sample(&sampleHit);
+	pipelineRegistered = false;
 }
 
 Collision Stalker_collide(void *state, const PlaceableComponent *placeable, const Rectangle boundingBox)

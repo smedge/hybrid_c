@@ -10,6 +10,7 @@
 #include "defender.h"
 #include "stalker.h"
 #include "corruptor.h"
+#include "boss_pyraxis.h"
 #include "portal.h"
 #include "savepoint.h"
 #include "data_node.h"
@@ -1195,6 +1196,7 @@ void Zone_rebuild_enemies(void)
 	Defender_cleanup();
 	Stalker_cleanup();
 	Corruptor_cleanup();
+	BossPyraxis_cleanup();
 	EnemyRegistry_clear();
 	Entity_recalculate_highest_index();
 	Zone_spawn_enemies();
@@ -1226,6 +1228,8 @@ void Zone_spawn_enemies(void)
 			Stalker_initialize(pos, zone.theme);
 		else if (strcmp(sp->enemy_type, "corruptor") == 0)
 			Corruptor_initialize(pos, zone.theme);
+		else if (strcmp(sp->enemy_type, "boss_pyraxis") == 0)
+			BossPyraxis_initialize(pos);
 	}
 }
 
@@ -1278,6 +1282,7 @@ static void apply_zone_to_world(void)
 	Defender_cleanup();
 	Stalker_cleanup();
 	Corruptor_cleanup();
+	BossPyraxis_cleanup();
 	EnemyRegistry_clear();
 	Portal_cleanup();
 	Savepoint_cleanup();

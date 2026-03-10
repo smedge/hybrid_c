@@ -13,6 +13,12 @@
 
 static Mix_Chunk *sampleFire = 0;
 static Mix_Chunk *sampleHit = 0;
+static uint32_t volleyCounter = 0;
+
+uint32_t SubProjectile_next_volley_id(void)
+{
+	return ++volleyCounter;
+}
 
 void SubProjectile_initialize_audio(void)
 {
@@ -79,6 +85,7 @@ bool SubProjectile_try_fire(SubProjectilePool *pool, const SubProjectileConfig *
 	p->headingSin = sin(rad);
 	p->headingCos = cos(rad);
 	p->speedMult = 1.0;
+	p->volley_id = SubProjectile_next_volley_id();
 
 	Audio_play_sample_at(&sampleFire, origin);
 
@@ -202,19 +209,71 @@ bool SubProjectile_spawn_pellet(SubProjectilePool *pool, Position origin, double
 	p->headingSin = sin(heading_rad);
 	p->headingCos = cos(heading_rad);
 	p->speedMult = 1.0;
+	p->volley_id = 0;
 	return true;
 }
 
 SubProjectileHitResult SubProjectile_check_hit_multi(SubProjectilePool *pool,
 	const SubProjectileConfig *cfg, Rectangle target)
 {
-	SubProjectileHitResult result = {0.0, 0};
+	SubProjectileHitResult result = {0.0, 0, 0, {0}, {0}};
 	for (int i = 0; i < pool->poolSize; i++) {
 		SubProjectile *p = &pool->projectiles[i];
 		if (!p->active)
 			continue;
 		if (Collision_line_aabb_test(p->prevPosition.x, p->prevPosition.y,
 				p->position.x, p->position.y, target, NULL)) {
+			p->active = false;
+			result.damage += cfg->damage;
+			result.hits++;
+
+			/* Track per-volley hits */
+			int vi = -1;
+			for (int v = 0; v < result.volley_count; v++) {
+				if (result.volley_ids[v] == p->volley_id) { vi = v; break; }
+			}
+			if (vi < 0 && result.volley_count < SUB_PROJ_MAX_VOLLEYS) {
+				vi = result.volley_count++;
+				result.volley_ids[vi] = p->volley_id;
+				result.volley_hits[vi] = 0;
+			}
+			if (vi >= 0)
+				result.volley_hits[vi]++;
+		}
+	}
+	return result;
+}
+
+SubProjectileHitResult SubProjectile_check_hit_multi_capped(SubProjectilePool *pool,
+	const SubProjectileConfig *cfg, Rectangle target, int max_per_volley)
+{
+	SubProjectileHitResult result = {0.0, 0, 0, {0}, {0}};
+	for (int i = 0; i < pool->poolSize; i++) {
+		SubProjectile *p = &pool->projectiles[i];
+		if (!p->active)
+			continue;
+		if (Collision_line_aabb_test(p->prevPosition.x, p->prevPosition.y,
+				p->position.x, p->position.y, target, NULL)) {
+
+			/* Check volley cap before accepting this hit */
+			if (max_per_volley > 0 && p->volley_id != 0) {
+				int vi = -1;
+				for (int v = 0; v < result.volley_count; v++) {
+					if (result.volley_ids[v] == p->volley_id) { vi = v; break; }
+				}
+				if (vi >= 0 && result.volley_hits[vi] >= max_per_volley) {
+					p->active = false; /* projectile consumed but no damage */
+					continue;
+				}
+				if (vi < 0 && result.volley_count < SUB_PROJ_MAX_VOLLEYS) {
+					vi = result.volley_count++;
+					result.volley_ids[vi] = p->volley_id;
+					result.volley_hits[vi] = 0;
+				}
+				if (vi >= 0)
+					result.volley_hits[vi]++;
+			}
+
 			p->active = false;
 			result.damage += cfg->damage;
 			result.hits++;

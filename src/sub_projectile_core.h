@@ -2,6 +2,7 @@
 #define SUB_PROJECTILE_CORE_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include "position.h"
 #include "collision.h"
 
@@ -15,6 +16,7 @@ typedef struct {
 	double headingCos;
 	double speedMult;   /* per-pellet speed multiplier (default 1.0) */
 	int ticksLived;
+	uint32_t volley_id; /* identifies which firing event spawned this projectile */
 } SubProjectile;
 
 typedef struct {
@@ -64,12 +66,23 @@ float SubProjectile_get_cooldown_fraction(const SubProjectilePool *pool, const S
 bool SubProjectile_spawn_pellet(SubProjectilePool *pool, Position origin, double heading_rad);
 
 /* Check hits against ALL projectiles, returns total damage + hit count. */
+#define SUB_PROJ_MAX_VOLLEYS 8  /* max distinct volleys tracked per hit check */
 typedef struct {
 	double damage;
 	int hits;
+	int volley_count;                          /* distinct volleys that hit */
+	uint32_t volley_ids[SUB_PROJ_MAX_VOLLEYS]; /* IDs of those volleys */
+	int volley_hits[SUB_PROJ_MAX_VOLLEYS];     /* hits per volley */
 } SubProjectileHitResult;
 SubProjectileHitResult SubProjectile_check_hit_multi(SubProjectilePool *pool,
 	const SubProjectileConfig *cfg, Rectangle target);
+
+/* Volley-capped variant: max_per_volley=0 means unlimited */
+SubProjectileHitResult SubProjectile_check_hit_multi_capped(SubProjectilePool *pool,
+	const SubProjectileConfig *cfg, Rectangle target, int max_per_volley);
+
+/* Get a new unique volley ID (call once per firing event) */
+uint32_t SubProjectile_next_volley_id(void);
 
 void SubProjectile_render(const SubProjectilePool *pool, const SubProjectileConfig *cfg);
 void SubProjectile_render_bloom(const SubProjectilePool *pool, const SubProjectileConfig *cfg);
