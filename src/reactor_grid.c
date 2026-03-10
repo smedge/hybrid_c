@@ -18,12 +18,12 @@ static const float SQUARE_GAP      = 160.0f;   /* gap between squares */
 /* Colors */
 static const float FILL_R          = 0.06f;    /* dark metallic fill */
 static const float FILL_G          = 0.06f;
-static const float FILL_B          = 0.08f;
+static const float FILL_B          = 0.06f;
 static const float FILL_A          = 0.9f;
 
 static const float BORDER_R        = 0.12f;    /* slightly lighter border */
 static const float BORDER_G        = 0.12f;
-static const float BORDER_B        = 0.16f;
+static const float BORDER_B        = 0.12f;
 static const float BORDER_A        = 0.9f;
 static const float BORDER_WIDTH    = 3.0f;     /* border thickness in world units */
 
@@ -171,7 +171,7 @@ void ReactorGrid_render_stencil(const Mat4 *projection, const Mat4 *view)
 
 	/* Write stencil=2, no color output */
 	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_ALWAYS, 2, 0xFF);
+	glStencilFunc(GL_ALWAYS, 3, 0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 	glStencilMask(0xFF);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);

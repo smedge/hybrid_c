@@ -39,12 +39,12 @@ void BossHUD_render(void)
 	Mat4 identity = Mat4_identity();
 
 	float cx = screen.width * 0.5f;
-	float y = screen.height - BAR_TOP_MARGIN;
+	float y = BAR_TOP_MARGIN;
 
 	float left = cx - BAR_WIDTH * 0.5f;
 	float right = cx + BAR_WIDTH * 0.5f;
 	float top = y;
-	float bottom = y - BAR_HEIGHT;
+	float bottom = y + BAR_HEIGHT;
 
 	/* Background (dark) */
 	Render_quad_absolute(left - BAR_BORDER, top + BAR_BORDER,
@@ -90,6 +90,6 @@ void BossHUD_render(void)
 	TextRenderer *tr = Graphics_get_text_renderer();
 	Shaders *shaders = Graphics_get_shaders();
 	Text_render(tr, shaders, &uiProj, &identity,
-	            "PYRAXIS", cx - 28.0f, top + 16.0f,
+	            "PYRAXIS", cx - 28.0f, top - 16.0f,
 	            0.9f, 0.5f, 0.2f, 0.9f);
 }

@@ -45,6 +45,7 @@
 #include "global_update.h"
 #include "audio.h"
 #include "reactor_grid.h"
+#include "boss_hud.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -822,6 +823,7 @@ void Mode_Gameplay_render(void)
 	Render_set_pass(&ui_proj, &identity);
 	Hud_render(&screen);
 	PlayerStats_render(&screen);
+	BossHUD_render();
 	Progression_render(&screen);
 	Zone_render_notification();
 	Savepoint_render_notification(&screen);
