@@ -16,6 +16,7 @@
 #include "spatial_grid.h"
 #include "collision.h"
 #include "burn.h"
+#include "reactor_grid.h"
 
 
 #include <math.h>
@@ -523,6 +524,9 @@ void BossPyraxis_initialize(Position position)
 
 	boss.initialized = true;
 
+	/* Reactor grid midground */
+	ReactorGrid_initialize((float)position.x, (float)position.y);
+
 	/* Start the encounter — trigger intro speech immediately */
 	boss.state = BOSS_INTRO_SPEECH;
 	boss.stateTimer = 0;
@@ -544,6 +548,7 @@ void BossPyraxis_cleanup(void)
 	Audio_unload_sample(&sampleDeath);
 
 	BossHUD_set_active(false);
+	ReactorGrid_cleanup();
 
 	boss.initialized = false;
 	boss.pipelineRegistered = false;
@@ -604,6 +609,9 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 		float eyeProgress = (float)boss.stateTimer / (float)REVEAL_EYES_MS;
 		if (eyeProgress > 1.0f) eyeProgress = 1.0f;
 		boss.eyeAlpha = eyeProgress;
+
+		/* Reactor grid grows with overall reveal */
+		ReactorGrid_set_scale(revealProgress);
 
 		/* Swirl: particles start far out and converge inward */
 		if (boss.stateTimer >= REVEAL_EYES_MS) {
@@ -671,6 +679,11 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 	}
 
 	case BOSS_DYING: {
+		/* Reactor grid shrinks over full death sequence */
+		float deathFrac = (float)boss.stateTimer / (float)DEATH_TOTAL_MS;
+		if (deathFrac > 1.0f) deathFrac = 1.0f;
+		ReactorGrid_set_scale(1.0f - deathFrac);
+
 		/* 8-second death sequence */
 		/* Swirl scatters outward (0 - DEATH_SCATTER_MS) */
 		if (boss.stateTimer < DEATH_SCATTER_MS) {

@@ -44,6 +44,7 @@
 #include "global_render.h"
 #include "global_update.h"
 #include "audio.h"
+#include "reactor_grid.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -720,6 +721,11 @@ void Mode_Gameplay_render(void)
 		Bloom_composite(bg_bloom, draw_w, draw_h);
 	}
 
+	/* Reactor grid midground — between cloudscape and arena floor */
+	Render_set_pass(&world_proj, &view);
+	ReactorGrid_render(&world_proj, &view);
+	Render_flush(&world_proj, &view);
+
 	/* Snap world-pass vertices to physical pixel grid (eliminates sub-pixel
 	   line flicker on displays where norm units != physical pixels) */
 	Render_set_pixel_snap(draw_w, draw_h);
@@ -736,7 +742,10 @@ void Mode_Gameplay_render(void)
 	/* Circuit trace overlay (pre-baked textured quads) */
 	CircuitAtlas_render();
 
-	/* Cloud reflection on solid blocks (also writes stencil for lighting) */
+	/* Reactor grid stencil — write stencil=2 so grid squares get cloud reflections */
+	ReactorGrid_render_stencil(&world_proj, &view);
+
+	/* Cloud reflection on solid blocks + reactor grid (also writes stencil for lighting) */
 	MapReflect_render(&world_proj, &view, draw_w, draw_h);
 
 	/* Light FBO — weapon lighting on map cells */
