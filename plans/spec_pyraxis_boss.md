@@ -51,7 +51,11 @@ Pyraxis is the fire zone's sector controller — the root process that runs ever
 
 ### Visual Design
 
-- **Core shape**: A large swirling cloud of mostly black with deep red-orange bleeding through — like a dark star collapsing. Diameter of ~1600 units (16 cells across, ~800u radius — dramatically larger than any normal enemy). No hard geometric edges — it's a churning mass rendered via the `particle_instance` system. Hundreds of dark blobs orbit the center at varying speeds and distances, with scattered bright ember particles mixed in. The shape is alive, constantly shifting, never quite the same frame to frame.
+- **Core shape**: A large swirling cloud of mostly black with deep red-orange bleeding through — like a dark star collapsing. Diameter of ~1600 units (16 cells across, ~800u radius — dramatically larger than any normal enemy). No hard geometric edges — it's a churning mass rendered via the `particle_instance` system. The shape is alive, constantly shifting, never quite the same frame to frame.
+- **Swirl particle specs** (tunable):
+  - ~400-500 large blobs — the cloud body. Black/near-black/dark crimson, `PI_SHAPE_SOFT` or `PI_SHAPE_FLAME`. Orbit radii ranging 100-800u from center. Varying orbital speeds. Mix of CW and CCW orbits for chaotic churning. Large particles with alpha, additively/multiplicatively blended to achieve a fiery cloud effect rather than individual visible blobs.
+  - ~50-80 ember sparks — bright orange/white hot points scattered through the cloud. Faster orbits, smaller size, high bloom contribution. These are the "volcanic" accent.
+  - Phase escalation: rotation speeds increase, ember count/brightness increases, color shifts from black-dominant to red-orange-dominant across P1→P2→P3.
 - **Color palette**: Predominantly black/near-black particles with dark crimson and burnt orange swirled through. NOT a bright fire — this is something that consumes light. The darkness is the threat. The occasional ember flare is what makes it feel volcanic rather than void.
 - **Eyes**: Two fiery points set in the upper mass of the swirl. Bright orange-white cores with heavy bloom halos. Always tracking the player. The brightest things in the arena — the only consistent points of light in the churning dark. Rendered as small bright triangles + dedicated bloom. The eyes are what make this feel alive and intelligent — without them it's a storm; with them it's watching you.
 - **Scale and presence**: Pyraxis should dominate the arena visually. Against the cold dark reactor grid background, this burning dark mass is unmistakable. The player should feel small. The swirl should extend far enough that navigating near the center means weaving through the outer edges of the cloud.
@@ -71,6 +75,7 @@ Pyraxis is the fire zone's sector controller — the root process that runs ever
 
 - **Always damageable** (no invuln gates outside phase transitions). The challenge isn't accessing the node — it's surviving long enough to shoot it while the arena tries to kill you.
 - **No movement**: Stationary target. The player always knows where to aim. The difficulty is getting clear moments to fire.
+- **Collision hitbox**: 80% of the visual swirl radius (~640u radius, 1280u diameter). Tunable. The outer fringes of the particle cloud are visual — shots need to land in the dense core to register.
 
 ## HP & Phase Thresholds
 
@@ -205,7 +210,13 @@ With only one zone active, 3/4 of the outer arena is always safe. The player jus
 
 ### Node Attacks
 
-**Ember Volley** — radial projectile bursts from the node. These are boss-specific projectiles (NOT `sub_projectile_core` — dedicated ember pool, fire-colored, slower than player peas).
+**Ember Volley** — radial projectile bursts from the node. These are boss-specific projectiles (NOT `sub_projectile_core` — dedicated ember pool with its own collision and rendering).
+
+**Ember projectile specs:**
+- **Visual**: Fireballs — `PI_SHAPE_FLAME` instanced quads, orange-red core with bright bloom halo. Noticeably larger than player pea projectiles (~2-3× visual size).
+- **Collision radius**: ~30u (bigger than peas, matches visual size)
+- **Pool size**: 128 embers max (enough for overlapping patterns)
+- **Despawn**: at ~40 cells from center (4000u) or on wall hit
 
 | Pattern | Projectiles | Speed | Interval | Dodge Method |
 |---------|-------------|-------|----------|--------------|
@@ -447,18 +458,40 @@ The arena is coming apart. The node is desperate. This lasts ~15-20 seconds at m
 
 ---
 
-## Victory
+## Encounter Flow
 
-1. All turrets deactivate — beams die, housings go dark
+### Arena Entry
+
+1. Player enters portal from Crucible zone → standard warp transition → arrives at arena center
+2. Arena is dark and quiet. No enemies, no hazards, no Pyraxis visible.
+3. **Intro speech** triggers as data node dialog (player movement locked). Pyraxis's voice speaks from the darkness. Player dismisses lines with the standard data node interaction (click to advance, top-right notification for continuation).
+4. After speech dismissal, player movement unlocks. Brief moment (~3s) to look around the quiet arena.
+5. **Center burn ignites** — the 32×32 center zone starts ticking 5 integrity/sec, forcing the player to move outward.
+6. **Pyraxis materializes** as the player retreats — eyes appear first (two bright points fading in), then the swirl coalesces inward from scattered particles converging on center (~3s fade-in, reverse of the death sequence). The dark cloud builds from nothing to full 1600u diameter.
+7. Once Pyraxis is fully formed, Phase 1 begins — turrets activate, burn zone rotation starts, first seekers spawn, ember volleys begin.
+
+**On death**: Player respawns at the savepoint outside the portal in the Crucible zone. Full restart — re-enter the portal, hear the speech again, fight from 100% HP.
+
+### Death Sequence (~8s)
+
+1. All turrets deactivate — beams die, pillar circuits go dark (~1s)
 2. Burn zones extinguish — floor cools to neutral
-3. Spawned enemies die instantly
-4. The swirl destabilizes — rotation reverses, particles scatter outward in a violent burst, ember particles flare white-hot then fade. The massive dark cloud disperses like smoke, revealing only the two burning eyes suspended in empty space.
-5. Conduit lines in the arena walls flicker and go dark
-6. Eyes dim slowly — the last points of light in the arena. The last thing to die.
-7. Brief silence. The arena cools. The reactor grid is visible now — cold steel, no reflection, no light.
-8. Inferno fragment drops from where the eyes were — **this fragment never times out**. It persists until collected. The player earned this.
-9. Post-defeat voice line (CRU-09 recording)
-10. On fragment collection, the player is transported back to the Pyraxis portal landmark within the Crucible zone.
+3. Spawned enemies die instantly (fire sucked toward center)
+4. The swirl destabilizes — rotation reverses, particles scatter outward in a violent burst, ember particles flare white-hot then fade. The massive dark cloud disperses like smoke (~2-3s)
+5. Only the two burning eyes remain — suspended in empty space where the cloud was
+6. Conduit lines in the arena walls flicker and go dark
+7. Eyes dim slowly — the last points of light in the arena. The last thing to die. (~2-3s)
+8. Brief silence. The arena cools. The reactor grid is visible — cold steel, no reflection, no light. (~1-2s)
+
+Total: ~8 seconds. The player just fought their ass off — let them breathe.
+
+### Victory
+
+1. Death sequence completes (8s)
+2. **Death speech** triggers as data node dialog (CRU-09 recording). Same presentation as intro — data node style with dismiss and continuation notification.
+3. After speech dismissal, **elite inferno fragment** spawns at the position where the eyes were. This fragment is **persistent** — it never times out or despawns. It sits there glowing until collected. The player earned this.
+4. On fragment collection: screen fades to white → player is transported back to the Pyraxis portal in the Crucible zone → standard zoom-in portal arrival animation.
+5. **Portal deactivates** after the player arrives back. The fight is done. Pyraxis is defeated.
 
 ---
 
@@ -562,17 +595,67 @@ Each phase is implemented, tested, and tuned before moving to the next. This let
 
 Build Pyraxis as a shootable entity in the arena. The player can enter, see it, fight it, kill it.
 
-- **boss_pyraxis.c/h** — core module, state machine (simplified: `ACTIVE → DYING → DEFEATED` initially, expand to full phase machine later)
-- **Swirl rendering** — particle_instance system: hundreds of dark blobs orbiting center, scattered embers. 1600u diameter. Get the visual presence right first.
-- **Eyes** — two bright points tracking the player, rendered on top of the swirl via higher render pass. Bloom source.
-- **Damage model** — 10,000 HP, always damageable, collision hitbox sized to the swirl
-- **Boss HP bar** — wide bar at top of screen with phase threshold notches (65%, 25%)
-- **Death sequence** — swirl disperses, eyes linger and dim, fragment drops
-- **Elite fragment drop** — sub_inferno fragment, persists until collected, triggers zone transport on pickup
-- **Ember volleys** — node projectile patterns (ring, spiral, aimed burst). Boss-specific projectile pool.
-- **Heat pulse** — expanding ring attack
-- **Zone wiring** — portal entry from Crucible, spawn point, player start position
-- **Test/tune**: Does the node feel massive and alive? Is the swirl visually dominant? Do the ember patterns feel fair? Is the HP bar readable? Does death feel earned?
+**Entity module:**
+- **boss_pyraxis.c/h** — follows entity module pattern (hunter.c as reference). Single instance, not pooled.
+- **State machine** (simplified for Phase A): `INTRO_SPEECH → REVEAL → ACTIVE → DYING → DEFEATED`
+  - `INTRO_SPEECH`: player locked, data node dialog plays
+  - `REVEAL`: center burn ignites, eyes fade in (~1-2s), swirl coalesces inward (~3s)
+  - `ACTIVE`: node attacks, damageable
+  - `DYING`: 8s death sequence (swirl disperses → eyes linger → eyes dim)
+  - `DEFEATED`: death speech data node dialog → persistent fragment spawn
+- **Zone spawn**: add `boss_pyraxis` spawn type to `Zone_spawn_enemies()`, reads position from zone file
+- **Zone file updates**: add `spawn boss_pyraxis 511 511 1.0` and portal/savepoint entries to `pyraxis.zone`
+
+**Swirl rendering:**
+- `particle_instance` system: ~400-500 dark body blobs + ~50-80 ember sparks
+- Large particles with alpha, additively/multiplicatively blended for fiery cloud effect
+- Mix of CW/CCW orbits at varying radii (100-800u) and speeds
+- 1600u diameter visual, registered as bloom source + light source
+- Fade-in on reveal (reverse of death): eyes appear first, then particles converge inward over ~3s
+
+**Eyes:**
+- Two bright points tracking player angle, rendered on top of swirl via higher render pass
+- Bright orange-white cores + heavy bloom halos
+- Small triangles or quads, always visible through the churning particles
+- Positioned in upper mass of swirl, ~200-300u from center
+
+**Damage model:**
+- 10,000 HP, always damageable (no invuln in Phase A)
+- Collision hitbox: 80% of visual radius (~640u radius, 1280u diameter), tunable
+- Uses `Enemy_check_player_damage()` for hit detection
+
+**Boss HP bar (boss_hud.c/h):**
+- New module — wide bar at top of screen
+- Phase threshold notches at 65% and 25%
+- `BossHUD_set_active(bool)`, `BossHUD_set_health(current, max)`, `BossHUD_render()`
+- Registered via `GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, ...)`
+
+**Ember volleys:**
+- Boss-specific projectile pool (128 max), NOT `sub_projectile_core`
+- `PI_SHAPE_FLAME` instanced quads, orange-red, 2-3× larger than player peas
+- Collision radius ~30u
+- Three patterns: Ring (16 @ 600 u/s), Spiral (3×6 @ 500 u/s), Aimed Burst (5 @ 900 u/s)
+- Despawn at 4000u from center or on wall hit
+
+**Heat pulse:**
+- Expanding ring from center, 1200 u/s, 200u width, 20 damage
+- 2s telegraph (swirl contracts, audio cue)
+- Pillars block the ring (create shadow behind them)
+
+**Death sequence (8s):**
+1. Swirl destabilizes — rotation reverses, particles scatter outward (~2-3s)
+2. Eyes hang in empty space (~2-3s)
+3. Eyes dim and go out (~1-2s)
+4. Silence (~1s)
+
+**Victory flow:**
+- Death speech triggers as data node dialog (CRU-09)
+- After dismissal: persistent elite inferno fragment spawns at eye position
+- Fragment uses existing `fragment.c` with new `persistent` flag (skip despawn timer)
+- On collection: screen fades to white → warp to Crucible portal → standard arrival animation
+- Portal deactivates after return
+
+**Test/tune**: Does the node feel massive and alive? Is the swirl visually dominant? Do the ember patterns feel fair? Is the HP bar readable? Does the 8s death sequence feel dramatic? Does the intro→reveal→fight flow feel cinematic?
 
 ### Phase B — Reactor Grid Midground
 
