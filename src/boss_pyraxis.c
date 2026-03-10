@@ -17,6 +17,9 @@
 #include "collision.h"
 #include "burn.h"
 #include "reactor_grid.h"
+#include "sub_inferno_core.h"
+#include "sub_mine.h"
+#include "sub_cinder.h"
 
 
 #include <math.h>
@@ -80,6 +83,46 @@
 #define CENTER_BURN_HALF_SIZE 1600.0  /* 32 cells * 100u/cell / 2 */
 #define CENTER_BURN_DPS      5.0
 
+/* ----- Turret Constants ----- */
+
+#define TURRET_COUNT         8
+#define JETS_PER_TURRET      2
+#define BLOBS_PER_JET        64
+
+/* Turret pillar distance from boss center (world units) */
+#define TURRET_CARDINAL_DIST 3200.0f
+#define TURRET_DIAGONAL_DIST 3200.0f   /* 32 cells per axis → ~45 cells diagonal */
+
+/* Rotation speeds (degrees/sec) */
+#define TURRET_P1_SPEED      30.0f
+#define TURRET_P2_SPEED      45.0f
+#define TURRET_P3_SPEED      60.0f
+
+/* Turret beam TTL — extended for 16-cell range */
+#define TURRET_BLOB_TTL_MS   640
+
+/* Turret beam damage per hit tick */
+#define TURRET_BEAM_DAMAGE   8.0
+#define TURRET_BEAM_FEEDBACK 4.0
+#define TURRET_HIT_INTERVAL_MS 100  /* ~10 hits/sec while standing in beam */
+
+/* Turret disable (from mine hit on pillar) */
+#define TURRET_DISABLE_MS    5000
+#define TURRET_SPINUP_MS     1000
+
+/* Pillar indices: 0-3 = cardinals (N,S,E,W), 4-7 = diagonals (NE,NW,SE,SW) */
+#define TURRET_N  0
+#define TURRET_S  1
+#define TURRET_E  2
+#define TURRET_W  3
+#define TURRET_NE 4
+#define TURRET_NW 5
+#define TURRET_SE 6
+#define TURRET_SW 7
+
+/* Diagonal rotation — which pair of diagonals are active in P2 */
+#define DIAG_SWAP_INTERVAL_MS 15000
+
 /* Death sequence */
 #define DEATH_TOTAL_MS       8000
 #define DEATH_SCATTER_MS     3000     /* swirl scatters (0-3s) */
@@ -98,10 +141,17 @@ typedef enum {
 	BOSS_INACTIVE,
 	BOSS_INTRO_SPEECH,
 	BOSS_REVEAL,
-	BOSS_ACTIVE,
+	BOSS_PHASE_1,
+	BOSS_TRANSITION_1,
+	BOSS_PHASE_2,
+	BOSS_TRANSITION_2,
+	BOSS_PHASE_3,
 	BOSS_DYING,
 	BOSS_DEFEATED
 } BossState;
+
+/* Helper — is the boss in any active combat phase? */
+#define BOSS_IS_FIGHTING(s) ((s) == BOSS_PHASE_1 || (s) == BOSS_PHASE_2 || (s) == BOSS_PHASE_3)
 
 typedef enum {
 	PATTERN_RING,
@@ -124,6 +174,21 @@ typedef struct {
 	double radius;
 	bool playerHit;    /* only hit player once per pulse */
 } HeatPulse;
+
+/* Inferno turret */
+typedef struct {
+	Position pillar_pos;
+	double current_angle;      /* radians */
+	float rotation_speed;      /* degrees/sec (converted to rad in update) */
+	int direction;             /* +1 or -1 */
+	bool active;               /* turret enabled this phase */
+	bool disabled;             /* knocked offline by mine hit */
+	int disabled_timer;        /* ms remaining until re-enable */
+	float spinup_frac;         /* 0-1, ramps up during spin-up */
+
+	SubInfernoCoreState jets[JETS_PER_TURRET];
+	InfernoBlob jet_blobs[JETS_PER_TURRET][BLOBS_PER_JET];
+} BossTurret;
 
 /* Swirl particle (precomputed orbital params) */
 typedef struct {
@@ -166,12 +231,29 @@ static struct {
 	bool centerBurnActive;
 	int centerBurnAccum;  /* ms accumulator for DOT ticks */
 
+	/* Turrets */
+	BossTurret turrets[TURRET_COUNT];
+	int turretHitTimer;            /* player hit cooldown for beam damage */
+	int diagSwapTimer;             /* diagonal pair swap timer (P2) */
+	int diagActivePair;            /* 0 = NE+SW active, 1 = NW+SE active */
+	int transitionTimer;           /* ms elapsed in transition state */
+
 	/* Entity registration */
 	PlaceableComponent placeable;
 	Entity *entityRef;
 	bool pipelineRegistered;
 	bool initialized;
 } boss;
+
+/* Turret-specific inferno config (extended TTL for longer range) */
+static const SubInfernoConfig turretInfernoCfg = {
+	.spawn_interval_ms = 8,
+	.blob_speed        = 2500.0,
+	.blob_ttl_ms       = TURRET_BLOB_TTL_MS,
+	.base_size         = 18.0f,
+	.spread_degrees    = 5.0,
+	.sound_interval_ms = 400,    /* slower sound rate per turret to avoid cacophony */
+};
 
 /* Shared singleton components */
 static void boss_render_bloom(const void *state, const PlaceableComponent *placeable);
@@ -480,6 +562,226 @@ static void update_center_burn(unsigned int ticks)
 	}
 }
 
+/* ----- Turret helpers ----- */
+
+static const float turretOffsets[TURRET_COUNT][2] = {
+	/* Cardinals: N, S, E, W */
+	{    0.0f,  TURRET_CARDINAL_DIST },
+	{    0.0f, -TURRET_CARDINAL_DIST },
+	{  TURRET_CARDINAL_DIST,  0.0f },
+	{ -TURRET_CARDINAL_DIST,  0.0f },
+	/* Diagonals: NE, NW, SE, SW */
+	{  TURRET_DIAGONAL_DIST,  TURRET_DIAGONAL_DIST },
+	{ -TURRET_DIAGONAL_DIST,  TURRET_DIAGONAL_DIST },
+	{  TURRET_DIAGONAL_DIST, -TURRET_DIAGONAL_DIST },
+	{ -TURRET_DIAGONAL_DIST, -TURRET_DIAGONAL_DIST },
+};
+
+/* Alternating CW/CCW directions for visual variety */
+static const int turretDirections[TURRET_COUNT] = {
+	+1, -1, +1, -1, +1, -1, +1, -1
+};
+
+static void init_turrets(void)
+{
+	for (int i = 0; i < TURRET_COUNT; i++) {
+		BossTurret *t = &boss.turrets[i];
+		t->pillar_pos.x = boss.center.x + turretOffsets[i][0];
+		t->pillar_pos.y = boss.center.y + turretOffsets[i][1];
+		t->current_angle = ((double)rand() / RAND_MAX) * 2.0 * M_PI;
+		t->rotation_speed = TURRET_P1_SPEED;
+		t->direction = turretDirections[i];
+		t->active = false;
+		t->disabled = false;
+		t->disabled_timer = 0;
+		t->spinup_frac = 0.0f;
+
+		for (int j = 0; j < JETS_PER_TURRET; j++)
+			SubInfernoCore_init(&t->jets[j], t->jet_blobs[j], BLOBS_PER_JET);
+	}
+
+	boss.turretHitTimer = 0;
+	boss.diagSwapTimer = DIAG_SWAP_INTERVAL_MS;
+	boss.diagActivePair = 0;
+}
+
+static void activate_phase1_turrets(void)
+{
+	/* Phase 1: N + S cardinals active, 30°/sec */
+	for (int i = 0; i < TURRET_COUNT; i++)
+		boss.turrets[i].active = false;
+
+	boss.turrets[TURRET_N].active = true;
+	boss.turrets[TURRET_S].active = true;
+
+	for (int i = 0; i < TURRET_COUNT; i++) {
+		boss.turrets[i].rotation_speed = TURRET_P1_SPEED;
+		boss.turrets[i].spinup_frac = 1.0f;
+	}
+}
+
+static void activate_phase2_turrets(void)
+{
+	/* Phase 2: all 4 cardinals + 2 diagonals, 45°/sec */
+	for (int i = 0; i < 4; i++)
+		boss.turrets[i].active = true;
+
+	/* Activate first diagonal pair */
+	boss.diagActivePair = 0;
+	boss.turrets[TURRET_NE].active = true;
+	boss.turrets[TURRET_SW].active = true;
+	boss.turrets[TURRET_NW].active = false;
+	boss.turrets[TURRET_SE].active = false;
+
+	for (int i = 0; i < TURRET_COUNT; i++) {
+		boss.turrets[i].rotation_speed = TURRET_P2_SPEED;
+		boss.turrets[i].spinup_frac = 1.0f;
+	}
+
+	boss.diagSwapTimer = DIAG_SWAP_INTERVAL_MS;
+}
+
+static void deactivate_all_turrets(void)
+{
+	for (int i = 0; i < TURRET_COUNT; i++) {
+		boss.turrets[i].active = false;
+		for (int j = 0; j < JETS_PER_TURRET; j++)
+			SubInfernoCore_deactivate_all(&boss.turrets[i].jets[j]);
+	}
+}
+
+static void update_turrets(unsigned int ticks)
+{
+	double dt = ticks / 1000.0;
+
+	/* Diagonal swap for Phase 2 */
+	if (boss.state == BOSS_PHASE_2) {
+		boss.diagSwapTimer -= (int)ticks;
+		if (boss.diagSwapTimer <= 0) {
+			boss.diagSwapTimer = DIAG_SWAP_INTERVAL_MS;
+			boss.diagActivePair = 1 - boss.diagActivePair;
+
+			if (boss.diagActivePair == 0) {
+				boss.turrets[TURRET_NE].active = true;
+				boss.turrets[TURRET_SW].active = true;
+				boss.turrets[TURRET_NW].active = false;
+				boss.turrets[TURRET_SE].active = false;
+			} else {
+				boss.turrets[TURRET_NE].active = false;
+				boss.turrets[TURRET_SW].active = false;
+				boss.turrets[TURRET_NW].active = true;
+				boss.turrets[TURRET_SE].active = true;
+			}
+
+			/* Deactivate blobs on the turrets that just turned off */
+			for (int i = 4; i < 8; i++) {
+				if (!boss.turrets[i].active) {
+					for (int j = 0; j < JETS_PER_TURRET; j++)
+						SubInfernoCore_deactivate_all(&boss.turrets[i].jets[j]);
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < TURRET_COUNT; i++) {
+		BossTurret *t = &boss.turrets[i];
+
+		/* Disabled timer */
+		if (t->disabled) {
+			t->disabled_timer -= (int)ticks;
+			if (t->disabled_timer <= 0) {
+				t->disabled = false;
+				t->spinup_frac = 0.0f; /* start spin-up */
+			}
+			for (int j = 0; j < JETS_PER_TURRET; j++)
+				SubInfernoCore_set_channeling(&t->jets[j], false);
+			continue;
+		}
+
+		/* Spin-up ramp */
+		if (t->spinup_frac < 1.0f) {
+			t->spinup_frac += (float)(dt / (TURRET_SPINUP_MS / 1000.0));
+			if (t->spinup_frac > 1.0f) t->spinup_frac = 1.0f;
+		}
+
+		/* Rotate */
+		double speed_rad = t->rotation_speed * (M_PI / 180.0) * t->direction;
+		t->current_angle += speed_rad * dt;
+
+		/* Jet 0: primary beam direction */
+		bool jet0_on = t->active && t->spinup_frac > 0.1f;
+		SubInfernoCore_set_origin(&t->jets[0], t->pillar_pos);
+		SubInfernoCore_set_aim_angle(&t->jets[0], t->current_angle);
+		SubInfernoCore_set_channeling(&t->jets[0], jet0_on);
+		SubInfernoCore_update(&t->jets[0], &turretInfernoCfg, ticks);
+
+		/* Jet 1: 180° opposed — Phase 2+ only */
+		bool jet1_on = jet0_on && (boss.state == BOSS_PHASE_2 || boss.state == BOSS_PHASE_3);
+		SubInfernoCore_set_origin(&t->jets[1], t->pillar_pos);
+		SubInfernoCore_set_aim_angle(&t->jets[1], t->current_angle + M_PI);
+		SubInfernoCore_set_channeling(&t->jets[1], jet1_on);
+		SubInfernoCore_update(&t->jets[1], &turretInfernoCfg, ticks);
+	}
+}
+
+static void update_turret_player_hits(unsigned int ticks)
+{
+	if (Ship_is_destroyed()) return;
+	if (PlayerStats_has_iframes() || PlayerStats_is_shielded()) return;
+
+	/* Cooldown between hits */
+	if (boss.turretHitTimer > 0) {
+		boss.turretHitTimer -= (int)ticks;
+		return;
+	}
+
+	Position shipPos = Ship_get_position();
+	double hs = 30.0; /* player half-size for hit detection */
+	Rectangle playerBox = {
+		shipPos.x - hs, shipPos.y + hs,
+		shipPos.x + hs, shipPos.y - hs
+	};
+
+	for (int i = 0; i < TURRET_COUNT; i++) {
+		BossTurret *t = &boss.turrets[i];
+		if (!t->active || t->disabled) continue;
+
+		for (int j = 0; j < JETS_PER_TURRET; j++) {
+			if (SubInfernoCore_check_hit(&t->jets[j], playerBox)) {
+				PlayerStats_damage(TURRET_BEAM_DAMAGE);
+				PlayerStats_add_feedback(TURRET_BEAM_FEEDBACK);
+				for (int b = 0; b < 3; b++)
+					Burn_apply_to_player(BURN_DURATION_MS);
+				boss.turretHitTimer = TURRET_HIT_INTERVAL_MS;
+				return; /* one hit per tick */
+			}
+		}
+	}
+}
+
+static void check_turret_mine_disable(void)
+{
+	/* 2x2 pillar = 200x200u */
+	float hs = 100.0f;
+
+	for (int i = 0; i < TURRET_COUNT; i++) {
+		BossTurret *t = &boss.turrets[i];
+		if (!t->active || t->disabled) continue;
+
+		Rectangle pillarBox = {
+			t->pillar_pos.x - hs, t->pillar_pos.y + hs,
+			t->pillar_pos.x + hs, t->pillar_pos.y - hs
+		};
+
+		if (Sub_Mine_check_hit(pillarBox) > 0 || Sub_Cinder_check_hit(pillarBox) > 0) {
+			t->disabled = true;
+			t->disabled_timer = TURRET_DISABLE_MS;
+			for (int j = 0; j < JETS_PER_TURRET; j++)
+				SubInfernoCore_deactivate_all(&t->jets[j]);
+		}
+	}
+}
+
 /* ----- Public API ----- */
 
 void BossPyraxis_initialize(Position position)
@@ -527,6 +829,12 @@ void BossPyraxis_initialize(Position position)
 	/* Reactor grid midground */
 	ReactorGrid_initialize((float)position.x, (float)position.y);
 
+	/* Initialize turrets */
+	init_turrets();
+
+	/* Audio for inferno beams (turrets use the shared core audio) */
+	SubInfernoCore_init_audio();
+
 	/* Start the encounter — trigger intro speech immediately */
 	boss.state = BOSS_INTRO_SPEECH;
 	boss.stateTimer = 0;
@@ -549,6 +857,8 @@ void BossPyraxis_cleanup(void)
 
 	BossHUD_set_active(false);
 	ReactorGrid_cleanup();
+	deactivate_all_turrets();
+	SubInfernoCore_cleanup_audio();
 
 	boss.initialized = false;
 	boss.pipelineRegistered = false;
@@ -557,7 +867,7 @@ void BossPyraxis_cleanup(void)
 
 bool BossPyraxis_is_active(void)
 {
-	return boss.initialized && boss.state == BOSS_ACTIVE;
+	return boss.initialized && BOSS_IS_FIGHTING(boss.state);
 }
 
 /* ----- Update ----- */
@@ -623,18 +933,21 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 			boss.swirlSpeedMult = 0.3f;
 		}
 
-		/* Reveal complete — start the fight */
+		/* Reveal complete — start Phase 1 */
 		if (boss.stateTimer >= REVEAL_SWIRL_MS) {
-			boss.state = BOSS_ACTIVE;
+			boss.state = BOSS_PHASE_1;
 			boss.stateTimer = 0;
 			boss.eyeAlpha = 1.0f;
 			boss.swirlSpeedMult = 1.0f;
+			activate_phase1_turrets();
 		}
 		break;
 	}
 
-	case BOSS_ACTIVE: {
-		/* --- Damage detection --- */
+	case BOSS_PHASE_1:
+	case BOSS_PHASE_2:
+	case BOSS_PHASE_3: {
+		/* --- Damage detection (shared across all combat phases) --- */
 		Rectangle hitBox = {
 			boss.center.x - HITBOX_RADIUS, boss.center.y + HITBOX_RADIUS,
 			boss.center.x + HITBOX_RADIUS, boss.center.y - HITBOX_RADIUS
@@ -650,13 +963,41 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 				boss.state = BOSS_DYING;
 				boss.stateTimer = 0;
 				deactivate_all_embers();
+				deactivate_all_turrets();
 				boss.pulse.active = false;
 				boss.pulseTelegraphing = false;
 				Audio_play_sample_at(&sampleDeath, boss.center);
+				break;
 			}
 		}
 
 		BossHUD_set_health(boss.hp, BOSS_MAX_HP);
+
+		/* --- Phase transitions at HP thresholds --- */
+		double hpFrac = boss.hp / BOSS_MAX_HP;
+		if (boss.state == BOSS_PHASE_1 && hpFrac <= PHASE_2_THRESHOLD) {
+			boss.state = BOSS_TRANSITION_1;
+			boss.transitionTimer = 0;
+			deactivate_all_turrets();
+			deactivate_all_embers();
+			boss.pulse.active = false;
+			boss.pulseTelegraphing = false;
+			break;
+		}
+		if (boss.state == BOSS_PHASE_2 && hpFrac <= PHASE_3_THRESHOLD) {
+			boss.state = BOSS_TRANSITION_2;
+			boss.transitionTimer = 0;
+			deactivate_all_turrets();
+			deactivate_all_embers();
+			boss.pulse.active = false;
+			boss.pulseTelegraphing = false;
+			break;
+		}
+
+		/* --- Turrets --- */
+		update_turrets(ticks);
+		update_turret_player_hits(ticks);
+		check_turret_mine_disable();
 
 		/* --- Ember volley pattern cycling --- */
 		if (boss.patternGapTimer > 0) {
@@ -675,6 +1016,36 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 		/* --- Center burn --- */
 		update_center_burn(ticks);
 
+		break;
+	}
+
+	case BOSS_TRANSITION_1: {
+		boss.transitionTimer += ticks;
+
+		/* 2s invulnerability window — visual spectacle, then Phase 2 */
+		if (boss.transitionTimer >= 2000) {
+			boss.state = BOSS_PHASE_2;
+			boss.stateTimer = 0;
+			activate_phase2_turrets();
+		}
+		break;
+	}
+
+	case BOSS_TRANSITION_2: {
+		boss.transitionTimer += ticks;
+
+		/* 2s invulnerability window, then Phase 3 */
+		if (boss.transitionTimer >= 2000) {
+			boss.state = BOSS_PHASE_3;
+			boss.stateTimer = 0;
+
+			/* Phase 3: all 8 turrets at max speed */
+			for (int i = 0; i < TURRET_COUNT; i++) {
+				boss.turrets[i].active = true;
+				boss.turrets[i].rotation_speed = TURRET_P3_SPEED;
+				boss.turrets[i].spinup_frac = 1.0f;
+			}
+		}
 		break;
 	}
 
@@ -751,7 +1122,7 @@ Collision BossPyraxis_collide(void *state, const PlaceableComponent *placeable, 
 	(void)placeable;
 	Collision collision = {false, false};
 
-	if (boss.state != BOSS_ACTIVE)
+	if (!BOSS_IS_FIGHTING(boss.state))
 		return collision;
 
 	Rectangle bossBox = {
@@ -1033,21 +1404,33 @@ void BossPyraxis_render(const void *state, const PlaceableComponent *placeable)
 	/* Render order: center burn → swirl → eyes → embers → heat pulse */
 	render_center_burn_indicator();
 
-	/* Swirl visible during reveal, active, and dying (scatter) */
-	if (boss.state == BOSS_REVEAL || boss.state == BOSS_ACTIVE ||
+	/* Swirl visible during reveal, active phases, transitions, and dying (scatter) */
+	if (boss.state == BOSS_REVEAL || BOSS_IS_FIGHTING(boss.state) ||
+		boss.state == BOSS_TRANSITION_1 || boss.state == BOSS_TRANSITION_2 ||
 		(boss.state == BOSS_DYING && boss.stateTimer < DEATH_SCATTER_MS)) {
 		render_swirl(1.0f);
 	}
 
-	/* Eyes visible during reveal (fading in), active, and dying (until dim) */
-	if (boss.state == BOSS_REVEAL || boss.state == BOSS_ACTIVE ||
+	/* Eyes visible during reveal, active phases, transitions, and dying (until dim) */
+	if (boss.state == BOSS_REVEAL || BOSS_IS_FIGHTING(boss.state) ||
+		boss.state == BOSS_TRANSITION_1 || boss.state == BOSS_TRANSITION_2 ||
 		(boss.state == BOSS_DYING && boss.stateTimer < DEATH_EYES_DIM_MS)) {
 		render_eyes();
 	}
 
 	/* Embers only during active combat */
-	if (boss.state == BOSS_ACTIVE)
+	if (BOSS_IS_FIGHTING(boss.state))
 		render_embers();
+
+	/* Turret beams */
+	if (BOSS_IS_FIGHTING(boss.state)) {
+		for (int i = 0; i < TURRET_COUNT; i++) {
+			BossTurret *t = &boss.turrets[i];
+			if (!t->active || t->disabled) continue;
+			for (int j = 0; j < JETS_PER_TURRET; j++)
+				SubInfernoCore_render(&t->jets[j], &turretInfernoCfg);
+		}
+	}
 
 	/* Heat pulse render */
 	render_heat_pulse_telegraph();
@@ -1066,7 +1449,8 @@ static void boss_render_bloom(const void *state, const PlaceableComponent *place
 	render_eyes_bloom();
 
 	/* Swirl ember bloom */
-	if (boss.state == BOSS_ACTIVE || boss.state == BOSS_REVEAL) {
+	if (BOSS_IS_FIGHTING(boss.state) || boss.state == BOSS_REVEAL ||
+		boss.state == BOSS_TRANSITION_1 || boss.state == BOSS_TRANSITION_2) {
 		/* Re-render just the ember particles as bloom source */
 		float cx = (float)boss.center.x;
 		float cy = (float)boss.center.y;
@@ -1097,6 +1481,14 @@ static void boss_render_global_bloom(void)
 		Render_point(&pos, 16.0f, &c);
 	}
 
+	/* Turret beam bloom */
+	for (int i = 0; i < TURRET_COUNT; i++) {
+		BossTurret *t = &boss.turrets[i];
+		if (!t->active || t->disabled) continue;
+		for (int j = 0; j < JETS_PER_TURRET; j++)
+			SubInfernoCore_render_bloom(&t->jets[j], &turretInfernoCfg);
+	}
+
 	/* Heat pulse bloom */
 	if (boss.pulse.active) {
 		float cx = (float)boss.center.x;
@@ -1119,11 +1511,20 @@ static void boss_render_global_light(void)
 	if (!boss.initialized || boss.state == BOSS_INACTIVE) return;
 
 	/* Node center glow on map cells */
-	if (boss.state == BOSS_ACTIVE || boss.state == BOSS_REVEAL) {
+	if (BOSS_IS_FIGHTING(boss.state) || boss.state == BOSS_REVEAL ||
+		boss.state == BOSS_TRANSITION_1 || boss.state == BOSS_TRANSITION_2) {
 		Render_filled_circle(
 			(float)boss.center.x, (float)boss.center.y,
 			VISUAL_RADIUS * 1.2f, 24,
 			1.0f, 0.3f, 0.05f, 0.3f);
+	}
+
+	/* Turret beam light */
+	for (int i = 0; i < TURRET_COUNT; i++) {
+		BossTurret *t = &boss.turrets[i];
+		if (!t->active || t->disabled) continue;
+		for (int j = 0; j < JETS_PER_TURRET; j++)
+			SubInfernoCore_render_light(&t->jets[j]);
 	}
 
 	/* Ember projectile light */
@@ -1139,7 +1540,7 @@ static void boss_render_global_light(void)
 static void boss_update_global(unsigned int ticks)
 {
 	if (!boss.initialized) return;
-	if (boss.state != BOSS_ACTIVE) return;
+	if (!BOSS_IS_FIGHTING(boss.state)) return;
 
 	update_embers(ticks);
 }
