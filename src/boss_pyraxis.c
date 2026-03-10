@@ -26,7 +26,7 @@
 
 /* ----- Tuning Constants ----- */
 
-#define BOSS_MAX_HP          10000.0
+#define BOSS_MAX_HP          20000.0
 #define VISUAL_RADIUS        800.0f    /* 1600u diameter / 2 */
 #define HITBOX_RADIUS        640.0     /* 80% of visual radius */
 #define PHASE_2_THRESHOLD    0.65      /* HP fraction */
