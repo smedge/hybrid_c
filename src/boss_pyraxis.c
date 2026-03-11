@@ -133,13 +133,14 @@
 /* Reveal sequence */
 #define REVEAL_EYES_MS       1500    /* eyes fade in first */
 #define REVEAL_SWIRL_MS      4500   /* swirl coalesces (1.5-4.5s total) */
-#define CENTER_IGNITE_DELAY_MS 500  /* center burn starts after speech */
+#define CENTER_IGNITE_DELAY_MS 5000 /* center burn starts 5s after spawn */
 
 /* ----- State ----- */
 
 typedef enum {
 	BOSS_INACTIVE,
 	BOSS_INTRO_SPEECH,
+	BOSS_WAITING_CLEAR,   /* center burn active, waiting for player to leave center */
 	BOSS_REVEAL,
 	BOSS_PHASE_1,
 	BOSS_TRANSITION_1,
@@ -230,6 +231,7 @@ static struct {
 	/* Center burn */
 	bool centerBurnActive;
 	int centerBurnAccum;  /* ms accumulator for DOT ticks */
+	int centerBurnDelay;  /* ms remaining before burn starts damaging */
 
 	/* Turrets */
 	BossTurret turrets[TURRET_COUNT];
@@ -901,13 +903,39 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 		break;
 
 	case BOSS_INTRO_SPEECH:
-		/* Wait for data node dialog to finish */
+		/* Wait for data node dialog to finish, then start burn delay */
 		if (!DataNode_is_reading()) {
-			boss.state = BOSS_REVEAL;
+			boss.state = BOSS_WAITING_CLEAR;
 			boss.stateTimer = 0;
-			boss.centerBurnActive = true;
+			boss.centerBurnDelay = CENTER_IGNITE_DELAY_MS;
 		}
 		break;
+
+	case BOSS_WAITING_CLEAR: {
+		/* Count down ignite delay, then activate center burn */
+		if (boss.centerBurnDelay > 0) {
+			boss.centerBurnDelay -= (int)ticks;
+			if (boss.centerBurnDelay <= 0) {
+				boss.centerBurnActive = true;
+				boss.centerBurnDelay = 0;
+			}
+		}
+
+		/* Center burn forces player out — wait until they're 1600u+ from center */
+		update_center_burn(ticks);
+
+		if (!Ship_is_destroyed()) {
+			Position shipPos = Ship_get_position();
+			double dx = shipPos.x - boss.center.x;
+			double dy = shipPos.y - boss.center.y;
+			double dist = sqrt(dx * dx + dy * dy);
+			if (dist >= 1600.0) {
+				boss.state = BOSS_REVEAL;
+				boss.stateTimer = 0;
+			}
+		}
+		break;
+	}
 
 	case BOSS_REVEAL: {
 		/* Phase 1: eyes fade in (0 - REVEAL_EYES_MS) */
@@ -1379,18 +1407,36 @@ static void render_heat_pulse_telegraph(void)
 
 static void render_center_burn_indicator(void)
 {
-	if (!boss.centerBurnActive) return;
+	/* Show visual during WAITING_CLEAR (telegraph) or when burn is active */
+	bool show_telegraph = (boss.state == BOSS_WAITING_CLEAR);
+	if (!boss.centerBurnActive && !show_telegraph) return;
 
 	float cx = (float)boss.center.x;
 	float cy = (float)boss.center.y;
 	float hs = (float)CENTER_BURN_HALF_SIZE;
 
-	/* Subtle glowing border around center burn zone */
-	float a = 0.2f;
-	Render_line_segment(cx - hs, cy + hs, cx + hs, cy + hs, 1.0f, 0.3f, 0.0f, a);
-	Render_line_segment(cx + hs, cy + hs, cx + hs, cy - hs, 1.0f, 0.3f, 0.0f, a);
-	Render_line_segment(cx + hs, cy - hs, cx - hs, cy - hs, 1.0f, 0.3f, 0.0f, a);
-	Render_line_segment(cx - hs, cy - hs, cx - hs, cy + hs, 1.0f, 0.3f, 0.0f, a);
+	/* Pulsing orange fill */
+	float pulse = sinf((float)boss.stateTimer * 0.003f) * 0.5f + 0.5f; /* 0-1 pulse */
+
+	if (show_telegraph && !boss.centerBurnActive) {
+		/* Pre-ignite telegraph: building intensity as delay counts down */
+		float delayFrac = 1.0f - (float)boss.centerBurnDelay / (float)CENTER_IGNITE_DELAY_MS;
+		float a = delayFrac * 0.15f * (0.5f + pulse * 0.5f);
+		Render_quad_absolute(cx - hs, cy + hs, cx + hs, cy - hs,
+			1.0f, 0.4f, 0.05f, a);
+	} else {
+		/* Active burn: pulsing orange floor */
+		float a = 0.08f + pulse * 0.07f;
+		Render_quad_absolute(cx - hs, cy + hs, cx + hs, cy - hs,
+			1.0f, 0.4f, 0.05f, a);
+	}
+
+	/* Border */
+	float ba = 0.3f + pulse * 0.2f;
+	Render_line_segment(cx - hs, cy + hs, cx + hs, cy + hs, 1.0f, 0.5f, 0.1f, ba);
+	Render_line_segment(cx + hs, cy + hs, cx + hs, cy - hs, 1.0f, 0.5f, 0.1f, ba);
+	Render_line_segment(cx + hs, cy - hs, cx - hs, cy - hs, 1.0f, 0.5f, 0.1f, ba);
+	Render_line_segment(cx - hs, cy - hs, cx - hs, cy + hs, 1.0f, 0.5f, 0.1f, ba);
 }
 
 void BossPyraxis_render(const void *state, const PlaceableComponent *placeable)
