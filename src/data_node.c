@@ -67,7 +67,7 @@ static float duckLevel = 1.0f;   /* current music volume multiplier (0..1) */
 /* SFX ducking during voice playback */
 static float sfxDuckLevel = 1.0f;
 static bool sfxDucking = false;
-#define SFX_DUCK_TARGET 0.50f     /* 50% SFX volume while voice plays */
+#define SFX_DUCK_TARGET 0.25f     /* 25% SFX volume while voice plays */
 
 /* Voice indicator (top-right HUD while voice plays after overlay dismissed) */
 static bool voiceIndicatorActive = false;
@@ -216,9 +216,6 @@ static void begin_reading(const char *node_id)
 {
 	readingEntry = Narrative_get(node_id);
 	if (readingEntry) {
-		reading = true;
-		readingScroll = 0.0f;
-
 		/* Stop any still-playing voice from a previous node */
 		if (voiceChunk) {
 			Mix_HaltChannel(VOICE_CHANNEL);
@@ -234,6 +231,24 @@ static void begin_reading(const char *node_id)
 
 		if (voiceClipCount > 0)
 			play_next_voice_clip();
+
+		/* Voice-only entries (empty body): skip overlay, show voice indicator */
+		if (readingEntry->body[0] == '\0') {
+			reading = false;
+			readingEntry = NULL;
+			if (voiceEntry && voiceClipCount > 0) {
+				voiceIndicatorActive = true;
+				voiceIndicatorFading = false;
+				voiceIndicatorFadeTimer = 0;
+				voiceIndicatorAnimTimer = 0;
+				strncpy(voiceIndicatorTitle, voiceEntry->title,
+					sizeof(voiceIndicatorTitle) - 1);
+				voiceIndicatorTitle[sizeof(voiceIndicatorTitle) - 1] = '\0';
+			}
+		} else {
+			reading = true;
+			readingScroll = 0.0f;
+		}
 	}
 }
 
@@ -872,6 +887,11 @@ void DataNode_trigger_transfer(const char *node_id)
 	begin_reading(node_id);
 	if (sampleCollect)
 		Audio_play_sample(&sampleCollect);
+}
+
+void DataNode_trigger_voice(const char *node_id)
+{
+	begin_reading(node_id);
 }
 
 /* --- Collection tracking --- */

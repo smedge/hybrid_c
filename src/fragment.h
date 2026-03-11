@@ -38,6 +38,7 @@ typedef enum {
 void Fragment_initialize(void);
 void Fragment_cleanup(void);
 void Fragment_spawn(Position position, FragmentType type, SubroutineTier tier);
+void Fragment_spawn_persistent(Position position, FragmentType type, SubroutineTier tier);
 void Fragment_update(unsigned int ticks);
 void Fragment_render(void);
 void Fragment_render_text(const Screen *screen);

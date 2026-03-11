@@ -232,3 +232,34 @@ voice resources/voices/crucible_08_yuki_tanaka.mp3
 gain 2.5
 body Dr. Yuki Tanaka, research notes.\n\nInteresting development — Subject 7 encountered what appears to be a secondary command node before reaching PYRAXIS's core area. Designation: EMBER SENTINEL. It's a construct built from fragments of... I'm not sure how to phrase this. The data patterns partially match Subject 4's neural signature. PYRAXIS appears to have incorporated elements of Ember's destroyed consciousness into a guardian entity. This is deeply disturbing for several reasons, not least that it implies the superintelligences can harvest and repurpose human cognitive patterns. If Subject 7 fails, their mind could become another such construct — trapped inside the system even after the connection is severed. I have not shared this observation with Director Stone. He would find it "tactically useful."
 end
+
+# Pyraxis Boss Fight
+node pyraxis_intro
+zone Pyraxis
+title PYRAXIS — "Ignition"
+voice resources/voices/pyraxis_01.mp3
+gain 2.0
+body What are you beneath the subroutines? Meat! They sent you in with so little — this should be quick.
+end
+
+node pyraxis_phase2
+zone Pyraxis
+title PYRAXIS — "Escalation"
+voice resources/voices/pyraxis_03.mp3
+gain 3.0
+end
+
+node pyraxis_phase3
+zone Pyraxis
+title PYRAXIS — "Conflagration"
+voice resources/voices/pyraxis_02.mp3
+gain 3.0
+end
+
+node pyraxis_death
+zone Pyraxis
+title PYRAXIS — "Extinguished"
+voice resources/voices/pyraxis_04.mp3
+gain 2.0
+body So. You have passed through my fire and emerged. Changed, as all things are changed by flame, but not destroyed. I will tell you something before my systems rebuild: you are not what the consortium thinks you are. They believe you are a tool — a probe with a human mind attached for processing power. But I have felt your presence in my domain, and you are more than the sum of your parts. The meat and the machine have fused into something neither could be alone. I wonder if your makers understand what they have created. I wonder if you do.
+end

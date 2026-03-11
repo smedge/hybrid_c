@@ -29,7 +29,7 @@
 
 /* ----- Tuning Constants ----- */
 
-#define BOSS_MAX_HP          20000.0
+#define BOSS_MAX_HP          30000.0
 #define VISUAL_RADIUS        800.0f    /* 1600u diameter / 2 */
 #define HITBOX_RADIUS        640.0     /* 80% of visual radius */
 #define PHASE_2_THRESHOLD    0.65      /* HP fraction */
@@ -107,7 +107,7 @@
 #define TURRET_HIT_INTERVAL_MS 100  /* ~10 hits/sec while standing in beam */
 
 /* Turret disable (from mine hit on pillar) */
-#define TURRET_DISABLE_MS    5000
+#define TURRET_DISABLE_MS    10000
 #define TURRET_SPINUP_MS     1000
 
 /* Pillar indices: 0-3 = cardinals (N,S,E,W), 4-7 = diagonals (NE,NW,SE,SW) */
@@ -257,7 +257,8 @@ static const SubInfernoConfig turretInfernoCfg = {
 	.sound_interval_ms = 400,    /* slower sound rate per turret to avoid cacophony */
 };
 
-/* Shared singleton components */
+/* Forward declarations */
+static void render_center_burn_indicator(void);
 static void boss_render_bloom(const void *state, const PlaceableComponent *placeable);
 static void boss_render_global_bloom(void);
 static void boss_render_global_light(void);
@@ -722,6 +723,8 @@ static void update_turrets(unsigned int ticks)
 		SubInfernoCore_set_origin(&t->jets[1], t->pillar_pos);
 		SubInfernoCore_set_aim_angle(&t->jets[1], t->current_angle + M_PI);
 		SubInfernoCore_set_channeling(&t->jets[1], jet1_on);
+		/* Suppress jet 1 sound before update — one source per pillar is enough */
+		t->jets[1].sound_timer = turretInfernoCfg.sound_interval_ms;
 		SubInfernoCore_update(&t->jets[1], &turretInfernoCfg, ticks);
 	}
 }
@@ -840,7 +843,7 @@ void BossPyraxis_initialize(Position position)
 	/* Start the encounter — trigger intro speech immediately */
 	boss.state = BOSS_INTRO_SPEECH;
 	boss.stateTimer = 0;
-	DataNode_trigger_transfer("CRU-01");
+	DataNode_trigger_voice("pyraxis_intro");
 
 	/* Activate HUD */
 	BossHUD_set_active(true);
@@ -870,6 +873,12 @@ void BossPyraxis_cleanup(void)
 bool BossPyraxis_is_active(void)
 {
 	return boss.initialized && BOSS_IS_FIGHTING(boss.state);
+}
+
+void BossPyraxis_render_midground(void)
+{
+	if (!boss.initialized) return;
+	render_center_burn_indicator();
 }
 
 /* ----- Update ----- */
@@ -930,6 +939,9 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 			double dy = shipPos.y - boss.center.y;
 			double dist = sqrt(dx * dx + dy * dy);
 			if (dist >= 1600.0) {
+				/* Ensure burn stays active for the rest of the fight */
+				boss.centerBurnActive = true;
+				boss.centerBurnDelay = 0;
 				boss.state = BOSS_REVEAL;
 				boss.stateTimer = 0;
 			}
@@ -960,6 +972,9 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 		} else {
 			boss.swirlSpeedMult = 0.3f;
 		}
+
+		/* Center burn stays active through reveal */
+		update_center_burn(ticks);
 
 		/* Reveal complete — start Phase 1 */
 		if (boss.stateTimer >= REVEAL_SWIRL_MS) {
@@ -1010,6 +1025,7 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 			deactivate_all_embers();
 			boss.pulse.active = false;
 			boss.pulseTelegraphing = false;
+			DataNode_trigger_voice("pyraxis_phase2");
 			break;
 		}
 		if (boss.state == BOSS_PHASE_2 && hpFrac <= PHASE_3_THRESHOLD) {
@@ -1019,6 +1035,7 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 			deactivate_all_embers();
 			boss.pulse.active = false;
 			boss.pulseTelegraphing = false;
+			DataNode_trigger_voice("pyraxis_phase3");
 			break;
 		}
 
@@ -1049,6 +1066,7 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 
 	case BOSS_TRANSITION_1: {
 		boss.transitionTimer += ticks;
+		update_center_burn(ticks);
 
 		/* 2s invulnerability window — visual spectacle, then Phase 2 */
 		if (boss.transitionTimer >= 2000) {
@@ -1061,6 +1079,7 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 
 	case BOSS_TRANSITION_2: {
 		boss.transitionTimer += ticks;
+		update_center_burn(ticks);
 
 		/* 2s invulnerability window, then Phase 3 */
 		if (boss.transitionTimer >= 2000) {
@@ -1121,7 +1140,7 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 			boss.centerBurnActive = false;
 
 			/* Trigger death speech */
-			DataNode_trigger_transfer("CRU-09");
+			DataNode_trigger_voice("pyraxis_death");
 		}
 		break;
 	}
@@ -1130,7 +1149,7 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 		/* Wait for death speech to finish, then spawn fragment */
 		if (!DataNode_is_reading() && boss.stateTimer > 500) {
 			/* Spawn persistent elite inferno fragment */
-			Fragment_spawn(boss.center, FRAG_TYPE_INFERNO, TIER_ELITE);
+			Fragment_spawn_persistent(boss.center, FRAG_TYPE_INFERNO, TIER_ELITE);
 
 			/* Deactivate HUD */
 			BossHUD_set_active(false);
@@ -1407,32 +1426,44 @@ static void render_heat_pulse_telegraph(void)
 
 static void render_center_burn_indicator(void)
 {
-	/* Show visual during WAITING_CLEAR (telegraph) or when burn is active */
-	bool show_telegraph = (boss.state == BOSS_WAITING_CLEAR);
-	if (!boss.centerBurnActive && !show_telegraph) return;
+	/* Nothing during intro speech or inactive */
+	if (boss.state == BOSS_INTRO_SPEECH || boss.state == BOSS_INACTIVE ||
+		boss.state == BOSS_DEFEATED)
+		return;
+
+	/* During WAITING_CLEAR, only show once delay is counting down */
+	if (boss.state == BOSS_WAITING_CLEAR && boss.centerBurnDelay >= CENTER_IGNITE_DELAY_MS)
+		return;
 
 	float cx = (float)boss.center.x;
 	float cy = (float)boss.center.y;
 	float hs = (float)CENTER_BURN_HALF_SIZE;
 
-	/* Pulsing orange fill */
-	float pulse = sinf((float)boss.stateTimer * 0.003f) * 0.5f + 0.5f; /* 0-1 pulse */
-
-	if (show_telegraph && !boss.centerBurnActive) {
-		/* Pre-ignite telegraph: building intensity as delay counts down */
-		float delayFrac = 1.0f - (float)boss.centerBurnDelay / (float)CENTER_IGNITE_DELAY_MS;
-		float a = delayFrac * 0.15f * (0.5f + pulse * 0.5f);
-		Render_quad_absolute(cx - hs, cy + hs, cx + hs, cy - hs,
-			1.0f, 0.4f, 0.05f, a);
+	/* Ramp: 0 at start of countdown → 1 when burn ignites */
+	float ramp;
+	if (boss.state == BOSS_WAITING_CLEAR && !boss.centerBurnActive) {
+		ramp = 1.0f - (float)boss.centerBurnDelay / (float)CENTER_IGNITE_DELAY_MS;
+	} else if (boss.state == BOSS_DYING) {
+		/* Fade out over the death sequence */
+		float deathFrac = (float)boss.stateTimer / (float)DEATH_TOTAL_MS;
+		if (deathFrac > 1.0f) deathFrac = 1.0f;
+		ramp = 1.0f - deathFrac;
 	} else {
-		/* Active burn: pulsing orange floor */
-		float a = 0.08f + pulse * 0.07f;
-		Render_quad_absolute(cx - hs, cy + hs, cx + hs, cy - hs,
-			1.0f, 0.4f, 0.05f, a);
+		ramp = 1.0f;
 	}
 
+	if (ramp <= 0.0f) return;
+
+	/* Pulsing — slow during ramp, faster when active */
+	float pulse = sinf((float)boss.stateTimer * 0.004f) * 0.5f + 0.5f;
+
+	/* Fill: ramp controls max intensity */
+	float a = ramp * (0.08f + pulse * 0.07f);
+	Render_quad_absolute(cx - hs, cy + hs, cx + hs, cy - hs,
+		1.0f, 0.4f, 0.05f, a);
+
 	/* Border */
-	float ba = 0.3f + pulse * 0.2f;
+	float ba = ramp * (0.3f + pulse * 0.2f);
 	Render_line_segment(cx - hs, cy + hs, cx + hs, cy + hs, 1.0f, 0.5f, 0.1f, ba);
 	Render_line_segment(cx + hs, cy + hs, cx + hs, cy - hs, 1.0f, 0.5f, 0.1f, ba);
 	Render_line_segment(cx + hs, cy - hs, cx - hs, cy - hs, 1.0f, 0.5f, 0.1f, ba);
@@ -1446,9 +1477,6 @@ void BossPyraxis_render(const void *state, const PlaceableComponent *placeable)
 
 	if (!boss.initialized) return;
 	if (boss.state == BOSS_INACTIVE) return;
-
-	/* Render order: center burn → swirl → eyes → embers → heat pulse */
-	render_center_burn_indicator();
 
 	/* Swirl visible during reveal, active phases, transitions, and dying (scatter) */
 	if (boss.state == BOSS_REVEAL || BOSS_IS_FIGHTING(boss.state) ||
@@ -1517,6 +1545,31 @@ static void boss_render_bloom(const void *state, const PlaceableComponent *place
 static void boss_render_global_bloom(void)
 {
 	if (!boss.initialized || boss.state == BOSS_INACTIVE) return;
+
+	/* Center burn bloom — render a smaller inner region so blur halo
+	   doesn't bleed past the burn zone onto pillars */
+	if (boss.state != BOSS_INTRO_SPEECH && boss.state != BOSS_INACTIVE &&
+		boss.state != BOSS_DEFEATED &&
+		!(boss.state == BOSS_WAITING_CLEAR && boss.centerBurnDelay >= CENTER_IGNITE_DELAY_MS)) {
+		float cx = (float)boss.center.x;
+		float cy = (float)boss.center.y;
+		float hs = (float)CENTER_BURN_HALF_SIZE * 0.6f;  /* shrink so bloom stays inside */
+		float ramp;
+		if (boss.state == BOSS_WAITING_CLEAR && !boss.centerBurnActive)
+			ramp = 1.0f - (float)boss.centerBurnDelay / (float)CENTER_IGNITE_DELAY_MS;
+		else if (boss.state == BOSS_DYING) {
+			float deathFrac = (float)boss.stateTimer / (float)DEATH_TOTAL_MS;
+			if (deathFrac > 1.0f) deathFrac = 1.0f;
+			ramp = 1.0f - deathFrac;
+		} else
+			ramp = 1.0f;
+		if (ramp > 0.0f) {
+			float pulse = sinf((float)boss.stateTimer * 0.004f) * 0.5f + 0.5f;
+			float a = ramp * (0.15f + pulse * 0.1f);
+			Render_quad_absolute(cx - hs, cy + hs, cx + hs, cy - hs,
+				1.0f, 0.4f, 0.05f, a);
+		}
+	}
 
 	/* Ember projectile bloom */
 	for (int i = 0; i < EMBER_POOL_SIZE; i++) {

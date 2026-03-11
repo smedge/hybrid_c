@@ -23,6 +23,9 @@ bool DataNode_dismiss_reading(void);
 /* Boss-triggered automated transfers (no physical node) */
 void DataNode_trigger_transfer(const char *node_id);
 
+/* Repeatable voice trigger — no collected guard, always plays (boss taunts) */
+void DataNode_trigger_voice(const char *node_id);
+
 /* Collection tracking */
 bool DataNode_is_collected(const char *node_id);
 int DataNode_collected_count(void);

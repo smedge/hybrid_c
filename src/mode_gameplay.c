@@ -46,6 +46,7 @@
 #include "audio.h"
 #include "reactor_grid.h"
 #include "boss_hud.h"
+#include "boss_pyraxis.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -725,6 +726,7 @@ void Mode_Gameplay_render(void)
 	/* Reactor grid midground — between cloudscape and arena floor */
 	Render_set_pass(&world_proj, &view);
 	ReactorGrid_render(&world_proj, &view);
+	BossPyraxis_render_midground();
 	Render_flush(&world_proj, &view);
 
 	/* Snap world-pass vertices to physical pixel grid (eliminates sub-pixel

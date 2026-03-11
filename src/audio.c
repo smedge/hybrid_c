@@ -22,6 +22,9 @@ void Audio_initialize(void)
 		exit(-1);
 	}
 	Mix_AllocateChannels(64);
+	/* Reserve channels 0-4 so Mix_PlayChannel(-1) won't stomp dedicated channels
+	   (1=rebirth, 2=voice, 4=savepoint charge) */
+	Mix_ReserveChannels(5);
 }
 
 void Audio_cleanup(void)

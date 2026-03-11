@@ -15,4 +15,7 @@ void BossPyraxis_resolve(void *state, const Collision collision);
 /* Query for intro speech — movement is locked via DataNode reading overlay */
 bool BossPyraxis_is_active(void);
 
+/* Render center burn zone — call BEFORE map cells (midground layer) */
+void BossPyraxis_render_midground(void);
+
 #endif

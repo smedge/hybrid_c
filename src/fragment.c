@@ -43,6 +43,7 @@ typedef struct {
 	unsigned int ticksAttracting;
 	unsigned int marqueeTimer;
 	float alpha;
+	bool persistent;  /* never despawns — used for boss reward fragments */
 } Fragment;
 
 
@@ -111,6 +112,22 @@ void Fragment_spawn(Position position, FragmentType type, SubroutineTier tier)
 	generate_binary_string(f->binaryText);
 }
 
+void Fragment_spawn_persistent(Position position, FragmentType type, SubroutineTier tier)
+{
+	Fragment_spawn(position, type, tier);
+
+	/* Find the fragment we just spawned and mark it persistent + no drift */
+	for (int i = 0; i < MAX_FRAGMENTS; i++) {
+		Fragment *f = &fragments[i];
+		if (f->active && f->type == type && f->ticksAlive == 0) {
+			f->persistent = true;
+			f->vel_x = 0;
+			f->vel_y = 0;
+			break;
+		}
+	}
+}
+
 void Fragment_update(unsigned int ticks)
 {
 	Position shipPos = Ship_get_position();
@@ -133,18 +150,22 @@ void Fragment_update(unsigned int ticks)
 			f->binaryText[0] = last;
 		}
 
-		/* Expire after lifetime */
-		if (f->ticksAlive >= LIFETIME_MS) {
+		/* Expire after lifetime (persistent fragments never expire) */
+		if (!f->persistent && f->ticksAlive >= LIFETIME_MS) {
 			f->active = false;
 			continue;
 		}
 
 		/* Fade in last 2 seconds */
-		unsigned int remaining = LIFETIME_MS - f->ticksAlive;
-		if (remaining < FADE_MS)
-			f->alpha = (float)remaining / FADE_MS;
-		else
+		if (!f->persistent) {
+			unsigned int remaining = LIFETIME_MS - f->ticksAlive;
+			if (remaining < FADE_MS)
+				f->alpha = (float)remaining / FADE_MS;
+			else
+				f->alpha = 1.0f;
+		} else {
 			f->alpha = 1.0f;
+		}
 
 		/* Distance to ship */
 		double dx = shipPos.x - f->position.x;
