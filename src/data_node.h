@@ -10,6 +10,7 @@
 
 void DataNode_initialize(Position position, const char *node_id);
 void DataNode_cleanup(void);
+void DataNode_stop_voice(void);
 void DataNode_refresh_phases(void);
 void DataNode_update_all(unsigned int ticks);
 void DataNode_render_all(void);

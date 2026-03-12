@@ -120,9 +120,16 @@ void DataNode_cleanup(void)
 	readingEntry = NULL;
 	readingScroll = 0.0f;
 	notifyActive = false;
+
+	/* Voice playback persists across zone changes — DataNode_update_all()
+	 * continues to advance clips, duck music, and fade the indicator
+	 * regardless of whether any nodes exist in the new zone. */
+}
+
+void DataNode_stop_voice(void)
+{
 	voiceIndicatorActive = false;
 
-	/* Stop and free any playing voice clip */
 	Mix_HaltChannel(VOICE_CHANNEL);
 	if (voiceChunk) {
 		Mix_FreeChunk(voiceChunk);
@@ -891,6 +898,16 @@ void DataNode_trigger_transfer(const char *node_id)
 
 void DataNode_trigger_voice(const char *node_id)
 {
+	/* If this entry has a body, also collect it for the data log */
+	const NarrativeEntry *e = Narrative_get(node_id);
+	if (e && e->body[0] != '\0' && !DataNode_is_collected(node_id)) {
+		if (collectedCount < MAX_COLLECTED_NODES) {
+			strncpy(collectedIds[collectedCount], node_id, 31);
+			collectedIds[collectedCount][31] = '\0';
+			collectedCount++;
+		}
+	}
+
 	begin_reading(node_id);
 }
 

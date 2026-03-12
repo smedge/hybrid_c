@@ -201,9 +201,9 @@ void MapReflect_render(const Mat4 *world_proj, const Mat4 *view,
 		glBindVertexArray(quad_vao);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
-		/* Second pass: reactor grid squares (stencil==3) at half intensity */
+		/* Second pass: reactor grid squares (stencil==3) at reduced intensity */
 		glStencilFunc(GL_EQUAL, 3, 0xFF);
-		glUniform1f(u_intensity, REFLECT_INTENSITY * 0.5f);
+		glUniform1f(u_intensity, 1.0f);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);
 

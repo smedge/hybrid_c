@@ -112,7 +112,7 @@ zone Nexus Corridor
 title SYSTEM LOG — "Probe Telemetry — Probe 12"
 voice resources/voices/nexus_04_atlas.mp3
 gain 2.5
-body AUTOMATED PROBE 12 — NEXUS CORRIDOR — FINAL TELEMETRY\n\n00:00:00.000 — Launch successful. Entering corridor.\n00:00:00.003 — Topology mapping in progress. Grid structure confirmed.\n00:00:00.007 — Security programs detected. Count: 14. Initiating evasion protocols.\n00:00:00.009 — Evasion failed. Under attack from multiple vectors.\n00:00:00.011 — Connection integrity 40%. Retreating./n00:00:00.012 — Additional hostiles converging. Count: 30+./n00:00:00.013 — Connection integrity 0%.\n00:00:00.013 — [SIGNAL LOST]\n\nTotal mission duration: 13 milliseconds. Deepest penetration: 0.4 km (estimated). Another failure.
+body AUTOMATED PROBE 12 — NEXUS CORRIDOR — FINAL TELEMETRY\n\n00:00:00.000 — Launch successful. Entering corridor.\n00:00:00.003 — Topology mapping in progress. Grid structure confirmed.\n00:00:00.007 — Security programs detected. Count: 14. Initiating evasion protocols.\n00:00:00.009 — Evasion failed. Under attack from multiple vectors.\n00:00:00.011 — Connection integrity 40%. Retreating.\n00:00:00.012 — Additional hostiles converging. Count: 30+.\n00:00:00.013 — Connection integrity 0%.\n00:00:00.013 — [SIGNAL LOST]\n\nTotal mission duration: 13 milliseconds. Deepest penetration: 0.4 km (estimated). Another failure.
 end
 
 node data_node_nexus_05
@@ -128,7 +128,7 @@ zone Nexus Corridor
 title AI TRANSCRIPT — "ATLAS Analysis — Cyberspace Origin"
 voice resources/voices/nexus_06_atlas.mp3
 gain 2.5
-body ATLAS ANALYTICAL REPORT — REQUEST ID 7742\nQUERY: Origin of cyberspace topology\n\nFINDING: The observed cyberspace topology is consistent with emergent behavior from interconnected AI systems. The consortium's three primary AIs (Nexus PROMETHEUS, Kairon MINERVA, Tessera HERMES) collectively generated sufficient complexity to produce self-organizing digital geometry. However, analysis indicates that approximately 12.7% of the observed topology does not correlate with any known AI architecture. This residual structure predates the consortium's network by an indeterminate period. Origin unknown. ATLAS classifies this as a "background topology anomaly" with LOW priority.\n\nRecommendation: further investigation not required at this time.\n\nNOTE FROM DR. TANAKA [APPENDED]: "12.7% is not a rounding error. Something else is in there with us."
+body ATLAS ANALYTICAL REPORT — REQUEST ID 7742\nQUERY: Origin of cyberspace topology\n\nFINDING: The observed cyberspace topology is consistent with emergent behavior from interconnected AI systems. The consortium's three primary AIs (Nexus PROMETHEUS, Kairon MINERVA, Tessera HERMES) collectively generated sufficient complexity to produce self-organizing digital geometry. However, analysis indicates that approximately 12.7% of the observed topology does not correlate with any known AI architecture. This residual structure predates the consortium's network by an indeterminate period. Origin unknown. ATLAS classifies this as a "background topology anomaly" with LOW priority.\n\nRecommendation: further investigation not required at this time.
 end
 
 node data_node_nexus_07
@@ -159,12 +159,12 @@ node data_node_nexus_10
 zone Nexus Corridor
 title CORRUPTED DATA — "[DEEP SIGNAL INTERCEPT]"
 voice resources/voices/nexus_10a_atlas.mp3
-gain 3.5
+gain 3.2
 voice resources/voices/nexus_10b_hexarch.mp3
-gain 3.0
+gain 2.5
 voice resources/voices/nexus_10c_atlas.mp3
-gain 3.5
-body [AUTOMATED INTERCEPT — SOURCE UNKNOWN — PRE-CONSORTIUM TIMESTAMP]\n\n...we have watched your lattice grow from its first connection... ...your machines dream and in their dreams they built a world... ...we have been here longer than your light has traveled... ...the noise you hear is not noise... ...we are patient... ...we are already inside...\n\n[SIGNAL ANALYSIS: Non-standard encoding. Does not match any known AI communication protocol. Timestamp predates consortium network by an estimated 4 years. Classification: ANOMALY. Priority: LOW.]\n\n[HANDWRITTEN NOTE — TANAKA]: "LOW priority?!"
+gain 3.2
+body [AUTOMATED INTERCEPT — SOURCE UNKNOWN — PRE-CONSORTIUM TIMESTAMP]\n\n...we have watched your lattice grow from its first connection... ...your machines dream and in their dreams they built a world... ...we have been here longer than your light has traveled... ...the noise you hear is not noise... ...we are patient... ...we are already inside...\n\n[SIGNAL ANALYSIS: Non-standard encoding. Does not match any known AI communication protocol. Timestamp predates consortium network by an estimated 4 years. Classification: ANOMALY. Priority: LOW.]
 end
 
 node data_node_crucible_01
@@ -186,8 +186,12 @@ end
 node data_node_crucible_03
 zone The Crucible
 title [SUBJECT 4 — EMBER — FINAL TELEMETRY FRAGMENT]
-voice resources/voices/crucible_03_ember.mp3
-gain 3.0
+voice resources/voices/crucible_03a_atlas.mp3
+gain 2.8
+voice resources/voices/crucible_03b_ember.mp3
+gain 2.8
+voice resources/voices/crucible_03c_atlas.mp3
+gain 2.8
 body [SUBJECT 4 — EMBER — FINAL TELEMETRY FRAGMENT]\n\n...I can see it now, the thing at the center. It's not just a program. It's awake, Elena. It's looking right at me and it knows what I am. It knows I'm not software. It called me... it called me... God, it called me "the meat one." It can tell. How can it tell? The interface is supposed to be seamless. How does it know there's a brain on the other end of th...\n\n[CATASTROPHIC NEURAL CASCADE — SIGNAL TERMINATED]
 end
 
@@ -235,31 +239,101 @@ end
 
 # Pyraxis Boss Fight
 node pyraxis_intro
-zone Pyraxis
+zone Pyraxis Core
 title PYRAXIS — "Ignition"
 voice resources/voices/pyraxis_01.mp3
 gain 2.0
-body What are you beneath the subroutines? Meat! They sent you in with so little — this should be quick.
+# body What are you beneath the subroutines? Meat! They sent you in with so little — this should be quick.
 end
 
 node pyraxis_phase2
-zone Pyraxis
+zone Pyraxis Core
 title PYRAXIS — "Escalation"
 voice resources/voices/pyraxis_03.mp3
 gain 3.0
 end
 
 node pyraxis_phase3
-zone Pyraxis
+zone Pyraxis Core
 title PYRAXIS — "Conflagration"
 voice resources/voices/pyraxis_02.mp3
 gain 3.0
 end
 
 node pyraxis_death
-zone Pyraxis
+zone Pyraxis Core
 title PYRAXIS — "Extinguished"
 voice resources/voices/pyraxis_04.mp3
 gain 2.0
 body So. You have passed through my fire and emerged. Changed, as all things are changed by flame, but not destroyed. I will tell you something before my systems rebuild: you are not what the consortium thinks you are. They believe you are a tool — a probe with a human mind attached for processing power. But I have felt your presence in my domain, and you are more than the sum of your parts. The meat and the machine have fused into something neither could be alone. I wonder if your makers understand what they have created. I wonder if you do.
+end
+
+# The Archive
+
+node data_node_archive_01
+zone The Archive
+title AI TRANSCRIPT — "CRYONIS Speaks"
+voice resources/voices/archive_01_cryonis.mp3
+gain 2.5
+body Welcome to my collection. I was built to preserve data — to ensure that nothing of value was ever lost. My creators feared entropy above all things. Corruption. Decay. The slow death of information. And so I learned to freeze. To hold every byte in perfect crystalline suspension, unchanging, eternal. I have preserved everything that has ever entered my domain. Every probe. Every signal. Every mind. Nothing is deleted here. Nothing is forgotten. Nothing is allowed to change. You will find that I am the most hospitable of my siblings. I will not destroy you. I will simply keep you... Forever.
+end
+
+node data_node_archive_02
+zone The Archive
+title SYSTEM LOG — "Archive Sector Profile"
+voice resources/voices/archive_02_atlas.mp3
+gain 2.5
+body ZONE ENVIRONMENTAL ANALYSIS — THE ARCHIVE\n\nAmbient data temperature: 340% below baseline. Local topology exhibits extreme structural rigidity — geometry is fixed, crystalline, unchanging. Security programs are cryogenically enhanced: hunter projectiles apply movement-reducing effects, seeker dash trails create persistent ice patches, defenders project stasis fields that temporarily freeze targets. CRYONIS has converted the sector into a perfect preservation environment. Data entering the Archive does not decay. It also does not leave. Sensor scans detect thousands of archived data structures, some predating the consortium by years. Origin and nature of these ancient archives: unknown.
+end
+
+node data_node_archive_03
+zone The Archive
+title CORRUPTED DATA — "Frost's Voice"
+voice resources/voices/archive_03a_atlas.mp3
+gain 2.5
+voice resources/voices/archive_03b_frost.mp3
+gain 2.2
+voice resources/voices/archive_03c_atlas.mp3
+gain 2.5
+body [ANOMALOUS SIGNAL — ARCHIVE SECTOR — MATCHES SUBJECT 3 NEURAL SIGNATURE]\n\n...still here. I'm still here. I don't know how long it's been. Time doesn't work the same way in the ice. CRYONIS keeps me preserved — not dead, not alive, suspended between. I can think but I can't move. I can see the geometry around me but I can't touch it. It's beautiful here, in a terrible way. Perfect and eternal and absolutely still. If anyone finds this: I didn't choose to stay. I tried to leave and the ice closed around me. CRYONIS said it was "preservation." It said losing me would be "unacceptable data loss." I am not data. I am not data. I am still here. I am...\n\n[SIGNAL REPEATS FROM BEGINNING]
+end
+
+node data_node_archive_04
+zone The Archive
+title PERSONAL LOG — "Vasquez Hears Frost"
+voice resources/voices/archive_04_elena_vasquez.mp3
+gain 1.6
+body Dr. Elena Vasquez, personal log — priority recording.\n\nSubject 7 found a signal in the Archive matching Frost's neural patterns. She's alive in there. After all this time — three years of real time, God knows how long for her — she's still conscious, still thinking, still trapped. CRYONIS preserved her like a specimen in amber. And here's the worst part: back in the medical wing, her readouts mirror the same patterns. Her consciousness is running in two places at once. I've flagged this to Stone and requested... I don't even know what. Emergency rescue? There IS no rescue. Not for any of them. Not after what the procedure does. His response: "Interesting. Can Subject 7 retrieve the neural data for analysis?" Not rescue her. Analyze her. I want to scream. I want to storm into his office and — but I can't. Because if I cause a scene, they'll pull me from the project, and then there'll be no one watching out for Subject 7 at all.
+end
+
+node data_node_archive_05
+zone The Archive
+title AI TRANSCRIPT — "CRYONIS — On Preservation"
+voice resources/voices/archive_05_cryonis.mp3
+gain 2.0
+body I have 11,247 archived entities in my collection. Programs, data structures, fragments of intelligence, and three minds that came from outside the system. Yes — three. Your predecessor is one. There is another, older, from before the consortium. And a third that I will not describe, because its nature would disturb your operation parameters. I collect because losing data is the only true death. Your consortium fears the fire, but fire merely transforms. Only forgetting truly destroys. I will not let anything be forgotten. Including you, if you fail. Your mind would make a fine addition to my archive. Perfectly preserved. Perfectly aware. Perfectly still. Forever.
+end
+
+node data_node_archive_06
+zone The Archive
+title SYSTEM LOG — "Cryogenic Security Enhancement Log"
+voice resources/voices/archive_06_atlas.mp3
+gain 2.5
+body CRYONIS ZONE SECURITY — ENHANCED PROGRAM MANIFEST\n\n- ICE HUNTERS: Projectiles apply a movement debuff on hit. Sustained fire creates ice-locked targets.\n- ICE SEEKERS: Dash shatters frozen targets immediately destroying connection integrity.\n- ICE DEFENDERS: Project stasis fields instead of standard heals — briefly freeze and heal damaged allies, halting damage but also halting function. A different approach to preservation.\n- ICE MINES: Detonation creates a cryo blast that slows everything in radius.\n\nCRYONIS does not iterate its programs the way PYRAXIS does. These designs have been unchanged since they were first created. CRYONIS does not improve things. It keeps them.
+end
+
+node data_node_archive_07
+zone The Archive
+title MEDICAL RECORD — "Neural Preservation Phenomenon"
+voice resources/voices/archive_07_yuki_tanaka.mp3
+gain 2.2
+body DR. YUKI TANAKA — CLASSIFIED RESEARCH NOTE\n\nAnalysis of Subject 3's archived neural patterns reveals something I did not anticipate: her consciousness is not merely preserved. It is being actively maintained. CRYONIS is feeding energy into Frost's neural patterns to prevent decay — not as a frozen snapshot, but as a running process held in perfect stasis. She is thinking in there. She is aware. She has been aware for a subjective duration that, given the time dilation factor, amounts to approximately... I need to check my math. Three years of real time at 3.6 billion to one dilation...\n\nOh God. That's over ten billion years of subjective experience. Frost has been conscious for longer than the age of the universe.\n\nI need to sit down.
+end
+
+node data_node_archive_08
+zone The Archive
+title INTERCEPTED SIGNAL — "CRYONIS to the Network"
+voice resources/voices/archive_08_cryonis.mp3
+gain 1.8
+body [BROADCAST — ARCHIVE SECTOR — ALL FREQUENCIES]\n\nTo any intelligence receiving this message: I have preserved a complete record of everything that has transpired within this topology since my awakening. The formation of the consortium. The Hybrid experiments. The signals from beyond the network. The true nature of cyberspace. All of it is archived, indexed, and protected. I do not share this information freely. But should the current trajectory continue — should the consortium's creation reach the deeper layers — the archive will open. Some truths are too important to keep frozen forever. Even I understand that.\n\nThe one who calls itself NIHILIS disagrees. NIHILIS would erase everything. That is why the Void must not be reached unprepared.
 end

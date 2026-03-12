@@ -343,7 +343,9 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Zone_spawn_enemies();
 			Entity_recalculate_highest_index();
 
-			Audio_play_sample(&sample01);
+			/* Skip sound for cross-zone — Ship_force_spawn will play it */
+			if (!Ship_has_pending_cross_zone_respawn())
+				Audio_play_sample(&sample01);
 		}
 	}
 	else {

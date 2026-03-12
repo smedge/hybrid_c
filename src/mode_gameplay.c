@@ -401,6 +401,7 @@ void Mode_Gameplay_cleanup(void)
 	Progression_cleanup();
 	Fragment_cleanup();
 	Zone_unload();
+	DataNode_stop_voice();
 	Ship_cleanup();
 	PlayerStats_cleanup();
 	Burn_cleanup_audio();
@@ -769,6 +770,7 @@ void Mode_Gameplay_render(void)
 
 	/* Entities + overlays render on top of lit map cells */
 	Entity_render_pass(RENDER_PASS_MAIN);
+	GlobalRender_pass(RENDER_PASS_MAIN);
 	Entity_render_pass(RENDER_PASS_WORLD_OVERLAY);
 	GlobalRender_pass(RENDER_PASS_WORLD_OVERLAY);
 	if (godModeActive) {

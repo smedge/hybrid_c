@@ -27,6 +27,7 @@ landmark_min_separation 120
 landmark exit_point resources/chunks/save_portal_001.chunk 1 moderate 80 0.6 2
 landmark_portal exit_point portal_to_003 ./resources/zones/procgen_003.zone portal_to_004
 landmark_savepoint exit_point save_001
+
 landmark data_node_archive_01 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2
 landmark_datanode data_node_archive_01 data_node_archive_01
 landmark data_node_archive_02 resources/chunks/data_node_001.chunk 2 moderate 80 0.6 2

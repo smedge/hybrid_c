@@ -370,3 +370,12 @@ ColorFloat Fragment_get_source_enemy_color(FragmentType type)
 		return frag_source_table[type].enemy_color;
 	return (ColorFloat){0.5f, 0.5f, 0.5f, 1.0f};
 }
+
+bool Fragment_any_persistent_active(void)
+{
+	for (int i = 0; i < MAX_FRAGMENTS; i++) {
+		if (fragments[i].active && fragments[i].persistent)
+			return true;
+	}
+	return false;
+}

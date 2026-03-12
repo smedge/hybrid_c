@@ -114,6 +114,7 @@ typedef struct {
 
 /* Shared singleton components */
 static void hunter_render_bloom(const void *state, const PlaceableComponent *placeable);
+static void hunter_render_pool_main(void);
 static void hunter_render_pool_bloom(void);
 static void hunter_render_pool_light(void);
 static RenderableComponent renderable = {.passes = {
@@ -268,6 +269,7 @@ void Hunter_initialize(Position position, ZoneTheme theme)
 
 	/* Register pipeline callbacks (survives Zone_rebuild_enemies) */
 	if (!pipelineRegistered) {
+		GlobalRender_register(RENDER_PASS_MAIN, hunter_render_pool_main);
 		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, hunter_render_pool_bloom);
 		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, hunter_render_pool_light);
 		GlobalUpdate_register_pre_collision(Hunter_update_projectiles);
@@ -630,23 +632,7 @@ void Hunter_render(const void *state, const PlaceableComponent *placeable)
 {
 	HunterState *h = (HunterState *)state;
 
-	/* Shared pool render must happen regardless of this hunter's alive state */
-	int idx = (int)((HunterState *)state - hunters);
-	if (idx == 0) {
-		SubProjectile_render(&hunterProjPool, &hunterProjCfg);
-		if (firePoolsInitialized) {
-			SubProjectile_render(&fireEmberPool, &SubEmber_get_config()->proj);
-			SubProjectile_render(&fireFlakPool, &SubFlak_get_config()->proj);
-		}
 
-		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
-			if (sparks[si].active) {
-				Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
-					BODY_SPARK_DURATION, BODY_SPARK_SIZE, sparks[si].shielded,
-					1.0f, 0.5f, 0.1f);
-			}
-		}
-	}
 
 	if (h->aiState == HUNTER_DEAD)
 		return;
@@ -707,6 +693,23 @@ static void hunter_render_bloom(const void *state, const PlaceableComponent *pla
 	const ColorFloat *baseColor = (h->aiState == HUNTER_IDLE) ? &colorBody : &colorAggro;
 	ColorFloat bloomColor = Variant_get_color(hunterVariants, h->theme, baseColor, 1.0f);
 	Render_point(&placeable->position, 6.0, &bloomColor);
+}
+
+static void hunter_render_pool_main(void)
+{
+	SubProjectile_render(&hunterProjPool, &hunterProjCfg);
+	if (firePoolsInitialized) {
+		SubProjectile_render(&fireEmberPool, &SubEmber_get_config()->proj);
+		SubProjectile_render(&fireFlakPool, &SubFlak_get_config()->proj);
+	}
+
+	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+		if (sparks[si].active) {
+			Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
+				BODY_SPARK_DURATION, BODY_SPARK_SIZE, sparks[si].shielded,
+				1.0f, 0.5f, 0.1f);
+		}
+	}
 }
 
 static void hunter_render_pool_bloom(void)

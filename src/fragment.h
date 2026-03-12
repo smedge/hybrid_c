@@ -5,6 +5,7 @@
 #include "screen.h"
 #include "sub_types.h"
 #include "color.h"
+#include <stdbool.h>
 
 typedef enum {
 	FRAG_TYPE_MINE = 0,
@@ -46,6 +47,7 @@ void Fragment_render_bloom_source(void);
 void Fragment_deactivate_all(void);
 int  Fragment_get_count(FragmentType type);
 void Fragment_set_count(FragmentType type, int count);
+bool Fragment_any_persistent_active(void);
 
 /* Source enemy info — maps fragment types back to the enemy that drops them */
 const char *Fragment_get_source_enemy_name(FragmentType type);

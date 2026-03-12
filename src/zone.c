@@ -1404,7 +1404,7 @@ void Zone_render_notification(void)
 
 	float tw = Text_measure_width(tr, zoneNotifyText);
 	float nx = (float)screen.width * 0.5f - tw * 0.5f;
-	float ny = (float)screen.height * 0.3f;
+	float ny = (float)screen.height * 0.3f - 25.0f;
 
 	Text_render(tr, shaders, &proj, &ident,
 		zoneNotifyText, nx, ny,

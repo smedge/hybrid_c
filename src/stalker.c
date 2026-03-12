@@ -131,6 +131,7 @@ typedef struct {
 /* Shared singleton components */
 static void stalker_render_bloom(const void *state, const PlaceableComponent *placeable);
 static void stalker_render_light(const void *state, const PlaceableComponent *placeable);
+static void stalker_render_pool_main(void);
 static void stalker_render_pool_bloom(void);
 static void stalker_render_pool_light(void);
 static void stalker_corridor_burn_wrapper(const unsigned int ticks);
@@ -361,6 +362,7 @@ void Stalker_initialize(Position position, ZoneTheme theme)
 
 	/* Register pipeline callbacks (survives Zone_rebuild_enemies) */
 	if (!pipelineRegistered) {
+		GlobalRender_register(RENDER_PASS_MAIN, stalker_render_pool_main);
 		GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, stalker_render_pool_bloom);
 		GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, stalker_render_pool_light);
 		GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Stalker_render_corridors);
@@ -808,20 +810,6 @@ void Stalker_update(void *state, const PlaceableComponent *placeable, unsigned i
 void Stalker_render(const void *state, const PlaceableComponent *placeable)
 {
 	StalkerState *s = (StalkerState *)state;
-	int idx = (int)((StalkerState *)state - stalkers);
-
-	/* Shared pool render from index 0 */
-	if (idx == 0) {
-		SubProjectile_render(&stalkerProjPool, Sub_Pea_get_config());
-
-		for (int si = 0; si < SPARK_POOL_SIZE; si++) {
-			if (sparks[si].active) {
-				Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
-					BODY_SPARK_DURATION, BODY_SPARK_SIZE, sparks[si].shielded,
-					0.6f, 0.1f, 0.8f);
-			}
-		}
-	}
 
 	if (s->aiState == STALKER_DEAD)
 		return;
@@ -963,6 +951,19 @@ static void stalker_render_light(const void *state, const PlaceableComponent *pl
 		Render_filled_circle(
 			(float)placeable->position.x, (float)placeable->position.y,
 			240.0f, 12, lr, lg, lbl, 0.8f);
+	}
+}
+
+static void stalker_render_pool_main(void)
+{
+	SubProjectile_render(&stalkerProjPool, Sub_Pea_get_config());
+
+	for (int si = 0; si < SPARK_POOL_SIZE; si++) {
+		if (sparks[si].active) {
+			Enemy_render_spark(sparks[si].position, sparks[si].ticksLeft,
+				BODY_SPARK_DURATION, BODY_SPARK_SIZE, sparks[si].shielded,
+				0.6f, 0.1f, 0.8f);
+		}
 	}
 }
 

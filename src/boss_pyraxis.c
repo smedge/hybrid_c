@@ -20,6 +20,7 @@
 #include "sub_inferno_core.h"
 #include "sub_mine.h"
 #include "sub_cinder.h"
+#include "portal.h"
 
 
 #include <math.h>
@@ -83,6 +84,23 @@
 #define CENTER_BURN_HALF_SIZE 1600.0  /* 32 cells * 100u/cell / 2 */
 #define CENTER_BURN_DPS      5.0
 
+/* Burn zones — 8 positions (32x32 squares) around center, opposite pairs */
+#define BURN_ZONE_COUNT      8
+#define BURN_ZONE_HALF_SIZE  1600.0   /* 32 cells / 2 = 1600u */
+#define BURN_ZONE_DIST       3200.0   /* center of each zone from boss center */
+#define BURN_ZONE_DPS        5.0
+#define BURN_ZONE_TELEGRAPH_MS 1500   /* 1.5s glow before damage starts */
+#define BURN_ZONE_P1_SWAP_MS  10000  /* single zone moves every 10s */
+#define BURN_ZONE_P2_SWAP_MS  10000  /* pair moves every 10s */
+#define BURN_ZONE_P3_SWAP_MS  5000   /* pair moves every 5s */
+#define DESPERATION_THRESHOLD 0.05   /* 5% HP — all zones permanent */
+
+/* Post-defeat exit portal */
+#define EXIT_PORTAL_DELAY_MS 3000
+
+/* 4 opposite pairs: N/S=0, E/W=1, NE/SW=2, NW/SE=3 */
+#define BURN_PAIR_COUNT      4
+
 /* ----- Turret Constants ----- */
 
 #define TURRET_COUNT         8
@@ -133,7 +151,8 @@
 /* Reveal sequence */
 #define REVEAL_EYES_MS       1500    /* eyes fade in first */
 #define REVEAL_SWIRL_MS      4500   /* swirl coalesces (1.5-4.5s total) */
-#define CENTER_IGNITE_DELAY_MS 5000 /* center burn starts 5s after spawn */
+#define CENTER_IGNITE_DELAY_MS 5000 /* 5s dark after speech before ramp starts */
+#define CENTER_RAMP_MS         5000 /* 5s ramp from 0 to full burn */
 
 /* ----- State ----- */
 
@@ -148,7 +167,8 @@ typedef enum {
 	BOSS_TRANSITION_2,
 	BOSS_PHASE_3,
 	BOSS_DYING,
-	BOSS_DEFEATED
+	BOSS_DEFEATED,
+	BOSS_AWAITING_EXIT
 } BossState;
 
 /* Helper — is the boss in any active combat phase? */
@@ -201,6 +221,43 @@ typedef struct {
 	bool is_ember;
 } SwirlParticle;
 
+/* Burn zone indices: 8 positions around center */
+#define ZONE_N   0
+#define ZONE_S   1
+#define ZONE_E   2
+#define ZONE_W   3
+#define ZONE_NE  4
+#define ZONE_SW  5
+#define ZONE_NW  6
+#define ZONE_SE  7
+
+/* Opposite pairs table: each pair is two zone indices */
+static const int burnPairs[BURN_PAIR_COUNT][2] = {
+	{ ZONE_N,  ZONE_S  },  /* 0: N/S */
+	{ ZONE_E,  ZONE_W  },  /* 1: E/W */
+	{ ZONE_NE, ZONE_SW },  /* 2: NE/SW */
+	{ ZONE_NW, ZONE_SE },  /* 3: NW/SE */
+};
+
+/* Zone center offsets from boss center (dx, dy) */
+static const float burnZoneOffsets[BURN_ZONE_COUNT][2] = {
+	{    0.0f,  BURN_ZONE_DIST },   /* N */
+	{    0.0f, -BURN_ZONE_DIST },   /* S */
+	{  BURN_ZONE_DIST,  0.0f },     /* E */
+	{ -BURN_ZONE_DIST,  0.0f },     /* W */
+	{  BURN_ZONE_DIST,  BURN_ZONE_DIST },   /* NE */
+	{ -BURN_ZONE_DIST, -BURN_ZONE_DIST },   /* SW */
+	{ -BURN_ZONE_DIST,  BURN_ZONE_DIST },   /* NW */
+	{  BURN_ZONE_DIST, -BURN_ZONE_DIST },   /* SE */
+};
+
+typedef struct {
+	bool active;         /* currently damaging */
+	bool telegraphing;   /* glowing before activation */
+	int telegraphTimer;  /* ms remaining in telegraph */
+	int dotAccum;        /* ms accumulator for DOT ticks */
+} BurnZone;
+
 static struct {
 	BossState state;
 	Position center;
@@ -231,7 +288,16 @@ static struct {
 	/* Center burn */
 	bool centerBurnActive;
 	int centerBurnAccum;  /* ms accumulator for DOT ticks */
-	int centerBurnDelay;  /* ms remaining before burn starts damaging */
+	int centerBurnDelay;  /* ms remaining in dead time before ramp starts */
+	int centerBurnRamp;   /* ms elapsed in ramp (0 to CENTER_RAMP_MS) */
+	bool centerBurnRamping; /* true once delay is over and ramp is in progress */
+
+	/* Directional burn zones */
+	BurnZone burnZones[BURN_ZONE_COUNT];
+	int burnZoneTimer;        /* ms until next move */
+	int burnZoneCurrentZone;  /* P1: which single zone is active (0-7) */
+	int burnZoneCurrentPair;  /* P2/P3: which opposite pair (0-3) */
+	bool burnZonesAllActive;  /* desperation: all zones permanently lit */
 
 	/* Turrets */
 	BossTurret turrets[TURRET_COUNT];
@@ -259,6 +325,7 @@ static const SubInfernoConfig turretInfernoCfg = {
 
 /* Forward declarations */
 static void render_center_burn_indicator(void);
+static void render_burn_zones(void);
 static void boss_render_bloom(const void *state, const PlaceableComponent *placeable);
 static void boss_render_global_bloom(void);
 static void boss_render_global_light(void);
@@ -565,6 +632,190 @@ static void update_center_burn(unsigned int ticks)
 	}
 }
 
+/* ----- Directional Burn Zone helpers ----- */
+
+/* Get world-space AABB for a burn zone (32x32 square at offset from center) */
+static void burn_zone_bounds(int zone, float *x0, float *y0, float *x1, float *y1)
+{
+	float cx = (float)boss.center.x + burnZoneOffsets[zone][0];
+	float cy = (float)boss.center.y + burnZoneOffsets[zone][1];
+	float hs = (float)BURN_ZONE_HALF_SIZE;
+	*x0 = cx - hs;
+	*y0 = cy - hs;
+	*x1 = cx + hs;
+	*y1 = cy + hs;
+}
+
+static void deactivate_all_burn_zones(void)
+{
+	for (int i = 0; i < BURN_ZONE_COUNT; i++) {
+		boss.burnZones[i].active = false;
+		boss.burnZones[i].telegraphing = false;
+		boss.burnZones[i].telegraphTimer = 0;
+		boss.burnZones[i].dotAccum = 0;
+	}
+	boss.burnZonesAllActive = false;
+}
+
+static void telegraph_zone(int index)
+{
+	BurnZone *z = &boss.burnZones[index];
+	if (!z->active && !z->telegraphing) {
+		z->telegraphing = true;
+		z->telegraphTimer = BURN_ZONE_TELEGRAPH_MS;
+	}
+}
+
+/* Pick a random zone that isn't currently the active one */
+static int pick_random_zone(int exclude)
+{
+	int z;
+	do { z = rand() % BURN_ZONE_COUNT; } while (z == exclude);
+	return z;
+}
+
+/* Pick a random pair that isn't the current one */
+static int pick_random_pair(int exclude)
+{
+	int p;
+	do { p = rand() % BURN_PAIR_COUNT; } while (p == exclude);
+	return p;
+}
+
+/* Move single zone (P1) — deactivate old, telegraph new random position */
+static void burn_zone_move_single(void)
+{
+	for (int i = 0; i < BURN_ZONE_COUNT; i++) {
+		boss.burnZones[i].active = false;
+		boss.burnZones[i].dotAccum = 0;
+	}
+	boss.burnZoneCurrentZone = pick_random_zone(boss.burnZoneCurrentZone);
+	telegraph_zone(boss.burnZoneCurrentZone);
+}
+
+/* Move pair (P2/P3) — deactivate old, telegraph new random opposite pair */
+static void burn_zone_move_pair(void)
+{
+	for (int i = 0; i < BURN_ZONE_COUNT; i++) {
+		boss.burnZones[i].active = false;
+		boss.burnZones[i].dotAccum = 0;
+	}
+	boss.burnZoneCurrentPair = pick_random_pair(boss.burnZoneCurrentPair);
+	telegraph_zone(burnPairs[boss.burnZoneCurrentPair][0]);
+	telegraph_zone(burnPairs[boss.burnZoneCurrentPair][1]);
+}
+
+static void update_burn_zones(unsigned int ticks)
+{
+	/* Advance telegraphs — activate zones when telegraph completes */
+	for (int i = 0; i < BURN_ZONE_COUNT; i++) {
+		BurnZone *z = &boss.burnZones[i];
+		if (z->telegraphing) {
+			z->telegraphTimer -= (int)ticks;
+			if (z->telegraphTimer <= 0) {
+				z->telegraphing = false;
+				z->active = true;
+				z->dotAccum = 0;
+			}
+		}
+	}
+
+	/* Desperation — all zones permanently lit */
+	if (boss.burnZonesAllActive) {
+		for (int i = 0; i < BURN_ZONE_COUNT; i++) {
+			if (!boss.burnZones[i].active && !boss.burnZones[i].telegraphing) {
+				boss.burnZones[i].active = true;
+				boss.burnZones[i].dotAccum = 0;
+			}
+		}
+		/* No timer-based movement when all are lit */
+	} else {
+		/* Phase-specific move timer */
+		boss.burnZoneTimer -= (int)ticks;
+		if (boss.burnZoneTimer <= 0) {
+			if (boss.state == BOSS_PHASE_1) {
+				boss.burnZoneTimer = BURN_ZONE_P1_SWAP_MS;
+				burn_zone_move_single();
+			} else if (boss.state == BOSS_PHASE_2) {
+				boss.burnZoneTimer = BURN_ZONE_P2_SWAP_MS;
+				burn_zone_move_pair();
+			} else if (boss.state == BOSS_PHASE_3) {
+				boss.burnZoneTimer = BURN_ZONE_P3_SWAP_MS;
+				burn_zone_move_pair();
+			}
+		}
+	}
+
+	/* DOT — damage player standing in active zones */
+	if (Ship_is_destroyed()) return;
+	Position shipPos = Ship_get_position();
+
+	for (int i = 0; i < BURN_ZONE_COUNT; i++) {
+		BurnZone *z = &boss.burnZones[i];
+		if (!z->active) continue;
+
+		float x0, y0, x1, y1;
+		burn_zone_bounds(i, &x0, &y0, &x1, &y1);
+
+		float sx = (float)shipPos.x;
+		float sy = (float)shipPos.y;
+
+		if (sx >= x0 && sx <= x1 && sy >= y0 && sy <= y1) {
+			if (!PlayerStats_is_shielded() && !PlayerStats_has_iframes()) {
+				z->dotAccum += ticks;
+				while (z->dotAccum >= 200) {
+					PlayerStats_damage(BURN_ZONE_DPS * 0.2);
+					z->dotAccum -= 200;
+				}
+			}
+		} else {
+			z->dotAccum = 0;
+		}
+	}
+}
+
+static void render_burn_zones(void)
+{
+	for (int i = 0; i < BURN_ZONE_COUNT; i++) {
+		BurnZone *z = &boss.burnZones[i];
+		if (!z->active && !z->telegraphing) continue;
+
+		float x0, y0, x1, y1;
+		burn_zone_bounds(i, &x0, &y0, &x1, &y1);
+
+		float intensity;
+		if (z->telegraphing) {
+			float t = 1.0f - (float)z->telegraphTimer / (float)BURN_ZONE_TELEGRAPH_MS;
+			intensity = t * 0.5f;
+		} else {
+			intensity = 1.0f;
+		}
+
+		/* Dying: fade all zones with death progress */
+		if (boss.state == BOSS_DYING) {
+			float deathFrac = (float)boss.stateTimer / (float)DEATH_TOTAL_MS;
+			if (deathFrac > 1.0f) deathFrac = 1.0f;
+			intensity *= (1.0f - deathFrac);
+		}
+
+		if (intensity <= 0.0f) continue;
+
+		float pulse = sinf((float)boss.stateTimer * 0.005f) * 0.5f + 0.5f;
+
+		/* Fill */
+		float a = intensity * (0.12f + pulse * 0.10f);
+		Render_quad_absolute(x0, y1, x1, y0,
+			1.0f, 0.4f, 0.05f, a);
+
+		/* Border */
+		float ba = intensity * (0.35f + pulse * 0.25f);
+		Render_line_segment(x0, y1, x1, y1, 1.0f, 0.5f, 0.1f, ba);
+		Render_line_segment(x1, y1, x1, y0, 1.0f, 0.5f, 0.1f, ba);
+		Render_line_segment(x1, y0, x0, y0, 1.0f, 0.5f, 0.1f, ba);
+		Render_line_segment(x0, y0, x0, y1, 1.0f, 0.5f, 0.1f, ba);
+	}
+}
+
 /* ----- Turret helpers ----- */
 
 static const float turretOffsets[TURRET_COUNT][2] = {
@@ -749,7 +1000,7 @@ static void update_turret_player_hits(unsigned int ticks)
 
 	for (int i = 0; i < TURRET_COUNT; i++) {
 		BossTurret *t = &boss.turrets[i];
-		if (!t->active || t->disabled) continue;
+		if (t->disabled) continue;
 
 		for (int j = 0; j < JETS_PER_TURRET; j++) {
 			if (SubInfernoCore_check_hit(&t->jets[j], playerBox)) {
@@ -852,6 +1103,8 @@ void BossPyraxis_initialize(Position position)
 
 void BossPyraxis_cleanup(void)
 {
+	if (!boss.initialized) return;
+
 	if (boss.entityRef) {
 		boss.entityRef->empty = true;
 		boss.entityRef = NULL;
@@ -878,6 +1131,7 @@ bool BossPyraxis_is_active(void)
 void BossPyraxis_render_midground(void)
 {
 	if (!boss.initialized) return;
+	render_burn_zones();
 	render_center_burn_indicator();
 }
 
@@ -921,17 +1175,31 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 		break;
 
 	case BOSS_WAITING_CLEAR: {
-		/* Count down ignite delay, then activate center burn */
+		/* Phase 1: 5s dead time (no visuals, no damage) */
 		if (boss.centerBurnDelay > 0) {
 			boss.centerBurnDelay -= (int)ticks;
 			if (boss.centerBurnDelay <= 0) {
-				boss.centerBurnActive = true;
 				boss.centerBurnDelay = 0;
+				boss.centerBurnRamping = true;
+				boss.centerBurnRamp = 0;
 			}
 		}
 
-		/* Center burn forces player out — wait until they're 1600u+ from center */
-		update_center_burn(ticks);
+		/* Phase 2: 5s ramp (visuals build, damage starts partway through) */
+		if (boss.centerBurnRamping) {
+			boss.centerBurnRamp += (int)ticks;
+			if (boss.centerBurnRamp >= CENTER_RAMP_MS) {
+				boss.centerBurnRamp = CENTER_RAMP_MS;
+				boss.centerBurnRamping = false;
+				boss.centerBurnActive = true;
+			}
+		}
+
+		/* Center burn DOT — only once ramp is past halfway */
+		if (boss.centerBurnRamping && boss.centerBurnRamp > CENTER_RAMP_MS / 2)
+			update_center_burn(ticks);
+		else if (boss.centerBurnActive)
+			update_center_burn(ticks);
 
 		if (!Ship_is_destroyed()) {
 			Position shipPos = Ship_get_position();
@@ -941,7 +1209,9 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 			if (dist >= 1600.0) {
 				/* Ensure burn stays active for the rest of the fight */
 				boss.centerBurnActive = true;
+				boss.centerBurnRamping = false;
 				boss.centerBurnDelay = 0;
+				boss.centerBurnRamp = CENTER_RAMP_MS;
 				boss.state = BOSS_REVEAL;
 				boss.stateTimer = 0;
 			}
@@ -983,6 +1253,10 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 			boss.eyeAlpha = 1.0f;
 			boss.swirlSpeedMult = 1.0f;
 			activate_phase1_turrets();
+
+			/* Start burn zone rotation — telegraph first zone */
+			boss.burnZoneCurrentZone = -1; /* move_single will pick a random zone */
+			boss.burnZoneTimer = 0; /* triggers immediately */
 		}
 		break;
 	}
@@ -1007,6 +1281,7 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 				boss.stateTimer = 0;
 				deactivate_all_embers();
 				deactivate_all_turrets();
+				deactivate_all_burn_zones();
 				boss.pulse.active = false;
 				boss.pulseTelegraphing = false;
 				Audio_play_sample_at(&sampleDeath, boss.center);
@@ -1021,22 +1296,31 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 		if (boss.state == BOSS_PHASE_1 && hpFrac <= PHASE_2_THRESHOLD) {
 			boss.state = BOSS_TRANSITION_1;
 			boss.transitionTimer = 0;
-			deactivate_all_turrets();
-			deactivate_all_embers();
-			boss.pulse.active = false;
+			/* Stop turrets firing new blobs, but let in-flight attacks finish */
+			for (int i = 0; i < TURRET_COUNT; i++)
+				boss.turrets[i].active = false;
+			deactivate_all_burn_zones();
 			boss.pulseTelegraphing = false;
+			boss.pulseTimer = HEAT_PULSE_INTERVAL_MS;
 			DataNode_trigger_voice("pyraxis_phase2");
 			break;
 		}
 		if (boss.state == BOSS_PHASE_2 && hpFrac <= PHASE_3_THRESHOLD) {
 			boss.state = BOSS_TRANSITION_2;
 			boss.transitionTimer = 0;
-			deactivate_all_turrets();
-			deactivate_all_embers();
-			boss.pulse.active = false;
+			/* Stop turrets firing new blobs, but let in-flight attacks finish */
+			for (int i = 0; i < TURRET_COUNT; i++)
+				boss.turrets[i].active = false;
+			deactivate_all_burn_zones();
 			boss.pulseTelegraphing = false;
+			boss.pulseTimer = HEAT_PULSE_INTERVAL_MS;
 			DataNode_trigger_voice("pyraxis_phase3");
 			break;
+		}
+
+		/* --- Desperation: all burn zones at 5% HP --- */
+		if (boss.state == BOSS_PHASE_3 && hpFrac <= DESPERATION_THRESHOLD && !boss.burnZonesAllActive) {
+			boss.burnZonesAllActive = true;
 		}
 
 		/* --- Turrets --- */
@@ -1061,18 +1345,29 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 		/* --- Center burn --- */
 		update_center_burn(ticks);
 
+		/* --- Directional burn zones --- */
+		update_burn_zones(ticks);
+
 		break;
 	}
 
 	case BOSS_TRANSITION_1: {
 		boss.transitionTimer += ticks;
 		update_center_burn(ticks);
+		/* Let in-flight attacks finish naturally */
+		update_turrets(ticks);
+		update_turret_player_hits(ticks);
+		update_heat_pulse(ticks);
 
 		/* 2s invulnerability window — visual spectacle, then Phase 2 */
 		if (boss.transitionTimer >= 2000) {
 			boss.state = BOSS_PHASE_2;
 			boss.stateTimer = 0;
 			activate_phase2_turrets();
+
+			/* P2: opposing pair burn zones, 10s swap */
+			boss.burnZoneCurrentPair = -1; /* swap_pair will flip to 0 (Top+Bottom first) */
+			boss.burnZoneTimer = 0;
 		}
 		break;
 	}
@@ -1080,6 +1375,10 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 	case BOSS_TRANSITION_2: {
 		boss.transitionTimer += ticks;
 		update_center_burn(ticks);
+		/* Let in-flight attacks finish naturally */
+		update_turrets(ticks);
+		update_turret_player_hits(ticks);
+		update_heat_pulse(ticks);
 
 		/* 2s invulnerability window, then Phase 3 */
 		if (boss.transitionTimer >= 2000) {
@@ -1092,6 +1391,10 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 				boss.turrets[i].rotation_speed = TURRET_P3_SPEED;
 				boss.turrets[i].spinup_frac = 1.0f;
 			}
+
+			/* P3: opposing pair burn zones, 5s swap */
+			boss.burnZoneCurrentPair = -1; /* swap_pair will flip to 0 */
+			boss.burnZoneTimer = 0;
 		}
 		break;
 	}
@@ -1154,8 +1457,23 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 			/* Deactivate HUD */
 			BossHUD_set_active(false);
 
-			/* Mark as done — cleanup will happen on zone exit */
-			boss.state = BOSS_INACTIVE;
+			/* Wait for fragment collection before spawning exit portal */
+			boss.state = BOSS_AWAITING_EXIT;
+			boss.stateTimer = 0;
+		}
+		break;
+
+	case BOSS_AWAITING_EXIT:
+		/* Once frag is collected, wait 3s then spawn exit portal */
+		if (!Fragment_any_persistent_active()) {
+			if (boss.stateTimer >= EXIT_PORTAL_DELAY_MS) {
+				Portal_initialize(boss.center, "portal_from_boss",
+					"./resources/zones/procgen_002.zone", "portal_to_pyraxis");
+				boss.state = BOSS_INACTIVE;
+			}
+		} else {
+			/* Reset timer while frag is still uncollected */
+			boss.stateTimer = 0;
 		}
 		break;
 	}
@@ -1428,21 +1746,21 @@ static void render_center_burn_indicator(void)
 {
 	/* Nothing during intro speech or inactive */
 	if (boss.state == BOSS_INTRO_SPEECH || boss.state == BOSS_INACTIVE ||
-		boss.state == BOSS_DEFEATED)
+		boss.state == BOSS_DEFEATED || boss.state == BOSS_AWAITING_EXIT)
 		return;
 
-	/* During WAITING_CLEAR, only show once delay is counting down */
-	if (boss.state == BOSS_WAITING_CLEAR && boss.centerBurnDelay >= CENTER_IGNITE_DELAY_MS)
+	/* During WAITING_CLEAR: nothing until ramp starts */
+	if (boss.state == BOSS_WAITING_CLEAR && !boss.centerBurnRamping && !boss.centerBurnActive)
 		return;
 
 	float cx = (float)boss.center.x;
 	float cy = (float)boss.center.y;
 	float hs = (float)CENTER_BURN_HALF_SIZE;
 
-	/* Ramp: 0 at start of countdown → 1 when burn ignites */
+	/* Ramp: 0 at start of ramp → 1 when burn fully ignites */
 	float ramp;
-	if (boss.state == BOSS_WAITING_CLEAR && !boss.centerBurnActive) {
-		ramp = 1.0f - (float)boss.centerBurnDelay / (float)CENTER_IGNITE_DELAY_MS;
+	if (boss.state == BOSS_WAITING_CLEAR && boss.centerBurnRamping) {
+		ramp = (float)boss.centerBurnRamp / (float)CENTER_RAMP_MS;
 	} else if (boss.state == BOSS_DYING) {
 		/* Fade out over the death sequence */
 		float deathFrac = (float)boss.stateTimer / (float)DEATH_TOTAL_MS;
@@ -1458,12 +1776,12 @@ static void render_center_burn_indicator(void)
 	float pulse = sinf((float)boss.stateTimer * 0.004f) * 0.5f + 0.5f;
 
 	/* Fill: ramp controls max intensity */
-	float a = ramp * (0.08f + pulse * 0.07f);
+	float a = ramp * (0.15f + pulse * 0.12f);
 	Render_quad_absolute(cx - hs, cy + hs, cx + hs, cy - hs,
 		1.0f, 0.4f, 0.05f, a);
 
 	/* Border */
-	float ba = ramp * (0.3f + pulse * 0.2f);
+	float ba = ramp * (0.4f + pulse * 0.25f);
 	Render_line_segment(cx - hs, cy + hs, cx + hs, cy + hs, 1.0f, 0.5f, 0.1f, ba);
 	Render_line_segment(cx + hs, cy + hs, cx + hs, cy - hs, 1.0f, 0.5f, 0.1f, ba);
 	Render_line_segment(cx + hs, cy - hs, cx - hs, cy - hs, 1.0f, 0.5f, 0.1f, ba);
@@ -1476,7 +1794,7 @@ void BossPyraxis_render(const void *state, const PlaceableComponent *placeable)
 	(void)placeable;
 
 	if (!boss.initialized) return;
-	if (boss.state == BOSS_INACTIVE) return;
+	if (boss.state == BOSS_INACTIVE || boss.state == BOSS_AWAITING_EXIT) return;
 
 	/* Swirl visible during reveal, active phases, transitions, and dying (scatter) */
 	if (boss.state == BOSS_REVEAL || BOSS_IS_FIGHTING(boss.state) ||
@@ -1492,15 +1810,17 @@ void BossPyraxis_render(const void *state, const PlaceableComponent *placeable)
 		render_eyes();
 	}
 
-	/* Embers only during active combat */
-	if (BOSS_IS_FIGHTING(boss.state))
+	/* Embers during active combat and transitions (in-flight finish naturally) */
+	if (BOSS_IS_FIGHTING(boss.state) ||
+		boss.state == BOSS_TRANSITION_1 || boss.state == BOSS_TRANSITION_2)
 		render_embers();
 
-	/* Turret beams */
-	if (BOSS_IS_FIGHTING(boss.state)) {
+	/* Turret beams during active combat and transitions */
+	if (BOSS_IS_FIGHTING(boss.state) ||
+		boss.state == BOSS_TRANSITION_1 || boss.state == BOSS_TRANSITION_2) {
 		for (int i = 0; i < TURRET_COUNT; i++) {
 			BossTurret *t = &boss.turrets[i];
-			if (!t->active || t->disabled) continue;
+			if (t->disabled) continue;
 			for (int j = 0; j < JETS_PER_TURRET; j++)
 				SubInfernoCore_render(&t->jets[j], &turretInfernoCfg);
 		}
@@ -1517,7 +1837,7 @@ static void boss_render_bloom(const void *state, const PlaceableComponent *place
 	(void)placeable;
 
 	if (!boss.initialized) return;
-	if (boss.state == BOSS_INACTIVE) return;
+	if (boss.state == BOSS_INACTIVE || boss.state == BOSS_AWAITING_EXIT) return;
 
 	/* Eye bloom */
 	render_eyes_bloom();
@@ -1544,32 +1864,7 @@ static void boss_render_bloom(const void *state, const PlaceableComponent *place
 /* Global pipeline callbacks — render embers and pulse as bloom/light */
 static void boss_render_global_bloom(void)
 {
-	if (!boss.initialized || boss.state == BOSS_INACTIVE) return;
-
-	/* Center burn bloom — render a smaller inner region so blur halo
-	   doesn't bleed past the burn zone onto pillars */
-	if (boss.state != BOSS_INTRO_SPEECH && boss.state != BOSS_INACTIVE &&
-		boss.state != BOSS_DEFEATED &&
-		!(boss.state == BOSS_WAITING_CLEAR && boss.centerBurnDelay >= CENTER_IGNITE_DELAY_MS)) {
-		float cx = (float)boss.center.x;
-		float cy = (float)boss.center.y;
-		float hs = (float)CENTER_BURN_HALF_SIZE * 0.6f;  /* shrink so bloom stays inside */
-		float ramp;
-		if (boss.state == BOSS_WAITING_CLEAR && !boss.centerBurnActive)
-			ramp = 1.0f - (float)boss.centerBurnDelay / (float)CENTER_IGNITE_DELAY_MS;
-		else if (boss.state == BOSS_DYING) {
-			float deathFrac = (float)boss.stateTimer / (float)DEATH_TOTAL_MS;
-			if (deathFrac > 1.0f) deathFrac = 1.0f;
-			ramp = 1.0f - deathFrac;
-		} else
-			ramp = 1.0f;
-		if (ramp > 0.0f) {
-			float pulse = sinf((float)boss.stateTimer * 0.004f) * 0.5f + 0.5f;
-			float a = ramp * (0.15f + pulse * 0.1f);
-			Render_quad_absolute(cx - hs, cy + hs, cx + hs, cy - hs,
-				1.0f, 0.4f, 0.05f, a);
-		}
-	}
+	if (!boss.initialized || boss.state == BOSS_INACTIVE || boss.state == BOSS_AWAITING_EXIT) return;
 
 	/* Ember projectile bloom */
 	for (int i = 0; i < EMBER_POOL_SIZE; i++) {
@@ -1583,7 +1878,7 @@ static void boss_render_global_bloom(void)
 	/* Turret beam bloom */
 	for (int i = 0; i < TURRET_COUNT; i++) {
 		BossTurret *t = &boss.turrets[i];
-		if (!t->active || t->disabled) continue;
+		if (t->disabled) continue;
 		for (int j = 0; j < JETS_PER_TURRET; j++)
 			SubInfernoCore_render_bloom(&t->jets[j], &turretInfernoCfg);
 	}
@@ -1607,7 +1902,7 @@ static void boss_render_global_bloom(void)
 
 static void boss_render_global_light(void)
 {
-	if (!boss.initialized || boss.state == BOSS_INACTIVE) return;
+	if (!boss.initialized || boss.state == BOSS_INACTIVE || boss.state == BOSS_AWAITING_EXIT) return;
 
 	/* Node center glow on map cells */
 	if (BOSS_IS_FIGHTING(boss.state) || boss.state == BOSS_REVEAL ||
@@ -1621,7 +1916,7 @@ static void boss_render_global_light(void)
 	/* Turret beam light */
 	for (int i = 0; i < TURRET_COUNT; i++) {
 		BossTurret *t = &boss.turrets[i];
-		if (!t->active || t->disabled) continue;
+		if (t->disabled) continue;
 		for (int j = 0; j < JETS_PER_TURRET; j++)
 			SubInfernoCore_render_light(&t->jets[j]);
 	}
@@ -1639,7 +1934,9 @@ static void boss_render_global_light(void)
 static void boss_update_global(unsigned int ticks)
 {
 	if (!boss.initialized) return;
-	if (!BOSS_IS_FIGHTING(boss.state)) return;
+	if (!BOSS_IS_FIGHTING(boss.state) &&
+		boss.state != BOSS_TRANSITION_1 &&
+		boss.state != BOSS_TRANSITION_2) return;
 
 	update_embers(ticks);
 }

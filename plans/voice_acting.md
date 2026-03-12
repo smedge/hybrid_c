@@ -9,7 +9,7 @@ Similarity 75%
 
 ### Atlas
 Jarvis
-Flash V2.5
+Flash V2.5 (1.1, 90%, 65%)
 Speed 1.0
 Stability 100%
 Similarity 48%
@@ -20,7 +20,7 @@ or VOG
 
 Vivie, sincere and wise
 
-Flash V2.5
+Flash V2.5 (1.0, 100%, 100%)
 
 ### Marcus Stone
 
@@ -69,3 +69,15 @@ Jessican Anne Bogart - Eloquent Villian ***
 
 Cassius - Velvety
 Aegis 07 - AI ALignment ||||||||| 0/10 ***
+
+# Frost
+
+Cherie - Smooth, fluid and advertisable
+Flash V2 (0.9, 75%, 91%)
+
+
+
+
+# Luxis
+
+Silent Systemus for the light AI

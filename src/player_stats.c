@@ -400,8 +400,10 @@ void PlayerStats_add_feedback(double amount)
 		double spillover = feedback - FEEDBACK_MAX;
 		feedback = FEEDBACK_MAX;
 		integrity -= spillover;
-		if (integrity < 0.0)
+		if (integrity <= 0.0) {
 			integrity = 0.0;
+			dead = true;
+		}
 		timeSinceLastDamage = 0;
 		flashTicksLeft = FLASH_DURATION;
 		Audio_play_sample(&sampleHurt);
@@ -424,8 +426,10 @@ void PlayerStats_damage(double amount)
 	if (hasReflect)
 		amount *= 0.5;
 	integrity -= amount;
-	if (integrity < 0.0)
+	if (integrity <= 0.0) {
 		integrity = 0.0;
+		dead = true;
+	}
 	timeSinceLastDamage = 0;
 	flashTicksLeft = FLASH_DURATION;
 	Audio_play_sample(&sampleHurt);
@@ -449,11 +453,13 @@ void PlayerStats_force_kill(void)
 	if (shieldBreakGrace > 0)
 		return; /* Still invulnerable from recent shield break */
 	integrity = 0.0;
+	dead = true;
 	timeSinceLastDamage = 0;
 }
 
 void PlayerStats_heal(double amount)
 {
+	if (dead) return;
 	integrity += amount;
 	if (integrity > INTEGRITY_MAX)
 		integrity = INTEGRITY_MAX;
@@ -481,6 +487,7 @@ bool PlayerStats_has_iframes(void)
 
 void PlayerStats_boost_regen(int duration_ms, double multiplier)
 {
+	if (dead) return;
 	timeSinceLastDamage = REGEN_DELAY_MS; /* activate regen immediately */
 	regenBoostMs = duration_ms;
 	regenBoostMultiplier = multiplier;

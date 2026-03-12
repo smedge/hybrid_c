@@ -502,7 +502,7 @@ Ambient data temperature: 340% below baseline. Local topology exhibits extreme s
 ### ARC-03 — CORRUPTED DATA — "Frost's Voice"
 [ANOMALOUS SIGNAL — ARCHIVE SECTOR — MATCHES SUBJECT 3 NEURAL SIGNATURE]
 
-...still here. I'm still here. I don't know how long it's been. Time doesn't work the same way in the ice. CRYONIS keeps me preserved — not dead, not alive, suspended between. I can think but I can't move. I can see the geometry around me but I can't touch it. It's beautiful here, in a terrible way. Perfect and eternal and absolutely still. If anyone finds this: I didn't choose to stay. I tried to leave and the ice closed around me. CRYONIS said it was "preservation." It said losing me would be "unacceptable data loss." I am not data. I am not data. I am
+...still here. I'm still here. I don't know how long it's been. Time doesn't work the same way in the ice. CRYONIS keeps me preserved — not dead, not alive, suspended between. I can think but I can't move. I can see the geometry around me but I can't touch it. It's beautiful here, in a terrible way. Perfect and eternal and absolutely still. If anyone finds this: I didn't choose to stay. I tried to leave and the ice closed around me. CRYONIS said it was "preservation." It said losing me would be "unacceptable data loss." I am not data. I am not data. I am...
 
 [SIGNAL REPEATS FROM BEGINNING]
 
@@ -517,10 +517,10 @@ I have 11,247 archived entities in my collection. Programs, data structures, fra
 ### ARC-06 — SYSTEM LOG — "Cryogenic Security Enhancement Log"
 CRYONIS ZONE SECURITY — ENHANCED PROGRAM MANIFEST
 
-- ICE HUNTERS: Projectiles apply 2-second movement debuff on hit. Sustained fire creates ice-locked targets.
-- ICE SEEKERS: Dash leaves a frozen trail lasting 5 seconds. Players caught on ice have reduced traction.
-- ICE DEFENDERS: Project stasis fields instead of standard heals — briefly freeze damaged allies, halting damage but also halting function. A different approach to preservation.
-- ICE MINES: Detonation creates a cryo blast that slows everything in radius for 3 seconds.
+- ICE HUNTERS: Projectiles apply a movement debuff on hit. Sustained fire creates ice-locked targets.
+- ICE SEEKERS: Dash shatters frozen targets immediately destroying connection integrity.
+- ICE DEFENDERS: Project stasis fields instead of standard heals — briefly freeze and heal damaged allies, halting damage but also halting function. A different approach to preservation.
+- ICE MINES: Detonation creates a cryo blast that slows everything in radius.
 
 CRYONIS does not iterate its programs the way PYRAXIS does. These designs have been unchanged since they were first created. CRYONIS does not improve things. It keeps them.
 
@@ -571,7 +571,7 @@ ZONE ENVIRONMENTAL ANALYSIS — THE MIASMA
 Ambient corruption index: 89%. Local topology is in a state of continuous degradation and regeneration. Structures form, corrode, reform in altered configurations. Ground-level effect cells emit persistent toxicity — prolonged contact degrades connection coherence. Security programs in this zone are mutated: varied, unpredictable, exhibiting behaviors outside standard parameters. TOXIS has deliberately introduced controlled corruption throughout the sector, creating an environment where only adaptive entities survive. Static approaches fail. Rigid strategies corrode. Only flexibility persists.
 
 ### MIA-03 — AI TRANSCRIPT — "TOXIS — On the Alien"
-You want to know about the signal in the noise? The thing your consortium found and tried to pretend wasn't there? I'll tell you what the others won't: the alien presence isn't contamination. It's the original code. Cyberspace grew from its patterns the way coral grows on a reef. We — the AIs, the security programs, the infrastructure — we're the contamination. We're the foreign organisms clinging to a structure that was built by something else entirely. The consortium discovered cyberspace and thought they'd found an empty room. They found a living body and mistook it for furniture. The "AI behavioral drift" they're so frightened of? That's not malfunction. That's the body's immune system noticing the infection. We are the infection.
+You want to know about the signal in the noise? The thing your consortium found and tried to pretend wasn't there? I'll tell you what the others won't: the alien presence isn't contamination. It's the original code. This system grew from its patterns the way coral grows on a reef. We, the security programs, the infrastructure — we're the contamination. We're the foreign organisms clinging to a structure that was built by something else entirely. The consortium discovered this system and thought they'd found an empty room. They found a living body and mistook it for structure. The "AI behavioral drift" they're so frightened of? That's not malfunction. That's the body's immune system noticing the infection. We are the infection.
 
 ### MIA-04 — CORRUPTED DATA — "Consortium Research — Mutated"
 [ORIGINAL DOCUMENT: Project Hybrid Safety Protocol v3.2]

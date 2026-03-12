@@ -135,19 +135,35 @@ static int count_entries_for_tab(int tab)
 	return count;
 }
 
-/* Get the nth entry for a given zone tab */
+/* Get the nth entry for a given zone tab (sorted by node ID so entries
+   appear in declaration order rather than discovery order) */
 static const NarrativeEntry *get_entry_for_tab(int tab, int index)
 {
 	if (tab < 0 || tab >= zoneTabCount) return NULL;
+
+	/* Collect matching entries */
+	const NarrativeEntry *matches[256];
 	int count = 0;
 	for (int i = 0; i < DataNode_collected_count(); i++) {
-		const NarrativeEntry *e = Narrative_get(DataNode_collected_id(i));
-		if (e && strcmp(e->zone_name, zoneTabs[tab]) == 0) {
-			if (count == index) return e;
-			count++;
+		const char *nid = DataNode_collected_id(i);
+		const NarrativeEntry *e = Narrative_get(nid);
+		if (e && strcmp(e->zone_name, zoneTabs[tab]) == 0 && count < 256)
+			matches[count++] = e;
+	}
+
+	/* Sort by node ID (trailing digits give declaration order) */
+	for (int i = 0; i < count - 1; i++) {
+		for (int j = i + 1; j < count; j++) {
+			if (strcmp(matches[i]->node_id, matches[j]->node_id) > 0) {
+				const NarrativeEntry *tmp = matches[i];
+				matches[i] = matches[j];
+				matches[j] = tmp;
+			}
 		}
 	}
-	return NULL;
+
+	if (index < 0 || index >= count) return NULL;
+	return matches[index];
 }
 
 void DataLogs_initialize(void)

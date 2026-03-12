@@ -25,7 +25,7 @@ void Sub_Boost_update(const Input *input, unsigned int ticks)
 	(void)ticks;
 
 	/* Deactivate if skill is unequipped */
-	if (boosting && !Skillbar_is_active(SUB_ID_BOOST))
+	if (boosting && Skillbar_find_equipped_slot(SUB_ID_BOOST) < 0)
 		boosting = false;
 }
 
