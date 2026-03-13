@@ -906,6 +906,11 @@ void Skillbar_render_icon_at(SubroutineId id, float cx, float cy, float alpha)
 	render_icon(id, cx, cy, alpha, Graphics_get_ui_scale());
 }
 
+void Skillbar_render_icon_at_scale(SubroutineId id, float cx, float cy, float alpha, float scale)
+{
+	render_icon(id, cx, cy, alpha, scale);
+}
+
 SubroutineTier Skillbar_get_tier(SubroutineId id)
 {
 	if (id >= 0 && id < SUB_ID_COUNT)

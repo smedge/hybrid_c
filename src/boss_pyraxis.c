@@ -10,6 +10,7 @@
 #include "map.h"
 #include "data_node.h"
 #include "fragment.h"
+#include "skill_drop.h"
 #include "particle_instance.h"
 #include "global_render.h"
 #include "global_update.h"
@@ -1451,8 +1452,8 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 	case BOSS_DEFEATED:
 		/* Wait for death speech to finish, then spawn fragment */
 		if (!DataNode_is_reading() && boss.stateTimer > 500) {
-			/* Spawn persistent elite inferno fragment */
-			Fragment_spawn_persistent(boss.center, FRAG_TYPE_INFERNO, TIER_ELITE);
+			/* Spawn persistent elite inferno skill drop */
+			SkillDrop_spawn_persistent(boss.center, SUB_ID_INFERNO);
 
 			/* Deactivate HUD */
 			BossHUD_set_active(false);
@@ -1465,7 +1466,7 @@ void BossPyraxis_update(void *state, const PlaceableComponent *placeable, unsign
 
 	case BOSS_AWAITING_EXIT:
 		/* Once frag is collected, wait 3s then spawn exit portal */
-		if (!Fragment_any_persistent_active()) {
+		if (!SkillDrop_any_persistent_active()) {
 			if (boss.stateTimer >= EXIT_PORTAL_DELAY_MS) {
 				Portal_initialize(boss.center, "portal_from_boss",
 					"./resources/zones/procgen_002.zone", "portal_to_pyraxis");

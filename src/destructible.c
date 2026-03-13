@@ -4,6 +4,7 @@
 #include "map.h"
 #include "sub_mine.h"
 #include "fragment.h"
+#include "skill_drop.h"
 #include "collision.h"
 #include "progression.h"
 #include "audio.h"
@@ -59,7 +60,7 @@ void Destructible_update(unsigned int ticks)
 				if (!Progression_is_unlocked(SUB_ID_BOOST)) {
 					Position center = {wx + MAP_CELL_SIZE * 0.5,
 					                   wy + MAP_CELL_SIZE * 0.5};
-					Fragment_spawn(center, FRAG_TYPE_BOOST, TIER_ELITE);
+					SkillDrop_spawn(center, SUB_ID_BOOST);
 				}
 
 				ds->destroyed = true;

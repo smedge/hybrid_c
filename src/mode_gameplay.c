@@ -29,6 +29,7 @@
 #include "savepoint.h"
 #include "portal.h"
 #include "fragment.h"
+#include "skill_drop.h"
 #include "circuit_atlas.h"
 #include "map_window.h"
 #include "fog_of_war.h"
@@ -241,6 +242,7 @@ void Mode_Gameplay_initialize(void)
 	PlayerStats_initialize();
 	Burn_initialize_audio();
 	Fragment_initialize();
+	SkillDrop_initialize();
 	Progression_initialize();
 	Skillbar_initialize();
 	Catalog_initialize();
@@ -260,11 +262,13 @@ void Mode_Gameplay_initialize(void)
 	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Savepoint_render_bloom_source);
 	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, DataNode_render_bloom_source);
 	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Fragment_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, SkillDrop_render_bloom_source);
 	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Burn_render_bloom_source);
 	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Burn_render_light_source);
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Portal_render_deactivated);
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, DataNode_render_all);
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Fragment_render);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, SkillDrop_render);
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Burn_render_all);
 
 	godModeActive = false;
@@ -332,6 +336,7 @@ void Mode_Gameplay_initialize_from_save(void)
 	PlayerStats_initialize();
 	Burn_initialize_audio();
 	Fragment_initialize();
+	SkillDrop_initialize();
 	Progression_initialize();
 	Skillbar_initialize();
 	Catalog_initialize();
@@ -353,11 +358,13 @@ void Mode_Gameplay_initialize_from_save(void)
 	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Savepoint_render_bloom_source);
 	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, DataNode_render_bloom_source);
 	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Fragment_render_bloom_source);
+	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, SkillDrop_render_bloom_source);
 	GlobalRender_register(RENDER_PASS_BLOOM_SOURCE, Burn_render_bloom_source);
 	GlobalRender_register(RENDER_PASS_LIGHT_SOURCE, Burn_render_light_source);
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Portal_render_deactivated);
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, DataNode_render_all);
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Fragment_render);
+	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, SkillDrop_render);
 	GlobalRender_register(RENDER_PASS_WORLD_OVERLAY, Burn_render_all);
 
 	/* Restore progression + skillbar + fragment counts from checkpoint */
@@ -400,6 +407,7 @@ void Mode_Gameplay_cleanup(void)
 	Skillbar_cleanup();
 	Progression_cleanup();
 	Fragment_cleanup();
+	SkillDrop_cleanup();
 	Zone_unload();
 	DataNode_stop_voice();
 	Ship_cleanup();
@@ -668,6 +676,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 	DataNode_update_all(ticks);
 	Destructible_update(ticks);
 	Fragment_update(ticks);
+	SkillDrop_update(ticks);
 	Progression_update(ticks);
 	Zone_update_notification(ticks);
 	View_update(input, ticks);
@@ -1355,6 +1364,7 @@ static void god_mode_update(Input *input, const unsigned int ticks)
 	Entity_ai_update_system(ticks);
 	Destructible_update(ticks);
 	Fragment_update(ticks);
+	SkillDrop_update(ticks);
 	Progression_update(ticks);
 
 	/* Flush pending zone saves at most once per frame */
@@ -1826,6 +1836,7 @@ static void zone_teardown_and_load(const char *zone_path)
 	Sub_Blaze_deactivate_all();
 	Sub_Cauterize_deactivate_all();
 	Fragment_deactivate_all();
+	SkillDrop_deactivate_all();
 	Burn_reset_player();
 	Zone_unload();
 	Entity_destroy_all();

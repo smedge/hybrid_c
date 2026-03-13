@@ -219,6 +219,13 @@ int Progression_get_threshold(SubroutineId id)
 	return 0;
 }
 
+FragmentType Progression_get_frag_type(SubroutineId id)
+{
+	if (id >= 0 && id < SUB_ID_COUNT)
+		return entries[id].frag_type;
+	return FRAG_TYPE_MINE;
+}
+
 float Progression_get_progress(SubroutineId id)
 {
 	if (id >= 0 && id < SUB_ID_COUNT) {

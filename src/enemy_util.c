@@ -28,6 +28,7 @@
 #include "fragment.h"
 #include "progression.h"
 #include "skillbar.h"
+#include "skill_drop.h"
 #include "enemy_registry.h"
 
 #include <math.h>
@@ -387,7 +388,11 @@ void Enemy_drop_fragments(Position deathPos, const CarriedSubroutine *subs, int 
 	/* Drop normal fragments: always, pick one at random */
 	if (normalCount > 0) {
 		int pick = rand() % normalCount;
-		Fragment_spawn(deathPos, subs[normal[pick]].frag_type, Skillbar_get_tier(subs[normal[pick]].sub_id));
+		SubroutineTier tier = Skillbar_get_tier(subs[normal[pick]].sub_id);
+		if (tier == TIER_ELITE)
+			SkillDrop_spawn(deathPos, subs[normal[pick]].sub_id);
+		else
+			Fragment_spawn(deathPos, subs[normal[pick]].frag_type, tier);
 		return;
 	}
 

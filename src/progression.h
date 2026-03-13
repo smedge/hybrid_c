@@ -52,5 +52,6 @@ const char *Progression_get_name(SubroutineId id);
 const char *Progression_get_enemy_name(SubroutineId id);
 ColorFloat Progression_get_enemy_color(SubroutineId id);
 bool Progression_would_complete(FragmentType frag_type, int new_count);
+FragmentType Progression_get_frag_type(SubroutineId id);
 
 #endif
