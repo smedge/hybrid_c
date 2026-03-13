@@ -484,6 +484,7 @@ void Mode_Gameplay_update(Input *input, const unsigned int ticks)
 		if (godModeActive) {
 			FogOfWar_reveal_all();
 			Progression_unlock_all();
+			DataNode_collect_all();
 			View_set_min_zoom(0.01);
 		} else {
 			/* Cancel any in-progress text entry */

@@ -94,6 +94,7 @@ static CollidableComponent collidable = {{-20.0, 20.0, 20.0, -20.0}, true,
 
 static ShipState shipState = {true, 0};
 static bool godMode = false;
+static bool godModeDirty = false;
 
 static double get_heading(bool n, bool s, bool e, bool w);
 
@@ -340,7 +341,11 @@ void Ship_update(const Input *userInput, const unsigned int ticks, PlaceableComp
 			Stalker_cleanup();
 			Corruptor_cleanup();
 			EnemyRegistry_clear();
-			Zone_spawn_enemies();
+			/* Skip enemy re-spawn for cross-zone — the zone is about
+			 * to be torn down and reloaded by mode_gameplay anyway.
+			 * Re-spawning here would re-init bosses (triggering dialog). */
+			if (!Ship_has_pending_cross_zone_respawn())
+				Zone_spawn_enemies();
 			Entity_recalculate_highest_index();
 
 			/* Skip sound for cross-zone — Ship_force_spawn will play it */
@@ -600,6 +605,18 @@ void Ship_set_position(Position pos)
 void Ship_set_god_mode(bool enabled)
 {
 	godMode = enabled;
+	if (enabled)
+		godModeDirty = true;
+}
+
+bool Ship_is_god_dirty(void)
+{
+	return godModeDirty;
+}
+
+void Ship_clear_god_dirty(void)
+{
+	godModeDirty = false;
 }
 
 bool Ship_is_destroyed(void)

@@ -152,7 +152,7 @@ These are tuning knobs, not new state machines. The base AI code checks variant 
 - **Bloom**: Warm orange-yellow glow
 - **Audio**: Fire crackle, flame whoosh, sizzle on DOT ticks
 - **Ambient FX**: Floating ember particles, heat shimmer
-- **Effect cells**: Ember cells — orange glow, DOT while standing
+- **Effect cells**: None
 - **Boss**: PYRAXIS (specced in `plans/spec_pyraxis_boss.md`)
 - **Boss reward**: sub_inferno (elite channeled beam, already implemented)
 
@@ -188,8 +188,8 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 
 | Base Sub | Fire Sub | Name | Description |
 |----------|----------|------|-------------|
-| sub_mend | **sub_cauterize** | Cauterize | Heals one target (smaller than mend) + **cauterizes** — the healed target AND all allies within 100 units of it get burn cleansed + brief burn immunity (~3s). Also creates a burn aura around the target that damages nearby enemies for ~3s. When enemies use it: defender cauterizes a wounded ally, that ally + nearby allies get burn cleansed and fire immunity, player nearby gets burned by the aura. When player uses it: self-heal + burn cleanse (100-unit radius catches nearby friendlies if co-op ever exists) + brief burn immunity + burn aura hurts nearby enemies. *(Narrative: "Cauterization seals the wound — fire can't take hold.")* |
-| sub_aegis | **sub_immolate** | Immolation Shield | Shorter duration than aegis but the shield **denies area around the shielded target** — anything in melee range takes burn DOT. Attackers at range take reflected fire. The shield IS area denial — you can't stand near an immolated target. |
+| sub_mend | **sub_cauterize** | Cauterize | Heals one target (smaller than mend, 35 HP) + **cauterizes** — cleanses **chill stacks + freeze** and grants **3s chill immunity**. Also creates a burn aura around the target that damages nearby enemies for ~3s. When enemies use it: defender cauterizes a wounded ally, that ally gets chill cleansed and chill immunity, player nearby gets burned by the aura. When player uses it: self-heal + chill/freeze cleanse + 3s chill immunity + burn aura hurts nearby enemies. **Cross-zone counter**: this is the tool you bring to The Archive to survive ice mechanics. *(Narrative: "Cauterization seals the wound — fire thaws the freeze.")* |
+| sub_aegis | **sub_immolate** | Immolation Shield | Shorter duration than aegis but the shield **denies area around the shielded target** — anything in melee range takes burn DOT. Attackers at range take reflected fire. The shield IS area denial — you can't stand near an immolated target. **Ice vulnerability**: each chill stack strips 1s from immolate duration — 3 frost bolts remove 3s of shield time. |
 
 #### Stealth/Utility Subs
 
@@ -211,7 +211,7 @@ Each base sub maps to a fire-themed replacement. All follow the shared core patt
 | Mine | Fire Mine | sub_cinder | "Blast creates expanding fire ring" | Cinder detonates into persistent burning ground patch |
 | Hunter | Fire Hunter | sub_ember, sub_flak | "Projectiles detonate into 3-second burn zones" | Faster attack cadence, shorter burst delay |
 | Seeker | Fire Seeker | sub_blaze | "Dash trails ignite into flame corridors lasting 4 seconds" | Slightly shorter orbit phase |
-| Defender | Fire Defender | sub_cauterize, sub_immolate | "Cauterizes — healed allies gain brief fire immunity" | Same flee AI, cauterize + immolate on allies |
+| Defender | Fire Defender | sub_cauterize, sub_immolate | "Cauterize heals + cleanses chill/freeze + grants chill immunity + burn aura" | Same flee AI, cauterize + immolate on allies |
 | Stalker | Fire Stalker | sub_smolder, sub_blaze | *(not in narrative — extends thesis)* | Heat shimmer cloak, ambush creates burn zone |
 | Corruptor | Fire Corruptor | sub_scorch, sub_heatwave, sub_temper | *(not in narrative — extends thesis)* | Fire trail while sprinting, temper reflects 50% fire/burn damage back on attacker |
 
@@ -243,8 +243,8 @@ Same thresholds as base equivalents — killing fire enemies in the fire zone un
 - **Bloom**: Cold blue-white glow
 - **Audio**: Ice crack/shatter, frozen wind, crystal chime on freeze, glass-like resonance
 - **Ambient FX**: Frost crystal particles, cold vapor trails
-- **Effect cells**: Frost cells — blue glow, reduced traction while standing
-- **Boss**: CRYONIS
+- **Effect cells**: None
+- **Boss**: CRYONIS (specced in `plans/spec_ice_zone.md`)
 
 ### Ice Subroutine Set
 
@@ -254,52 +254,52 @@ Every ice sub answers: **"How does this punish commitment?"** — slow the playe
 
 | Base Sub | Ice Sub | Name | Description |
 |----------|---------|------|-------------|
-| sub_mgun | **sub_frost** | Frost Bolt | Projectiles apply **2-second movement slow** on hit. Sustained fire stacks to ice-lock — 3+ stacks freezes the target briefly. Slower projectiles than mgun but each hit compounds. *(Narrative: "Projectiles apply 2-second movement debuff on hit. Sustained fire creates ice-locked targets.")* |
-| sub_tgun | **sub_shatter** | Shatter Shot | Heavy projectile that deals bonus damage to slowed/frozen targets. The combo finisher — frost bolt locks them down, shatter shot breaks them apart. Low fire rate, high payoff on frozen targets. |
+| sub_mgun | **sub_frost** | Frost Bolt | Projectiles apply **1 chill stack** (2s duration, 25% slow) on hit. 3 stacks triggers **freeze** (2s hard root). Slower projectile speed (400 u/s vs 500) and fire rate (200ms vs 150ms) than mgun but each hit compounds. 8 damage per hit, 3500u range, 1 feedback/shot. *(Narrative: "Projectiles apply 2-second movement debuff on hit. Sustained fire creates ice-locked targets.")* |
+| sub_tgun | **sub_snowcone** | Cone of Cold | Narrow cone of 9 ice pellets (667ms cooldown). 2/3 tgun range (2333u), each pellet applies **1 chill stack**. At close range 5+ pellets land = instant freeze from a single trigger pull. At range only 1-2 connect. 3 damage/pellet, 350 u/s, 3 feedback/shot. The ice shotgun — creates a natural danger gradient where closing distance is lethal. |
 
 #### Movement Subs
 
 | Base Sub | Ice Sub | Name | Description |
 |----------|---------|------|-------------|
-| sub_egress | **sub_glaciate** | Glacial Dash | Dash that leaves a **frozen trail lasting ~5s**. Anything on the trail has reduced traction — sliding momentum, can't stop or turn quickly. Punishes anyone who steps on the path. *(Narrative: "Dash leaves a frozen trail lasting 5 seconds. Players caught on ice have reduced traction.")* |
-| sub_sprint | **sub_permafrost** | Permafrost Sprint | Speed boost that freezes the ground permanently (until the sprint ends). Longer trail duration than glaciate but narrower. Corruptors lay down ice highways. |
+| sub_egress | **sub_shatter** | Shatter Dash | Dash (150ms, 5x speed, i-frames) that leaves a **frozen vapor trail lasting 5s**. Vapor trail applies **1 chill stack** on first contact per segment. Dash deals **30 base contact damage**, or **100 shatter damage** against frozen targets (consumes freeze). 2.5s cooldown, 25 feedback. The ice zone's combo finisher — chill targets with frost/snowcone, then shatter-dash through them. *(Narrative: "Dash leaves frozen vapor trail. Dash shatters frozen enemies for 100 integrity damage.")* |
+| sub_sprint | **sub_permafrost** | Permafrost Sprint | 1.5x speed boost (5s duration, 20s cooldown, 0 feedback) that freezes the ground along the path — **1 chill stack** on contact with trail. Trail persists until sprint ends then fades over 3s. ~30u wide frozen strip. Corruptors lay down ice highways that chill anything walking through them. |
 
 #### Deployable Subs
 
 | Base Sub | Ice Sub | Name | Description |
 |----------|---------|------|-------------|
-| sub_mine | **sub_cryomine** | Cryo Mine | Detonation creates a **cryo blast** — slows everything in radius for ~3s instead of dealing burst damage. Less lethal than a mine, but sets up kills for everything else in the zone. *(Narrative: "Detonation creates a cryo blast that slows everything in radius for 3 seconds.")* |
+| sub_mine | **sub_cryomine** | Cryo Mine | Detonation creates a **cryo blast** (30 damage, 150u radius) that applies **2 chill stacks** to everything hit + leaves a **3s lingering frost field** (1 chill/sec inside). 2s fuse, 3 max deployed, 250ms cooldown, 15 feedback. Much less burst than mine (30 vs 100 damage) but almost-freezes in one blast. Two cryomines = guaranteed freeze. *(Narrative: "Detonation creates a cryo blast that slows everything in radius for 3 seconds.")* |
 
 #### Support Subs
 
 | Base Sub | Ice Sub | Name | Description |
 |----------|---------|------|-------------|
-| sub_mend | **sub_stasis** | Stasis Field | Projects a stasis field on the target — **briefly freezes a damaged ally**, halting all damage AND all function. Not a heal — a pause button. The ally is invulnerable but inert. Buys time for other defenders to respond. *(Narrative: "Project stasis fields instead of standard heals — briefly freeze damaged allies, halting damage but also halting function. A different approach to preservation.")* |
-| sub_aegis | **sub_cryoshield** | Cryo Shield | Ice armor that absorbs damage and **shatters when it breaks** — the shatter deals AoE burst to anything nearby + applies slow. Attackers are punished for breaking through. The shield rewards patience (let it expire) and punishes aggression. |
+| sub_mend | **sub_stasis** | Stasis Heal | Heals target for **40 HP** + cleanses **all burn stacks** + grants **3s burn immunity**. Brief 500ms micro-stasis visual (ice crystallization) for thematic flavor — not a real lockout. 10s cooldown, 20 feedback, 300u range on allies. **Cross-zone counter**: this is the tool you bring to The Crucible to survive fire DOTs. Mirrors sub_cauterize architecture — cauterize cleanses chill (bring to Archive), stasis cleanses burn (bring to Crucible). *(Narrative: "Ice seals the wound. A brief freeze cleanses fire and restores integrity.")* |
+| sub_aegis | **sub_cryoshield** | Cryo Shield | **HP-based shield** (80 HP, 8s duration or until broken) — fundamentally different from aegis (not binary invuln). When broken: **40 AoE shatter damage** + **2 chill stacks** in 120u radius. 25s cooldown, 25 feedback. Rewards patience (wait 8s for expiry) and punishes aggression (breaking it freezes you). **Fire vulnerability**: fire damage deals 1.5x to shield HP (~53 effective HP against fire subs). |
 
 #### Stealth/Utility Subs
 
 | Base Sub | Ice Sub | Name | Description |
 |----------|---------|------|-------------|
-| sub_stealth | **sub_flash_freeze** | Flash Freeze | Camouflage via frozen stillness — the stalker becomes a static ice formation, nearly invisible when motionless. Ambush attack **freezes the target solid** for a brief duration. The ultimate commitment punish — you walked past something frozen and now you are too. |
+| sub_stealth | **sub_flash_freeze** | Flash Freeze | Camouflage via frozen stillness — **must be completely still** to cloak (8s duration, different from stealth's slow-walk). Entity becomes ice-colored, crystalline static, blends into frost environment. Ambush: **50 damage + instant 2s freeze** (hard freeze, no chill stacking needed). 15s cooldown, 0 feedback gate. The ultimate commitment punish — you walked past something frozen and now you are too. |
 
 #### Debuff/Control Subs
 
 | Base Sub | Ice Sub | Name | Description |
 |----------|---------|------|-------------|
-| sub_emp | **sub_absolute_zero** | Absolute Zero | Expanding cold ring that **suppresses all cooldown recovery** in its radius for ~5s. Skills don't recharge. The ice doesn't disable your systems — it slows them to nothing. You can still act, but your options won't come back. |
-| sub_resist | **sub_arctic_aura** | Arctic Aura | Aura that **slows all enemies that enter range** + allies in range gain slow-on-hit for their attacks. The corruptor turns the whole area into a friction trap. Everything within range is fighting through ice. |
+| sub_emp | **sub_deep_freeze** | Deep Freeze | Expanding cold ring (0→400u over 500ms) that **suppresses all cooldown recovery** for 5s + applies **1 chill stack**. Skills still work but don't recharge — escape dash won't come back, heal won't refresh, shield stays down. 30s cooldown, 30 feedback. More insidious than EMP: you can use what's ready, but once spent, you're stuck. |
+| sub_resist | **sub_arctic_aura** | Arctic Aura | 200u aura (8s duration, 20s cooldown, 25 feedback) that **slows enemies 30%** in range + **grants chill-on-hit** to all allies in range. The corruptor turns the whole squad into a freeze machine — every nearby enemy's attacks apply chill stacks. Kill the corruptor first or the entire area becomes a chill trap. |
 
 ### Ice Enemy Variant Summary
 
 | Enemy | Ice Variant | Loadout | Narrative Behavior | AI Tweaks |
 |-------|------------|---------|-------------------|-----------|
-| Mine | Ice Mine | sub_cryomine | "Cryo blast that slows everything in radius for 3 seconds" | Slow instead of damage — sets up kills |
-| Hunter | Ice Hunter | sub_frost, sub_shatter | "Projectiles apply 2-second movement debuff. Sustained fire creates ice-locked targets" | Longer engagement range, slower movement |
-| Seeker | Ice Seeker | sub_glaciate | "Dash leaves frozen trail lasting 5 seconds. Reduced traction on ice" | Longer orbit phase, trail is the weapon |
-| Defender | Ice Defender | sub_stasis, sub_cryoshield | "Stasis fields — briefly freeze damaged allies, halting damage and function" | Same flee AI, stasis instead of heal |
-| Stalker | Ice Stalker | sub_flash_freeze, sub_glaciate | *(extends thesis)* | Frozen stillness cloak, ambush freezes target |
-| Corruptor | Ice Corruptor | sub_permafrost, sub_absolute_zero, sub_arctic_aura | *(extends thesis)* | Lays ice highways, suppresses cooldowns |
+| Mine | Ice Mine | sub_cryomine | "Cryo blast + 2 chill stacks + lingering frost field" | CC setup — area chill, not damage |
+| Hunter | Ice Hunter | sub_frost, sub_snowcone | "Frost bolts at range stack chill, snowcone up close can freeze in one blast" | 1.2x range, 0.8x speed, range-based weapon switching |
+| Seeker | Ice Seeker | sub_shatter | "Orbit lays vapor trails (chill on contact), attack dash shatters frozen targets for 100 damage" | 1.3x orbit duration, vapor trail net is the weapon |
+| Defender | Ice Defender | sub_stasis, sub_cryoshield | "Stasis heals allies + cleanses burn + burn immunity. Cryoshield punishes attackers on break" | Same flee AI, stasis replaces heal, HP shield replaces invuln |
+| Stalker | Ice Stalker | sub_flash_freeze, sub_shatter | "Stationary cloak, ambush = 50 damage + instant 2s freeze, escape dash leaves vapor trail" | Frozen stillness cloak (must be still), shatter dash for escape |
+| Corruptor | Ice Corruptor | sub_permafrost, sub_deep_freeze, sub_arctic_aura | "Frost trail highways, cooldown suppression ring, chill-on-hit aura for squad" | Battlefield shaper — ice everything |
 
 ---
 
@@ -315,7 +315,7 @@ Every ice sub answers: **"How does this punish commitment?"** — slow the playe
 - **Bloom**: Toxic green glow
 - **Audio**: Acid drip/sizzle, bubbling ooze, hissing gas, wet squelch on DOT tick
 - **Ambient FX**: Dripping toxic particles, green mist aura
-- **Effect cells**: Toxic cells — green glow, stacking corruption DOT while standing
+- **Effect cells**: None
 - **Boss**: TOXIS
 
 ### Poison Subroutine Set
@@ -387,7 +387,7 @@ Every poison sub answers: **"How does this rot the player over time?"** — DOT 
 - **Bloom**: Pulsing dark red glow (throbs with a heartbeat rhythm)
 - **Audio**: Heartbeat pulse, blood rush/drain, wet tearing, arterial spray
 - **Ambient FX**: Dark red wisp particles, pulsing veins, rhythmic glow
-- **Effect cells**: Pulse cells — red glow, slow integrity drain while standing
+- **Effect cells**: None
 - **Boss**: HAEMOS
 
 ### Blood Subroutine Set
@@ -459,7 +459,7 @@ Every blood sub answers: **"How does this drain the player to feed the enemy?"**
 - **Bloom**: Blinding white-blue glow with electric arc flickers
 - **Audio**: Electric buzz/hum, arc discharge, capacitor whine, thunderclap on chain
 - **Ambient FX**: Crackling arc particles between nearby enemies, light flares, static discharge
-- **Effect cells**: Charged cells — electric blue glow, chain damage relay (damage to player chains to nearby charged cells)
+- **Effect cells**: None
 - **Boss**: LUXIS
 
 ### Radiance Subroutine Set
@@ -531,7 +531,7 @@ Every radiance sub answers: **"How does this strip away the player's ability to 
 - **Bloom**: Subtle dark purple glow — or anti-glow (darkening instead of brightening)
 - **Audio**: Reversed/negative-space sounds, muffled impacts, void hum, anti-sound. Quieter than other zones. Sound is being deleted.
 - **Ambient FX**: Subtle distortion shimmer, negative-space particles (dark spots that eat light)
-- **Effect cells**: Void cells — dark purple, suppresses sub cooldown recovery while standing
+- **Effect cells**: None
 - **Boss**: NIHILIS
 
 ### Void Subroutine Set — The Anti-Theme
@@ -607,7 +607,7 @@ Every themed sub MUST follow the core extraction rule:
 Multiple zones rely on status effect systems that don't exist yet. These should be shared modules built before the themed subs that use them:
 
 - **`burn.c/h`** (Fire) — manages active burns on entities (player + enemies). Burn state: damage/sec, duration remaining, stack count. Applied by ember, blaze, smolder, cauterize, etc. Visual: orange damage ticks, flame particle on burning entity.
-- **`slow.c/h`** (Ice) — manages movement slow/freeze on entities. Slow state: speed multiplier, duration, stack count, freeze threshold. Applied by frost, glaciate, cryomine, etc. Visual: blue tint on slowed entity, ice crystal overlay on frozen.
+- **`chill.c/h`** (Ice) — manages chill stacks + freeze on entities (player + enemies). Chill state: stack count (max 3), per-stack duration (2s), freeze timer (2s at 3 stacks), post-freeze immunity (2s). 25% speed reduction per stack. Applied by frost, snowcone, shatter vapor trail, cryomine, etc. Visual: frost particles (1 stack), ice crackle (2 stacks), blue-white frozen shell (frozen). Mirrors `burn.c/h` architecture. Full spec in `plans/spec_ice_zone.md`.
 - **`dot.c/h`** (Poison/Blood) — generic DOT system for corruption and bleed. DOT state: damage/sec, duration, type (poison/bleed), lifesteal fraction. Applied by toxin, leech, hemorrhage, etc. Could potentially unify with burn.c or remain separate for distinct visuals/audio.
 
 ### Fragment/Progression Scaling
@@ -618,16 +618,37 @@ With ~74 total subs, the fragment system needs:
 - Catalog UI must handle many more tabs/entries (possibly sub-tabs per zone theme)
 - Skillbar's 10-slot limit becomes the real build constraint — choosing from 74 subs
 
-### Theme Effect Cell Integration
-
-Themed enemies should synergize with their zone's effect cells:
-- Fire enemies standing on ember cells could get a damage boost or heal
-- Player standing on ember cells while fighting fire enemies takes DOT from ground AND from enemy abilities
-- This creates positional gameplay — lure enemies off their terrain advantage
-
 ### Zone Transition Behavior
 
 When a themed enemy is killed in its home zone and the player later returns:
 - Respawned enemies are still themed (theme is zone-wide, permanent)
 - Fragment progress persists in save data
 - Themed subs unlocked in fire zone work everywhere (not zone-locked)
+
+### Cross-Zone Elemental Counters (Paired Zones)
+
+The six zones form **three paired zone systems**. Each pair shares a counter relationship: the heal sub from one zone cleanses the other zone's status effect, and the elements interact at every layer (status effects, shields, area denial, boss mechanics). Neither zone in a pair is fully conquerable without tools from the other.
+
+**The three pairs:**
+
+| Pair | Zone A | Zone B | A's Status | B's Status | A's Heal Cleanses | B's Heal Cleanses |
+|------|--------|--------|------------|------------|-------------------|-------------------|
+| **Fire ↔ Ice** | The Crucible | The Archive | Burn | Chill/Freeze | Chill (cauterize) | Burn (stasis) |
+| **Poison ↔ Blood** | The Miasma | The Pulse | Corruption DOT | Bleed DOT | Bleed (TBD) | Corruption (TBD) |
+| **Radiance ↔ Void** | The Corona | The Expanse | Overcharge | Suppression | Suppression (TBD) | Overcharge (TBD) |
+
+**The pattern** (using Fire ↔ Ice as the worked example — full details in `plans/spec_ice_zone.md`):
+
+1. **Heal sub cross-dependency**: Each zone's heal cleanses the *other* zone's status effect. sub_cauterize (fire) cleanses chill/freeze + grants chill immunity → bring to The Archive. sub_stasis (ice) cleanses burn + grants burn immunity → bring to The Crucible. Neither cleanses its own zone's effect. sub_mend (base) doesn't cleanse anything.
+
+2. **Status effect override**: Opposing elements react on contact, never coexist. Fire damage on frozen target = thermal shatter (bonus damage). Chill on burning target = extinguish (consume stacks 1:1). Hard freeze overrides burn entirely.
+
+3. **Shield vulnerability**: Themed shields are soft-countered by the opposite element. Fire deals 1.5x to cryoshield HP. Chill strips immolate duration. Faster path through, not a free pass.
+
+4. **Area denial counter**: Opposing area effects neutralize on overlap. Fire pools melt frost trails. Frost trails extinguish fire pools. Steam burst visual + hiss. Active counter-play — reshape the arena with the opposite element.
+
+5. **Boss design**: Boss fights become loadout puzzles. CRYONIS (ice boss) is countered by fire subs. PYRAXIS (fire boss) is countered by ice subs. Without counter tools: every mechanic is a wall. With counter tools: every mechanic has an answer.
+
+**The progression loop**: Player enters Zone A → struggles → enters Zone B with A's tools → pushes deeper → returns to Zone A with B's tools → conquers. The player bounces between paired zones, each trip armed with new counters. Metroidvania progression through loadout discovery — not keys and doors.
+
+**Poison ↔ Blood and Radiance ↔ Void** counter details will follow the same 5-layer pattern. Heal cross-dependency is the anchor; status overrides, shield vulnerabilities, area denial cancellation, and boss implications layer on top. Detailed specs for those pairs will be written when those zones are designed.

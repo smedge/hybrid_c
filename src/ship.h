@@ -20,6 +20,8 @@ double Ship_get_heading(void);
 void Ship_force_spawn(Position pos);
 void Ship_set_position(Position pos);
 void Ship_set_god_mode(bool enabled);
+bool Ship_is_god_dirty(void);
+void Ship_clear_god_dirty(void);
 bool Ship_is_destroyed(void);
 void Ship_set_pending_cross_zone_respawn(bool pending);
 bool Ship_has_pending_cross_zone_respawn(void);

@@ -32,6 +32,7 @@ bool DataNode_is_collected(const char *node_id);
 int DataNode_collected_count(void);
 const char *DataNode_collected_id(int index);
 void DataNode_mark_collected(const char *node_id);
+void DataNode_collect_all(void);
 void DataNode_clear_collected(void);
 
 /* Replay voice from data logs (voice-only, no reading overlay) */

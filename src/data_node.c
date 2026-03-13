@@ -945,6 +945,16 @@ void DataNode_mark_collected(const char *node_id)
 	}
 }
 
+void DataNode_collect_all(void)
+{
+	int count = Narrative_count();
+	for (int i = 0; i < count; i++) {
+		const NarrativeEntry *e = Narrative_get_by_index(i);
+		if (e && e->body[0] != '\0')
+			DataNode_mark_collected(e->node_id);
+	}
+}
+
 void DataNode_clear_collected(void)
 {
 	collectedCount = 0;

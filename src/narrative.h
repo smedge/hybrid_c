@@ -19,6 +19,7 @@ typedef struct {
 void Narrative_load(const char *path);
 void Narrative_cleanup(void);
 const NarrativeEntry *Narrative_get(const char *node_id);
+const NarrativeEntry *Narrative_get_by_index(int index);
 int Narrative_count(void);
 
 #endif

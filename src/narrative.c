@@ -99,6 +99,12 @@ const NarrativeEntry *Narrative_get(const char *node_id)
 	return NULL;
 }
 
+const NarrativeEntry *Narrative_get_by_index(int index)
+{
+	if (index < 0 || index >= entryCount) return NULL;
+	return &entries[index];
+}
+
 int Narrative_count(void)
 {
 	return entryCount;

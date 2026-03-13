@@ -291,8 +291,9 @@ void Savepoint_update_all(unsigned int ticks)
 
 		switch (sp->phase) {
 		case SAVEPOINT_IDLE:
-			sp->spin_angle += IDLE_SPIN_SPEED * (ticks / 1000.0f);
-			if (inside && !Ship_is_destroyed()) {
+			if (!Ship_is_god_dirty())
+				sp->spin_angle += IDLE_SPIN_SPEED * (ticks / 1000.0f);
+			if (inside && !Ship_is_destroyed() && !Ship_is_god_dirty()) {
 				sp->ship_inside = true;
 				sp->phase = SAVEPOINT_CHARGING;
 				sp->dwell_timer = 0;
@@ -396,8 +397,14 @@ void Savepoint_render(const void *state, const PlaceableComponent *placeable)
 
 	switch (sp->phase) {
 	case SAVEPOINT_IDLE:
-		render_dots(sp, DOT_RADIUS, DOT_SIZE,
-			0.0f, 0.9f, 0.9f, alpha_pulse);
+		if (Ship_is_god_dirty()) {
+			/* God-dirty: dimmed, frozen ring */
+			render_dots(sp, DOT_RADIUS, DOT_SIZE,
+				0.3f, 0.3f, 0.3f, 0.3f);
+		} else {
+			render_dots(sp, DOT_RADIUS, DOT_SIZE,
+				0.0f, 0.9f, 0.9f, alpha_pulse);
+		}
 		break;
 
 	case SAVEPOINT_CHARGING: {
