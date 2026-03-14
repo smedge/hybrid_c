@@ -21,8 +21,8 @@
 #define ICON_SCALE        (DROP_SIZE / 50.0f)          /* 1.6 — matches skillbar proportions */
 #define BORDER_THICK      3.0f
 
-#define SPIN_DEG_PER_SEC  180.0f
-#define MIN_H_SCALE       0.15f
+#define SPIN_DEG_PER_SEC  90.0f
+#define MIN_H_SCALE       0.05f
 
 #define LIFETIME_MS       15000
 #define FADE_MS           2000
@@ -252,8 +252,9 @@ static void render_drops(bool bloom_only)
 		/* Spin — cosine-based horizontal squash (same trick as data node disk) */
 		float t = d->timer / 1000.0f;
 		float spin_rad = t * SPIN_DEG_PER_SEC * (float)(SD_PI / 180.0);
-		float h_scale = fabsf(cosf(spin_rad));
-		if (h_scale < MIN_H_SCALE) h_scale = MIN_H_SCALE;
+		float h_scale = cosf(spin_rad);
+		if (fabsf(h_scale) < MIN_H_SCALE)
+			h_scale = copysignf(MIN_H_SCALE, h_scale);
 
 		/* Flush any pending geometry with standard view */
 		Render_flush(&world_proj, &camera_view);
